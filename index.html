@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Fiala">
+<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#161617" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>Fiala Trainings</title>
+<style>
+  [hidden] { display: none !important; }
+  img { max-width: 100%; }
+  html { background: var(--canvas); }
+  body { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  :root {
+    --ink: #1d1d1f;
+    --ink-2: #6e6e73;
+    --ink-3: #86868b;
+    --hair: #d2d2d7;
+    --canvas: #f5f5f7;
+    --surface: #ffffff;
+    --field: #f5f5f7;
+    --accent: #6f6b99;
+    --done: #7f9a3f;
+    --danger: #c84653;
+    --ghost: #b0b0b5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ink: #f5f5f7;
+      --ink-2: #a1a1a6;
+      --ink-3: #86868b;
+      --hair: #3a3a3c;
+      --canvas: #161617;
+      --surface: #1d1d1f;
+      --field: #2c2c2e;
+      --accent: #9e9bc2;
+      --done: #a9b96b;
+      --danger: #e0707a;
+      --ghost: #5c5c60;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ink: #f5f5f7;
+    --ink-2: #a1a1a6;
+    --ink-3: #86868b;
+    --hair: #3a3a3c;
+    --canvas: #161617;
+    --surface: #1d1d1f;
+    --field: #2c2c2e;
+    --accent: #9e9bc2;
+    --done: #a9b96b;
+    --danger: #e0707a;
+    --ghost: #5c5c60;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: "Helvetica Neue", Helvetica, -apple-system, "SF Pro Text", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab { font-variant-numeric: tabular-nums; }
+
+  header {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 5;
+    background: color-mix(in srgb, var(--canvas) 88%, transparent);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--hair);
+  }
+  .bar {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 16px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .back {
+    appearance: none; border: 0; background: none; padding: 0;
+    color: var(--accent); font: inherit; font-size: 17px; cursor: pointer;
+    min-height: 44px; display: inline-flex; align-items: center; gap: 4px;
+    max-width: 70%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  .brand { font-weight: 600; letter-spacing: 0.02em; }
+  .brand b { color: var(--accent); font-weight: 600; }
+  #status { font-size: 13px; color: var(--ink-3); white-space: nowrap; }
+  #status.err { color: var(--danger); cursor: pointer; }
+
+  main { max-width: 680px; margin: 0 auto; padding: 8px 16px 96px; }
+  h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; margin: 16px 0 12px; text-wrap: balance; }
+  h2 { font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin: 28px 0 8px; }
+  .muted { color: var(--ink-3); font-size: 15px; }
+  .notice { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; padding: 10px 14px; font-size: 14px; color: var(--ink-2); margin: 12px 0 0; }
+
+  input, textarea, button, select { font: inherit; color: inherit; }
+  input, textarea {
+    width: 100%; min-width: 0;
+    background: var(--field); border: 1px solid transparent; border-radius: 10px;
+    padding: 10px 12px; font-size: 16px; outline: none;
+  }
+  input::placeholder, textarea::placeholder { color: var(--ghost); }
+  input:focus, textarea:focus { border-color: var(--accent); background: var(--surface); }
+  textarea { resize: vertical; min-height: 72px; line-height: 1.4; }
+  input[type="date"] { -webkit-appearance: none; appearance: none; }
+
+  .btn {
+    appearance: none; border: 0; cursor: pointer; border-radius: 12px;
+    min-height: 44px; padding: 0 18px; font-size: 16px; font-weight: 500;
+    background: var(--ink); color: var(--canvas);
+  }
+  .btn:active { opacity: 0.8; }
+  .btn.quiet { background: transparent; color: var(--accent); padding: 0 6px; font-weight: 500; }
+  .btn.danger { background: transparent; color: var(--danger); padding: 0 6px; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn:focus-visible, .back:focus-visible, .list button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .addrow { display: flex; gap: 8px; margin-top: 8px; }
+  .addrow input { flex: 1; }
+
+  .list { background: var(--surface); border-radius: 14px; overflow: hidden; margin: 0; padding: 0; list-style: none; }
+  .list li + li { border-top: 1px solid var(--hair); }
+  .list button {
+    appearance: none; border: 0; background: none; width: 100%; text-align: left; cursor: pointer;
+    min-height: 56px; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    font-size: 17px; color: var(--ink);
+  }
+  .list button:active { background: var(--canvas); }
+  .list .sub { color: var(--ink-3); font-size: 14px; white-space: nowrap; }
+  .list .chev { color: var(--ink-3); margin-left: 6px; }
+  .empty { color: var(--ink-3); font-size: 15px; padding: 18px 0 4px; }
+
+  /* Training */
+  .ttl { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-top: 14px; }
+  .ttl input.title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; background: transparent; padding-left: 0; }
+  .ttl input.title:focus { background: var(--surface); padding-left: 12px; }
+  .ttl input[type="date"] { width: auto; font-size: 15px; color: var(--ink-2); padding: 8px 10px; }
+  .actions { display: flex; gap: 6px; margin: 6px 0 0; flex-wrap: wrap; }
+
+  .rows { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+  .row { background: var(--surface); border-radius: 14px; padding: 12px 12px 12px; }
+  .row .top { display: grid; grid-template-columns: 58px 1fr 36px; gap: 8px; align-items: center; }
+  .row .top input.label { text-align: center; font-weight: 600; padding-left: 6px; padding-right: 6px; }
+  .row .top .exwrap { position: relative; }
+  .row .top input.name { font-weight: 500; }
+  .row .x {
+    appearance: none; border: 0; background: none; color: var(--ink-3); cursor: pointer;
+    width: 36px; height: 44px; font-size: 20px; line-height: 1; border-radius: 10px;
+  }
+  .row .x:hover { color: var(--danger); }
+  .sugg {
+    position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 4;
+    background: var(--surface); border: 1px solid var(--hair); border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12); overflow: hidden; padding: 4px 0; margin: 0; list-style: none;
+  }
+  .sugg button {
+    appearance: none; border: 0; background: none; width: 100%; text-align: left; cursor: pointer;
+    padding: 10px 12px; font-size: 15px; color: var(--ink);
+  }
+  .sugg button:hover, .sugg button:focus { background: var(--canvas); outline: none; }
+  .specs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+  .specs label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 4px 2px; }
+  .specs input { padding: 9px 8px; text-align: center; }
+  .weights { margin-top: 10px; }
+  .weights .cap { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 4px 2px; display: flex; justify-content: space-between; }
+  .weights .cap span:last-child { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--ghost); }
+  .weights .boxes { display: flex; gap: 6px; flex-wrap: wrap; }
+  .weights input { width: 62px; text-align: center; padding: 9px 6px; font-weight: 500; }
+  .weights input:not(:placeholder-shown) { border-color: var(--hair); }
+
+  .add { margin-top: 12px; }
+  .foot { margin-top: 36px; border-top: 1px solid var(--hair); padding-top: 8px; display: flex; gap: 8px; align-items: center; }
+  .confirm { color: var(--ink-2); font-size: 15px; }
+
+  @media (max-width: 400px) {
+    .specs { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+    .specs input { padding-left: 4px; padding-right: 4px; font-size: 15px; }
+    .row .top { grid-template-columns: 52px 1fr 32px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .list button, .btn, .x { transition: background-color 0.12s, opacity 0.12s, color 0.12s; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <button class="back" id="back" hidden><span>&#8249;</span><span id="backLabel"></span></button>
+    <div class="brand" id="brand">FIALA<b>.</b></div>
+    <div id="status"></div>
+  </div>
+</header>
+
+<main>
+  <section id="vClients">
+    <h1>Clients</h1>
+    <form class="addrow" id="clientForm">
+      <input id="clientName" placeholder="New client" autocomplete="off" autocapitalize="words">
+      <button class="btn" type="submit">Add</button>
+    </form>
+    <div class="foot" id="localFoot" hidden><span class="muted">Saved on this device</span><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden></div>
+    <ul class="list" id="clientList" style="margin-top:14px"></ul>
+    <div class="empty" id="clientEmpty" hidden>No clients yet. Add the first one above.</div>
+  </section>
+
+  <section id="vClient" hidden>
+    <input id="cName" class="tab" style="font-size:26px;font-weight:600;letter-spacing:-0.02em;background:transparent;padding-left:0;margin-top:12px" placeholder="Client name" autocapitalize="words">
+    <h2>Trainings</h2>
+    <button class="btn" id="newTraining" style="width:100%">+ New training</button>
+    <ul class="list" id="trainingList" style="margin-top:10px"></ul>
+    <div class="empty" id="trainingEmpty" hidden>No trainings yet.</div>
+    <h2>Notes</h2>
+    <textarea id="cNotes" placeholder="Injuries, preferences, anything to remember"></textarea>
+    <div class="foot">
+      <button class="btn danger" id="delClient">Delete client</button>
+      <span class="confirm" id="delClientConfirm" hidden>Deletes all their trainings too. <button class="btn danger" id="delClientYes">Delete</button> <button class="btn quiet" id="delClientNo">Keep</button></span>
+    </div>
+  </section>
+
+  <section id="vTraining" hidden>
+    <div class="ttl">
+      <input id="tTitle" class="title" placeholder="Training title" autocapitalize="sentences">
+      <input id="tDate" type="date">
+    </div>
+    <div class="rows" id="rows"></div>
+    <button class="btn quiet add" id="addRow">+ Add exercise</button>
+    <div class="foot">
+      <button class="btn quiet" id="copyTraining">Copy training</button>
+      <button class="btn danger" id="delTraining">Delete training</button>
+      <span class="confirm" id="delTrainingConfirm" hidden><button class="btn danger" id="delTrainingYes">Delete</button> <button class="btn quiet" id="delTrainingNo">Keep</button></span>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const NAMES = ["(Tucked) front lever","1,5 shyby","1.5-rep close-grip underhand pull-ups","2KB clean and push press","45° incline dumbbell curls (arms away from body)","45° incline dumbbell curls, arms in front of body (straddling bench)","Ab Wheel Iso","Ab Wheel Rollout","Active hang","Active hang on rings","Adductor Mobilization","Advanced active hang","Air bike","Alternating Barbell Split Jump","Alternating Bodyweight Split Jump","Alternating DB bent over rows","Alternating Dumbbell Bench Press","Alternating Dumbbell Curl","Alternating dumbbell overhead press","Alternating Dumbell Split Jump","Alternating Lateral Lunge Walk","Alternating seated DB curls","Alternating Single Leg V-Up","American KB Swing","Anchored Reverse Crunch","Anchored Sit Up","Anderson Front squat","Anderson squat","Ankles to bar (non-dynamic)","Anti-Rotation Core Activation","Archer Squats","Arms Across Stretch","Arnold Press","Arnold Shoulder Press","Around the World Squat","Around the Worlds (weight optional)","Assisted Bodyweight Squat to Box","Assisted Chin-Ups","Assisted Lateral Squat","Assisted Nordic Curls","Assisted Pull-ups","Assisted Reverse Lunge With Blocked Knee","ATG squat","ATG squat (bodyweight)","ATG squat with bands","ATG squats on Smith machine against band","Back deadlift","Back Extension","Back Extension to Y's","Back extensions with dumbbell on chest","Back extensions with EZ bar behind head","Back Lunge into Kickback","Back pullover machine","Back Squat","Back-Supported Pullover","Backward Walking","Ball Slam To Jump","Ball Squat to Press","Band chest pull + hold in contraction","Band curls","Band deadlift","Band face pull","Band face pull overhead","Band glute ham raises","Band leg press (wide stance)","Band Press-Down","Band Pull Apart","Band pullover + hold at bottom","Band smitch machine press","Band Smith Machine Press","Band Up and Overs","Band-Assisted Chin-Up","Band-Assisted Inverted Row","Band-Assisted Neutral-Grip Pull-Up","Band-Assisted Pull-Up","Band-Assisted Pushup","Band-Resisted Ab Wheel Iso","Band-Resisted Goblet Squat","Band-Resisted Pull-Up","Band-Resisted Pushup","Band-Resisted Ring Pushup","Band-Resisted Squat","Band/cable pushdown, elbows away from body","Banded Curl","Banded Curtsey Lunge into Abduction","Banded Eccentric Pause Squats","Banded Face Pull","Banded Frog Thrusts","Banded Glute Walks","Banded Hip Extension","Banded Hip Thrust to Abduction","Banded Kickbacks","Banded No Money","Banded Pull-Down","Banded Reverse Lunge to Kick Back","Banded romanian deadlift","Banded Rotator Cuff Internal/External Rotation","Banded Rows","Banded Scapular Protraction","Banded Side Plank Abduction","Banded sumo KB deadlift","Banded Tube Walks","Banded Walks","Barbell Chest-Supported T-Bar Row","Barbell Close Grip 2-pause bench press","Barbell close-grip bench press (shoulder-width)","Barbell Close-Grip Biceps Curl","Barbell Concentration Biceps Curl","Barbell Curl","Barbell Deadlifts from Blocks","Barbell Deadlifts from Deficit","Barbell Decline Bench Triceps Extension","Barbell Deficit Reverse Lunge","Barbell Flat Bench Triceps Extension","Barbell Front Raise","Barbell Front Squat Iso","Barbell Front Squat to Box","Barbell Glute Bridge","Barbell Hip Thrust","Barbell Incline Bench Row","Barbell Incline Bench Triceps Extension","Barbell JM Press","Barbell One-Arm Linear Jammer","Barbell One-Arm Row","Barbell Overhead Press","Barbell Overhead Shrug","Barbell Overhead Triceps Extension","Barbell Pause Bench Press","Barbell Pause Larsen Bench Press","Barbell Pause Squats","Barbell Plate Ab Twist","Barbell Preacher Biceps Curl","Barbell Regular-Grip Biceps Curl","Barbell Reverse Curl (Pronated Grip)","Barbell Reverse Grip Bent Over","Barbell Reverse Grip Curl","Barbell Reverse Lunge","Barbell Reverse Lunge With a Front Squat Grip","Barbell Reverse-Grip Biceps Curl","Barbell Seated Shoulder Press","Barbell shrugs (isometric)","Barbell Skull Crushers","Barbell Slideboard Reverse Lunge","Barbell Split Squat","Barbell Spoto Bench Press","Barbell Standing Lunge","Barbell Standing Overhead Press","Barbell Standing Shoulder Press","Barbell Step Up","Barbell Stiff Leg Deadlift","Barbell Stiff-Legged Deadlift","Barbell Sumo Deadlift","Barbell Tempo Bench Press","Barbell Touch n Go Bench Press","Barbell Wide-Grip Biceps Curl","Barbell Z Press","Basic position for pelvic stretch","Basic support hold on rings","Battle Rope","BB AB rollout","BB Bent over rows","BB Bulgarian split squat","BB CG Bench-press \u2013 partial reps","BB French-press","BB Good morning","BB Jump squat","BB Low decline Frenchpress","BB lunges","BB Power shrugs","BB Romanian deadlift","BB Romanian deadlift - no touch / shora","BB Romanian deadlift from deficit","BB Seal rows","BB Snatch shrugs","Bear crawl (forward/backward)","Bear Knee Taps","Bear Plank 360's","Bear Plank Hip Abduction","Bear walk","Belt squat","Bench Hops","Bench jump-overs with hand support","Bench Lateral Stretch","Bench press with chains","Bench Push-ups","Bench Stretch","Bench-press","Bench-press from pins","Bench-press narrow","Bent Knee Air Crunch","Bent Knee Jack Knife","Bent Knee Single Leg Lifts","Bent Knee Sit Ups","Bent Knee V-Ups with Arms","Bent Over Alternating Row","Bent Over Palm Up Row to Curl","Bent Over Plate Row","Bent Over Pronated Grip (Overhand) Row","Bent Over Rear Delt Row","Bent Over Reverse Fly","Bent Over Reverse Flyes","Bent Over Row to Bicep Curl","Bent Over Row to Overhead Press","Bent over rows","Bent over rows nadhmat","Bent over rows podhmat","Bent Over Tempo Rows","Bent-Knee Hamstring Dynamic","Bent-Knee Jackknives","Bent-over dumbbell/kettlebell row (unilateral)","Bent-over lateral raises (head supported on bench)","Bent-over Olympic barbell row","Bent-over underhand cable rows to waist","Biceps curls (band/DB)","Bicycle Crunch","Bicycle crunches","Bird dog","Body Weight Ab Crunch","Body Weight Back Extension","Body Weight Bench Dip","Body Weight Bulgarian Split-Squat","Body Weight Pike Push-Up","Body Weight Pistol Squat","Body Weight Plank","Body Weight Pull-Up","Body Weight Squat","Body Weight Standing Lunge","Body Weight Step Up","Body Weight Walking Lunge","Bodybuilding squats","Bodyweight Bulgarian Split Squat","Bodyweight Cross-Over Step-Up","Bodyweight donkey calf raises","Bodyweight Get-Up","Bodyweight Lateral Lunge With Assistance","Bodyweight Lateral Squat","Bodyweight Reverse Lunge With Blocked Knee","Bodyweight Side Steps","Bodyweight Split Squats","Bodyweight Squat Thrust","Bodyweight Squat to Box","Bodyweight Step-Up","Bodyweight Tibialis Raise","Bowler Squat","Box breathing","Box jumps","Box squat","Box step-ups","Box/Tuck Jump","Breath of fire","Broad jump reset","Broad Jump, Hustle Back","Broad jumps","BTN Cambered bar press","BTN Press","BTN Push-press","Bulgarian Lunge","Bulgarian split squats","Bulgarian split squats with dumbbell/kettlebell in goblet position","Bulgarian Squat","Bulgarian Squat w/ Tempo","Burpee Plank Jack to Jump Jack","Burpee Push-Up to Break Dancer","Burpee Push-Ups","Burpee to Jump Lunge","Burpee Without Pushup","Burpees","Butt Kicks","Butterfly and Spinal Twist","Butterfly Crunches","Butterfly Kicks","Butterfly Sit Up","Butterfly Stretch","BW pistol squat","BW Squats","Cable Abduction","Cable Bar Biceps Curl","Cable Behind the Neck Lat Pulldown","Cable bent over raises","Cable Bicep Curls","Cable Chest Fly","Cable Chest Press (Seated)","Cable Crossover","Cable Curls","Cable Deadlifts","Cable Decline Bench Triceps Extension","Cable External Rotation at 30 Degrees Abduction","Cable External Rotation at 90 Degrees Abduction","Cable External Rotation on Knee","Cable Face Pull","Cable face pull with rotation, to forehead","Cable Flat Bench Fly","Cable Flat Bench Triceps Extension","Cable front raises","Cable Hammer Curl","Cable Incline Bench Biceps Curl","Cable Incline Bench Fly","Cable Incline Bench Press","Cable Incline Bench Triceps Extension","Cable Kickback","Cable Lat Pull-down","Cable lat pullover","Cable Lateral Kicks","Cable lateral raises","Cable machine shoulder press (straddling, reversed)","Cable Narrow-Grip Lat Pull-Down","Cable One-Arm Lat Pull-Down","Cable One-Arm Overhead Triceps Extension","Cable One-Arm Row (Seated)","Cable One-Legged Kickback","Cable Overhead Curl","Cable Overhead Tricep Extension","Cable overhead triceps extension on high pulley","Cable overhead triceps extensions with rope","Cable pectoral flyes \u2013 seated","Cable pectoral press \u2013 seated","Cable pectoral press \u2013 standing","Cable Pectorial Flyes - Seated","Cable Pectorial Press - Seated","Cable Pectorial Press - Standing","Cable Pull Through","Cable Pull-Down","Cable Rear Delt Fly","Cable Reverse-Grip Lat Pull-Down","Cable Reverse-Grip Triceps Push-Down","Cable Rope Biceps Curl","Cable Rope Seated High Row","Cable Rope Triceps Push-Down","Cable Row (Seated)","Cable sawing, 180 degrees","Cable Shoulder Press (Seated)","Cable Squats","Cable Standing Shoulder Press (Standing)","Cable Straight-Arm Pull-Down","Cable Straight-Bar Triceps Push-Down","Cable Upright Row","Cable V-Bar Triceps Push-Down","Cable Wide-Grip Lat Pull-Down","Calf raises on leg press / standing","Calf Stretch","Calming breathing (cross-legged sit)","Captain's Chair Knee Raise","Cardio 45-60 min (shuffle run / hike / bike / rowing machine)","Cat Cows","Cat crawl","CG band bench-press","CG Chinup","CG Chinups \u2013 mixed grip","CG neutral pullup","CG Press from pins","CG Pullup","CG Upright rows","Charlie's Angels Abs","Chest Dips","Chest Fly Dead Bugs","Chest Fly Machine","Chest Medicine Ball Throws","Chest Opener Knee Raise","Chest Press + Hollow Hold","Chest Press Machine","Chest Press w/ Dead Bug Legs","Chest supported DB rows \u2013 podhmat, k pasu","Chest supported DB rows \u2013neutral k pasu","Chest Supported Dumbbell Row","Chest Supported Machine Row","Chest supported rows \u2013 stroj","Chest-press stroj / kliky","Chest-supported dumbbell rows, overhand grip, elbows out","Chest-to-wall handstand with walk-up","CHI breathing (kneeling/seated)","Chin Ups","Chin-up","Chinup","Chops w/ Ball","Clamshell","Classic pull-ups (elliptical path)","Clean","Clean deadlift","Clean Power Shrugs","Clean pull (dynamic extension)","Close Grip Incline Bench Press","Close Grip Pulldown","Close-grip barbell preacher curls","Close-grip bench dips (behind body)","Close-Grip Bench Press from Dead Start","Close-grip chin-ups with band","Close-grip decline bench press (fat bar) with band/chains","Close-grip dips","Close-grip pull-ups (neutral/overhand grip)","Close-grip reverse EZ bar curls, back against rack","Close-grip underhand pull-ups","Cobra lat pulldowns","Cobra push-up","Comerford curls","Contralateral Clean to Press","Contralateral Overhead Reverse Lunge","Contralateral Single Leg Deadlift","Contralateral Snatch","Cossack squat","Couch Stretch","Criss Cross Jumping Jacks","Cross Body Cable Tricep Extension","Cross Body Sit-Ups","Cross Jump Touch Down","Cross-Body Lat Mobilization","Crossbody Knee Drive","Crossbody Mountain Climbers","Crunches","Crunches over bench","Crunches over bench / V-crunches","Cuban rotation + press","Cuban rotations with stick/barbell","Curl to Press to Tricep Extension","Curtsey Lunge","Curtsey Lunge with Pause","Curtsy Lunge","Cyclist squat","DB 75 degree incline press, semi-neutral","DB Bench-press","DB bent over lateral raises","DB Bent over rows","DB bent over shrugs","DB Bulgarian split squat","DB Calf Raise","DB Chest Press","DB clean and press","DB Cossack Squat","DB Deficit Split Squat","DB Farmer Walk","DB Fitball press","DB Flat Chest Fly","DB Flat Chest Press","DB Floor French-press","DB Floor-press","DB Forward Lunges","DB French-press","DB Frog Pump","DB Front Foot Elevated Squat","DB Front raises","DB Glute Bridge","DB Goblet BSS","DB Goblet Squat","DB Hammer Scott curls","DB hip thrust","DB Hyperextenze","DB Incline Bench Reverse Fly","DB Incline Bench Row","DB Incline Chest Press","DB Incline Hammer Curls","DB Incline Skull Crushers","DB lateral raises","DB Leg Raises","DB neutral overhead press","DB One leg Romanian deadlift","DB overhead press","DB Pectoral flyes","DB Pendlay rows","DB power flyes","DB power shrugs","DB Pullovers","DB Reverse Flys","DB Reverse Lunges","DB Romanian deadlift","DB Romanian deadlift 2/3","DB Scott Curls","DB seated bent over raises","DB Seated bent over shrugs","DB seated front raises","DB seated partial lat raises","DB seated semi lateral raises","DB shrugs","DB Side Bends","DB Snatch","DB Snatch to Press","DB Spiderman curls","DB Squats","DB Step-up","DB Vertical jump","DB Waiter march / walk","DB Walking lunges","DB Walking lunges drop set","DB Windmills","DB/KB windmill","Dead Bug","Deadlift","Deadlift to Clean to Squat","Deadlift with chains","Deadmill Sprint","Decline bench-press","Decline close-grip bench press with band","Decline EZ bar bench press, medium grip","Decline EZ bar French press, medium grip, behind head","Decline EZ bar French press, neutral grip, to forehead","Decline neutral-grip dumbbell triceps extensions to shoulders","Decline pronated dumbbell triceps extensions behind head","Decline push-up","Decline Pushups","Deep dips with press-out to support","Deep Neck Flexor Activation and Suboccipital Stretch","Deep Squat to Hamstring Stretch","Deep Squat Wall Stretch","Deep Squat with Reach","Deficit deadlift","Deficit push-ups","Deprese lopatek","Depth Drop","Depth Drop To Vertical Jump","Diamond Push-up","Diamond push-ups","Dips","Dips on rings","Dolphin Push Ups","Double Bounce High Knees","Double Dumbbell Swings","Double kettlebell standing overhead press","Double Under","Downward Dog to World's Greatest Stretch","Drag Curls","Dragon push-up","Dragon walk","Drop Squats","Duck Walk Forward and Back","Dumbbell 1 1/4 Full Squat","Dumbbell Ab Twist","Dumbbell Alternate Biceps Curl","Dumbbell Arnold Press","Dumbbell bent-over rows with band","Dumbbell clean and jerk overhead","Dumbbell external rotation on preacher bench","Dumbbell external rotation over knee","Dumbbell French press (held proximally)","Dumbbell French press to shoulders with rotation","Dumbbell hammer curls (hands turned in)","Dumbbell lateral lunges","Dumbbell lateral raises - partial reps with cheating","Dumbbell lunges (stationary/walking)","Dumbbell overhead press seated on floor","Dumbbell pullover across bench","Dumbbell reverse curls, hands shoulder-width","Dumbbell Romanian deadlift","Dumbbell Romanian deadlift (starting from top)","Dumbbell Romanian deadlifts with band","Dumbbell rows straddling bench","Dumbbell snatch","Dumbbell split squat (front foot elevated)","Dumbbell/kettlebell lunges with rotation to the side","Dynamic leg extensions","Dynamic leg extensions in front of body (hanging)","Eccentric Chin Up","Eccentric Pull-Up","Eccentric Push-Up","Elbow Plank Bodysaw","Elbow Plank Jacks","Elevace lopatek","Elevated Plank Row","Elevated RDL's","Elevated Toes Stiff Leg Deadlift","Elite active hang","End Range Cable Lateral Raise","Explosive Pushup","External Hip Rotation to Lateral Lunge","Extra-close-grip bench press with band/chains","EZ Bar Bicep Curls - Overgrip","EZ bar biceps curls (top range)","EZ bar biceps curls, back against rack","EZ bar biceps curls, elbows in front of body, back against rack","EZ bar French press behind head","EZ bar preacher curls (top range of motion)","EZ bar preacher curls - close grip","EZ bar preacher curls - medium grip","EZ bar reverse curls against rack","EZ bar reverse-grip curls - close grip","EZ bar reverse-grip curls - medium grip","EZ Curls","EZ Curls neutral grip \u2013 drop set","EZ French-press","EZ neutral grip skull crushers","EZ Scott Curls","EZ Skull crushers","EZ Spiderman curls","Face Pulls","False grip hang on rings","False grip pullups","Farmers Carry","Fat bar bench-press","Feet Elevated Sit Up","Feet-Elevated Band-Resisted Pushup","Feet-Elevated Pushup","FHL Calf Raise","Figure 4 Cross Body Bike Crunch","Figure 4 Crunch","Figure 4 Hip Ups","Figure 4 Stretch","Fire Hydrant Leg Extension","Fire Hydrants","Fire Hydrants to Kick Back","Floor Chest Press Hollow Hold","Floor DB Hip Thrust","Floor Slides","Floor Tricep Dips","Floor-press","FM Flow I (base position - mountain climber - kick-through)","Foam Roll","Forearm Plank","Forearm Wall-Slide at 135 Degrees","Forward Lunge","Forward Lunge w/ Twist","Forward Lunge with Bicep Curl","Forward Lunge with Reach","Forward Lunge with Rotation","Forward Lunge With Twist","Frankensteins","Free headstand","Frog Pose","Frog walk","Froggers","Front and Back Lunge","Front foot elevated DB heretic split squats","Front foot elevated DB split squats","Front foot elevated lunge + step up","Front Foot Elevated Lunges","Front foot eleveated split squats","Front lever protraction (drill)","Front Lunge to Overhead Triceps","Front Rack Reverse Lunge","Front rack shrugs","Front raises straddling incline bench","Front squat","Front squat drops to pins","Gentleman rows","Get Up Sit Up","GHD Hip Extension","GHD Russian Twist","GHD Sit-up","Glute Biased Leg Press","Glute Bridge Chest Press","Glute Bridge to Sit Up","Glute Bridge with Calf Raises","Glute Focused Hip Extension","Glute Focused Hyper Extension","Glute Focused RDL","Glute Focused Split Squats","Glute ham raises","Glute-ham raises (machine or assisted on bench)","Glute-Iso Step Ups","Goblet 1 1/4 Squat","Goblet Lateral Lunge","Goblet Lateral Lunge Walk","Goblet Lateral Squat","Goblet Lunge","Goblet Pulse Squats","Goblet Reverse Lunge","Goblet Reverse Lunge With Blocked Knee","Goblet Split Squat","Goblet Split Squat With Blocked Knee","Goblet squat","Goblet Squat Iso","Goblet Squat to Box","Goblet Step-Up","Goblet Sumo Squats","Good morning","Gorilla Squat","Ground to Overhead Press","Hack Squat","Hacken-squat","Half Burpees","Half Dead Bugs","Half Get-Up","Half Kneeling Face Pulls","Half Kneeling Lift and Chop","Half Kneeling Overhead Press","Half Kneeling Palloffs","Half Kneeling Rows","Half Kneeling Shoulder Press","Half Kneeling Single Arm Arnold Press","Half Kneeling Single-Arm Press","Half Turkish Get Up","Half-Kneeling Band Chop","Half-Kneeling Band Lift","Half-Kneeling Band Overhead Shrug","Half-Kneeling Cable Chop","Half-Kneeling Cable Lift","Half-Kneeling Pallof Press Iso","Half-Kneeling Pallof Press Iso With Band","Hammer Curl to Eccentric Suppination","Hammer curls","Hammer curls held by one end","Hammer curls with rope attachment","Hamstring Curl","Hamstring Mobilization With Lacrosse Ball","Hamstring Scoops","Hamstring slide curl","Hamstring Slides","Hamstring Strap Stretch","Hamstring Switches","Hamstring Walk Outs","Hand-Supported V-Ups","Hands-Elevated Pushup","Handstand alignment and hold","Handstand push-up","Handstand push-ups facing wall","Handstand weight shifts hand to hand, facing wall","Hang Clean","Hanging Anti-Lateral Flexion","Hanging Around The World Leg Raise","Hanging band ATG squat","Hanging band military press","Hanging bent-knee raises to 90 degrees","Hanging knee raises","Hanging knee raises on bar","Hanging knee raises on rings","Hanging leg raises","Hanging leg raises on bar","Hanging leg raises with dumbbell, to chest","Hanging leg rotations","Hanging Twisting Leg Raise","Hanging Unilateral March","Head-down push-ups with feet on two boxes","Headstand against wall","Heel Elevated Barbell Squat","Heel Elevated Front Squat","Heel Elevated Single Hip Thrust","Heel Elevated Step Down","Heel Taps","Heels Elevated Sumo Squat Pulses","Helms Dumbbell Row","Heretic lunges","High bar PWL squat","High Cable Bicep Curl","High Five Push-Ups","High Heel Kicks","High heels ATG squat","High heels Front squat","High Incline Bench Press - Shoulder Width","High incline bench-press","High incline bench-press narrow","High incline cable flyes, neutral grip","High incline CG Bench-press","High incline Comerford curls (wrists tilted down)","High incline DB bench-press","High incline DB power flyes","High Incline Dumbbell Curls","High incline gilotina press","High incline neutral DB press","High Knees","High Knees Hands Behind Head","High Knees with Overhead Extension","High Plank to Downward Dog","High Pull","High snatch pull","Hip Abductions","Hip CARS","Hip Dips","Hip Extension Machine","Hip Flexor Rockers","Hip Flexor Stretch","Hip Rotation","Hip-Belt Squat","Hyperextenze","In and Out Jumps","Inch Worm","Inchworm to push-up","Incline bench-press","Incline CG pushups","Incline dumbbell bench press","Incline dumbbell bench press (low incline)","Incline dumbbell biceps curls","Incline neutral-grip dumbbell press, elbows tucked - partial reps","Incline plyo pushups","Incline semi-pronated dumbbell press, elbows out","Incline semi-supinated dumbbell press, elbows tucked, partial reps","Incomplete L-sit","Jackare push-ups","Jackknife sit-ups","Jaguar crawl","Javelin press (EZ osa)","Jefferson Curls (KB)","Jump Lunge","Jump Lunges with Overhead Extension","Jump Lunges with Punches","Jump Rope","Jump squat","Jumping jacks","Jumping lunges","Jumping pullups","Jumps in and out of tire","KAS Hip Thrust","KB biceps curls","KB deadlift (pozved)","KB farmers walk","KB Goblet squat","KB snatch","KB Standing March","KB Swing","KB TGU (Turkish get-up)","Kettlebell Armbar","Kettlebell circles around head and body","Kettlebell Turkish Get Up","Kettlebell walking lunges (forward/backward, held in rack position)","Kettlebell/dumbbell waiter walking lunges","Kick Back to Knees to Elbows Both Ways","Kick-up + hold in wall handstand","Kipping handstand push-ups from headstand + slow negative","Kliky","Klokov squat","Klokov squat - short","Knee Hugs","Knee Over Toe Lunge","Knee to Chest","Kneeling cable flyes in front of body","Kneeling cable overhead triceps extension","Kneeling cable presses in front of body","Kneeling Chops","Kneeling Cossack Squat","Kneeling crossover cable/band pulldown","Kneeling deep breathing","Kneeling Lat Pulldown","Kneeling lat pulldowns to chest","Kneeling Lift and Chop","Kneeling MB Chops","Kneeling Overhead Press","Kneeling single-arm dumbbell overhead press","Kneeling unilateral dumbbell neutral-grip overhead press","L Sit Circles","L-hang","Landmine Chest Press","Landmine Goblet Squat","Landmine Press","Landmine Rainbow","Landmine RDL","Landmine Reverse Lunge","Landmine Shoulder Press","Landmine Thruster","Lat and Triceps Stretch","Lat Pulldown","Lat pulldown to knees","Lat pulldown with V-handle","Lat pullover","Lat Stretchers","Lateral Lunge","Lateral Raises","Lateral to Forward Raise","Lateral to Front Raise","Lateral Twist (Spinal Lateral Flexion)","Laying leg raises","Leaning Y's","Leg Circles","Leg curls","Leg Drops","Leg Extension","Leg extension, feet straight","Leg extension, feet turned out","Leg extension, toes turned in","Leg kick-up to the bar","Leg Lift and Touch Through","Leg Lifts","Leg Lowers","Leg press partial reps","Leg press, narrow stance","Leg press, shoulder-width stance - feet parallel","Leg press, wide stance - feet turned out","Leg raises","Leg-press","Leg-press IZO/DYNAMIC","Log flip","Long Lever Glute Bridge","Long-Lever Plank","Low bar ATG squat","Low bar PWL squat","Low box squat","Low cable biceps curls","Low cable biceps curls (straight bar attachment)","Low cable biceps curls with straight bar attachment","Low cable hammer curls","Low cable rotations in front of body","Low decline bench-press","Low decline dumbbell French press to shoulders with rotation","Low incline bench-press","Low incline bench-press narrow","Low incline CG bench-press","Low incline DB Bench-press","Low incline DB pectoral flyes","Low incline DB power flyes","Low incline dumbbell press - with band","Low Plank Hip Twists","Low pulley lateral raises","Lying Alternating Tricep Extensions","Lying band French press / overhead triceps extension with rope","Lying barbell French press behind head","Lying close-grip dumbbell press","Lying decline French press to forehead, medium grip","Lying dumbbell French press behind head","Lying dumbbell triceps extensions (to shoulders)","Lying EZ bar presses, close grip","Lying EZ bar presses, medium grip","Lying Hamstring Curl","Lying leg curls","Lying leg curls, feet neutral","Lying leg curls, feet straight, dorsiflexed","Lying leg curls, feet straight, plantarflexed","Lying leg curls, feet turned in, dorsiflexed","Lying leg curls, feet turned out, dorsiflexed","Lying leg curls, feet turned out, plantarflexed","Lying slide pulldown","Lying triceps extensions on crossover cables","Lying TRX hamstring curls (heels to glutes)","Machine Ab Crunch","Machine Assisted Chin-Up","Machine Assisted Dip (Chest Variation)","Machine Assisted Pull-Up","Machine Back Cable Row","Machine Biceps Curl","Machine Butterfly","Machine Decline Chest Press","Machine Glute-Ham Raise","Machine Hack Squat","Machine Hip Abduction","Machine Hip Adduction","Machine horizontal row","Machine Incline Chest Press","Machine Iso Row","Machine Lat Pull-down","Machine Lateral Raise","Machine Laying Leg Curl","Machine Laying Leg Press","Machine Leg Curl (Single)","Machine Leg Press","Machine Pec Deck Chest Fly","Machine Pec Deck Reverse Fly","Machine Preacher Biceps Curl","Machine Reverse Fly","Machine Reverse Hyperextension","Machine Seated Leg Curl","Machine shoulder press","Machine Shrug","Machine Single-Leg Press","Machine Standing Leg Curl","Machine Tricep Dips","Machine Tricep Pushdown","Machine Triceps Extension","Machine Upright Row","Machine vertical row","Marching Bridge","Marching Glute Bridge with Hold","Meadows Row","Medball push-press","Medicine ball slams","Medicine Ball Wall Slam","Medium deficit deadlift","Medium Incline Bench Press","Medium incline DB hammer curls","Medium Incline Neutral Dumbbell Curls","Mid grip deadlift","Military Crunch","Military press with pause on the way down","Military-press","Military-press narrow","Modified 21's","Modified full-stretch rows - high cable","Modified Incline DB Bench press","Modified Incline DB benchpress","Momentarily taking feet off wall in aligned handstand","Momentary L-sit","Momentary one-arm handstand facing wall","Monkey walk (sideways)","Morning breathing exercise (Wim Hof method)","Mountain climber","Mountain climber jump switches","Mountain climbers from base position","Narrow Front Squats","Narrow pullups (weighted)","Narrow push-ups","Neck Side Stretch","Negative dips","Negative handstand push-ups (to headstand)","Negative pistol squat","Negative Pull Ups","Neutral grip benchpress","Neutral pullup","Neutral to Supinated Seated Curls","Neutral-grip dumbbell curls (arms away from body)","Neutral-grip dumbbell French press to shoulders","Neutral-grip EZ bar biceps curls","Neutral-grip pull-ups","Nordic Curls","Nordic Hamstring Curl","Oblique Jump Lunges","Oblique Mountain Climbers","Offset Dumbbell Cross-Over Step-Up","Offset Dumbbell Reverse Lunge","Offset Dumbbell Reverse Lunge From Deficit","Offset Dumbbell Reverse Lunge to Romanian Deadlift","Offset Dumbbell Split Squat","Offset Dumbbell Step-Up","Offset Goblet Squat","Old school Arnold rows","Olympic barbell biceps curls","Olympic barbell shrugs","Olympic barbell squat","One arm cable lateral raises","One arm DB bench press","One arm DB curls \u2013 partial reps","One arm DB rows","One arm DB suitcase shrug","One arm seated rows \u2013 stroj","One Foot Elevated Front Squat","One-arm dumbbell curl on preacher bench","One-arm dumbbell hammer curls on preacher bench","One-arm dumbbell overhead press (semi-lunge)","One-arm kettlebell/dumbbell rows with rotation","Outward DB Bicep Curls","Overhand dumbbell biceps curls","Overhand EZ bar curls (one foot forward)","Overhand EZ bar curls, shoulder-width grip","Overhand lat pulldown","Overhand triceps pushdowns, elbows behind body","Overhand triceps pushdowns, elbows in front of body","Overhead extensions on TRX/rings","Overhead Sit Ups","Overhead squat","Overhead triceps extension with band/rope cable (iso hold at max extension)","Pallof Press","Palloff Press Horizontal Circles","Palm Up Raises","Parallel bar presses to support hold","Partial handstand push-ups in wide handstand against wall","Partner Squat","Passive hang","Passive hang on rings","Pata k ruce ve vzporu","Paused Bench-press","Pec Minor Broomstick Mobilization","Pec Mobilization With Lacrosse Ball","Pectoral flyes","Pectoral flyes on crossover cables/bands, high to low","Pelvic Thrusts","Pendlay power rows","Pendlay rows","Pendulum squat narrow (with band)","Pendulum squats","Perfect dips (extra deep, to support hold)","Performance breathing (standing/seated)","Performance HIIT (stationary bike / assault bike)","Performance Tabata (stationary bike / assault bike)","Pigeon Stretch","Pike push-up","Pike push-ups with feet on box","Piriformis Mobilization","Pistol Squat","Plank","Plank Alternating Arm/Leg Extensions","Plank Alternating Reaches","Plank Arm Abduction","Plank Arm Extensions","Plank Arm March","Plank Circles","Plank Elbow-to-Knee Touches","Plank Hold Walk-Out","Plank Hops In-and-Out","Plank Jack with Shoulder Taps","Plank Jacks","Plank kick-throughs","Plank knee tucks to chest (feet in TRX)","Plank Knees to Elbow","Plank Opposite Toe Touch","Plank Pop Ups","Plank Pulls","Plank Row","Plank Row Rotation","Plank Row to Tricep Extension","Plank Shoulder and Knee Taps","Plank Shoulder Taps","Plank to Downward Dog","Plank transitions from hands to elbows","Plank Tricep Extension","Plank Walk Outs","Plank with Alternating Rows","Plank-ups","Plate bent-over rise","Plate Curls","Plate Front Raise","Plate hammer curl","Plate Squat","Plate-loaded machine shoulder press (seated/kneeling)","Platform Pushups","Platform Sumo Squat","Platz squat","Plyo Push Up","Plyo pushups","Plyometric push-ups with hands on bench","Popcorn Squats","Power clean from hang","Power clean from hips","Power clean from the floor","Power snatch","Preacher Curls","Preacher Walking lunges","Press to straight-arm support on rings","Prisoner Squat","Progression/Combo of World's Greatest Stretch and Crab","Pronated-Grip Seated Band Row","Pronated-Grip Seated Cable Row","Prone dumbbell rows on incline bench","Prone Dynamic Spinal Twist","Prone Hip External Rotation","Prone lying dumbbell flyes","Prone lying pulldown","Prone T Raise","Prone Y Raise","Prone YTI","Protrakce lopatek","Prowler pull","Prowler push","Pull Ups","Pull-up top hold + slow negative","Pull-Up With Iso","Pull-ups on bar","Pull-ups to chin from active hang (no dead hang)","Pull-ups to chin from passive hang (to dead hang)","Pull-ups, mid-range pulses","Pull-ups, neutral/overhand grip","Pulse Jump Squat","Pulse Squats","Push Up","Push Up Donkey Kick","Push Up to Alternating Knee Tap","Push Up to Knee Taps","Push Up to Pull Through","Push Up to Reach","Push Up to Renegade Row","Push Up to Starfish","Push Up to Superman","Push Up w/ Rotation","Push ups","Push-press","Push-Up to Plank Pull Through","Push-up to tucked bent-arm planche","Push-Ups on Knees","Push-ups with feet on unstable surface","Push-Ups with Shoulder Taps","Quad Rockers","Quad Rockers / Child's Pose","Quad Squat","Quad Stretch Lean Forward","Quad Stretch with Reach","Quadruped Extension-Rotation","Quadruped Rock Back","Quadruped Shoulder Taps'","Quick Bounds","Rack Pull","Rainbow Ball Slam","Rear-Foot-Elevated Barbell Split Squat","Rear-Foot-Elevated Bodyweight Split Squat","Rear-Foot-Elevated Dumbbell Split Squat","Rear-Foot-Elevated Dumbbell Split Squat Jump","Rear-Foot-Elevated Goblet Split Squat","Renegade Row","Renegade Row With Pushup","Renegade Row With Pushup and Feet Elevated","Retrakce a deprese lopatek","Retrakce lopatek","Reverse Crunch","Reverse crunches","Reverse Lunge into Knee up","Reverse Lunge Jump","Reverse Lunge Shoulder Press","Reverse Lunge to Single-Leg Skip","Reverse Nordic","Reverse Pattern Single-Leg Romanian Deadlift","Reverse peck deck","Reverse pectoral flyes","Reverse Plank Hold","Reverse Plank Knee Drives","Reverse Planks","Reverse Step Up","Reverse Table Top Knee Raises","Reverse Triceps Extension","Ring dips (cluster sets)","Ring dips with support","Ring Plank","Ring pull-ups (feet on floor)","Ring pull-ups, neutral grip (cluster sets)","Ring Pushup","Ring Row","Ring Row With Feet Elevated","Rings pullups (nadhmat)","Rocked-Back Quadruped Extension-Rotation","Roll-out to combat stance","Roll-out to V-sit","Romanian deadlift (below knees)","Romanian Deadlift To Bicep Curl","Romanian Deadlift With Dowel","Rope cable/band pushdown, elbows in front of body","Rope face pulls on high cable","Rope lat pullover on high cable","Rotating Bear Plank","Row Boats","Rowing","Rowing machine","Runner's Stretch","Running","Running (1500-2500 m)","Running in place with toe taps on tire","Russian twist","Russian twist, head down (decline)","Salute Plank","SB Crunches","Scap Pull-Ups","Scapular activation on rings (passive to active hang)","Scapular elevation and protraction with arms overhead","Scapular elevation and protraction with stick/barbell overhead","Scapular Push Up","Scapular Pushup on Elbows","Scapular retraction and depression drill for bent-over rows with stick/barbell","Scapular retraction and depression drill for deadlift with stick/barbell","Scapular retraction and depression drill, standing bench press position with stick/barbell","Scapular retraction and depression with band, straight arms","Scapular Wall-Slide","Scullcrusher","Seal Jacks","Seated Alternating Dumbbell Press","Seated Ankle Dorsiflexsion","Seated back extensions on low cable","Seated behind-the-neck press","Seated behind-the-neck press (narrow grip)","Seated bent-over dumbbell shrugs","Seated Cable Chest Press","Seated Cable Row","Seated Calf Press","Seated calf raises","Seated calf raises, toes turned in","Seated calf raises, toes turned out","Seated Chest Press","Seated DB curl iso hold \u2013 v kontrakci","Seated DB curls","Seated DB curls bez opory","Seated DB hammer curls","Seated DB lateral raises","Seated DB overhead press","Seated DB overhead press - bez opory","Seated DB shrugs","Seated DB supinated lateral raise iso hold \u2013 v extenzi","Seated DB Zottman curls","Seated dumbbell biceps curls","Seated dumbbell front raises, neutral grip","Seated dumbbell hammer curls, bent over","Seated Dumbbell Shoulder Press","Seated dumbbell W overhead press","Seated EZ bar French press behind head","Seated Face Pull","Seated face pull to forehead","Seated face pull to shoulders","Seated football press (lehce incline)","Seated French press, close grip","Seated Good mornings","Seated hammer curls","Seated Hamstring Curl","Seated Incline EZ front raises (undergrip)","Seated lat pulldown with rope","Seated lat pulldown with V-handle","Seated Lateral Raise","Seated leg extension","Seated low cable row","Seated low cable rows","Seated low cable rows (V-handle, Arnold variation)","Seated low cable rows, overhand grip, to chest","Seated low cable rows, underhand grip","Seated military-press","Seated Overhead Press","Seated overhead press from pins (low)","Seated Overhead Tricep Extension","Seated partial lat pulldown, underhand grip","Seated Plate Loaded Row","Seated Reverse Fly","Seated Row","Seated Row Machine","Seated Single Arm Lat Pulldown","Seated Single Arm Shoulder Press","Seated Single Leg Hamstring Curl","Seated Single Leg Leg Press","Seated Single-arm DB Overhead Press","Seated to Squat Jump","Seated Zottman curls (held proximally)","Semi grip pullups","Serratus Anterior Punch","Shoulder Flossing","Shoulder Jacks","Shoulder Mobility and Chest Opener","Shoulder push-ups, at top into straight-arm forward lean","Shoulder Shrugs","Shoulder-width pull-up","Shoulder-width underhand pull-ups","Shrugs + low cable upright rows to chin","Shrugs with bent arms","Shyb nadhmatem","Side Lunge","Side plank","Side Plank Crunch","Side Plank Dips","Side Plank Leg Lift","Side Plank Reach Through","Side Plank Rows","Side Plank to Knee Drive","Side Plank Wall-Slide","Side to side crunches","Sideways handstand wall walk","Single Arm Arnold Press","Single Arm Bent Over Row","Single Arm Cable Tricep Extension","Single Arm Clean","Single Arm Costal Cable Chest Press","Single Arm DB Plank Row","Single Arm DB Press","Single Arm DB Row","Single Arm Dumbbell Z Press","Single Arm Hang Clean","Single Arm Incline Dumbbell Bench Press","Single Arm KB Z Press","Single Arm Lat Pulldown","Single Arm Lateral Raise","Single Arm Oblique Cable Twist","Single Arm Overhead Squat","Single Arm Push Press","Single Arm Raise to Front Raise","Single Arm Rear Delt Cable Fly","Single Arm Rear Delt Raise","Single Arm Row","Single Arm Row with Leg Extensions","Single Arm Snatch","Single Arm Staggered Row","Single Arm Sternal Cable Chest Press","Single Arm Weighted Sit Up","Single Kettlebell Shoulder Press","Single Leg Banded Glute Kickbacks","Single Leg Bent Knee","Single Leg Bounds","Single Leg Bridge Press","Single Leg Chest Press","Single Leg Deadlift","Single Leg Deadlift Pulses","Single Leg Elevated Hip Thrust","Single Leg Glute Bridge","Single Leg Hamstring Curl","Single leg hip thrust","Single Leg Hip Thrust with Tempo","Single Leg Lifts","Single Leg Press","Single leg Romanian deadlift","Single Leg Seated Calf Press","Single Leg Skip","Single Leg Squat","Single Leg Staggered","Single Leg Switches","Single Leg Toe Touch","Single Leg V-Up","Single Leg Weighted Hip Thrust","Single-Arm Band Row","Single-arm Cable Chest Fly","Single-arm Cable Chest Press","Single-arm Cable Concentration Curl","Single-arm Cable Curl","Single-arm Cable Hammer Curl","Single-arm Cable Lat Pull-Down","Single-arm Cable Lateral Raise","Single-arm Cable Overhead Press","Single-arm Cable Overhead Tricep Extension","Single-arm Cable Upright Row","Single-Arm Dumbbell Bench Press","Single-Arm Dumbbell Curl","Single-Arm Dumbbell Floor Press","Single-Arm Dumbbell Push Press","Single-Arm Dumbbell Reverse Lunge","Single-Arm Dumbbell Reverse Lunge From Deficit","Single-Arm Dumbbell Reverse Lunge to Romanian Deadlift","Single-Arm Dumbbell Reverse Lunge With Blocked Knee","Single-Arm Dumbbell Romanian Deadlift","Single-Arm Dumbbell Slideboard Reverse Lunge","Single-Arm Dumbbell Split Squat","Single-Arm Dumbbell Step-Up","Single-Arm Face Pull","Single-Arm Half-Kneeling Band Press","Single-Arm Half-Kneeling Band Pull-Down","Single-Arm Half-Kneeling Band Row","Single-Arm Half-Kneeling Cable Press","Single-Arm Half-Kneeling Cable Row","Single-Arm Hands-Elevated Pushup","Single-Arm Landmine Row","Single-arm Lateral Cable Tricep Extension","Single-Arm Lying Dumbbell Rolling Triceps Extension","Single-Arm Lying Dumbbell Triceps Extension","Single-arm Machine Lat Pull-down","Single-arm Machine Preacher Curl","Single-Arm Overhead Band Press","Single-Arm Overhead Dumbbell Reverse Lunge","Single-Arm Overhead Dumbbell Reverse Lunge From Deficit","Single-Arm Plank","Single-Arm Plate Curl","Single-arm Seated Cable Row","Single-Arm Standing Band Row","Single-Arm Standing Cable Row","Single-Arm Standing Split-Stance Band Press","Single-Arm Standing Split-Stance Band Row","Single-Arm Standing Split-Stance Cable Press","Single-Arm Standing Split-Stance Cable Row","Single-Arm Tall-Kneeling Overhead Dumbbell Press","Single-Arm Walking Dumbbell Farmer’s Carry","Single-Leg Band-Resisted Pushup","Single-Leg Band-Resisted Romanian Deadlift","Single-leg DB Glute Bridge","Single-leg DB RDL","Single-Leg Eccentric Squat to Box","Single-Leg Feet-Elevated Band-Resisted Pushup","Single-Leg Feet-Elevated Pushup","Single-leg kick-up to wall handstand from standing","Single-leg Lying Leg Curl","Single-leg lying leg curl, foot straight, dorsiflexed","Single-leg lying leg curl, foot turned in, dorsiflexed","Single-Leg Offset Dumbbell Romanian Deadlift","Single-Leg Plank","Single-Leg Pushup","Single-leg Seated Leg Extension","Single-Leg Single-Arm Dumbbell Romanian Deadlift","Single-Leg Slideboard Bodysaw","Single-Leg Slideboard Leg Curl","Single-Leg Squat to Box","Single-leg wall push-offs","Sissy Squats","Sit Up + Throw Punches","Sit Up and Twist","Sit Up Punches","Sit Up to Stand Up","Sit Up to Wall Throw","Sit-ups","Sitting Knee to Chest Stretch","Skater Hops","Skaters","Skipping","Skull Crushers to Hip Thrust","Skullcrushers","Slam ball ground slams","Slam ball push press","Sled Pull","Sled Push","Sledgehammer strikes on tire","Slideboard Bodysaw","Slideboard Leg Curl","Slip Floor Bridge Curl","Slow leg lowering from the bar","Slow Tempo Lateral Step Downs","Smith Machine Bench Press","Smith Machine Bent Over Row","Smith Machine Close-Grip Bench Press","Smith Machine Decline Chest Press","Smith Machine Good Morning","Smith Machine Hack Squat","Smith Machine Incline Bench Press","Smith Machine Rack Pulls","Smith Machine RDL","Smith Machine Shoulder Press","Smith machine split squat (front foot elevated)","Smith Machine Squat","Smith Machine Standing Calf Raise","Smith Machine Supinated Row","Snatch deadlift","Snatch deadlift deficit","Snatch Grip Barbell Shrugs","Snatch Grip Deadlift","Snatch power shrugs from hang","Speed band bench-press","Speed Squat","Spiderman Crunches","Spiderman pushups","Split-Stance Dumbbell Push Press","Sprint","Sprint with tire drag (rope)","Sprinters Crunch","Sprinty (15\u201350 m)","Squat","Squat 4-3-1","Squat clean from hang","Squat hold with slam ball","Squat Hops Side to Side","Squat Jump to Overhead Press","Squat Jump with Press","Squat Pulses with Isometric Hold","Squat Thrusters","Squat to Diagonal Press","Squat to Good Morning","Squat to Oblique Crunch","Squat to Press","Squat to Side Crunch","Squat to Side Kick","Squat to Stand","Squat to Stand With Overhead Reach","Squat to Standing Triple Extension","Squat with Hold","Squats (bodyweight/goblet)","Squats on pendulum machine / leg press","Squatting Hip Internal Rotation","Stability Ball Hamstring Curls","Stability Ball Rollout","Staggered Alternating Deadlift","Staggered Deadlift","Staggered Romanian (Stiff Leg)","Staggered Stance Single Leg DL","Standard dips on parallel bars","Standing alternating dumbbell overhead press","Standing band row to waist, from protraction to scapular retraction and depression","Standing band row to waist, maintaining scapular retraction and depression","Standing Barbell Goodmorning","Standing behind-the-neck press","Standing Butt Kicks","Standing Cable Chest Fly","Standing Cable Chest Press","Standing Cable Low Row (Rope)","Standing Cable Upper Chest Fly","Standing calf raises","Standing dumbbell press","Standing dumbbell push press","Standing Elbow to Knee","Standing EZ bar biceps curls","Standing face pull overhead","Standing face pull to forehead","Standing high cable triceps extension","Standing KB press","Standing MB Lift and Chop","Standing Oblique Crunch","Standing Olympic barbell biceps curls","Standing One Leg Hold","Standing Opposite Toe Taps","Standing Palloffs","Standing plate triceps extension behind head","Standing Single Leg Arm Press","Standing Single-arm DB Overhead Press","Standing Split-Stance Landmine Press","Standing Strict Overhead Press","Standing Thoracic Extension Rotation","Standing Tricep Extension","Standing Trunk Rotations","Standing unilateral dumbbell lateral raises","Static Lunge","Stationary bike (intervals seated/standing/sprint)","Stationary bike - out of saddle","Stationary bike - seated","Step Downs","Step Ups w/ Knee Drive","Stick Dislocates","Stick Pass Through","Stiff Leg Dead Lift to High Pull","Stiff Leg Deadlift to High Pull","Stiff Leg/Romanian Deadlift","Stiff- Leg Deadlift to Bent Over Row","Stir-The-Pot","Stojka","Straddle L-sit","Straddle Pulses","Straight Bar Cable Pulldown","Straight Leg Sit-Ups","Straight Leg V-Ups","Straight-arm band pull-aparts + hold","Straight-arm forward lean hold","Straight-arm forward leans on parallettes","Straight-arm press to sides + hold (with band)","Straight-arm presses in front of body (band support presses)","Stretch - Arm Sweep","Stretch - Catcow","Stretch - Child's Pose","Stretch - Full Cobra","Stretch - Modified Pigeon Pose","Stretch - Pidgeon Pose","Strict Overhead Press","Suitcase Carry","Suitcase deadlift with Olympic barbell","Sumo Squat","Sumo Squat Jumps","Sumo Squat Pulses","Sumo Squat to Overhead Press","Sumo Squat to Upright Row","Sumo Stance Deadlift (wide stance)","Sun salutation (Surya Namaskar)","Super Couch Stretch","Superman","Superman Plank","Supinated Front Raises","Supinated Incline Raise","Supinated Row (Palms Up)","Supine Banded No Money Drill","Supine Banded Scapular Protraction","Supine Frog Pump","Supine Glute Bridge","Supine Hips-Extended Leg Curl","Supine Knee to Knee Pull-In","Supine Psoas March","Support hold in front of body (with band)","Support hold on parallel bars","Support hold protraction (drill)","Supported Squats","Swinging from passive to advanced active hang","Swiss ball hamstring curls","T bar rows","T Spine Rotations","T-Bar Close Grip Row","T-Pushup","Table Top Banded Kickbacks","Table Top Crunch","Table Top Kickback","Tall Kneeling Ball Slams","Tall-Kneeling Band Chop","Tall-Kneeling Band Lift","Tall-Kneeling Cable Chop","Tall-Kneeling Cable Lift","Tall-Kneeling Landmine Press","Tall-Kneeling Overhead Pallof Press","Tall-Kneeling Pallof Press","Tall-Kneeling Pallof Press Iso","Tall-Kneeling Pallof Press Iso With Band","Tempo Back Squat","Tempo Belt Squat","Tempo DB Goblet Squat","Tempo Leg Extensions","Tempo Push Up","Tempo Squats","Thoracic Mobilization on Foam Roller","Thoracic Mobilization With Bench","Thread the Needle","Thread the Needle Plank","Throw 1,2s","Thruster","Tibialis raises with kettlebell/band","Tire flip","Tire pull with rope","Toe Crossover Touch","Toe Reaches","Toe Touches","Toe Touches with Weight","Toes to bar","Top half squat from pins","Top hold on parallel bars (elbows unlocked)","Top-half BP from pins","Towel Hamstring Slides (single leg)","Towel Single Arm Row","Toy Soldier","Track running","Transitions from passive to active hang","Transitions from passive to advanced active hang","Transitions from passive to elite active hang","Trap 3 raises","Trap bar bent over rows","Trap bar deadlift","Trap bar farmers walk","Traps Lacrosse or Tennis Ball Rolling (SMR)","Travelling Push-Up","Tricep Dips + Hold","Tricep Kickbacks","Tricep Presses","Triceps dips","Triceps extensions (band/DB)","Triceps Press-Down","Triceps push-ups","Triceps pushdowns","Triceps rope pushdown (cable/band)","Triple jump for length","TRX biceps curl (one arm / two arms)","TRX Chest Press","TRX Inverted Row","TRX jump squat","TRX jumping bulgarian squats","TRX mountain climber","TRX overhead squats","TRX pike","TRX pistol squat","TRX Pull Up","TRX push-ups","TRX rotations to forehead","TRX row (underhand, to chest)","TRX row and external rotation","TRX Scarecrow","TRX Single Leg Squat","TRX triceps extension","Tube Walking","Tuck Jump","Tucked bent arm planche","Tucked front lever ice cream makers","Tucked front lever lowered from the bar","Tucked front lever pressed out from hang","Tucked L-sit","Tucked L-sit to tucked bent-arm planche","Tummo","Turkish Get-up","Twist Hanging Leg Raises","Two-leg kick-up to handstand from floor","Underhand cable triceps pushdowns","Underhand Chin-Up - Close Grip (Weighted)","Underhand Chin-Up - Shoulder Width (Weighted)","Underhand Close Grip Lat Pulldown","Underhand Inverted Row","Underhand lat pulldown","Unilateral DB hip thrust mezi lavicemi","Unilateral dumbbell press in semi-lunge","Unilateral glute bridge","Unilateral KB floor press","Unilateral KB squat / 2KB squat","Unilateral KB swing + clean","Unilateral kettlebell press seated on floor","Unilateral Romanian DL","Up Downs","Upfront Row","Upper Chest Cable Fly","Upright rows","V sit-ups","V Ups with Weight on Bench","V-crunches","V-crunches with plate behind head","V-Hold","V-Ups (with or without weight)","Vertical jump (standing)","Vertical jump reset","Vertical L pull-ups","Vertical pull-ups (vertical bar path)","Vertical pull-ups to chest","VMO Squat","Walk Out to Shoulder Tap","Walking Dumbbell Cross-Carry","Walking Farmer's Carry","Walking Goblet Carry","Walking Goblet Heartbeat Carry","Walking Goblet Lunge","Walking Knee to Chest","Walking lunges","Walking Offset Dumbbell Lunge","Walking Pull-Back Butt Kick","Walking Push Up with Pause","Walking Spiderman","Walking Spiderman With Hip Lift","Walking Spiderman With Overhead Reach","Walking Spiderman With Overhead Reach and Hip Lift","Walking Two-Arm Waiter’s Carry","Walking Waiter's Carry","Walking Warrior Lunge","Wall Angel","Wall Ankle Mobilization","Wall balls (medicine ball throws against wall)","Wall Crunch","Wall Forward Crunch","Wall Glute Iso March","Wall handstand push-ups (HSPU)","Wall Hip Flexor Mobilization","Wall Plank","Wall Scapular Push Up","Wall Sit","Wall Slides","Wall walk, belly to wall (there and back)","Wall-Press Abs","Weighted Bench Dip","Weighted Burpee","Weighted Burpee to Squat Thruster","Weighted Butterfly Stretch","Weighted Calf Raises","Weighted Chin-Up","Weighted chinups","Weighted Clamshell","Weighted Crunch","Weighted Deadbugs","Weighted dips","Weighted dips on parallel bars (to parallel)","Weighted dips on rings","Weighted Frog Pumps","Weighted Hanging Leg Raise","Weighted Hip Thrusts","Weighted Jacknives","Weighted Leg Extensions","Weighted Leg Lifts","Weighted Lying Hip Abduction","Weighted Marching Hip Thrust","Weighted Modified Burpee","Weighted neutral pullups","Weighted Neutral-Grip Pull-Up","Weighted Planks","Weighted Pull-Up","Weighted pull-ups (close neutral grip)","Weighted Pushup","Weighted Ring Pushup","Weighted Single Arm Situp","Weighted Squat Hold","Weighted Toe Touches","Weighted vertical dips on parallel bars (drop set)","Weighted Wall Sit","Wide Feet Push-Up","Wide Grip Chin Up","Wide Grip Pull-up","Wide Grip Pulldown","Wide pullup","Wide Stance Close Grip Row","Wide Stance DB Goblet Squat","Wide Stance Kettlebell RDL","Wide Stance Leg Press","Wide Stance Plank Row","Wide vertical pull-ups to passive hang","Wide-grip barbell preacher curls","Wide-grip dips","Wide-grip lat pulldown","Wide-grip lat pulldown to front","Wide-grip preacher curls","Windmills","World's Greatest Stretch","Wrist rotations at sides","Wrist stretch against wall","Wrist stretch with the other hand","X-Band Box Walk","X-Band Walk","X-Lat Band Pull-Down","Y cable raises","Yates rows","Yoga Downward Dog Stretch","Yoga Plex","Yoga Pushup","Yoga YT Full Body Stretch","Zercher march (zercher walk)","Zercher squat","Zombie Front Squats"];
+
+  // ---------- helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10));
+  const now = () => new Date().toISOString();
+  const today = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+  const fmtDate = (s) => { if (!s) return ""; const [y, m, d] = s.split("-").map(Number); const dt = new Date(y, m - 1, d); const opts = { month: "short", day: "numeric" }; if (y !== new Date().getFullYear()) opts.year = "numeric"; return dt.toLocaleDateString(undefined, opts); };
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  const labelKey = (l) => { const m = String(l || "").trim().match(/^(\d+)\s*([a-z]*)/i); return m ? [parseInt(m[1], 10), m[2].toLowerCase()] : [Infinity, String(l || "").toLowerCase()]; };
+  const cmpLabel = (a, b) => { const [an, as] = labelKey(a), [bn, bs] = labelKey(b); return an - bn || (as < bs ? -1 : as > bs ? 1 : 0); };
+  const norm = (s) => String(s || "").trim().toLowerCase();
+  const lsGet = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+  // ---------- state ----------
+  const clients = new Map();   // id -> {id,name,notes,createdAt}
+  const trainings = new Map(); // id -> {id,clientId,title,date,createdAt,rows:[...]}
+  let view = { name: "clients" };
+  let backend = null;          // { set(kind,id,data), del(kind,id) }
+  const dirty = new Map();     // key -> local version counter (unconfirmed edits)
+  const timers = new Map();
+  const chains = new Map();
+  let inflight = 0, failed = false;
+
+  // ---------- persistence ----------
+  function key(kind, id) { return kind + "/" + id; }
+  function markDirty(kind, id) { const k = key(kind, id); dirty.set(k, (dirty.get(k) || 0) + 1); }
+
+  function scheduleSave(kind, id, delay = 500) {
+    markDirty(kind, id);
+    const k = key(kind, id);
+    clearTimeout(timers.get(k));
+    timers.set(k, setTimeout(() => flushOne(kind, id), delay));
+    setStatus();
+  }
+
+  function flushAll() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); flushOne(kind, id); } }
+
+  function flushOne(kind, id) {
+    const k = key(kind, id);
+    timers.delete(k);
+    const map = kind === "clients" ? clients : trainings;
+    const doc = map.get(id);
+    const version = dirty.get(k) || 0;
+    const data = doc ? JSON.parse(JSON.stringify(doc)) : null;
+    const prev = chains.get(k) || Promise.resolve();
+    inflight++; setStatus();
+    const run = prev.then(async () => {
+      if (!backend) return;
+      let attempt = 0;
+      for (;;) {
+        try {
+          if (data) await backend.set(kind, id, data); else await backend.del(kind, id);
+          failed = false;
+          if (dirty.get(k) === version) dirty.delete(k);
+          return;
+        } catch (e) {
+          attempt++;
+          if (attempt > 3) { failed = true; return; }
+          await new Promise((r) => setTimeout(r, 700 * attempt + Math.random() * 400));
+        }
+      }
+    }).finally(() => { inflight--; setStatus(); });
+    chains.set(k, run.catch(() => {}));
+    return run;
+  }
+
+  function setStatus() {
+    const el = $("status");
+    const pending = timers.size + inflight;
+    if (failed && pending === 0 && dirty.size > 0) { el.textContent = "Couldn't save \u00b7 tap to retry"; el.className = "err"; return; }
+    el.className = "";
+    el.textContent = pending > 0 ? "Saving\u2026" : (backend ? "Saved" : "");
+  }
+  $("status").addEventListener("click", () => { if (failed) { failed = false; for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } } });
+
+  const localBackend = {
+    load() { const d = lsGet("fiala.trainings.v1") || { clients: {}, trainings: {} }; for (const c of Object.values(d.clients)) clients.set(c.id, c); for (const t of Object.values(d.trainings)) trainings.set(t.id, t); },
+    save() { lsSet("fiala.trainings.v1", { clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) }); },
+    async set() { this.save(); },
+    async del() { this.save(); },
+  };
+
+  function dbBackend(db) {
+    return {
+      async set(kind, id, data) { await db.collection(kind).doc(id).set(data); },
+      async del(kind, id) { await db.collection(kind).doc(id).delete(); },
+      subscribe() {
+        db.collection("clients").onSnapshot((snap) => { applySnapshot(clients, "clients", snap); render(); }, (e) => console.warn("clients", e));
+        db.collection("trainings").onSnapshot((snap) => { applySnapshot(trainings, "trainings", snap); render(); }, (e) => console.warn("trainings", e));
+      },
+    };
+  }
+
+  function applySnapshot(map, kind, snap) {
+    const seen = new Set();
+    for (const d of snap.docs) {
+      seen.add(d.id);
+      if (dirty.has(key(kind, d.id))) continue; // local edits win until confirmed
+      map.set(d.id, { ...d.data(), id: d.id });
+    }
+    for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id))) map.delete(id);
+  }
+
+  // ---------- data ops ----------
+  function addClient(name) {
+    const c = { id: uid(), name, notes: "", createdAt: now() };
+    clients.set(c.id, c); scheduleSave("clients", c.id, 0);
+    go({ name: "client", id: c.id });
+  }
+  function clientTrainings(clientId) {
+    return [...trainings.values()].filter((t) => t.clientId === clientId)
+      .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
+  }
+  function newRow(label) { return { id: uid(), label, name: "", sets: 3, reps: "", tempo: "", scheme: "", rest: "", weights: [] }; }
+  function nextLabel(t) { let max = 0; for (const r of t.rows) { const n = labelKey(r.label)[0]; if (Number.isFinite(n)) max = Math.max(max, n); } return String(max + 1); }
+  function addTraining(clientId, from) {
+    const list = clientTrainings(clientId);
+    const t = {
+      id: uid(), clientId, date: today(), createdAt: now(),
+      title: from ? from.title : "Training " + (list.length + 1),
+      rows: from ? from.rows.map((r) => ({ ...r, id: uid(), weights: [] })) : [],
+    };
+    trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
+    go({ name: "training", id: t.id });
+  }
+  function deleteTraining(id) {
+    const t = trainings.get(id); if (!t) return;
+    trainings.delete(id); scheduleSave("trainings", id, 0);
+    go({ name: "client", id: t.clientId });
+  }
+  function deleteClient(id) {
+    for (const t of clientTrainings(id)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
+    clients.delete(id); scheduleSave("clients", id, 0);
+    go({ name: "clients" });
+  }
+  // Weights from the most recent earlier training of this client with the same exercise.
+  function lastWeights(t, row) {
+    const name = norm(row.name); if (!name) return null;
+    for (const other of clientTrainings(t.clientId)) {
+      if (other.id === t.id) continue;
+      if ((other.date || "") > (t.date || "")) continue;
+      if (other.date === t.date && (other.createdAt || "") >= (t.createdAt || "")) continue;
+      const r = other.rows.find((x) => norm(x.name) === name && (x.weights || []).some((w) => String(w || "").trim() !== ""));
+      if (r) return { date: other.date, weights: r.weights };
+    }
+    return null;
+  }
+
+  // ---------- navigation ----------
+  function go(next) { view = next; lsSet("fiala.trainings.view", view); render(); window.scrollTo(0, 0); }
+  $("back").addEventListener("click", () => {
+    if (view.name === "training") { const t = trainings.get(view.id); go(t ? { name: "client", id: t.clientId } : { name: "clients" }); }
+    else go({ name: "clients" });
+  });
+
+  // ---------- render ----------
+  let renderedTraining = null;
+  function render() {
+    if (view.name === "client" && !clients.has(view.id)) view = { name: "clients" };
+    if (view.name === "training" && !trainings.has(view.id)) view = { name: "clients" };
+    $("vClients").hidden = view.name !== "clients";
+    $("vClient").hidden = view.name !== "client";
+    $("vTraining").hidden = view.name !== "training";
+    $("back").hidden = view.name === "clients";
+    $("brand").hidden = view.name !== "clients";
+    if (view.name === "clients") { renderedTraining = null; renderClients(); }
+    else if (view.name === "client") { renderedTraining = null; $("backLabel").textContent = "Clients"; renderClient(); }
+    else { const t = trainings.get(view.id); $("backLabel").textContent = clients.get(t.clientId)?.name || "Client"; renderTraining(t); }
+  }
+
+  function renderClients() {
+    const list = [...clients.values()].sort((a, b) => a.name.localeCompare(b.name));
+    const ul = $("clientList"); ul.replaceChildren();
+    for (const c of list) {
+      const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
+      const n = clientTrainings(c.id).length;
+      b.innerHTML = `<span></span><span class="sub"></span>`;
+      b.firstChild.textContent = c.name; b.lastChild.textContent = (n ? n + (n === 1 ? " training" : " trainings") : "") ; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
+      b.addEventListener("click", () => go({ name: "client", id: c.id }));
+      li.appendChild(b); ul.appendChild(li);
+    }
+    $("clientEmpty").hidden = list.length > 0;
+  }
+
+  function renderClient() {
+    const c = clients.get(view.id);
+    if (document.activeElement !== $("cName")) $("cName").value = c.name;
+    if (document.activeElement !== $("cNotes")) $("cNotes").value = c.notes || "";
+    const list = clientTrainings(c.id);
+    const ul = $("trainingList"); ul.replaceChildren();
+    for (const t of list) {
+      const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
+      const filled = t.rows.some((r) => (r.weights || []).some((w) => String(w || "").trim() !== ""));
+      b.innerHTML = `<span></span><span class="sub tab"></span>`;
+      b.firstChild.textContent = t.title || "Untitled";
+      b.lastChild.textContent = (filled ? "\u2713 " : "") + fmtDate(t.date); b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
+      b.addEventListener("click", () => go({ name: "training", id: t.id }));
+      li.appendChild(b); ul.appendChild(li);
+    }
+    $("trainingEmpty").hidden = list.length > 0;
+    $("delClientConfirm").hidden = true; $("delClient").hidden = false;
+  }
+
+  function renderTraining(t) {
+    if (document.activeElement !== $("tTitle")) $("tTitle").value = t.title || "";
+    if (document.activeElement !== $("tDate")) $("tDate").value = t.date || "";
+    const rowsEl = $("rows");
+    const active = document.activeElement;
+    if (renderedTraining === t.id && rowsEl.contains(active) && active.tagName === "INPUT") return; // never rebuild under a typing finger
+    renderedTraining = t.id;
+    t.rows.sort((a, b) => cmpLabel(a.label, b.label));
+    rowsEl.replaceChildren(...t.rows.map((r) => rowEl(t, r)));
+    $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false;
+  }
+
+  function rowEl(t, r) {
+    const el = document.createElement("div"); el.className = "row"; el.dataset.id = r.id;
+    el.innerHTML = `
+      <div class="top">
+        <input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number">
+        <div class="exwrap"><input class="name" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"><ul class="sugg" hidden></ul></div>
+        <button class="x" type="button" aria-label="Remove exercise">\u00d7</button>
+      </div>
+      <div class="specs">
+        <div><label>Sets</label><input class="sets tab" inputmode="numeric" pattern="[0-9]*" placeholder="3"></div>
+        <div><label>Reps</label><input class="reps tab" placeholder="10"></div>
+        <div><label>Tempo</label><input class="tempo tab" placeholder="1010" autocapitalize="characters"></div>
+        <div><label>Scheme</label><input class="scheme" placeholder="Add"></div>
+        <div><label>Rest</label><input class="rest tab" placeholder="60 s"></div>
+      </div>
+      <div class="weights"><div class="cap"><span>Weights</span><span class="last"></span></div><div class="boxes"></div></div>`;
+    const q = (s) => el.querySelector(s);
+    q(".label").value = r.label || ""; q(".name").value = r.name || "";
+    q(".sets").value = r.sets || ""; q(".reps").value = r.reps || ""; q(".tempo").value = r.tempo || "";
+    q(".scheme").value = r.scheme || ""; q(".rest").value = r.rest || "";
+
+    const save = () => scheduleSave("trainings", t.id);
+    const bind = (sel, field, transform) => q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); });
+    bind(".label", "label"); bind(".reps", "reps"); bind(".tempo", "tempo"); bind(".scheme", "scheme"); bind(".rest", "rest");
+    q(".label").addEventListener("blur", () => { const sorted = [...t.rows].sort((a, b) => cmpLabel(a.label, b.label)); if (sorted.some((x, i) => x !== t.rows[i])) { renderedTraining = null; render(); } });
+    q(".sets").addEventListener("input", (e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); e.target.value = v; r.sets = v === "" ? 0 : clamp(parseInt(v, 10), 0, 20); renderWeights(); save(); });
+    q(".name").addEventListener("input", (e) => { r.name = e.target.value; save(); suggest(e.target.value); renderWeights(); });
+    q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
+    q(".name").addEventListener("focus", (e) => suggest(e.target.value));
+    q(".x").addEventListener("click", () => { t.rows = t.rows.filter((x) => x.id !== r.id); el.remove(); save(); });
+
+    function suggest(v) {
+      const ul = q(".sugg"); const s = norm(v);
+      if (s.length < 2) { ul.hidden = true; return; }
+      const starts = [], contains = [];
+      for (const n of NAMES) { const ln = n.toLowerCase(); if (ln === s) continue; if (ln.startsWith(s)) starts.push(n); else if (ln.includes(s)) contains.push(n); if (starts.length >= 6) break; }
+      const hits = [...starts, ...contains].slice(0, 6);
+      ul.replaceChildren(...hits.map((n) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { r.name = n; q(".name").value = n; ul.hidden = true; save(); renderWeights(); }); li.appendChild(b); return li; }));
+      ul.hidden = hits.length === 0;
+    }
+
+    function renderWeights() {
+      const n = clamp(parseInt(r.sets, 10) || 0, 0, 20);
+      const boxes = q(".boxes"); const last = lastWeights(t, r);
+      q(".last").textContent = last ? "last time in grey \u00b7 " + fmtDate(last.date) : "";
+      r.weights = (r.weights || []).slice(0, n); while (r.weights.length < n) r.weights.push("");
+      boxes.replaceChildren(...Array.from({ length: n }, (_, i) => {
+        const inp = document.createElement("input"); inp.className = "tab"; inp.inputMode = "decimal"; inp.setAttribute("aria-label", "Set " + (i + 1) + " weight");
+        inp.value = r.weights[i] || ""; inp.placeholder = (last && last.weights[i]) ? last.weights[i] : "\u2013";
+        inp.addEventListener("input", (e) => { r.weights[i] = e.target.value; save(); });
+        inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const nx = boxes.children[i + 1]; if (nx) nx.focus(); else inp.blur(); } });
+        return inp;
+      }));
+      el.querySelector(".weights").hidden = n === 0;
+    }
+    renderWeights();
+    return el;
+  }
+
+  // ---------- events ----------
+  $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
+  $("cName").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.name = e.target.value; scheduleSave("clients", c.id); });
+  $("cNotes").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.notes = e.target.value; scheduleSave("clients", c.id); });
+  $("newTraining").addEventListener("click", () => addTraining(view.id));
+  $("delClient").addEventListener("click", () => { $("delClient").hidden = true; $("delClientConfirm").hidden = false; });
+  $("delClientNo").addEventListener("click", () => { $("delClientConfirm").hidden = true; $("delClient").hidden = false; });
+  $("delClientYes").addEventListener("click", () => deleteClient(view.id));
+
+  $("tTitle").addEventListener("input", (e) => { const t = trainings.get(view.id); if (!t) return; t.title = e.target.value; scheduleSave("trainings", t.id); });
+  $("tDate").addEventListener("change", (e) => { const t = trainings.get(view.id); if (!t) return; t.date = e.target.value || today(); scheduleSave("trainings", t.id); renderedTraining = null; render(); });
+  $("addRow").addEventListener("click", () => {
+    const t = trainings.get(view.id); if (!t) return;
+    const r = newRow(nextLabel(t)); t.rows.push(r); scheduleSave("trainings", t.id);
+    const el = rowEl(t, r); $("rows").appendChild(el); el.querySelector(".name").focus();
+  });
+  $("copyTraining").addEventListener("click", () => { const t = trainings.get(view.id); if (t) addTraining(t.clientId, t); });
+  $("delTraining").addEventListener("click", () => { $("delTraining").hidden = true; $("delTrainingConfirm").hidden = false; });
+  $("delTrainingNo").addEventListener("click", () => { $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false; });
+  $("delTrainingYes").addEventListener("click", () => deleteTraining(view.id));
+
+  window.addEventListener("pagehide", flushAll);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushAll(); });
+
+  $("backup").addEventListener("click", () => {
+    const data = { app: "fiala-trainings", exported: now(), clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "fiala-trainings-" + today() + ".json";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+  $("restore").addEventListener("click", () => $("restoreFile").click());
+  $("restoreFile").addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    try {
+      const d = JSON.parse(await f.text());
+      if (!d || d.app !== "fiala-trainings") throw new Error("not a backup");
+      for (const c of Object.values(d.clients || {})) { clients.set(c.id, c); scheduleSave("clients", c.id, 0); }
+      for (const t of Object.values(d.trainings || {})) { trainings.set(t.id, t); scheduleSave("trainings", t.id, 0); }
+      render();
+    } catch { $("status").textContent = "That file is not a Fiala backup"; }
+    e.target.value = "";
+  });
+
+  // ---------- boot ----------
+  async function boot() {
+    const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) view = saved;
+    $("status").textContent = "Loading\u2026";
+    let db = null;
+    try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch { db = null; }
+    if (db) { backend = dbBackend(db); backend.subscribe(); }
+    else { backend = localBackend; localBackend.load(); $("localFoot").hidden = false; render(); }
+    setStatus();
+  }
+  render();
+  boot();
+})();
+</script>
+
+</body>
+</html>
