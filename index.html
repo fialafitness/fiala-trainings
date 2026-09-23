@@ -182,7 +182,8 @@
   .empty { color: var(--text-tertiary); font-size: 13px; letter-spacing: 0; padding: 16px 0 4px; }
 
   /* Training */
-  .ttl { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; margin-top: 20px; }
+  .ttl { display: grid; grid-template-columns: 1fr; gap: 8px; align-items: start; margin-top: 20px; }
+  .ttl input[type="date"] { justify-self: start; }
   .ttl input.title { font-size: 26px; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; background: transparent; padding: 0; border-radius: 12px; }
   .ttl input.title:focus { background: var(--field); padding: 8px 12px; }
   .ttl input[type="date"] { width: auto; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); padding: 8px 12px; }
@@ -215,7 +216,7 @@
   .weights .cap { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; display: flex; justify-content: space-between; gap: 8px; }
   .weights .cap span:last-child { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-tertiary); }
   .weights .boxes { display: flex; gap: 8px; flex-wrap: wrap; }
-  .weights input { width: 64px; text-align: center; padding: 12px 8px; font-weight: 500; }
+  .weights input { flex: 1 1 52px; max-width: 80px; text-align: center; padding: 12px 4px; font-weight: 500; }
 
   .add { margin-top: 16px; }
   .foot { margin-top: 40px; border-top: 1px solid var(--card-border); padding-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
