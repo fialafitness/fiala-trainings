@@ -513,6 +513,7 @@
     const active = document.activeElement;
     if (renderedTraining === t.id && rowsEl.contains(active) && active.tagName === "INPUT") return; // never rebuild under a typing finger
     renderedTraining = t.id;
+    if (normalizeLabels(t)) scheduleSave("trainings", t.id);
     t.rows.sort((a, b) => cmpLabel(a.label, b.label));
     rowsEl.replaceChildren();
     let groupEl = null, lastKey = null, group = 0;
@@ -534,6 +535,24 @@
     const m = s.match(/^(\d+)/);
     return m ? m[1] : (s || "row-" + index);
   }
+  // Numbering rule: one exercise on a number is plain (2); two or more share letters (1a, 1b …).
+  function normalizeLabels(t) {
+    const groups = new Map();
+    t.rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+    let changed = false;
+    for (const [k, members] of groups) {
+      if (!/^\d+$/.test(k)) continue;
+      if (members.length === 1) {
+        if (members[0].label !== k) { members[0].label = k; changed = true; }
+        continue;
+      }
+      const letter = (r) => (String(r.label || "").trim().match(/^\d+\s*([a-z]*)/i) || [])[1] || "";
+      members.sort((a, b) => { const la = letter(a) || "~", lb = letter(b) || "~"; return la < lb ? -1 : la > lb ? 1 : 0; });
+      members.forEach((r, j) => { const want = k + String.fromCharCode(97 + Math.min(j, 25)); if (r.label !== want) { r.label = want; changed = true; } });
+    }
+    return changed;
+  }
+
   function rowEl(t, r) {
     const el = document.createElement("div"); el.className = "row"; el.dataset.id = r.id;
     el.innerHTML = `
