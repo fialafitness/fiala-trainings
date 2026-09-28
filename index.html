@@ -34,7 +34,11 @@
     --field: #f5f5f7;
     --placeholder: #d2d2d7;
     --brand: #6f6b99;                   /* app-purple — structure / interactive, EXACT */
-    --brand-deep: #494664;              /* app-purple-deep — structure depth (superset B) */
+    --brand-deep: #494664;              /* app-purple-deep — reserved for brand moments */
+    --group-1: #5e8ca7;                 /* Steel blue */
+    --group-2: #b57040;                 /* Copper */
+    --group-3: #a39b8b;                 /* Stone */
+    --group-4: #c5a253;                 /* Champagne */
     --done: #5a742c;                    /* Olive deep — success text on light */
     --danger: #a63a46;                  /* Crimson deep — red text on light */
     --btn-bg: #1d1d1f;                  /* Secondary tier: dark button on light */
@@ -58,7 +62,11 @@
       --field: rgba(255,255,255,0.06);
       --placeholder: rgba(255,255,255,0.35);
       --brand: #6f6b99;
-      --brand-deep: rgba(111,107,153,0.5);
+      --brand-deep: #494664;
+      --group-1: #5e8ca7;
+      --group-2: #d6934e;               /* Copper glow */
+      --group-3: #a39b8b;
+      --group-4: #c5a253;
       --done: #e9f5a0;                  /* Olive glow */
       --danger: #c84653;                /* Crimson */
       --btn-bg: #ffffff;                /* Primary tier: white button on dark */
@@ -82,7 +90,11 @@
     --field: rgba(255,255,255,0.06);
     --placeholder: rgba(255,255,255,0.35);
     --brand: #6f6b99;
-    --brand-deep: rgba(111,107,153,0.5);
+    --brand-deep: #494664;
+    --group-1: #5e8ca7;
+    --group-2: #d6934e;
+    --group-3: #a39b8b;
+    --group-4: #c5a253;
     --done: #e9f5a0;
     --danger: #c84653;
     --btn-bg: #ffffff;
@@ -194,8 +206,10 @@
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
   .row { background: var(--card); border: 1px solid var(--card-border); border-radius: 20px; padding: 16px; }
   .row.ss { border: 1.5px solid var(--ss); }
-  .row.ss-a { --ss: var(--brand); }
-  .row.ss-b { --ss: var(--brand-deep); }
+  .row.ss-1 { --ss: var(--group-1); }
+  .row.ss-2 { --ss: var(--group-2); }
+  .row.ss-3 { --ss: var(--group-3); }
+  .row.ss-4 { --ss: var(--group-4); }
   .row.ss:not(.ss-first) { margin-top: -8px; }
   .row.ss .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
   .row .top { display: grid; grid-template-columns: 56px 1fr 40px; gap: 8px; align-items: center; }
@@ -523,11 +537,11 @@
     let group = 0, lastKey = null;
     t.rows.forEach((r, i) => {
       const el = rowsEl.children[i]; if (!el) return;
-      el.classList.remove("ss", "ss-a", "ss-b", "ss-first");
+      el.classList.remove("ss", "ss-1", "ss-2", "ss-3", "ss-4", "ss-first");
       const k = supersetKey(r.label);
       if (!k || counts[k] < 2) { lastKey = null; return; }
       if (k !== lastKey) { group++; lastKey = k; el.classList.add("ss-first"); }
-      el.classList.add("ss", group % 2 ? "ss-a" : "ss-b");
+      el.classList.add("ss", "ss-" + ((group - 1) % 4 + 1));
     });
   }
 
