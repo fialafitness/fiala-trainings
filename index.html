@@ -34,6 +34,7 @@
     --field: #f5f5f7;
     --placeholder: #d2d2d7;
     --brand: #6f6b99;                   /* app-purple — structure / interactive, EXACT */
+    --brand-deep: #494664;              /* app-purple-deep — structure depth (superset B) */
     --done: #5a742c;                    /* Olive deep — success text on light */
     --danger: #a63a46;                  /* Crimson deep — red text on light */
     --btn-bg: #1d1d1f;                  /* Secondary tier: dark button on light */
@@ -57,6 +58,7 @@
       --field: rgba(255,255,255,0.06);
       --placeholder: rgba(255,255,255,0.35);
       --brand: #6f6b99;
+      --brand-deep: rgba(111,107,153,0.5);
       --done: #e9f5a0;                  /* Olive glow */
       --danger: #c84653;                /* Crimson */
       --btn-bg: #ffffff;                /* Primary tier: white button on dark */
@@ -80,6 +82,7 @@
     --field: rgba(255,255,255,0.06);
     --placeholder: rgba(255,255,255,0.35);
     --brand: #6f6b99;
+    --brand-deep: rgba(111,107,153,0.5);
     --done: #e9f5a0;
     --danger: #c84653;
     --btn-bg: #ffffff;
@@ -190,6 +193,11 @@
 
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
   .row { background: var(--card); border: 1px solid var(--card-border); border-radius: 20px; padding: 16px; }
+  .row.ss { border: 1.5px solid var(--ss); }
+  .row.ss-a { --ss: var(--brand); }
+  .row.ss-b { --ss: var(--brand-deep); }
+  .row.ss:not(.ss-first) { margin-top: -8px; }
+  .row.ss .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
   .row .top { display: grid; grid-template-columns: 56px 1fr 40px; gap: 8px; align-items: center; }
   .row .top input.label { text-align: center; font-weight: 500; padding-left: 8px; padding-right: 8px; }
   .row .top .exwrap { position: relative; }
@@ -501,7 +509,26 @@
     renderedTraining = t.id;
     t.rows.sort((a, b) => cmpLabel(a.label, b.label));
     rowsEl.replaceChildren(...t.rows.map((r) => rowEl(t, r)));
+    markSupersets(t, rowsEl);
     $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false;
+  }
+
+  function supersetKey(label) {
+    const m = String(label || "").trim().match(/^(\d+)\s*([a-z]+)$/i);
+    return m ? m[1] : null;
+  }
+  function markSupersets(t, rowsEl) {
+    const counts = {};
+    for (const r of t.rows) { const k = supersetKey(r.label); if (k) counts[k] = (counts[k] || 0) + 1; }
+    let group = 0, lastKey = null;
+    t.rows.forEach((r, i) => {
+      const el = rowsEl.children[i]; if (!el) return;
+      el.classList.remove("ss", "ss-a", "ss-b", "ss-first");
+      const k = supersetKey(r.label);
+      if (!k || counts[k] < 2) { lastKey = null; return; }
+      if (k !== lastKey) { group++; lastKey = k; el.classList.add("ss-first"); }
+      el.classList.add("ss", group % 2 ? "ss-a" : "ss-b");
+    });
   }
 
   function rowEl(t, r) {
@@ -528,7 +555,7 @@
     const save = () => scheduleSave("trainings", t.id);
     const bind = (sel, field, transform) => q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); });
     bind(".label", "label"); bind(".reps", "reps"); bind(".tempo", "tempo"); bind(".scheme", "scheme"); bind(".rest", "rest");
-    q(".label").addEventListener("blur", () => { const sorted = [...t.rows].sort((a, b) => cmpLabel(a.label, b.label)); if (sorted.some((x, i) => x !== t.rows[i])) { renderedTraining = null; render(); } });
+    q(".label").addEventListener("blur", () => { renderedTraining = null; render(); });
     q(".sets").addEventListener("input", (e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); e.target.value = v; r.sets = v === "" ? 0 : clamp(parseInt(v, 10), 0, 20); renderWeights(); save(); });
     q(".name").addEventListener("input", (e) => { r.name = e.target.value; save(); suggest(e.target.value); renderWeights(); });
     q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
