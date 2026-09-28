@@ -235,10 +235,9 @@
   .note { margin-top: 12px; }
   .note-toggle {
     appearance: none; border: 0; background: none; padding: 0 2px; width: 100%; text-align: left; cursor: pointer;
-    min-height: 32px; font-size: 17px; font-style: italic; letter-spacing: -0.01em; color: var(--text-secondary);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity 300ms ease;
+    min-height: 32px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); transition: opacity 300ms ease;
   }
-  .note-toggle.empty { font-style: normal; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); }
+  .note-toggle.has { color: var(--brand); font-weight: 500; }
   .note-toggle:hover { opacity: 0.7; }
   .note-field { font-style: italic; min-height: 44px; resize: none; overflow: hidden; }
   .add { margin-top: 16px; }
@@ -596,7 +595,7 @@
 
     const noteToggle = q(".note-toggle"), noteField = q(".note-field");
     const growNote = () => { noteField.style.height = "auto"; noteField.style.height = noteField.scrollHeight + "px"; };
-    const showNote = () => { const v = (r.note || "").trim(); noteToggle.textContent = v || "Add note"; noteToggle.classList.toggle("empty", !v); };
+    const showNote = () => { const v = (r.note || "").trim(); noteToggle.textContent = v ? "Read note" : "Add note"; noteToggle.classList.toggle("has", !!v); };
     noteToggle.addEventListener("click", () => { noteToggle.hidden = true; noteField.hidden = false; noteField.value = r.note || ""; growNote(); noteField.focus(); });
     noteField.addEventListener("input", (e) => { r.note = e.target.value; growNote(); save(); });
     noteField.addEventListener("blur", () => { noteField.hidden = true; noteToggle.hidden = false; showNote(); });
