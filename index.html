@@ -198,12 +198,12 @@
   .ttl input[type="date"] { width: auto; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); padding: 8px 12px; }
 
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
-  .row { background: var(--card); border: 1px solid var(--card-border); border-radius: 20px; padding: 16px; }
-  .row.ss { border: 1.5px solid var(--ss); }
-  .row.ss-1 { --ss: var(--group-1); }
-  .row.ss-2 { --ss: var(--group-2); }
-  .row.ss:not(.ss-first) { margin-top: -8px; }
-  .row.ss .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
+  .group { background: var(--card); border: 1.5px solid var(--ss); border-radius: 20px; overflow: hidden; }
+  .group.ss-1 { --ss: var(--group-1); }
+  .group.ss-2 { --ss: var(--group-2); }
+  .row { padding: 16px; }
+  .group .row + .row { border-top: 1px solid var(--card-border); }
+  .group .row .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
   .row .top { display: grid; grid-template-columns: 56px 1fr 40px; gap: 8px; align-items: center; }
   .row .top input.label { text-align: center; font-weight: 500; padding-left: 8px; padding-right: 8px; }
   .row .top .exwrap { position: relative; }
@@ -514,8 +514,18 @@
     if (renderedTraining === t.id && rowsEl.contains(active) && active.tagName === "INPUT") return; // never rebuild under a typing finger
     renderedTraining = t.id;
     t.rows.sort((a, b) => cmpLabel(a.label, b.label));
-    rowsEl.replaceChildren(...t.rows.map((r) => rowEl(t, r)));
-    markSupersets(t, rowsEl);
+    rowsEl.replaceChildren();
+    let groupEl = null, lastKey = null, group = 0;
+    t.rows.forEach((r, i) => {
+      const k = groupKey(r.label, i);
+      if (k !== lastKey) {
+        group++; lastKey = k;
+        groupEl = document.createElement("div");
+        groupEl.className = "group " + (group % 2 ? "ss-1" : "ss-2");
+        rowsEl.appendChild(groupEl);
+      }
+      groupEl.appendChild(rowEl(t, r));
+    });
     $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false;
   }
 
@@ -524,17 +534,6 @@
     const m = s.match(/^(\d+)/);
     return m ? m[1] : (s || "row-" + index);
   }
-  function markSupersets(t, rowsEl) {
-    let group = 0, lastKey = null;
-    t.rows.forEach((r, i) => {
-      const el = rowsEl.children[i]; if (!el) return;
-      el.classList.remove("ss", "ss-1", "ss-2", "ss-first");
-      const k = groupKey(r.label, i);
-      if (k !== lastKey) { group++; lastKey = k; el.classList.add("ss-first"); }
-      el.classList.add("ss", group % 2 ? "ss-1" : "ss-2");
-    });
-  }
-
   function rowEl(t, r) {
     const el = document.createElement("div"); el.className = "row"; el.dataset.id = r.id;
     el.innerHTML = `
@@ -564,7 +563,7 @@
     q(".name").addEventListener("input", (e) => { r.name = e.target.value; save(); suggest(e.target.value); renderWeights(); });
     q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
     q(".name").addEventListener("focus", (e) => suggest(e.target.value));
-    q(".x").addEventListener("click", () => { t.rows = t.rows.filter((x) => x.id !== r.id); el.remove(); save(); });
+    q(".x").addEventListener("click", () => { t.rows = t.rows.filter((x) => x.id !== r.id); save(); renderedTraining = null; render(); });
 
     function suggest(v) {
       const ul = q(".sugg"); const s = norm(v);
@@ -608,7 +607,8 @@
   $("addRow").addEventListener("click", () => {
     const t = trainings.get(view.id); if (!t) return;
     const r = newRow(nextLabel(t)); t.rows.push(r); scheduleSave("trainings", t.id);
-    const el = rowEl(t, r); $("rows").appendChild(el); markSupersets(t, $("rows")); el.querySelector(".name").focus();
+    renderedTraining = null; render();
+    const el = document.querySelector('.row[data-id="' + r.id + '"]'); if (el) el.querySelector(".name").focus();
   });
   $("copyTraining").addEventListener("click", () => { const t = trainings.get(view.id); if (t) addTraining(t.clientId, t); });
   $("delTraining").addEventListener("click", () => { $("delTraining").hidden = true; $("delTrainingConfirm").hidden = false; });
