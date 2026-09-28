@@ -567,6 +567,9 @@
     return m ? m[1] : (s || "row-" + index);
   }
   // Numbering rule: one exercise on a number is plain (2); two or more share letters (1a, 1b …).
+  // The letter you type is a position: 1a moves that exercise to the top of its card,
+  // 1c to third place; the others shift to fill.
+  let lastEditedId = null;
   function normalizeLabels(t) {
     const groups = new Map();
     t.rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
@@ -577,10 +580,18 @@
         if (members[0].label !== k) { members[0].label = k; changed = true; }
         continue;
       }
-      const letter = (r) => (String(r.label || "").trim().match(/^\d+\s*([a-z]*)/i) || [])[1] || "";
-      members.sort((a, b) => { const la = letter(a) || "~", lb = letter(b) || "~"; return la < lb ? -1 : la > lb ? 1 : 0; });
-      members.forEach((r, j) => { const want = k + String.fromCharCode(97 + Math.min(j, 25)); if (r.label !== want) { r.label = want; changed = true; } });
+      const letter = (r) => ((String(r.label || "").trim().match(/^\d+\s*([a-z]*)/i) || [])[1] || "").toLowerCase();
+      const edited = members.find((r) => r.id === lastEditedId) || null;
+      const ordered = members.filter((r) => r !== edited)
+        .sort((a, b) => { const la = letter(a) || "~", lb = letter(b) || "~"; return la < lb ? -1 : la > lb ? 1 : 0; });
+      if (edited) {
+        const L = letter(edited);
+        const at = L ? Math.max(0, Math.min(L.charCodeAt(0) - 97, ordered.length)) : ordered.length;
+        ordered.splice(at, 0, edited);
+      }
+      ordered.forEach((r, j) => { const want = k + String.fromCharCode(97 + Math.min(j, 25)); if (r.label !== want) { r.label = want; changed = true; } });
     }
+    lastEditedId = null;
     return changed;
   }
 
@@ -608,7 +619,8 @@
 
     const save = () => scheduleSave("trainings", t.id);
     const bind = (sel, field, transform) => q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); });
-    bind(".label", "label"); bind(".reps", "reps"); bind(".tempo", "tempo"); bind(".scheme", "scheme"); bind(".rest", "rest");
+    q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
+    bind(".reps", "reps"); bind(".tempo", "tempo"); bind(".scheme", "scheme"); bind(".rest", "rest");
     const numpick = q(".numpick");
     function showNumbers() {
       let max = 0;
@@ -618,7 +630,7 @@
         const n = String(i + 1); const b = document.createElement("button"); b.type = "button"; b.textContent = n;
         if (n === cur) b.classList.add("cur");
         b.addEventListener("mousedown", (ev) => ev.preventDefault());
-        b.addEventListener("click", () => { r.label = n; q(".label").value = n; numpick.hidden = true; save(); renderedTraining = null; render(); });
+        b.addEventListener("click", () => { r.label = n; lastEditedId = r.id; q(".label").value = n; numpick.hidden = true; save(); renderedTraining = null; render(); });
         return b;
       }));
       numpick.hidden = false;
