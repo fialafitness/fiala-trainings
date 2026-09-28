@@ -36,9 +36,7 @@
     --brand: #6f6b99;                   /* app-purple — structure / interactive, EXACT */
     --brand-deep: #494664;              /* app-purple-deep — reserved for brand moments */
     --group-1: #5e8ca7;                 /* Steel blue */
-    --group-2: #b57040;                 /* Copper */
-    --group-3: #a39b8b;                 /* Stone */
-    --group-4: #c5a253;                 /* Champagne */
+    --group-2: #a2845e;                 /* Sand — Apple system brown, light */
     --done: #5a742c;                    /* Olive deep — success text on light */
     --danger: #a63a46;                  /* Crimson deep — red text on light */
     --btn-bg: #1d1d1f;                  /* Secondary tier: dark button on light */
@@ -64,9 +62,7 @@
       --brand: #6f6b99;
       --brand-deep: #494664;
       --group-1: #5e8ca7;
-      --group-2: #d6934e;               /* Copper glow */
-      --group-3: #a39b8b;
-      --group-4: #c5a253;
+      --group-2: #ac8e68;               /* Sand — Apple system brown, dark */
       --done: #e9f5a0;                  /* Olive glow */
       --danger: #c84653;                /* Crimson */
       --btn-bg: #ffffff;                /* Primary tier: white button on dark */
@@ -92,9 +88,7 @@
     --brand: #6f6b99;
     --brand-deep: #494664;
     --group-1: #5e8ca7;
-    --group-2: #d6934e;
-    --group-3: #a39b8b;
-    --group-4: #c5a253;
+    --group-2: #ac8e68;               /* Sand — Apple system brown, dark */
     --done: #e9f5a0;
     --danger: #c84653;
     --btn-bg: #ffffff;
@@ -208,8 +202,6 @@
   .row.ss { border: 1.5px solid var(--ss); }
   .row.ss-1 { --ss: var(--group-1); }
   .row.ss-2 { --ss: var(--group-2); }
-  .row.ss-3 { --ss: var(--group-3); }
-  .row.ss-4 { --ss: var(--group-4); }
   .row.ss:not(.ss-first) { margin-top: -8px; }
   .row.ss .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
   .row .top { display: grid; grid-template-columns: 56px 1fr 40px; gap: 8px; align-items: center; }
@@ -527,21 +519,19 @@
     $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false;
   }
 
-  function supersetKey(label) {
-    const m = String(label || "").trim().match(/^(\d+)\s*([a-z]+)$/i);
-    return m ? m[1] : null;
+  function groupKey(label, index) {
+    const s = String(label || "").trim().toLowerCase();
+    const m = s.match(/^(\d+)/);
+    return m ? m[1] : (s || "row-" + index);
   }
   function markSupersets(t, rowsEl) {
-    const counts = {};
-    for (const r of t.rows) { const k = supersetKey(r.label); if (k) counts[k] = (counts[k] || 0) + 1; }
     let group = 0, lastKey = null;
     t.rows.forEach((r, i) => {
       const el = rowsEl.children[i]; if (!el) return;
-      el.classList.remove("ss", "ss-1", "ss-2", "ss-3", "ss-4", "ss-first");
-      const k = supersetKey(r.label);
-      if (!k || counts[k] < 2) { lastKey = null; return; }
+      el.classList.remove("ss", "ss-1", "ss-2", "ss-first");
+      const k = groupKey(r.label, i);
       if (k !== lastKey) { group++; lastKey = k; el.classList.add("ss-first"); }
-      el.classList.add("ss", "ss-" + ((group - 1) % 4 + 1));
+      el.classList.add("ss", group % 2 ? "ss-1" : "ss-2");
     });
   }
 
@@ -618,7 +608,7 @@
   $("addRow").addEventListener("click", () => {
     const t = trainings.get(view.id); if (!t) return;
     const r = newRow(nextLabel(t)); t.rows.push(r); scheduleSave("trainings", t.id);
-    const el = rowEl(t, r); $("rows").appendChild(el); el.querySelector(".name").focus();
+    const el = rowEl(t, r); $("rows").appendChild(el); markSupersets(t, $("rows")); el.querySelector(".name").focus();
   });
   $("copyTraining").addEventListener("click", () => { const t = trainings.get(view.id); if (t) addTraining(t.clientId, t); });
   $("delTraining").addEventListener("click", () => { $("delTraining").hidden = true; $("delTrainingConfirm").hidden = false; });
