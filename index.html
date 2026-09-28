@@ -232,6 +232,15 @@
   .weights .boxes { display: flex; gap: 8px; flex-wrap: wrap; }
   .weights input { flex: 1 1 52px; max-width: 80px; text-align: center; padding: 12px 4px; font-weight: 500; }
 
+  .note { margin-top: 12px; }
+  .note-toggle {
+    appearance: none; border: 0; background: none; padding: 0 2px; width: 100%; text-align: left; cursor: pointer;
+    min-height: 32px; font-size: 17px; font-style: italic; letter-spacing: -0.01em; color: var(--text-secondary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity 300ms ease;
+  }
+  .note-toggle.empty { font-style: normal; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); }
+  .note-toggle:hover { opacity: 0.7; }
+  .note-field { font-style: italic; min-height: 44px; resize: none; overflow: hidden; }
   .add { margin-top: 16px; }
   .foot { margin-top: 40px; border-top: 1px solid var(--card-border); padding-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .confirm { color: var(--text-secondary); font-size: 17px; }
@@ -568,7 +577,8 @@
         <div><label>Scheme</label><input class="scheme" placeholder="Add"></div>
         <div><label>Rest</label><input class="rest tab" placeholder="60 s"></div>
       </div>
-      <div class="weights"><div class="cap"><span>Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>`;
+      <div class="weights"><div class="cap"><span>Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
+      <div class="note"><button type="button" class="note-toggle"></button><textarea class="note-field" rows="1" placeholder="Note" hidden></textarea></div>`;
     const q = (s) => el.querySelector(s);
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
     q(".sets").value = r.sets || ""; q(".reps").value = r.reps || ""; q(".tempo").value = r.tempo || "";
@@ -583,6 +593,14 @@
     q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
     q(".name").addEventListener("focus", (e) => suggest(e.target.value));
     q(".x").addEventListener("click", () => { t.rows = t.rows.filter((x) => x.id !== r.id); save(); renderedTraining = null; render(); });
+
+    const noteToggle = q(".note-toggle"), noteField = q(".note-field");
+    const growNote = () => { noteField.style.height = "auto"; noteField.style.height = noteField.scrollHeight + "px"; };
+    const showNote = () => { const v = (r.note || "").trim(); noteToggle.textContent = v || "Add note"; noteToggle.classList.toggle("empty", !v); };
+    noteToggle.addEventListener("click", () => { noteToggle.hidden = true; noteField.hidden = false; noteField.value = r.note || ""; growNote(); noteField.focus(); });
+    noteField.addEventListener("input", (e) => { r.note = e.target.value; growNote(); save(); });
+    noteField.addEventListener("blur", () => { noteField.hidden = true; noteToggle.hidden = false; showNote(); });
+    showNote();
 
     function suggest(v) {
       const ul = q(".sugg"); const s = norm(v);
