@@ -236,7 +236,7 @@
     padding: 12px 16px; font-size: 16px; letter-spacing: -0.01em; color: var(--text-primary);
   }
   .sugg button:hover, .sugg button:focus { background: var(--field); outline: none; }
-  .specs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+  .specs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
   .specs label { display: block; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; }
   .specs input { padding: 12px 8px; text-align: center; }
   .weights { margin-top: 16px; }
@@ -437,7 +437,7 @@
     return [...trainings.values()].filter((t) => t.clientId === clientId)
       .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
   }
-  function newRow(label) { return { id: uid(), label, name: "", sets: 3, reps: "", tempo: "", scheme: "", rest: "", weights: [] }; }
+  function newRow(label) { return { id: uid(), label, name: "", sets: 3, reps: "", tempo: "", rest: "", weights: [], note: "" }; }
   function nextLabel(t) { let max = 0; for (const r of t.rows) { const n = labelKey(r.label)[0]; if (Number.isFinite(n)) max = Math.max(max, n); } return String(max + 1); }
   function addTraining(clientId, from) {
     const list = clientTrainings(clientId);
@@ -607,7 +607,6 @@
         <div><label>Sets</label><input class="sets tab" inputmode="numeric" pattern="[0-9]*" placeholder="3"></div>
         <div><label>Reps</label><input class="reps tab" placeholder="10"></div>
         <div><label>Tempo</label><input class="tempo tab" placeholder="1010" autocapitalize="characters"></div>
-        <div><label>Scheme</label><input class="scheme" placeholder="Add"></div>
         <div><label>Rest</label><input class="rest tab" placeholder="60 s"></div>
       </div>
       <div class="weights"><div class="cap"><span>Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
@@ -615,12 +614,12 @@
     const q = (s) => el.querySelector(s);
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
     q(".sets").value = r.sets || ""; q(".reps").value = r.reps || ""; q(".tempo").value = r.tempo || "";
-    q(".scheme").value = r.scheme || ""; q(".rest").value = r.rest || "";
+    q(".rest").value = r.rest || "";
 
     const save = () => scheduleSave("trainings", t.id);
     const bind = (sel, field, transform) => q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); });
     q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
-    bind(".reps", "reps"); bind(".tempo", "tempo"); bind(".scheme", "scheme"); bind(".rest", "rest");
+    bind(".reps", "reps"); bind(".tempo", "tempo"); bind(".rest", "rest");
     const numpick = q(".numpick");
     function showNumbers() {
       let max = 0;
