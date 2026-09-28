@@ -202,7 +202,18 @@
   .block.ss-2 { --ss: var(--group-2); }
   .group-cap { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; margin: 0 0 8px 2px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); }
   .group-cap b { font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--ss); }
-  .group { background: var(--card); border: 1.5px solid var(--ss); border-radius: 20px; overflow: hidden; }
+  .group { background: var(--card); border: 1.5px solid var(--ss); border-radius: 20px; }
+  .labwrap { position: relative; }
+  .numpick {
+    position: absolute; left: 0; top: calc(100% + 4px); z-index: 4;
+    display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; width: max-content; max-width: 276px;
+    background: var(--surface); border: 1px solid var(--card-border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+  .numpick button {
+    appearance: none; border: 0; cursor: pointer; width: 44px; height: 44px; border-radius: 12px;
+    background: var(--field); color: var(--text-primary); font-size: 16px; font-weight: 500;
+  }
+  .numpick button.cur { box-shadow: inset 0 0 0 1.5px var(--ss); }
   .row { padding: 16px; }
   .group .row + .row { border-top: 1px solid var(--card-border); }
   .group .row .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
@@ -577,7 +588,7 @@
     const el = document.createElement("div"); el.className = "row"; el.dataset.id = r.id;
     el.innerHTML = `
       <div class="top">
-        <input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number">
+        <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
         <div class="exwrap"><input class="name" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"><ul class="sugg" hidden></ul></div>
         <button class="x" type="button" aria-label="Remove exercise">\u00d7</button>
       </div>
@@ -598,7 +609,22 @@
     const save = () => scheduleSave("trainings", t.id);
     const bind = (sel, field, transform) => q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); });
     bind(".label", "label"); bind(".reps", "reps"); bind(".tempo", "tempo"); bind(".scheme", "scheme"); bind(".rest", "rest");
-    q(".label").addEventListener("blur", () => { renderedTraining = null; render(); });
+    const numpick = q(".numpick");
+    function showNumbers() {
+      let max = 0;
+      for (const x of t.rows) { const m = String(x.label || "").match(/^(\d+)/); if (m) max = Math.max(max, Number(m[1])); }
+      const cur = (String(r.label || "").match(/^(\d+)/) || [])[1];
+      numpick.replaceChildren(...Array.from({ length: Math.max(max + 1, 1) }, (_, i) => {
+        const n = String(i + 1); const b = document.createElement("button"); b.type = "button"; b.textContent = n;
+        if (n === cur) b.classList.add("cur");
+        b.addEventListener("mousedown", (ev) => ev.preventDefault());
+        b.addEventListener("click", () => { r.label = n; q(".label").value = n; numpick.hidden = true; save(); renderedTraining = null; render(); });
+        return b;
+      }));
+      numpick.hidden = false;
+    }
+    q(".label").addEventListener("focus", showNumbers);
+    q(".label").addEventListener("blur", () => { numpick.hidden = true; renderedTraining = null; render(); });
     q(".sets").addEventListener("input", (e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); e.target.value = v; r.sets = v === "" ? 0 : clamp(parseInt(v, 10), 0, 20); renderWeights(); save(); });
     q(".name").addEventListener("input", (e) => { r.name = e.target.value; save(); suggest(e.target.value); renderWeights(); });
     q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
