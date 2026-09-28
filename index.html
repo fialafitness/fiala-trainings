@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
 <link rel="manifest" href="manifest.webmanifest">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js"></script>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="favicon.ico">
 <title>Fiala Trainings</title>
@@ -175,6 +176,7 @@
   .btn:disabled { opacity: 0.5; cursor: default; }
   .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
+  .stack { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
   .addrow { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
   .addrow input { flex: 1; }
 
@@ -279,13 +281,24 @@
 </header>
 
 <main>
+  <section id="vLogin" hidden>
+    <h1>Sign in</h1>
+    <form id="loginForm" class="stack">
+      <input id="loginEmail" type="email" placeholder="Email" autocomplete="username" inputmode="email" autocapitalize="none" required>
+      <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" required>
+      <button class="btn" type="submit" id="loginBtn" style="width:100%">Sign in</button>
+      <p class="muted" id="loginMsg"></p>
+      <button class="btn quiet" type="button" id="createBtn" style="width:100%">First time here? Create the account</button>
+    </form>
+  </section>
+
   <section id="vClients">
     <h1>Clients</h1>
     <form class="addrow" id="clientForm">
       <input id="clientName" placeholder="New client" autocomplete="off" autocapitalize="words">
       <button class="btn sm" type="submit">Add</button>
     </form>
-    <div class="foot" id="localFoot" hidden><span class="muted">Saved on this device</span><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden></div>
+    <div class="foot" id="localFoot" hidden><span class="muted" id="dataNote">Saved on this device</span><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="btn quiet" id="signout" type="button" hidden>Sign out</button></div>
     <ul class="list" id="clientList" style="margin-top:16px"></ul>
     <div class="empty" id="clientEmpty" hidden>No clients yet. Add the first one above.</div>
   </section>
@@ -395,6 +408,7 @@
     const pending = timers.size + inflight;
     if (failed && pending === 0 && dirty.size > 0) { el.textContent = "Couldn't save \u00b7 tap to retry"; el.className = "err"; return; }
     el.className = "";
+    if (backend === cloudBackend && !navigator.onLine) { el.textContent = "Offline \u00b7 will sync"; return; }
     el.textContent = pending > 0 ? "Saving\u2026" : (backend ? "Saved" : "");
   }
   $("status").addEventListener("click", () => { if (failed) { failed = false; for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } } });
@@ -406,26 +420,114 @@
     async del() { this.save(); },
   };
 
-  function dbBackend(db) {
-    return {
-      async set(kind, id, data) { await db.collection(kind).doc(id).set(data); },
-      async del(kind, id) { await db.collection(kind).doc(id).delete(); },
-      subscribe() {
-        db.collection("clients").onSnapshot((snap) => { applySnapshot(clients, "clients", snap); render(); }, (e) => console.warn("clients", e));
-        db.collection("trainings").onSnapshot((snap) => { applySnapshot(trainings, "trainings", snap); render(); }, (e) => console.warn("trainings", e));
-      },
-    };
+  // ---------- cloud (Supabase) ----------
+  const SUPABASE_URL = "https://umurkxqswcjmubeucrzw.supabase.co";
+  const SUPABASE_KEY = "sb_publishable__OG8G0RdJkERDqwV8xKN2Q_uwL1zY4p";
+  let sb = null, signedIn = false, syncTimer = null;
+  const TABLE = { clients: "ft_clients", trainings: "ft_trainings" };
+
+  const cloudBackend = {
+    async set(kind, id, data) {
+      const row = { id, data, updated_at: now() };
+      if (kind === "trainings") row.client_id = data.clientId;
+      const { error } = await sb.from(TABLE[kind]).upsert(row);
+      if (error) throw error;
+      localBackend.save();
+    },
+    async del(kind, id) {
+      const { error } = await sb.from(TABLE[kind]).delete().eq("id", id);
+      if (error) throw error;
+      localBackend.save();
+    },
+  };
+
+  async function syncDown() {
+    if (!sb || !signedIn) return;
+    const [c, t] = await Promise.all([
+      sb.from("ft_clients").select("id,data"),
+      sb.from("ft_trainings").select("id,data"),
+    ]);
+    if (c.error || t.error) {
+      const err = c.error || t.error;
+      if (/ft_clients|ft_trainings|relation/i.test(err.message)) $("status").textContent = "Run supabase/cloud.sql first";
+      return;
+    }
+    const migrated = lsGet("fiala.trainings.migrated");
+    if (!migrated && c.data.length === 0 && t.data.length === 0 && (clients.size || trainings.size)) {
+      for (const id of clients.keys()) scheduleSave("clients", id, 0);
+      for (const id of trainings.keys()) scheduleSave("trainings", id, 0);
+    } else {
+      const merge = (map, kind, rows) => {
+        const seen = new Set();
+        for (const r of rows) { seen.add(r.id); if (!dirty.has(key(kind, r.id))) map.set(r.id, { ...r.data, id: r.id }); }
+        for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id))) map.delete(id);
+      };
+      merge(clients, "clients", c.data); merge(trainings, "trainings", t.data);
+    }
+    lsSet("fiala.trainings.migrated", true);
+    localBackend.save();
+    render();
   }
 
-  function applySnapshot(map, kind, snap) {
-    const seen = new Set();
-    for (const d of snap.docs) {
-      seen.add(d.id);
-      if (dirty.has(key(kind, d.id))) continue; // local edits win until confirmed
-      map.set(d.id, { ...d.data(), id: d.id });
-    }
-    for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id))) map.delete(id);
+  function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(() => { syncDown().catch(() => {}); }, 300); }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") scheduleSync(); });
+  window.addEventListener("focus", scheduleSync);
+  window.addEventListener("online", () => { failed = false; for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } scheduleSync(); });
+  setInterval(() => { if (document.visibilityState === "visible") scheduleSync(); }, 60000);
+
+  async function isTrainerAccount() {
+    const { data } = await sb.from("trainers").select("email").limit(1);
+    return !!(data && data.length);
   }
+
+  function showLogin(msg) {
+    signedIn = false;
+    $("vLogin").hidden = false; $("vClients").hidden = true; $("vClient").hidden = true; $("vTraining").hidden = true;
+    $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
+    $("loginMsg").textContent = msg || "";
+  }
+
+  async function enterCloud(session) {
+    signedIn = true; backend = cloudBackend;
+    if (!(await isTrainerAccount())) {
+      await sb.auth.signOut();
+      showLogin("This account is not the trainer's.");
+      return;
+    }
+    $("vLogin").hidden = true;
+    $("dataNote").textContent = "Synced to the cloud · " + (session.user.email || "");
+    $("signout").hidden = false; $("localFoot").hidden = false;
+    render(); setStatus();
+    await syncDown();
+    for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); }
+  }
+
+  $("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("loginMsg").textContent = "Signing in…"; $("loginBtn").disabled = true;
+    const { data, error } = await sb.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPassword").value });
+    $("loginBtn").disabled = false;
+    if (error) { $("loginMsg").textContent = error.message; return; }
+    $("loginMsg").textContent = "";
+    await enterCloud(data.session);
+  });
+  $("createBtn").addEventListener("click", async () => {
+    const email = $("loginEmail").value.trim(), password = $("loginPassword").value;
+    if (!email || password.length < 8) { $("loginMsg").textContent = "Enter your email and a password of at least 8 characters."; return; }
+    $("loginMsg").textContent = "Creating…";
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if (error) { $("loginMsg").textContent = error.message; return; }
+    if (data.session) { $("loginMsg").textContent = ""; await enterCloud(data.session); }
+    else $("loginMsg").textContent = "Check your email for a confirmation link, then sign in.";
+  });
+  $("signout").addEventListener("click", async () => {
+    await flushNow();
+    await sb.auth.signOut();
+    clients.clear(); trainings.clear(); localBackend.save();
+    try { localStorage.removeItem("fiala.trainings.migrated"); } catch {}
+    view = { name: "clients" }; showLogin("");
+  });
+  async function flushNow() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); await flushOne(kind, id).catch(() => {}); } }
 
   // ---------- data ops ----------
   function addClient(name) {
@@ -482,6 +584,8 @@
   // ---------- render ----------
   let renderedTraining = null;
   function render() {
+    if (sb && !signedIn) { showLogin($("loginMsg").textContent); return; }
+    $("vLogin").hidden = true;
     if (view.name === "client" && !clients.has(view.id)) view = { name: "clients" };
     if (view.name === "training" && !trainings.has(view.id)) view = { name: "clients" };
     $("vClients").hidden = view.name !== "clients";
@@ -725,12 +829,18 @@
   // ---------- boot ----------
   async function boot() {
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) view = saved;
-    $("status").textContent = "Loading\u2026";
-    let db = null;
-    try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch { db = null; }
-    if (db) { backend = dbBackend(db); backend.subscribe(); }
-    else { backend = localBackend; localBackend.load(); $("localFoot").hidden = false; render(); }
-    setStatus();
+    localBackend.load();                       // instant start from the device copy
+    if (window.supabase && window.supabase.createClient) {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+      $("status").textContent = "Loading…";
+      const { data } = await sb.auth.getSession();
+      if (data && data.session) { await enterCloud(data.session); }
+      else { showLogin(""); }
+      sb.auth.onAuthStateChange((event, session) => { if (event === "SIGNED_OUT") showLogin(""); });
+      return;
+    }
+    // no library (blocked network): work from the device copy
+    backend = localBackend; $("localFoot").hidden = false; render(); setStatus();
   }
   render();
   boot();
