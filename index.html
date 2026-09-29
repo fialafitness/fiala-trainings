@@ -39,6 +39,8 @@
     --group-1: #5e8ca7;                 /* Steel blue */
     --group-2: #a2845e;                 /* Sand — Apple system brown, light */
     --done: #5a742c;                    /* Olive deep — success text on light */
+    --done-fill: #a9b96b;               /* Olive — fills and badges on light */
+    --done-ink: #ffffff;
     --danger: #a63a46;                  /* Crimson deep — red text on light */
     --btn-bg: #1d1d1f;                  /* Secondary tier: dark button on light */
     --btn-fg: #ffffff;
@@ -65,6 +67,8 @@
       --group-1: #5e8ca7;
       --group-2: #ac8e68;               /* Sand — Apple system brown, dark */
       --done: #e9f5a0;                  /* Olive glow */
+      --done-fill: #e9f5a0;
+      --done-ink: #1d1d1f;
       --danger: #c84653;                /* Crimson */
       --btn-bg: #ffffff;                /* Primary tier: white button on dark */
       --btn-fg: #1d1d1f;
@@ -91,6 +95,8 @@
     --group-1: #5e8ca7;
     --group-2: #ac8e68;               /* Sand — Apple system brown, dark */
     --done: #e9f5a0;
+    --done-fill: #e9f5a0;
+    --done-ink: #1d1d1f;
     --danger: #c84653;
     --btn-bg: #ffffff;
     --btn-fg: #1d1d1f;
@@ -224,7 +230,20 @@
   .row { padding: 16px; }
   .group .row + .row { border-top: 1px solid var(--card-border); }
   .group .row .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
-  .row .top { display: grid; grid-template-columns: 56px 1fr 40px; gap: 8px; align-items: center; }
+  .row .top { display: grid; grid-template-columns: 56px 1fr 44px 40px; gap: 8px; align-items: center; }
+  body.client .row .top { grid-template-columns: 56px 1fr 44px; }
+  .row .check {
+    appearance: none; cursor: pointer; width: 44px; height: 44px; padding: 0; background: none; border: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .row .check span {
+    width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--text-quaternary);
+    display: flex; align-items: center; justify-content: center; font-size: 16px; color: transparent;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+  .row.done .check span { background: var(--done-fill); border-color: var(--done-fill); color: var(--done-ink); }
+  .row.done .top input.name { color: var(--text-secondary); }
+  .group-cap .done { color: var(--done); font-weight: 500; }
   .row .top input.label { text-align: center; font-weight: 500; padding-left: 8px; padding-right: 8px; }
   .row .top .exwrap { position: relative; }
   .row .top input.name { font-weight: 500; }
@@ -265,10 +284,11 @@
   .confirm { color: var(--text-secondary); font-size: 17px; }
 
   @media (max-width: 400px) {
+    .row .top { grid-template-columns: 52px 1fr 40px 32px; }
+    body.client .row .top { grid-template-columns: 52px 1fr 40px; }
     .specs { gap: 4px; }
     .specs label { letter-spacing: 0.06em; font-size: 12px; }
     .specs input { padding-left: 4px; padding-right: 4px; font-size: 16px; }
-    .row .top { grid-template-columns: 52px 1fr 36px; }
   }
   @media (prefers-reduced-motion: reduce) {
     .btn, .back, .list button, .x, input, textarea { transition: none; }
@@ -455,6 +475,7 @@
   const SUPABASE_KEY = "sb_publishable__OG8G0RdJkERDqwV8xKN2Q_uwL1zY4p";
   let sb = null, signedIn = false, syncTimer = null, clientMode = false, myClientId = null, recovering = false;
   const pendingWeightRows = new Map();   // trainingId -> Set(rowId), client mode only
+  const pendingDoneRows = new Map();     // trainingId -> Set(rowId), client mode only
   const seenAt = new Map();              // "trainings/<id>" -> updated_at last received from the server
   const trainerTouched = new Map();      // trainingId -> Set(rowId) whose weights the trainer edited since the last sync
   const TABLE = { clients: "ft_clients", trainings: "ft_trainings" };
@@ -484,7 +505,7 @@
           const live = trainings.get(id);
           for (const sr of fresh.data.data.rows || []) {
             if (touched.has(sr.id)) continue;
-            for (const target of [data, live]) { const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (lr) lr.weights = sr.weights || []; }
+            for (const target of [data, live]) { const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (lr) { lr.weights = sr.weights || []; lr.done = !!sr.done; } }
           }
         }
       }
@@ -506,6 +527,15 @@
         const r = (data.rows || []).find((x) => x.id === ids[i]); if (!r) continue;
         const { error } = await sb.rpc("client_set_weights", { p_training: id, p_row: ids[i], p_weights: (r.weights || []).map((w) => String(w == null ? "" : w).slice(0, 16)) });
         if (error) { for (const rest of ids.slice(i)) rows.add(rest); throw error; }
+      }
+      const dones = pendingDoneRows.get(id);
+      if (dones) {
+        const dids = [...dones]; dones.clear();
+        for (let i = 0; i < dids.length; i++) {
+          const r = (data.rows || []).find((x) => x.id === dids[i]); if (!r) continue;
+          const { error } = await sb.rpc("client_set_done", { p_training: id, p_row: dids[i], p_done: !!r.done });
+          if (error) { for (const rest of dids.slice(i)) dones.add(rest); throw error; }
+        }
       }
       localBackend.save();
     },
@@ -655,7 +685,7 @@
     if (dirty.size) { $("status").textContent = "Some weights are not saved yet \u00b7 try again when online"; return; }
     await sb.auth.signOut();
     for (const tm of timers.values()) clearTimeout(tm);
-    timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); failed = false;
+    timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); failed = false;
     clients.clear(); trainings.clear(); localBackend.save();
     view = { name: "clients" }; showLogin("");
   };
@@ -691,7 +721,7 @@
     const t = {
       id: uid(), clientId, date: today(), createdAt: now(),
       title: from ? from.title : "Training " + (list.length + 1),
-      rows: from ? from.rows.map((r) => ({ ...r, id: uid(), weights: [] })) : [],
+      rows: from ? from.rows.map((r) => ({ ...r, id: uid(), weights: [], done: false })) : [],
     };
     trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
     go({ name: "training", id: t.id });
@@ -770,10 +800,11 @@
     const ul = $("trainingList"); ul.replaceChildren();
     for (const t of list) {
       const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
-      const filled = t.rows.some((r) => (r.weights || []).some((w) => String(w || "").trim() !== ""));
+      const total = t.rows.length, done = t.rows.filter((r) => r.done).length;
+      const progress = total && done === total ? "\u2713 " : done ? done + " of " + total + " done \u00b7 " : "";
       b.innerHTML = `<span></span><span class="sub tab"></span>`;
       b.firstChild.textContent = t.title || "Untitled";
-      b.lastChild.textContent = (filled ? "\u2713 " : "") + fmtDate(t.date); b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
+      b.lastChild.textContent = progress + fmtDate(t.date); b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
       b.addEventListener("click", () => go({ name: "training", id: t.id }));
       li.appendChild(b); ul.appendChild(li);
     }
@@ -807,7 +838,8 @@
         const after = g.rows.length === 2 ? "rest after both" : "rest after all " + g.rows.length;
         const b = document.createElement("b"); b.textContent = kind;
         const s = document.createElement("span"); s.textContent = g.rows.map((r) => r.label).join(" + ") + " back to back \u00b7 " + after;
-        cap.append(b, s); block.appendChild(cap);
+        const d = document.createElement("span"); d.className = "done"; d.textContent = g.rows.every((r) => r.done) ? "\u2713 done" : "";
+        cap.append(b, s, d); block.appendChild(cap);
       }
       const card = document.createElement("div"); card.className = "group";
       g.rows.forEach((r) => card.appendChild(rowEl(t, r)));
@@ -850,12 +882,20 @@
     return changed;
   }
 
+  function updateCaption(rowElement) {
+    const block = rowElement.closest(".block"); if (!block) return;
+    const d = block.querySelector(".group-cap .done"); if (!d) return;
+    const all = [...block.querySelectorAll(".row")].every((x) => x.classList.contains("done"));
+    d.textContent = all ? "\u2713 done" : "";
+  }
+
   function rowEl(t, r) {
     const el = document.createElement("div"); el.className = "row"; el.dataset.id = r.id;
     el.innerHTML = `
       <div class="top">
         <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
         <div class="exwrap"><input class="name" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"><ul class="sugg" hidden></ul></div>
+        <button class="check" type="button" aria-label="Done"><span>\u2713</span></button>
         <button class="x" type="button" aria-label="Remove exercise">\u00d7</button>
       </div>
       <div class="specs">
@@ -867,6 +907,15 @@
       <div class="weights"><div class="cap"><span>Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="note"><button type="button" class="note-toggle"></button><textarea class="note-field" rows="1" placeholder="Note" hidden></textarea></div>`;
     const q = (s) => el.querySelector(s);
+    el.classList.toggle("done", !!r.done);
+    q(".check").addEventListener("click", () => {
+      r.done = !r.done; el.classList.toggle("done", r.done);
+      const track = clientMode ? pendingDoneRows : trainerTouched;
+      if (!track.has(t.id)) track.set(t.id, new Set());
+      track.get(t.id).add(r.id);
+      scheduleSave("trainings", t.id);
+      updateCaption(el);
+    });
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
     q(".sets").value = r.sets || ""; q(".reps").value = r.reps || ""; q(".tempo").value = r.tempo || "";
     q(".rest").value = r.rest || "";
