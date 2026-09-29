@@ -230,20 +230,19 @@
   .row { padding: 16px; }
   .group .row + .row { border-top: 1px solid var(--card-border); }
   .group .row .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
-  .row .top { display: grid; grid-template-columns: 56px 1fr 44px 40px; gap: 8px; align-items: center; }
-  body.client .row .top { grid-template-columns: 56px 1fr 44px; }
-  .row .check {
-    appearance: none; cursor: pointer; width: 44px; height: 44px; padding: 0; background: none; border: 0;
-    display: flex; align-items: center; justify-content: center;
+  .row .top { display: grid; grid-template-columns: 56px 1fr 40px; gap: 8px; align-items: center; }
+  body.client .row .top { grid-template-columns: 56px 1fr; }
+  .block.done { --ss: var(--done-fill); }
+  .card-foot { padding: 4px 16px 16px; display: flex; justify-content: flex-end; }
+  .done-btn {
+    appearance: none; cursor: pointer; border-radius: 50px; min-height: 40px; padding: 10px 24px;
+    font-size: 14px; font-weight: 400; letter-spacing: 0.01em;
+    background: transparent; color: var(--text-secondary); border: 1px solid var(--card-border);
+    transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, opacity 300ms ease;
   }
-  .row .check span {
-    width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--text-quaternary);
-    display: flex; align-items: center; justify-content: center; font-size: 16px; color: transparent;
-    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
-  }
-  .row.done .check span { background: var(--done-fill); border-color: var(--done-fill); color: var(--done-ink); }
-  .row.done .top input.name { color: var(--text-secondary); }
-  .group-cap .done { color: var(--done); font-weight: 500; }
+  .done-btn:hover { opacity: 0.85; }
+  .block.done .done-btn { background: var(--done-fill); border-color: var(--done-fill); color: var(--done-ink); }
+  .block.done .group-cap b { color: var(--done); }
   .row .top input.label { text-align: center; font-weight: 500; padding-left: 8px; padding-right: 8px; }
   .row .top .exwrap { position: relative; }
   .row .top input.name { font-weight: 500; }
@@ -284,8 +283,8 @@
   .confirm { color: var(--text-secondary); font-size: 17px; }
 
   @media (max-width: 400px) {
-    .row .top { grid-template-columns: 52px 1fr 40px 32px; }
-    body.client .row .top { grid-template-columns: 52px 1fr 40px; }
+    .row .top { grid-template-columns: 52px 1fr 36px; }
+    body.client .row .top { grid-template-columns: 52px 1fr; }
     .specs { gap: 4px; }
     .specs label { letter-spacing: 0.06em; font-size: 12px; }
     .specs input { padding-left: 4px; padding-right: 4px; font-size: 16px; }
@@ -800,7 +799,9 @@
     const ul = $("trainingList"); ul.replaceChildren();
     for (const t of list) {
       const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
-      const total = t.rows.length, done = t.rows.filter((r) => r.done).length;
+      const cards = new Map();
+      t.rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!cards.has(k)) cards.set(k, true); if (!r.done) cards.set(k, false); });
+      const total = cards.size, done = [...cards.values()].filter(Boolean).length;
       const progress = total && done === total ? "\u2713 " : done ? done + " of " + total + " done \u00b7 " : "";
       b.innerHTML = `<span></span><span class="sub tab"></span>`;
       b.firstChild.textContent = t.title || "Untitled";
@@ -838,11 +839,21 @@
         const after = g.rows.length === 2 ? "rest after both" : "rest after all " + g.rows.length;
         const b = document.createElement("b"); b.textContent = kind;
         const s = document.createElement("span"); s.textContent = g.rows.map((r) => r.label).join(" + ") + " back to back \u00b7 " + after;
-        const d = document.createElement("span"); d.className = "done"; d.textContent = g.rows.every((r) => r.done) ? "\u2713 done" : "";
-        cap.append(b, s, d); block.appendChild(cap);
+        cap.append(b, s); block.appendChild(cap);
       }
       const card = document.createElement("div"); card.className = "group";
       g.rows.forEach((r) => card.appendChild(rowEl(t, r)));
+      const foot = document.createElement("div"); foot.className = "card-foot";
+      const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
+      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); btn.textContent = all ? "\u2713 Done" : "Done"; };
+      btn.addEventListener("click", () => {
+        const next = !g.rows.every((r) => r.done);
+        const track = clientMode ? pendingDoneRows : trainerTouched;
+        if (!track.has(t.id)) track.set(t.id, new Set());
+        for (const r of g.rows) { r.done = next; track.get(t.id).add(r.id); }
+        scheduleSave("trainings", t.id); paint();
+      });
+      paint(); foot.appendChild(btn); card.appendChild(foot);
       block.appendChild(card); rowsEl.appendChild(block);
     });
     $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false;
@@ -882,20 +893,12 @@
     return changed;
   }
 
-  function updateCaption(rowElement) {
-    const block = rowElement.closest(".block"); if (!block) return;
-    const d = block.querySelector(".group-cap .done"); if (!d) return;
-    const all = [...block.querySelectorAll(".row")].every((x) => x.classList.contains("done"));
-    d.textContent = all ? "\u2713 done" : "";
-  }
-
   function rowEl(t, r) {
     const el = document.createElement("div"); el.className = "row"; el.dataset.id = r.id;
     el.innerHTML = `
       <div class="top">
         <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
         <div class="exwrap"><input class="name" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"><ul class="sugg" hidden></ul></div>
-        <button class="check" type="button" aria-label="Done"><span>\u2713</span></button>
         <button class="x" type="button" aria-label="Remove exercise">\u00d7</button>
       </div>
       <div class="specs">
@@ -907,15 +910,6 @@
       <div class="weights"><div class="cap"><span>Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="note"><button type="button" class="note-toggle"></button><textarea class="note-field" rows="1" placeholder="Note" hidden></textarea></div>`;
     const q = (s) => el.querySelector(s);
-    el.classList.toggle("done", !!r.done);
-    q(".check").addEventListener("click", () => {
-      r.done = !r.done; el.classList.toggle("done", r.done);
-      const track = clientMode ? pendingDoneRows : trainerTouched;
-      if (!track.has(t.id)) track.set(t.id, new Set());
-      track.get(t.id).add(r.id);
-      scheduleSave("trainings", t.id);
-      updateCaption(el);
-    });
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
     q(".sets").value = r.sets || ""; q(".reps").value = r.reps || ""; q(".tempo").value = r.tempo || "";
     q(".rest").value = r.rest || "";
