@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
 <link rel="manifest" href="manifest.webmanifest">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js" integrity="sha384-WgXwGL6fUsYJWNaKJgVbrJKGRQwc1vieh2oy4kw9nXqpNDz3tdSsqEYUgeHD/NuF" crossorigin="anonymous"></script>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="favicon.ico">
 <title>Fiala Trainings</title>
@@ -377,6 +377,7 @@
   function flushOne(kind, id) {
     const k = key(kind, id);
     timers.delete(k);
+    localBackend.save();
     const map = kind === "clients" ? clients : trainings;
     const doc = map.get(id);
     const version = dirty.get(k) || 0;
@@ -476,8 +477,11 @@
   setInterval(() => { if (document.visibilityState === "visible") scheduleSync(); }, 60000);
 
   async function isTrainerAccount() {
-    const { data } = await sb.from("trainers").select("email").limit(1);
-    return !!(data && data.length);
+    try {
+      const { data, error } = await sb.from("trainers").select("email").limit(1);
+      if (error) return null;              // unknown (offline, hiccup): let RLS decide
+      return data.length > 0;
+    } catch { return null; }
   }
 
   function showLogin(msg) {
@@ -489,7 +493,7 @@
 
   async function enterCloud(session) {
     signedIn = true; backend = cloudBackend;
-    if (!(await isTrainerAccount())) {
+    if ((await isTrainerAccount()) === false) {
       await sb.auth.signOut();
       showLogin("This account is not the trainer's.");
       return;
@@ -518,11 +522,14 @@
     const { data, error } = await sb.auth.signUp({ email, password });
     if (error) { $("loginMsg").textContent = error.message; return; }
     if (data.session) { $("loginMsg").textContent = ""; await enterCloud(data.session); }
-    else $("loginMsg").textContent = "Check your email for a confirmation link, then sign in.";
+    else $("loginMsg").textContent = "Check your email for a confirmation link, then sign in. (Already have an account? Just sign in.)";
   });
   $("signout").addEventListener("click", async () => {
     await flushNow();
+    if (dirty.size) { $("status").textContent = "Some changes are not saved yet \u00b7 try again when online"; return; }
     await sb.auth.signOut();
+    for (const tm of timers.values()) clearTimeout(tm);
+    timers.clear(); chains.clear(); dirty.clear(); failed = false;
     clients.clear(); trainings.clear(); localBackend.save();
     try { localStorage.removeItem("fiala.trainings.migrated"); } catch {}
     view = { name: "clients" }; showLogin("");
@@ -833,10 +840,10 @@
     if (window.supabase && window.supabase.createClient) {
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
       $("status").textContent = "Loading…";
+      sb.auth.onAuthStateChange((event) => { if (event === "SIGNED_OUT" && signedIn) showLogin("Signed out. Sign in again to keep syncing."); });
       const { data } = await sb.auth.getSession();
       if (data && data.session) { await enterCloud(data.session); }
       else { showLogin(""); }
-      sb.auth.onAuthStateChange((event, session) => { if (event === "SIGNED_OUT") showLogin(""); });
       return;
     }
     // no library (blocked network): work from the device copy
