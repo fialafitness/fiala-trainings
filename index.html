@@ -206,8 +206,8 @@
   /* Training */
   .ttl { display: grid; grid-template-columns: 1fr; gap: 8px; align-items: start; margin-top: 20px; }
   .ttl input[type="date"] { justify-self: start; }
-  .ttl input.title { font-size: 26px; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; background: transparent; padding: 0; border-radius: 12px; }
-  .ttl input.title:focus { background: var(--field); padding: 8px 12px; }
+  .ttl .title { font-size: 26px; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; background: transparent; padding: 0; border-radius: 12px; resize: none; overflow: hidden; min-height: 32px; }
+  .ttl .title:focus { background: var(--field); padding: 8px 12px; }
   .ttl input[type="date"] { width: auto; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); padding: 8px 12px; }
 
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
@@ -245,7 +245,7 @@
   .block.done .group-cap b { color: var(--done); }
   .row .top input.label { text-align: center; font-weight: 500; padding-left: 8px; padding-right: 8px; }
   .row .top .exwrap { position: relative; }
-  .row .top input.name { font-weight: 500; }
+  .row .top .name { font-weight: 500; resize: none; overflow: hidden; min-height: 44px; line-height: 1.3; }
   .row .x {
     appearance: none; border: 0; background: none; color: var(--text-tertiary); cursor: pointer;
     width: 40px; height: 44px; font-size: 20px; line-height: 1; border-radius: 12px; transition: opacity 300ms ease;
@@ -366,7 +366,7 @@
 
   <section id="vTraining" hidden>
     <div class="ttl">
-      <input id="tTitle" class="title" placeholder="Training title" autocapitalize="sentences">
+      <textarea id="tTitle" class="title" rows="1" placeholder="Training title" autocapitalize="sentences"></textarea>
       <input id="tDate" type="date">
     </div>
     <div class="rows" id="rows"></div>
@@ -828,7 +828,7 @@
   }
 
   function renderTraining(t) {
-    if (document.activeElement !== $("tTitle")) $("tTitle").value = t.title || "";
+    if (document.activeElement !== $("tTitle")) { $("tTitle").value = t.title || ""; requestAnimationFrame(() => { const el = $("tTitle"); el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); }
     if (document.activeElement !== $("tDate")) $("tDate").value = t.date || "";
     $("tTitle").readOnly = clientMode; $("tDate").readOnly = clientMode;
     const rowsEl = $("rows");
@@ -912,7 +912,7 @@
     el.innerHTML = `
       <div class="top">
         <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
-        <div class="exwrap"><input class="name" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"><ul class="sugg" hidden></ul></div>
+        <div class="exwrap"><textarea class="name" rows="1" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><ul class="sugg" hidden></ul></div>
         <button class="x" type="button" aria-label="Remove exercise">\u00d7</button>
       </div>
       <div class="specs">
@@ -924,7 +924,10 @@
       <div class="weights"><div class="cap"><span>Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="note"><button type="button" class="note-toggle"></button><textarea class="note-field" rows="1" placeholder="Note" hidden></textarea></div>`;
     const q = (s) => el.querySelector(s);
+    const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; };
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
+    requestAnimationFrame(growName);
+    q(".name").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
     q(".sets").value = r.sets || ""; q(".reps").value = r.reps || ""; q(".tempo").value = r.tempo || "";
     q(".rest").value = r.rest || "";
 
@@ -951,7 +954,7 @@
       q(".label").addEventListener("focus", showNumbers);
       q(".label").addEventListener("blur", () => { numpick.hidden = true; renderedTraining = null; render(); });
       q(".sets").addEventListener("input", (e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); e.target.value = v; r.sets = v === "" ? 0 : clamp(parseInt(v, 10), 0, 20); renderWeights(); save(); });
-      q(".name").addEventListener("input", (e) => { r.name = e.target.value; save(); suggest(e.target.value); renderWeights(); });
+      q(".name").addEventListener("input", (e) => { r.name = e.target.value.replace(/\n/g, " "); growName(); save(); suggest(e.target.value); renderWeights(); });
       q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
       q(".name").addEventListener("focus", (e) => suggest(e.target.value));
       q(".x").addEventListener("click", () => { t.rows = t.rows.filter((x) => x.id !== r.id); save(); renderedTraining = null; render(); });
@@ -971,7 +974,7 @@
       const starts = [], contains = [];
       for (const n of NAMES) { const ln = n.toLowerCase(); if (ln === s) continue; if (ln.startsWith(s)) starts.push(n); else if (ln.includes(s)) contains.push(n); if (starts.length >= 6) break; }
       const hits = [...starts, ...contains].slice(0, 6);
-      ul.replaceChildren(...hits.map((n) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { r.name = n; q(".name").value = n; ul.hidden = true; save(); renderWeights(); }); li.appendChild(b); return li; }));
+      ul.replaceChildren(...hits.map((n) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { r.name = n; q(".name").value = n; growName(); ul.hidden = true; save(); renderWeights(); }); li.appendChild(b); return li; }));
       ul.hidden = hits.length === 0;
     }
 
@@ -1009,7 +1012,8 @@
   $("delClientNo").addEventListener("click", () => { $("delClientConfirm").hidden = true; $("delClient").hidden = false; });
   $("delClientYes").addEventListener("click", () => deleteClient(view.id));
 
-  $("tTitle").addEventListener("input", (e) => { const t = trainings.get(view.id); if (!t) return; t.title = e.target.value; scheduleSave("trainings", t.id); });
+  $("tTitle").addEventListener("input", (e) => { const t = trainings.get(view.id); if (!t) return; t.title = e.target.value.replace(/\n/g, " "); e.target.style.height = "auto"; e.target.style.height = Math.max(32, e.target.scrollHeight) + "px"; scheduleSave("trainings", t.id); });
+  $("tTitle").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
   $("tDate").addEventListener("change", (e) => { const t = trainings.get(view.id); if (!t) return; t.date = e.target.value || today(); scheduleSave("trainings", t.id); renderedTraining = null; render(); });
   $("addRow").addEventListener("click", () => {
     const t = trainings.get(view.id); if (!t) return;
