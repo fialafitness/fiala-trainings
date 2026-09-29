@@ -833,7 +833,7 @@
     $("tTitle").readOnly = clientMode; $("tDate").readOnly = clientMode;
     const rowsEl = $("rows");
     const active = document.activeElement;
-    if (renderedTraining === t.id && rowsEl.contains(active) && active.tagName === "INPUT") return; // never rebuild under a typing finger
+    if (renderedTraining === t.id && rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return; // never rebuild under a typing finger
     renderedTraining = t.id;
     if (!clientMode && normalizeLabels(t)) scheduleSave("trainings", t.id);
     t.rows.sort((a, b) => cmpLabel(a.label, b.label));
