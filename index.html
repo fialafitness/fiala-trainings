@@ -645,13 +645,24 @@
     for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); }
   }
 
-  const friendly = (error) => /load failed|failed to fetch|network|fetch/i.test(error.message || "")
+  const isNetwork = (error) => /load failed|failed to fetch|network|fetch/i.test((error && error.message) || "");
+  // flaky phone connections: retry a request that never reached the server (up to 3 tries)
+  async function withRetry(task) {
+    let last;
+    for (let i = 0; i < 3; i++) {
+      try { const res = await task(); if (!res.error || !isNetwork(res.error)) return res; last = res; }
+      catch (e) { last = { data: null, error: e }; if (!isNetwork(e)) return last; }
+      await new Promise((r) => setTimeout(r, 900 * (i + 1)));
+    }
+    return last;
+  }
+  const friendly = (error) => isNetwork(error)
     ? "Couldn\u2019t reach the server. Check your connection \u2014 try turning Wi-Fi off \u2014 and tap again."
     : error.message;
   $("loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     $("loginMsg").textContent = "Signing in…"; $("loginBtn").disabled = true;
-    const { data, error } = await sb.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPassword").value });
+    const { data, error } = await withRetry(() => sb.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPassword").value }));
     $("loginBtn").disabled = false;
     if (error) { $("loginMsg").textContent = friendly(error); return; }
     $("loginMsg").textContent = "";
@@ -661,7 +672,7 @@
     const email = $("loginEmail").value.trim(), password = $("loginPassword").value;
     if (!email || password.length < 8) { $("loginMsg").textContent = "Enter your email and a password of at least 8 characters."; return; }
     $("loginMsg").textContent = "Creating…";
-    const { data, error } = await sb.auth.signUp({ email, password });
+    const { data, error } = await withRetry(() => sb.auth.signUp({ email, password }));
     if (error) { $("loginMsg").textContent = friendly(error); return; }
     if (data.session) { $("loginMsg").textContent = ""; await enterCloud(data.session); }
     else $("loginMsg").textContent = "Check your email for a confirmation link, then sign in. (Already have an account? Just sign in.)";
@@ -669,7 +680,7 @@
   $("forgotBtn").addEventListener("click", async () => {
     const email = $("loginEmail").value.trim();
     if (!email) { $("loginMsg").textContent = "Type your email first, then tap Forgot password."; return; }
-    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    const { error } = await withRetry(() => sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname }));
     $("loginMsg").textContent = error ? friendly(error) : "Check your email for a link to set a new password.";
   });
   $("recoveryForm").addEventListener("submit", async (e) => {
