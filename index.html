@@ -240,7 +240,9 @@
   .block.done:not(.open) .row .top .name { color: var(--text-secondary); min-height: 36px; }
   .block.done:not(.open) .row .top input.label { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
   .block.done:not(.open) .card-foot { padding: 4px 16px 12px; }
-  .card-foot { padding: 4px 16px 16px; display: flex; justify-content: center; }
+  .card-foot { padding: 4px 16px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .fold-btn { appearance: none; border: 0; background: none; cursor: pointer; min-height: 32px; padding: 0 8px; font-size: 13px; letter-spacing: 0; color: var(--text-secondary); transition: opacity 300ms ease; }
+  .fold-btn:hover { opacity: 0.7; }
   .done-btn {
     appearance: none; cursor: pointer; border-radius: 50px; min-height: 40px; padding: 10px 24px;
     font-size: 14px; font-weight: 400; letter-spacing: 0.01em;
@@ -866,8 +868,11 @@
       g.rows.forEach((r) => card.appendChild(rowEl(t, r)));
       const foot = document.createElement("div"); foot.className = "card-foot";
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
-      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all) block.classList.remove("open"); btn.textContent = all ? "\u2713 Done" : "Done"; };
-      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.target.closest(".done-btn")) block.classList.add("open"); });
+      const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold-btn";
+      const paintFold = () => { const done = block.classList.contains("done"); fold.hidden = !done; fold.textContent = block.classList.contains("open") ? "Hide weights" : "Show weights"; };
+      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all) block.classList.remove("open"); btn.textContent = all ? "\u2713 Done" : "Done"; paintFold(); };
+      fold.addEventListener("click", () => { block.classList.toggle("open"); paintFold(); });
+      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.target.closest("button")) { block.classList.add("open"); paintFold(); } });
       btn.addEventListener("click", () => {
         const next = !g.rows.every((r) => r.done);
         const track = clientMode ? pendingDoneRows : trainerTouched;
@@ -875,7 +880,7 @@
         for (const r of g.rows) { r.done = next; track.get(t.id).add(r.id); }
         scheduleSave("trainings", t.id); paint();
       });
-      paint(); foot.appendChild(btn); card.appendChild(foot);
+      paint(); foot.append(btn, fold); card.appendChild(foot);
       block.appendChild(card); rowsEl.appendChild(block);
     });
     $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false;
