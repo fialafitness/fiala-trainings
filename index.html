@@ -233,8 +233,13 @@
   .row .top { display: grid; grid-template-columns: 56px 1fr 40px; gap: 8px; align-items: center; }
   body.client .row .top { grid-template-columns: 56px 1fr; }
   .block.done { --ss: var(--done-fill); }
-  .block.done .group { background: color-mix(in srgb, var(--done-fill) 12%, var(--card)); }
-  .block.done .row + .row { border-top-color: color-mix(in srgb, var(--done-fill) 30%, var(--card-border)); }
+  .block.done:not(.open) .group { cursor: pointer; }
+  .block.done:not(.open) .row { padding: 6px 16px; }
+  .block.done:not(.open) .row .specs, .block.done:not(.open) .row .weights, .block.done:not(.open) .row .note, .block.done:not(.open) .row .x { display: none; }
+  .block.done:not(.open) .row .top { pointer-events: none; }
+  .block.done:not(.open) .row .top .name { color: var(--text-secondary); min-height: 36px; }
+  .block.done:not(.open) .row .top input.label { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
+  .block.done:not(.open) .card-foot { padding: 4px 16px 12px; }
   .card-foot { padding: 4px 16px 16px; display: flex; justify-content: center; }
   .done-btn {
     appearance: none; cursor: pointer; border-radius: 50px; min-height: 40px; padding: 10px 24px;
@@ -861,7 +866,8 @@
       g.rows.forEach((r) => card.appendChild(rowEl(t, r)));
       const foot = document.createElement("div"); foot.className = "card-foot";
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
-      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); btn.textContent = all ? "\u2713 Done" : "Done"; };
+      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all) block.classList.remove("open"); btn.textContent = all ? "\u2713 Done" : "Done"; };
+      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.target.closest(".done-btn")) block.classList.add("open"); });
       btn.addEventListener("click", () => {
         const next = !g.rows.every((r) => r.done);
         const track = clientMode ? pendingDoneRows : trainerTouched;
