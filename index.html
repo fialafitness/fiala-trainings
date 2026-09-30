@@ -240,9 +240,14 @@
   .block.done:not(.open) .row .top .name { color: var(--text-secondary); min-height: 36px; }
   .block.done:not(.open) .row .top input.label { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
   .block.done:not(.open) .card-foot { padding: 4px 16px 12px; }
-  .card-foot { padding: 4px 16px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-  .fold-btn { appearance: none; border: 0; background: none; cursor: pointer; min-height: 32px; padding: 0 8px; font-size: 13px; letter-spacing: 0; color: var(--text-secondary); transition: opacity 300ms ease; }
-  .fold-btn:hover { opacity: 0.7; }
+  .card-foot { padding: 4px 16px 16px; display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .fold-btn {
+    appearance: none; cursor: pointer; border-radius: 50px; min-height: 40px; padding: 10px 24px;
+    font-size: 14px; font-weight: 400; letter-spacing: 0.01em;
+    background: transparent; color: var(--text-secondary); border: 1px solid var(--card-border);
+    transition: opacity 300ms ease;
+  }
+  .fold-btn:hover { opacity: 0.85; }
   .done-btn {
     appearance: none; cursor: pointer; border-radius: 50px; min-height: 40px; padding: 10px 24px;
     font-size: 14px; font-weight: 400; letter-spacing: 0.01em;
