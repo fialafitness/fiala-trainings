@@ -233,7 +233,9 @@
   .row .top { display: grid; grid-template-columns: 56px 1fr 40px; gap: 8px; align-items: center; }
   body.client .row .top { grid-template-columns: 56px 1fr; }
   .block.done { --ss: var(--done-fill); }
-  .card-foot { padding: 4px 16px 16px; display: flex; justify-content: flex-end; }
+  .block.done .group { background: color-mix(in srgb, var(--done-fill) 12%, var(--card)); }
+  .block.done .row + .row { border-top-color: color-mix(in srgb, var(--done-fill) 30%, var(--card-border)); }
+  .card-foot { padding: 4px 16px 16px; display: flex; justify-content: center; }
   .done-btn {
     appearance: none; cursor: pointer; border-radius: 50px; min-height: 40px; padding: 10px 24px;
     font-size: 14px; font-weight: 400; letter-spacing: 0.01em;
