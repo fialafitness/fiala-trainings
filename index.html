@@ -271,27 +271,38 @@
     width: 40px; height: 44px; font-size: 20px; line-height: 1; border-radius: 12px; transition: opacity 300ms ease;
   }
   .row .x:hover { opacity: 0.7; }
-  .sugg {
+  .sugg, .alt-menu {
     position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 4;
     background: var(--surface); border: 1px solid var(--card-border); border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); overflow: hidden; padding: 4px 0; margin: 0; list-style: none;
   }
-  .sugg button {
+  .sugg button, .alt-menu button {
     appearance: none; border: 0; background: none; width: 100%; text-align: left; cursor: pointer;
     padding: 12px 16px; font-size: 16px; letter-spacing: -0.01em; color: var(--text-primary);
   }
-  .sugg button:hover, .sugg button:focus { background: var(--field); outline: none; }
+  .sugg button:hover, .sugg button:focus, .alt-menu button:hover, .alt-menu button:focus { background: var(--field); outline: none; }
   .vid { appearance: none; border: 0; background: none; padding: 0 2px; cursor: pointer; display: inline-block; margin: 8px 0 0; font-size: 13px; letter-spacing: 0; color: var(--brand); min-height: 32px; line-height: 32px; transition: opacity 300ms ease; }
   .vid:hover { opacity: 0.7; }
-  .alts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
-  .alts:empty { display: none; }
-  .alts .or { font-size: 13px; color: var(--text-tertiary); }
-  .alts .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--card-border); background: var(--field); border-radius: 50px; padding: 0 12px; min-height: 32px; font-size: 14px; color: var(--text-primary); cursor: pointer; }
-  .alts .chip .x { width: auto; height: auto; font-size: 16px; color: var(--text-tertiary); padding: 0 0 0 2px; }
-  .alts .add { appearance: none; border: 0; background: none; cursor: pointer; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); min-height: 32px; padding: 0 2px; }
-  .altform { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
-  .altform .exwrap { position: relative; }
-  .block.done:not(.open) .row .alts, .block.done:not(.open) .row .altform { display: none; }
+  .row .top .exwrap.has-alt .name { padding-right: 44px; }
+  .alt-btn {
+    position: absolute; right: 1px; top: 1px; width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0; margin: 0;
+    background: none; color: var(--text-tertiary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity 300ms ease;
+  }
+  .alt-btn[hidden] { display: none; }
+  .alt-btn.some { color: var(--brand); }
+  .alt-btn:hover { opacity: 0.7; }
+  .block.done:not(.open) .alt-btn { display: none; }
+  .block.done:not(.open) .row .top .exwrap.has-alt .name { padding-right: 16px; }
+  .alt-menu { left: -64px; right: -48px; }
+  body.client .alt-menu { right: 0; }
+  .alt-menu .cur { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 16px; letter-spacing: -0.01em; color: var(--text-secondary); }
+  .alt-menu .cur .ck { color: var(--brand); font-weight: 600; }
+  .alt-menu .item { display: flex; align-items: stretch; }
+  .alt-menu .item .pick { flex: 1; width: auto; }
+  .alt-menu .item .rm { width: 44px; flex: none; text-align: center; padding: 12px 0; color: var(--text-tertiary); font-size: 18px; line-height: 1; }
+  .alt-menu .add { color: var(--brand); }
+  .alt-menu .alt-input { width: calc(100% - 24px); margin: 8px 12px 6px; }
+  .alt-menu .alt-hits:empty { display: none; }
   .vidrow { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
   .vid-edit { appearance: none; border: 0; background: none; padding: 0 2px; cursor: pointer; margin-top: 8px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); min-height: 32px; line-height: 32px; }
   .vid-form { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
@@ -351,6 +362,7 @@
   .confirm { color: var(--text-secondary); font-size: 17px; }
 
   @media (max-width: 400px) {
+    .alt-menu { left: -60px; right: -44px; }
     .row .top { grid-template-columns: 52px 1fr 36px; }
     body.client .row .top { grid-template-columns: 52px 1fr; }
     .specs { gap: 4px; }
@@ -569,7 +581,7 @@
   const pendingDoneRows = new Map();     // trainingId -> Set(rowId), client mode only
   const pendingFinish = new Set();       // trainingId, client mode only
   const pendingSkip = new Set();         // trainingId, client mode only
-  const pendingSwap = new Map();         // trainingId -> Set(rowId), client mode only
+  const pendingSwap = new Map();         // trainingId -> Map(rowId -> name tapped), client mode only
   const customVideos = new Map();        // loose exercise name -> YouTube id (trainer's own links)
   const looseName = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
   const youtubeId = (url) => { const m = String(url || "").match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; };
@@ -581,6 +593,7 @@
   }
   const seenAt = new Map();              // "trainings/<id>" -> updated_at last received from the server
   const trainerTouched = new Map();      // trainingId -> Set(rowId) whose weights the trainer edited since the last sync
+  const trainerNamed = new Map();        // trainingId -> Set(rowId) whose name/alternatives the trainer edited since the last sync
   const TABLE = { clients: "ft_clients", trainings: "ft_trainings" };
 
   const cloudBackend = {
@@ -604,11 +617,14 @@
         if (!fresh.data) { seenAt.delete(k); continue; }
         seenAt.set(k, fresh.data.updated_at);
         if (kind === "trainings") {
-          const touched = trainerTouched.get(id) || new Set();
+          const touched = trainerTouched.get(id) || new Set(), named = trainerNamed.get(id) || new Set();
           const live = trainings.get(id);
           for (const sr of fresh.data.data.rows || []) {
-            if (touched.has(sr.id)) continue;
-            for (const target of [data, live]) { const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (lr) { lr.weights = sr.weights || []; lr.done = !!sr.done; } }
+            for (const target of [data, live]) {
+              const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (!lr) continue;
+              if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; }
+              if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
+            }
           }
         }
       }
@@ -634,12 +650,14 @@
         }
       }
       const swaps = pendingSwap.get(id);
-      if (swaps) {
-        const sids = [...swaps]; swaps.clear();
-        for (let i = 0; i < sids.length; i++) {
-          const r = (data.rows || []).find((x) => x.id === sids[i]); if (!r) continue;
-          const { error } = await sb.rpc("client_swap_exercise", { p_training: id, p_row: sids[i], p_name: r.name });
-          if (error) { for (const rest of sids.slice(i)) swaps.add(rest); throw error; }
+      if (swaps && swaps.size) {
+        const picks = [...swaps.entries()]; swaps.clear();
+        for (let i = 0; i < picks.length; i++) {
+          const { error } = await sb.rpc("client_swap_exercise", { p_training: id, p_row: picks[i][0], p_name: picks[i][1] });
+          if (error) {
+            if (error.code === "P0001") { scheduleSync(); continue; } // the server said no (alternative or row gone): its version comes back on the next sync
+            for (const rest of picks.slice(i)) swaps.set(rest[0], rest[1]); throw error;
+          }
         }
       }
       if (pendingSkip.has(id)) {
@@ -686,7 +704,7 @@
       }
       for (const r of c.data) seenAt.set(key("clients", r.id), r.updated_at);
       for (const r of t.data) seenAt.set(key("trainings", r.id), r.updated_at);
-      trainerTouched.clear();
+      trainerTouched.clear(); trainerNamed.clear();
     }
     const migrated = lsGet("fiala.trainings.migrated");
     if (!clientMode && !migrated && c.data.length === 0 && t.data.length === 0 && (clients.size || trainings.size)) {
@@ -695,7 +713,11 @@
     } else {
       const merge = (map, kind, rows) => {
         const seen = new Set();
-        for (const r of rows) { seen.add(r.id); if (!dirty.has(key(kind, r.id))) map.set(r.id, { ...r.data, id: r.id }); }
+        for (const r of rows) {
+          seen.add(r.id); if (dirty.has(key(kind, r.id))) continue;
+          if (kind === "trainings" && renderedTraining === r.id && $("rows").contains(document.activeElement)) continue; // being edited right now: next sync
+          map.set(r.id, { ...r.data, id: r.id });
+        }
         for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id))) map.delete(id);
       };
       merge(clients, "clients", c.data); merge(trainings, "trainings", t.data);
@@ -861,7 +883,7 @@
     const t = {
       id: uid(), clientId, date: date || today(), createdAt: now(),
       title: from ? from.title : "", completedAt: null, skippedAt: null,
-      rows: from ? from.rows.map((r) => ({ ...r, id: uid(), weights: [], done: false })) : [],
+      rows: from ? from.rows.map((r) => ({ ...r, id: uid(), weights: [], done: false, alts: [...(r.alts || [])] })) : [],
     };
     trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
     go({ name: "training", id: t.id });
@@ -898,6 +920,7 @@
 
   // ---------- render ----------
   let renderedTraining = null;
+  let closeOpenAlt = null;                 // closes whichever alternatives menu is open
   function render() {
     if (recovering) { showRecovery(); return; }
     if (sb && !signedIn) { showLogin($("loginMsg").textContent); return; }
@@ -1042,6 +1065,7 @@
     renderedTraining = t.id;
     if (!clientMode && normalizeLabels(t)) scheduleSave("trainings", t.id);
     t.rows.sort((a, b) => cmpLabel(a.label, b.label));
+    if (closeOpenAlt) closeOpenAlt();
     rowsEl.replaceChildren();
     const groups = [];
     t.rows.forEach((r, i) => {
@@ -1121,11 +1145,9 @@
     el.innerHTML = `
       <div class="top">
         <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
-        <div class="exwrap"><textarea class="name" rows="1" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><ul class="sugg" hidden></ul></div>
+        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><button class="alt-btn" type="button" hidden aria-label="Alternatives" title="Alternatives"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
         <button class="x" type="button" aria-label="Remove exercise">\u00d7</button>
       </div>
-      <div class="alts"></div>
-      <div class="altform" hidden><div class="exwrap"><input class="alt-input" placeholder="Alternative exercise" autocomplete="off" autocapitalize="sentences"><ul class="sugg alt-sugg" hidden></ul></div><div class="vid-actions"><button class="btn sm alt-save" type="button">Add</button><button class="btn quiet alt-cancel" type="button">Cancel</button></div></div>
       <div class="vidrow"><button class="vid" type="button" hidden>&#9654; Watch video</button><button class="vid-edit trainer-only" type="button">Add video</button></div>
       <div class="vid-form" hidden><input class="vid-url" type="url" placeholder="Paste a YouTube link" autocomplete="off" autocapitalize="none" inputmode="url"><div class="vid-actions"><button class="btn sm vid-save" type="button">Save</button><button class="btn quiet vid-remove" type="button" hidden>Remove</button><button class="btn quiet vid-cancel" type="button">Cancel</button></div></div>
       <div class="player" hidden></div>
@@ -1142,39 +1164,60 @@
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(46, n.scrollHeight) + "px"; };
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); if (VIDEOS[s]) return VIDEOS[s]; for (const k in VIDEOS) if (loose(k) === l) return VIDEOS[k]; return null; };
-    const altsEl = q(".alts"), altForm = q(".altform"), altInput = q(".alt-input"), altSugg = q(".alt-sugg");
-    const paintAlts = () => {
-      altsEl.replaceChildren();
-      const alts = (r.alts || []).filter(Boolean);
-      if (alts.length) { const or = document.createElement("span"); or.className = "or"; or.textContent = "or"; altsEl.appendChild(or); }
-      for (const a of alts) {
-        const chip = document.createElement("button"); chip.type = "button"; chip.className = "chip"; chip.textContent = "\u21c4 " + a;
-        chip.title = "Swap to " + a;
-        chip.addEventListener("click", () => swapTo(a));
-        if (!clientMode) { const x = document.createElement("span"); x.className = "x"; x.textContent = "\u00d7"; x.title = "Remove alternative"; x.addEventListener("click", (e) => { e.stopPropagation(); r.alts = (r.alts || []).filter((v) => v !== a); save(); paintAlts(); }); chip.appendChild(x); }
-        altsEl.appendChild(chip);
-      }
-      if (!clientMode && alts.length < 2) { const add = document.createElement("button"); add.type = "button"; add.className = "add"; add.textContent = alts.length ? "+ Alternative" : "+ Add alternative"; add.addEventListener("click", () => { altForm.hidden = false; altInput.value = ""; altInput.focus(); }); altsEl.appendChild(add); }
-    };
+    const markNamed = () => { if (clientMode) return; if (!trainerNamed.has(t.id)) trainerNamed.set(t.id, new Set()); trainerNamed.get(t.id).add(r.id); };
+    const exwrap = q(".top .exwrap"), altBtn = q(".alt-btn"), altMenu = q(".alt-menu");
+    let altMode = "list";
+    const altList = () => (r.alts || []).filter(Boolean);
+    const paintAltBtn = () => { const n = altList().length; const show = !clientMode || n > 0; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); };
+    const outside = (e) => { if (!exwrap.contains(e.target)) closeAlt(); };
+    const closeAlt = () => { altMenu.hidden = true; altMenu.replaceChildren(); altMode = "list"; document.removeEventListener("pointerdown", outside, true); if (closeOpenAlt === closeAlt) closeOpenAlt = null; };
     function swapTo(a) {
-      const old = r.name; r.name = a; r.alts = (r.alts || []).map((v) => (v === a ? old : v));
-      if (clientMode) { if (!pendingSwap.has(t.id)) pendingSwap.set(t.id, new Set()); pendingSwap.get(t.id).add(r.id); }
+      const old = r.name; r.name = a; r.alts = altList().map((v) => (v === a ? old : v)).filter(Boolean);
+      if (clientMode) { if (!pendingSwap.has(t.id)) pendingSwap.set(t.id, new Map()); pendingSwap.get(t.id).set(r.id, a); } else markNamed();
       save(); renderedTraining = null; render();
+      const n = $("rows").querySelector('.row[data-id="' + r.id + '"]'); const b = n && n.closest(".block");
+      if (b && b.classList.contains("done")) { b.classList.add("open"); const f = b.querySelector(".fold-btn"); if (f) f.textContent = "Hide weights"; } // a folded card stays open to show the swap
     }
-    const addAlt = (name) => { name = String(name || "").trim(); if (!name || name === r.name) return; r.alts = [...(r.alts || []).filter((v) => v !== name), name].slice(0, 2); save(); altForm.hidden = true; altSugg.hidden = true; paintAlts(); };
-    q(".alt-save").addEventListener("click", () => addAlt(altInput.value));
-    q(".alt-cancel").addEventListener("click", () => { altForm.hidden = true; altSugg.hidden = true; });
-    altInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addAlt(altInput.value); } });
-    altInput.addEventListener("input", () => {
-      const s = norm(altInput.value); altSugg.replaceChildren();
-      if (s.length < 2) { altSugg.hidden = true; return; }
-      const hits = []; for (const n of NAMES) { const ln = n.toLowerCase(); if (ln === s) continue; if (ln.startsWith(s)) hits.push(n); if (hits.length >= 5) break; }
-      if (hits.length < 5) for (const n of NAMES) { const ln = n.toLowerCase(); if (!hits.includes(n) && ln !== s && ln.includes(s)) { hits.push(n); if (hits.length >= 5) break; } }
-      altSugg.replaceChildren(...hits.map((n) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => addAlt(n)); li.appendChild(b); return li; }));
-      altSugg.hidden = hits.length === 0;
+    const addAlt = (name) => { name = String(name || "").trim(); name = ALIASES[name] || name; if (!name) return; if (name === r.name || altList().includes(name)) { paintAltList(); return; } r.alts = [...altList(), name].slice(0, 2); markNamed(); save(); paintAltBtn(); paintAltList(); };
+    const dropAltNamed = () => { if (altList().includes(r.name)) { r.alts = altList().filter((v) => v !== r.name); paintAltBtn(); } };
+    const removeAlt = (a) => { r.alts = altList().filter((v) => v !== a); markNamed(); save(); paintAltBtn(); paintAltList(); };
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const menuItem = (text, cls, onPick, onRemove) => {
+      const d = mk("div", "item"); const b = mk("button", "pick" + (cls ? " " + cls : ""), text); b.type = "button";
+      b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", onPick); d.appendChild(b);
+      if (onRemove) { const x = mk("button", "rm", "\u00d7"); x.type = "button"; x.setAttribute("aria-label", "Remove alternative"); x.addEventListener("mousedown", (ev) => ev.preventDefault()); x.addEventListener("click", onRemove); d.appendChild(x); }
+      return d;
+    };
+    function paintAltList() {
+      altMode = "list"; altMenu.replaceChildren();
+      const alts = altList().filter((a) => a !== r.name);
+      if (String(r.name || "").trim()) { const c = mk("div", "cur"); c.appendChild(mk("span", "ck", "\u2713")); c.appendChild(mk("span", null, r.name)); altMenu.appendChild(c); }
+      for (const a of alts) altMenu.appendChild(menuItem(a, "", () => { closeAlt(); swapTo(a); }, clientMode ? null : () => removeAlt(a)));
+      if (!clientMode && alts.length < 2) altMenu.appendChild(menuItem("+ Add alternative", "add", paintAltAdd));
+      altMenu.hidden = false;
+    }
+    function paintAltAdd() {
+      altMode = "add"; altMenu.replaceChildren();
+      const inp = mk("input", "alt-input"); inp.maxLength = 120; inp.placeholder = "Alternative exercise"; inp.autocomplete = "off"; inp.setAttribute("autocapitalize", "sentences"); inp.setAttribute("enterkeyhint", "done");
+      const hits = mk("div", "alt-hits"); altMenu.append(inp, hits);
+      const paintHits = () => {
+        const s = norm(inp.value); hits.replaceChildren(); if (s.length < 2) return;
+        const taken = new Set([norm(r.name), ...altList().map(norm)]); const starts = [], contains = [];
+        for (const n of NAMES) { const ln = n.toLowerCase(); if (taken.has(ln)) continue; if (ln.startsWith(s)) starts.push(n); else if (ln.includes(s)) contains.push(n); if (starts.length >= 6) break; }
+        for (const n of [...starts, ...contains].slice(0, 6)) hits.appendChild(menuItem(n, "", () => addAlt(n)));
+      };
+      inp.addEventListener("input", paintHits);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); if (inp.value.trim()) addAlt(inp.value); else paintAltList(); } else if (e.key === "Escape") paintAltList(); });
+      inp.addEventListener("blur", () => setTimeout(() => { if (altMode === "add" && !altMenu.hidden && !inp.value.trim()) paintAltList(); }, 200));
+      inp.focus();
+    }
+    altBtn.addEventListener("mousedown", (ev) => ev.preventDefault());
+    altBtn.addEventListener("click", () => {
+      if (!altMenu.hidden) { closeAlt(); return; }
+      q(".sugg").hidden = true; q(".numpick").hidden = true;
+      paintAltList(); document.addEventListener("pointerdown", outside, true); closeOpenAlt = closeAlt;
     });
-    altInput.addEventListener("blur", () => setTimeout(() => { altSugg.hidden = true; }, 120));
-    paintAlts();
+    paintAltBtn();
     let videoId = null;
     const paintVideo = () => {
       const id = videoFor(r.name); const b = q(".vid"), pl = q(".player");
@@ -1210,6 +1253,7 @@
     });
     paintVideo();
     if (ALIASES[r.name]) { r.name = ALIASES[r.name]; if (!clientMode) scheduleSave("trainings", t.id); }
+    if (!clientMode && Array.isArray(r.alts) && r.alts.some((a) => ALIASES[a])) { r.alts = r.alts.map((a) => ALIASES[a] || a); scheduleSave("trainings", t.id); }
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
     requestAnimationFrame(growName);
     q(".name").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
@@ -1267,12 +1311,13 @@
       numpick.hidden = false;
     }
     if (!clientMode) {
-      q(".label").addEventListener("focus", showNumbers);
-      q(".label").addEventListener("blur", () => { numpick.hidden = true; renderedTraining = null; render(); });
+      let labelAtFocus = "";
+      q(".label").addEventListener("focus", (e) => { labelAtFocus = e.target.value; showNumbers(); });
+      q(".label").addEventListener("blur", () => { numpick.hidden = true; if (q(".label").value !== labelAtFocus) { renderedTraining = null; render(); } });
       q(".sets").addEventListener("input", (e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); e.target.value = v; r.sets = v === "" ? 0 : clamp(parseInt(v, 10), 0, 20); renderWeights(); save(); });
-      q(".name").addEventListener("input", (e) => { r.name = e.target.value.replace(/\n/g, " "); growName(); save(); suggest(e.target.value); renderWeights(); paintVideo(); });
+      q(".name").addEventListener("input", (e) => { closeAlt(); r.name = e.target.value.replace(/\n/g, " "); markNamed(); dropAltNamed(); growName(); save(); suggest(e.target.value); renderWeights(); paintVideo(); });
       q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
-      q(".name").addEventListener("focus", (e) => suggest(e.target.value));
+      q(".name").addEventListener("focus", (e) => { closeAlt(); suggest(e.target.value); });
       q(".x").addEventListener("click", () => { t.rows = t.rows.filter((x) => x.id !== r.id); save(); renderedTraining = null; render(); });
     }
 
@@ -1290,7 +1335,7 @@
       const starts = [], contains = [];
       for (const n of NAMES) { const ln = n.toLowerCase(); if (ln === s) continue; if (ln.startsWith(s)) starts.push(n); else if (ln.includes(s)) contains.push(n); if (starts.length >= 6) break; }
       const hits = [...starts, ...contains].slice(0, 6);
-      ul.replaceChildren(...hits.map((n) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { r.name = n; q(".name").value = n; growName(); ul.hidden = true; save(); renderWeights(); paintVideo(); }); li.appendChild(b); return li; }));
+      ul.replaceChildren(...hits.map((n) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { r.name = n; markNamed(); dropAltNamed(); q(".name").value = n; growName(); ul.hidden = true; save(); renderWeights(); paintVideo(); }); li.appendChild(b); return li; }));
       ul.hidden = hits.length === 0;
     }
 
