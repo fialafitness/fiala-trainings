@@ -39,9 +39,10 @@
     --group-1: #5e8ca7;                 /* Steel blue */
     --group-2: #a2845e;                 /* Sand — Apple system brown, light */
     --done: #5a742c;                    /* Olive deep — success text on light */
-    --done-fill: #a9b96b;               /* Olive — fills and badges on light */
+    --done-fill: #cde261;               /* Lime — fills on light, same family as the dark glow */
+    --done-line: #9bbf2e;               /* Lime deep — outlines on light */
     --achieve: #c5a253;                 /* Champagne — PR / milestone, both modes */
-    --done-ink: #ffffff;
+    --done-ink: #1d1d1f;
     --danger: #a63a46;                  /* Crimson deep — red text on light */
     --btn-bg: #1d1d1f;                  /* Secondary tier: dark button on light */
     --btn-fg: #ffffff;
@@ -69,6 +70,7 @@
       --group-2: #ac8e68;               /* Sand — Apple system brown, dark */
       --done: #e9f5a0;                  /* Olive glow */
       --done-fill: #e9f5a0;
+      --done-line: #e9f5a0;
       --done-ink: #1d1d1f;
       --danger: #c84653;                /* Crimson */
       --btn-bg: #ffffff;                /* Primary tier: white button on dark */
@@ -97,6 +99,7 @@
     --group-2: #ac8e68;               /* Sand — Apple system brown, dark */
     --done: #e9f5a0;
     --done-fill: #e9f5a0;
+    --done-line: #e9f5a0;
     --done-ink: #1d1d1f;
     --danger: #c84653;
     --btn-bg: #ffffff;
@@ -235,7 +238,7 @@
   .row .top { display: grid; grid-template-columns: 56px 1fr 40px; gap: 8px; align-items: stretch; }
   .row .top .x { align-self: center; }
   body.client .row .top { grid-template-columns: 56px 1fr; }
-  .block.done { --ss: var(--done-fill); }
+  .block.done { --ss: var(--done-line); }
   .block.done:not(.open) .group { cursor: pointer; }
   .block.done:not(.open) .row { padding: 6px 16px; }
   .block.done:not(.open) .row .specs, .block.done:not(.open) .row .weights, .block.done:not(.open) .row .note, .block.done:not(.open) .row .x { display: none; }
@@ -258,7 +261,7 @@
     transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, opacity 300ms ease;
   }
   .done-btn:hover { opacity: 0.85; }
-  .block.done .done-btn { background: var(--done-fill); border-color: var(--done-fill); color: var(--done-ink); }
+  .block.done .done-btn { background: var(--done-fill); border-color: var(--done-line); color: var(--done-ink); }
   .block.done .group-cap b { color: var(--done); }
   .row .top input.label { text-align: center; font-weight: 500; padding: 0 8px; height: 100%; min-height: 46px; }
   .row .top .exwrap { position: relative; }
