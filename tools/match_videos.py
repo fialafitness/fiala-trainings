@@ -10,7 +10,9 @@ FIX = [(r"dumbell", "dumbbell"), (r"pectorial", "pectoral"), (r"\bbicep\b", "bic
        (r"\bflyes\b|\bflys\b|\bfly\b", "flies"), (r"\bpush ?ups?\b", "push up"), (r"\bpull ?ups?\b", "pull up"),
        (r"\bchin ?ups?\b", "chin up"), (r"\bsit ?ups?\b", "sit up"), (r"\bstep ?ups?\b", "step up"), (r"\bget ?ups?\b", "get up"),
        (r"\bpush ?downs?\b", "pushdown"), (r"\bpull ?downs?\b", "pulldown"), (r"\bpull ?overs?\b", "pullover"),
-       (r"\bbenchpress\b", "bench press"), (r"\bbody weight\b", "bodyweight"), (r"\bone arm\b", "single arm"), (r"\bone leg\b", "single leg")]
+       (r"\bbenchpress\b", "bench press"), (r"\bbody weight\b", "bodyweight"), (r"\bone arm\b", "single arm"), (r"\bone leg\b", "single leg"),
+       (r"\bdead lift", "deadlift"), (r"\bcurtsey\b", "curtsy"), (r"stiff[- ]legged", "stiff leg"), (r"jack ?kni(fe|ves)", "jackknife"),
+       (r"\bpress ?downs?\b", "pressdown"), (r"\bbench press\b", "benchpress"), (r"\bface ?pull", "facepull"), (r"\bfrench press\b", "frenchpress")]
 def key(name):
     s = name.lower()
     for pat, rep in FIX: s = re.sub(pat, rep, s)
@@ -21,7 +23,8 @@ def key(name):
         for p in t.split():
             p = ABBREV.get(p, p)
             if p in DROP: continue
-            if len(p) >= 3 and not p.endswith(("ss", "is", "us")): p = re.sub(r"(?<=[a-z])s$", "", p)
+            if re.search(r"(ch|sh|x)es$", p): p = p[:-2]
+            elif len(p) >= 3 and not p.endswith(("ss", "is", "us")): p = re.sub(r"(?<=[a-z])s$", "", p)
             out.append(p)
     return out
 k = lambda n: " ".join(sorted(key(n)))

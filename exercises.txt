@@ -12,7 +12,7 @@ Advanced active hang
 Air bike
 Alternating barbell split jump
 Alternating bodyweight split jump
-Alternating dumbbell bench-press
+Alternating dumbbell bench press
 Alternating dumbbell bent-over rows
 Alternating dumbbell curl
 Alternating dumbbell overhead press
@@ -58,11 +58,11 @@ Ball squat to press
 Band chest pull + hold in contraction
 Band curls
 Band deadlift
-Band face-pull
-Band face-pulloverhead
+Band face pull
+Band face pull overhead
 Band glute ham raises
 Band leg press (wide stance)
-Band press-down
+Band pressdown
 Band pull apart
 Band pullover + hold at bottom
 Band Smith machine press
@@ -79,7 +79,7 @@ Band-resisted push-up
 Band-resisted ring push-up
 Band-resisted squat
 Band/cable pushdown, elbows away from body
-Banded curtsey lunge into abduction
+Banded curtsy lunge into abduction
 Banded eccentric pause squats
 Banded frog thrusts
 Banded glute walks
@@ -87,7 +87,7 @@ Banded hip extension
 Banded hip thrust to abduction
 Banded kickbacks
 Banded no money
-Banded pull-down
+Banded pulldown
 Banded reverse lunge to kick back
 Banded Romanian deadlift
 Banded rotator cuff internal/external rotation
@@ -101,9 +101,9 @@ Barbell ab rollout
 Barbell bent-over rows
 Barbell Bulgarian split squat
 Barbell chest-supported T-bar row
-Barbell close-grip 2-pause bench-press
-Barbell close-grip bench-press (shoulder-width)
-Barbell close-grip bench-press – partial reps
+Barbell close-grip 2-pause bench press
+Barbell close-grip bench press (shoulder width)
+Barbell close-grip bench press – partial reps
 Barbell close-grip biceps curl
 Barbell concentration biceps curl
 Barbell curl
@@ -112,7 +112,7 @@ Barbell deadlifts from deficit
 Barbell decline bench triceps extension
 Barbell deficit reverse lunge
 Barbell flat bench triceps extension
-Barbell french-press
+Barbell French press
 Barbell front raise
 Barbell front squat iso
 Barbell front squat to box
@@ -125,13 +125,11 @@ Barbell JM press
 Barbell jump squat
 Barbell low decline frenchpress
 Barbell lunges
-Barbell one-arm linear jammer
-Barbell one-arm row
 Barbell overhead press
 Barbell overhead shrug
 Barbell overhead triceps extension
-Barbell pause bench-press
-Barbell pause Larsen bench-press
+Barbell pause bench press
+Barbell pause Larsen bench press
 Barbell pause squats
 Barbell plate ab twist
 Barbell power shrugs
@@ -149,20 +147,21 @@ Barbell Romanian deadlift – no touch/shora
 Barbell seal rows
 Barbell seated shoulder press
 Barbell shrugs (isometric)
+Barbell single-arm linear jammer
+Barbell single-arm row
 Barbell skull crushers
 Barbell slideboard reverse lunge
 Barbell snatch shrugs
 Barbell split squat
-Barbell Spoto bench-press
+Barbell Spoto bench press
 Barbell standing lunge
 Barbell standing overhead press
 Barbell standing shoulder press
 Barbell step-up
 Barbell stiff leg deadlift
-Barbell stiff-legged deadlift
 Barbell sumo deadlift
-Barbell tempo bench-press
-Barbell touch n go bench-press
+Barbell tempo bench press
+Barbell touch n go bench press
 Barbell wide-grip biceps curl
 Barbell Z press
 Basic position for pelvic stretch
@@ -175,24 +174,23 @@ Bear plank hip abduction
 Bear walk
 Behind-the-neck cambered bar press
 Behind-the-neck press
-Behind-the-neck push-press
+Behind-the-neck push press
 Belt squat
 Bench hops
-Bench jump-overs with hand support
+Bench jump overs with hand support
 Bench lateral stretch
+Bench press
+Bench press from pins
+Bench press narrow
+Bench press with chains
 Bench push-ups
 Bench stretch
-Bench-press
-Bench-press from pins
-Bench-press narrow
-Bench-press with chains
 Bent knee air crunch
-Bent knee jack knife
+Bent knee hamstring dynamic
+Bent knee jackknife
 Bent knee single-leg lifts
 Bent knee sit-ups
 Bent knee V-ups with arms
-Bent-knee hamstring dynamic
-Bent-knee jackknives
 Bent-over alternating row
 Bent-over dumbbell/kettlebell row (unilateral)
 Bent-over lateral raises (head supported on bench)
@@ -209,14 +207,13 @@ Bent-over rows underhand grip
 Bent-over tempo rows
 Bent-over underhand cable rows to waist
 Biceps curls (band/dumbbell)
-Bicycle crunch
 Bicycle crunches
 Bird dog
 Bodybuilding squats
 Bodyweight ab crunch
 Bodyweight back extension
 Bodyweight bench dip
-Bodyweight Bulgarian split-squat
+Bodyweight Bulgarian split squat
 Bodyweight cross-over step-up
 Bodyweight donkey calf raises
 Bodyweight get-up
@@ -276,26 +273,23 @@ Cable decline bench triceps extension
 Cable external rotation at 30 degrees abduction
 Cable external rotation at 90 degrees abduction
 Cable external rotation on knee
-Cable face-pull
-Cable face-pull with rotation, to forehead
+Cable face pull
+Cable face pull with rotation, to forehead
 Cable flat bench flies
 Cable flat bench triceps extension
 Cable front raises
 Cable hammer curl
 Cable incline bench biceps curl
 Cable incline bench flies
+Cable incline bench press
 Cable incline bench triceps extension
-Cable incline bench-press
 Cable kickback
-Cable lat pull-down
+Cable lat pulldown
 Cable lat pullover
 Cable lateral kicks
 Cable lateral raises
 Cable machine shoulder press (straddling, reversed)
-Cable narrow-grip lat pull-down
-Cable one-arm lat pull-down
-Cable one-arm overhead triceps extension
-Cable one-arm row (seated)
+Cable narrow-grip lat pulldown
 Cable one-legged kickback
 Cable overhead curl
 Cable overhead triceps extension
@@ -305,22 +299,24 @@ Cable pectoral flies – seated
 Cable pectoral press – seated
 Cable pectoral press – standing
 Cable pull through
-Cable pull-down
+Cable pulldown
 Cable rear delt flies
-Cable reverse-grip lat pull-down
-Cable reverse-grip triceps push-down
+Cable reverse-grip lat pulldown
+Cable reverse-grip triceps pushdown
 Cable rope biceps curl
 Cable rope seated high row
-Cable rope triceps push-down
+Cable rope triceps pushdown
 Cable sawing, 180 degrees
 Cable shoulder press (seated)
+Cable single-arm lat pulldown
+Cable single-arm overhead triceps extension
 Cable squats
 Cable standing shoulder press
-Cable straight-arm pull-down
-Cable straight-bar triceps push-down
+Cable straight bar triceps pushdown
+Cable straight-arm pulldown
 Cable upright row
-Cable V-bar triceps push-down
-Cable wide-grip lat pull-down
+Cable V-bar triceps pushdown
+Cable wide-grip lat pulldown
 Calf raises on leg press/standing
 Calf stretch
 Calming breathing (cross-legged sit)
@@ -336,15 +332,15 @@ Chest medicine ball throws
 Chest opener knee raise
 Chest press + hollow hold
 Chest press machine
+Chest press stroj/push-ups
 Chest press with dead bug legs
 Chest supported dumbbell row
 Chest supported dumbbell rows – neutral k pasu
 Chest supported dumbbell rows – underhand grip, k pasu
 Chest supported machine row
 Chest supported rows – stroj
-Chest-press stroj/push-ups
+Chest to wall handstand with walk-up
 Chest-supported dumbbell rows, overhand grip, elbows out
-Chest-to-wall handstand with walk-up
 CHI breathing (kneeling/seated)
 Chin-up
 Chops with ball
@@ -354,16 +350,16 @@ Clean
 Clean deadlift
 Clean power shrugs
 Clean pull (dynamic extension)
-Close-grip band bench-press
+Close-grip band bench press
 Close-grip barbell preacher curls
 Close-grip bench dips (behind body)
-Close-grip bench-press from dead start
+Close-grip bench press from dead start
 Close-grip chin-up
 Close-grip chin-ups with band
 Close-grip chin-ups – mixed-grip
-Close-grip decline bench-press (fat bar) with band/chains
+Close-grip decline bench press (fat bar) with band/chains
 Close-grip dips
-Close-grip incline bench-press
+Close-grip incline bench press
 Close-grip neutral pull-up
 Close-grip press from pins
 Close-grip pull-up
@@ -394,24 +390,23 @@ Crunches over bench/V-crunches
 Cuban rotation + press
 Cuban rotations with stick/barbell
 Curl to press to triceps extension
-Curtsey lunge
-Curtsey lunge with pause
 Curtsy lunge
+Curtsy lunge with pause
 Cyclist squat
 Dead bug
 Deadlift
 Deadlift to clean to squat
 Deadlift with chains
 Deadmill sprint
-Decline bench-press
-Decline close-grip bench-press with band
-Decline EZ bar bench-press, medium grip
-Decline EZ bar french-press, medium grip, behind head
-Decline EZ bar french-press, neutral-grip, to forehead
+Decline bench press
+Decline close-grip bench press with band
+Decline EZ bar bench press, medium grip
+Decline EZ bar French press, medium grip, behind head
+Decline EZ bar French press, neutral-grip, to forehead
 Decline neutral-grip dumbbell triceps extensions to shoulders
 Decline pronated dumbbell triceps extensions behind head
 Decline push-up
-Deep dips with press-out to support
+Deep dips with press out to support
 Deep neck flexor activation and suboccipital stretch
 Deep squat to hamstring stretch
 Deep squat wall stretch
@@ -427,7 +422,7 @@ Dips on rings
 Dolphin push-ups
 Double bounce high knees
 Double dumbbell swings
-Double kettlebell clean and push-press
+Double kettlebell clean and push press
 Double kettlebell standing overhead press
 Double under
 Downward dog to world's greatest stretch
@@ -441,7 +436,7 @@ Dumbbell 75 degree incline press, semi-neutral
 Dumbbell ab twist
 Dumbbell alternate biceps curl
 Dumbbell Arnold press
-Dumbbell bench-press
+Dumbbell bench press
 Dumbbell bent-over lateral raises
 Dumbbell bent-over rows
 Dumbbell bent-over rows with band
@@ -459,12 +454,12 @@ Dumbbell farmer walk
 Dumbbell fitball press
 Dumbbell flat chest flies
 Dumbbell flat chest press
-Dumbbell floor french-press
-Dumbbell floor-press
+Dumbbell floor French press
+Dumbbell floor press
 Dumbbell forward lunges
-Dumbbell french-press
-Dumbbell french-press (held proximally)
-Dumbbell french-press to shoulders with rotation
+Dumbbell French press
+Dumbbell French press (held proximally)
+Dumbbell French press to shoulders with rotation
 Dumbbell frog pump
 Dumbbell front foot elevated squat
 Dumbbell front raises
@@ -494,7 +489,7 @@ Dumbbell power flies
 Dumbbell power shrugs
 Dumbbell pullover across bench
 Dumbbell pullovers
-Dumbbell reverse curls, hands shoulder-width
+Dumbbell reverse curls, hands shoulder width
 Dumbbell reverse flies
 Dumbbell reverse lunges
 Dumbbell Romanian deadlift
@@ -538,12 +533,12 @@ Elite active hang
 End range cable lateral raise
 Explosive push-up
 External hip rotation to lateral lunge
-Extra-close-grip bench-press with band/chains
+Extra-close-grip bench press with band/chains
 EZ bar biceps curls (top range)
 EZ bar biceps curls – overgrip
 EZ bar biceps curls, back against rack
 EZ bar biceps curls, elbows in front of body, back against rack
-EZ bar french-press behind head
+EZ bar French press behind head
 EZ bar preacher curls (top range of motion)
 EZ bar preacher curls – close-grip
 EZ bar preacher curls – medium grip
@@ -552,16 +547,16 @@ EZ bar reverse-grip curls – close-grip
 EZ bar reverse-grip curls – medium grip
 EZ curls
 EZ curls neutral-grip – drop set
-EZ french-press
+EZ French press
 EZ neutral-grip skull crushers
 EZ Scott curls
 EZ skull crushers
 EZ Spiderman curls
-Face-pulls
+Face pulls
 False grip hang on rings
 False grip pull-ups
 Farmers carry
-Fat bar bench-press
+Fat bar bench press
 Feet elevated sit-up
 Feet-elevated band-resisted push-up
 Feet-elevated push-up
@@ -575,13 +570,13 @@ Fire hydrants
 Fire hydrants to kick back
 Floor chest press hollow hold
 Floor dumbbell hip thrust
+Floor press
 Floor slides
 Floor triceps dips
-Floor-press
-FM flow I (base position – mountain climber – kick-through)
+FM flow I (base position – mountain climber – kick through)
 Foam roll
 Forearm plank
-Forearm wall-slide at 135 degrees
+Forearm wall slide at 135 degrees
 Forward lunge
 Forward lunge with biceps curl
 Forward lunge with reach
@@ -619,8 +614,8 @@ Glute focused hyper extension
 Glute focused Romanian deadlift
 Glute focused split squats
 Glute ham raises
-Glute-ham raises (machine or assisted on bench)
-Glute-iso step-ups
+Glute ham raises (machine or assisted on bench)
+Glute iso step-ups
 Goblet 1 1/4 squat
 Goblet lateral lunge
 Goblet lateral lunge walk
@@ -639,11 +634,11 @@ Goblet sumo squats
 Gorilla squat
 Ground to overhead press
 Hack squat
-Hacken-squat
+Hacken squat
 Half burpees
 Half dead bugs
 Half get-up
-Half kneeling face-pulls
+Half kneeling face pulls
 Half kneeling lift and chop
 Half kneeling overhead press
 Half kneeling palloffs
@@ -681,8 +676,8 @@ Hang clean
 Hanging anti-lateral flexion
 Hanging around the world leg raise
 Hanging band ATG squat
-Hanging band military-press
-Hanging bent-knee raises to 90 degrees
+Hanging band military press
+Hanging bent knee raises to 90 degrees
 Hanging knee raises
 Hanging knee raises on bar
 Hanging knee raises on rings
@@ -692,7 +687,7 @@ Hanging leg raises with dumbbell, to chest
 Hanging leg rotations
 Hanging twisting leg raise
 Hanging unilateral march
-Head-down push-ups with feet on two boxes
+Head down push-ups with feet on two boxes
 Headstand against wall
 Heel elevated barbell squat
 Heel elevated front squat
@@ -708,13 +703,13 @@ High five push-ups
 High heel kicks
 High heels ATG squat
 High heels front squat
-High incline bench-press
-High incline bench-press narrow
-High incline bench-press – shoulder width
+High incline bench press
+High incline bench press narrow
+High incline bench press – shoulder width
 High incline cable flies, neutral-grip
-High incline close-grip bench-press
+High incline close-grip bench press
 High incline comerford curls (wrists tilted down)
-High incline dumbbell bench-press
+High incline dumbbell bench press
 High incline dumbbell curls
 High incline dumbbell power flies
 High incline gilotina press
@@ -726,21 +721,21 @@ High plank to downward dog
 High pull
 High snatch pull
 Hip abductions
+Hip belt squat
 Hip CARS
 Hip dips
 Hip extension machine
 Hip flexor rockers
 Hip flexor stretch
 Hip rotation
-Hip-belt squat
 Hyperextenze
 In and out jumps
 Inch worm
 Inchworm to push-up
-Incline bench-press
+Incline bench press
 Incline close-grip push-ups
-Incline dumbbell bench-press
-Incline dumbbell bench-press (low incline)
+Incline dumbbell bench press
+Incline dumbbell bench press (low incline)
 Incline dumbbell biceps curls
 Incline neutral-grip dumbbell press, elbows tucked – partial reps
 Incline plyo push-ups
@@ -829,16 +824,16 @@ Leg kick-up to the bar
 Leg lift and touch through
 Leg lifts
 Leg lowers
+Leg press
+Leg press IZO/dynamic
 Leg press partial reps
 Leg press, narrow stance
-Leg press, shoulder-width stance – feet parallel
+Leg press, shoulder width stance – feet parallel
 Leg press, wide stance – feet turned out
 Leg raises
-Leg-press
-Leg-press IZO/dynamic
 Log flip
 Long lever glute bridge
-Long-lever plank
+Long lever plank
 Low bar ATG squat
 Low bar PWL squat
 Low box squat
@@ -846,23 +841,23 @@ Low cable biceps curls
 Low cable biceps curls (straight bar attachment)
 Low cable hammer curls
 Low cable rotations in front of body
-Low decline bench-press
-Low decline dumbbell french-press to shoulders with rotation
-Low incline bench-press
-Low incline bench-press narrow
-Low incline close-grip bench-press
-Low incline dumbbell bench-press
+Low decline bench press
+Low decline dumbbell French press to shoulders with rotation
+Low incline bench press
+Low incline bench press narrow
+Low incline close-grip bench press
+Low incline dumbbell bench press
 Low incline dumbbell pectoral flies
 Low incline dumbbell power flies
 Low incline dumbbell press – with band
 Low plank hip twists
 Low pulley lateral raises
 Lying alternating triceps extensions
-Lying band french-press/overhead triceps extension with rope
-Lying barbell french-press behind head
+Lying band French press/overhead triceps extension with rope
+Lying barbell French press behind head
 Lying close-grip dumbbell press
-Lying decline french-press to forehead, medium grip
-Lying dumbbell french-press behind head
+Lying decline French press to forehead, medium grip
+Lying dumbbell French press behind head
 Lying dumbbell triceps extensions (to shoulders)
 Lying EZ bar presses, close-grip
 Lying EZ bar presses, medium grip
@@ -886,14 +881,14 @@ Machine back cable row
 Machine biceps curl
 Machine butterfly
 Machine decline chest press
-Machine glute-ham raise
+Machine glute ham raise
 Machine hack squat
 Machine hip abduction
 Machine hip adduction
 Machine horizontal row
 Machine incline chest press
 Machine iso row
-Machine lat pull-down
+Machine lat pulldown
 Machine lateral raise
 Machine leg curl (single)
 Machine leg press
@@ -917,24 +912,24 @@ Machine vertical row
 Marching bridge
 Marching glute bridge with hold
 Meadows row
-Medball push-press
+Medball push press
 Medicine ball slams
 Medicine ball wall slam
 Medium deficit deadlift
-Medium incline bench-press
+Medium incline bench press
 Medium incline dumbbell hammer curls
 Medium incline neutral dumbbell curls
 Mid grip deadlift
 Military crunch
-Military-press
-Military-press narrow
-Military-press with pause on the way down
+Military press
+Military press narrow
+Military press with pause on the way down
 Modified 21's
-Modified full-stretch rows – high cable
-Modified incline dumbbell bench-press
+Modified full stretch rows – high cable
+Modified incline dumbbell bench press
 Momentarily taking feet off wall in aligned handstand
 Momentary L-sit
-Momentary one-arm handstand facing wall
+Momentary single-arm handstand facing wall
 Monkey walk (sideways)
 Morning breathing exercise (wim hof method)
 Mountain climber
@@ -950,9 +945,9 @@ Negative pistol squat
 Negative pull-ups
 Neutral pull-up
 Neutral to supinated seated curls
-Neutral-grip bench-press
+Neutral-grip bench press
 Neutral-grip dumbbell curls (arms away from body)
-Neutral-grip dumbbell french-press to shoulders
+Neutral-grip dumbbell French press to shoulders
 Neutral-grip EZ bar biceps curls
 Neutral-grip pull-ups
 Nordic curls
@@ -971,14 +966,10 @@ Olympic barbell biceps curls
 Olympic barbell shrugs
 Olympic barbell squat
 One foot elevated front squat
-One-arm dumbbell curl on preacher bench
-One-arm dumbbell hammer curls on preacher bench
-One-arm dumbbell overhead press (semi-lunge)
-One-arm kettlebell/dumbbell rows with rotation
 Outward dumbbell biceps curls
 Overhand dumbbell biceps curls
 Overhand EZ bar curls (one foot forward)
-Overhand EZ bar curls, shoulder-width grip
+Overhand EZ bar curls, shoulder width grip
 Overhand lat pulldown
 Overhand triceps pushdowns, elbows behind body
 Overhand triceps pushdowns, elbows in front of body
@@ -995,7 +986,7 @@ Partner squat
 Passive hang
 Passive hang on rings
 Pata k ruce ve vzporu
-Paused bench-press
+Paused bench press
 Pec minor broomstick mobilization
 Pec mobilization with lacrosse ball
 Pectoral flies
@@ -1021,12 +1012,12 @@ Plank arm abduction
 Plank arm extensions
 Plank arm march
 Plank circles
-Plank elbow-to-knee touches
+Plank elbow to knee touches
 Plank hold walk-out
 Plank hops in-and-out
 Plank jack with shoulder taps
 Plank jacks
-Plank kick-throughs
+Plank kick throughs
 Plank knee tucks to chest (feet in TRX)
 Plank knees to elbow
 Plank opposite toe touch
@@ -1047,8 +1038,8 @@ Plate bent-over rise
 Plate curls
 Plate front raise
 Plate hammer curl
+Plate loaded machine shoulder press (seated/kneeling)
 Plate squat
-Plate-loaded machine shoulder press (seated/kneeling)
 Platform push-ups
 Platform sumo squat
 Platz squat
@@ -1083,11 +1074,11 @@ Pull-ups
 Pull-ups on bar
 Pull-ups to chin from active hang (no dead hang)
 Pull-ups to chin from passive hang (to dead hang)
-Pull-ups, mid-range pulses
+Pull-ups, mid range pulses
 Pull-ups, neutral/overhand grip
 Pulse jump squat
 Pulse squats
-Push-press
+Push press
 Push-up donkey kick
 Push-up to alternating knee tap
 Push-up to knee taps
@@ -1123,7 +1114,6 @@ Renegade row
 Renegade row with push-up and feet elevated
 Retrakce a deprese lopatek
 Retrakce lopatek
-Reverse crunch
 Reverse crunches
 Reverse lunge into knee up
 Reverse lunge jump
@@ -1148,14 +1138,14 @@ Ring push-up
 Ring row
 Ring row with feet elevated
 Rings pull-ups (overhand grip)
-Rocked-back quadruped extension-rotation
-Roll-out to combat stance
-Roll-out to V-sit
+Rocked back quadruped extension-rotation
+Roll out to combat stance
+Roll out to V-sit
 Romanian deadlift (below knees)
 Romanian deadlift to biceps curl
 Romanian deadlift with dowel
 Rope cable/band pushdown, elbows in front of body
-Rope face-pulls on high cable
+Rope face pulls on high cable
 Rope lat pullover on high cable
 Rotating bear plank
 Row boats
@@ -1176,9 +1166,9 @@ Scapular push-up
 Scapular push-up on elbows
 Scapular retraction and depression drill for bent-over rows with stick/barbell
 Scapular retraction and depression drill for deadlift with stick/barbell
-Scapular retraction and depression drill, standing bench-press position with stick/barbell
+Scapular retraction and depression drill, standing bench press position with stick/barbell
 Scapular retraction and depression with band, straight arms
-Scapular wall-slide
+Scapular wall slide
 Scullcrusher
 Seal jacks
 Seated alternating dumbbell press
@@ -1208,12 +1198,12 @@ Seated dumbbell shrugs
 Seated dumbbell supinated lateral raise iso hold – V extenzi
 Seated dumbbell W overhead press
 Seated dumbbell Zottman curls
-Seated EZ bar french-press behind head
-Seated face-pull
-Seated face-pull to forehead
-Seated face-pull to shoulders
+Seated EZ bar French press behind head
+Seated face pull
+Seated face pull to forehead
+Seated face pull to shoulders
 Seated football press (lehce incline)
-Seated french-press, close-grip
+Seated French press, close-grip
 Seated good mornings
 Seated hammer curls
 Seated hamstring curl
@@ -1226,7 +1216,7 @@ Seated low cable row
 Seated low cable rows (V-handle, Arnold variation)
 Seated low cable rows, overhand grip, to chest
 Seated low cable rows, underhand grip
-Seated military-press
+Seated military press
 Seated overhead press
 Seated overhead press from pins (low)
 Seated overhead triceps extension
@@ -1249,8 +1239,8 @@ Shoulder jacks
 Shoulder mobility and chest opener
 Shoulder push-ups, at top into straight-arm forward lean
 Shoulder shrugs
-Shoulder-width pull-up
-Shoulder-width underhand pull-ups
+Shoulder width pull-up
+Shoulder width underhand pull-ups
 Shrugs + low cable upright rows to chin
 Shrugs with bent arms
 Shyb overhand grip
@@ -1262,7 +1252,7 @@ Side plank leg lift
 Side plank reach through
 Side plank rows
 Side plank to knee drive
-Side plank wall-slide
+Side plank wall slide
 Side to side crunches
 Sideways handstand wall walk
 Single kettlebell shoulder press
@@ -1274,21 +1264,22 @@ Single-arm cable chest press
 Single-arm cable concentration curl
 Single-arm cable curl
 Single-arm cable hammer curl
-Single-arm cable lat pull-down
 Single-arm cable lateral raises
 Single-arm cable overhead press
-Single-arm cable overhead triceps extension
 Single-arm cable triceps extension
 Single-arm cable upright row
 Single-arm clean
 Single-arm costal cable chest press
-Single-arm dumbbell bench-press
+Single-arm dumbbell bench press
 Single-arm dumbbell curl
+Single-arm dumbbell curl on preacher bench
 Single-arm dumbbell curls – partial reps
-Single-arm dumbbell floor-press
+Single-arm dumbbell floor press
+Single-arm dumbbell hammer curls on preacher bench
+Single-arm dumbbell overhead press (semi-lunge)
 Single-arm dumbbell plank row
 Single-arm dumbbell press
-Single-arm dumbbell push-press
+Single-arm dumbbell push press
 Single-arm dumbbell reverse lunge
 Single-arm dumbbell reverse lunge from deficit
 Single-arm dumbbell reverse lunge to Romanian deadlift
@@ -1300,23 +1291,24 @@ Single-arm dumbbell split squat
 Single-arm dumbbell step-up
 Single-arm dumbbell suitcase shrug
 Single-arm dumbbell Z press
-Single-arm face-pull
+Single-arm face pull
 Single-arm half-kneeling band press
-Single-arm half-kneeling band pull-down
+Single-arm half-kneeling band pulldown
 Single-arm half-kneeling band row
 Single-arm half-kneeling cable press
 Single-arm half-kneeling cable row
 Single-arm hands-elevated push-up
 Single-arm hang clean
-Single-arm incline dumbbell bench-press
+Single-arm incline dumbbell bench press
 Single-arm kettlebell Z press
+Single-arm kettlebell/dumbbell rows with rotation
 Single-arm landmine row
 Single-arm lat pulldown
 Single-arm lateral cable triceps extension
 Single-arm lateral raise
 Single-arm lying dumbbell rolling triceps extension
 Single-arm lying dumbbell triceps extension
-Single-arm machine lat pull-down
+Single-arm machine lat pulldown
 Single-arm machine preacher curl
 Single-arm oblique cable twist
 Single-arm overhead band press
@@ -1325,7 +1317,7 @@ Single-arm overhead dumbbell reverse lunge from deficit
 Single-arm overhead squat
 Single-arm plank
 Single-arm plate curl
-Single-arm push-press
+Single-arm push press
 Single-arm raise to front raise
 Single-arm rear delt cable flies
 Single-arm rear delt raise
@@ -1385,7 +1377,7 @@ Single-leg staggered
 Single-leg switches
 Single-leg toe touch
 Single-leg V-up
-Single-leg wall push-offs
+Single-leg wall push offs
 Single-leg weighted hip thrust
 Sissy squats
 Sit-up + throw punches
@@ -1401,7 +1393,7 @@ Skipping
 Skull crushers to hip thrust
 Skullcrushers
 Slam ball ground slams
-Slam ball push-press
+Slam ball push press
 Sled pull
 Sled push
 Sledgehammer strikes on tire
@@ -1410,13 +1402,13 @@ Slideboard leg curl
 Slip floor bridge curl
 Slow leg lowering from the bar
 Slow tempo lateral step downs
-Smith machine bench-press
+Smith machine bench press
 Smith machine bent-over row
-Smith machine close-grip bench-press
+Smith machine close-grip bench press
 Smith machine decline chest press
 Smith machine good morning
 Smith machine hack squat
-Smith machine incline bench-press
+Smith machine incline bench press
 Smith machine rack pulls
 Smith machine Romanian deadlift
 Smith machine shoulder press
@@ -1429,11 +1421,11 @@ Snatch deadlift deficit
 Snatch grip barbell shrugs
 Snatch grip deadlift
 Snatch power shrugs from hang
-Speed band bench-press
+Speed band bench press
 Speed squat
 Spiderman crunches
 Spiderman push-ups
-Split-stance dumbbell push-press
+Split-stance dumbbell push press
 Sprint
 Sprint with tire drag (rope)
 Sprinters crunch
@@ -1480,11 +1472,11 @@ Standing cable low row (rope)
 Standing cable upper chest flies
 Standing calf raises
 Standing dumbbell press
-Standing dumbbell push-press
+Standing dumbbell push press
 Standing elbow to knee
 Standing EZ bar biceps curls
-Standing face-pull to forehead
-Standing face-pulloverhead
+Standing face pull overhead
+Standing face pull to forehead
 Standing high cable triceps extension
 Standing kettlebell press
 Standing medicine ball lift and chop
@@ -1510,7 +1502,6 @@ Step downs
 Step-ups with knee drive
 Stick dislocates
 Stick pass through
-Stiff leg dead lift to high pull
 Stiff leg deadlift to high pull
 Stiff leg/Romanian deadlift
 Stiff- leg deadlift to bent-over row
@@ -1521,7 +1512,7 @@ Straddle pulses
 Straight bar cable pulldown
 Straight leg sit-ups
 Straight leg V-ups
-Straight-arm band pull-aparts + hold
+Straight-arm band pull aparts + hold
 Straight-arm forward lean hold
 Straight-arm forward leans on parallettes
 Straight-arm press to sides + hold (with band)
@@ -1552,8 +1543,8 @@ Supine banded no money drill
 Supine banded scapular protraction
 Supine frog pump
 Supine glute bridge
-Supine hips-extended leg curl
-Supine knee to knee pull-in
+Supine hips extended leg curl
+Supine knee to knee pull in
 Supine psoas march
 Support hold in front of body (with band)
 Support hold on parallel bars
@@ -1598,9 +1589,9 @@ Toe reaches
 Toe touches
 Toe touches with weight
 Toes to bar
+Top half bench press from pins
 Top half squat from pins
 Top hold on parallel bars (elbows unlocked)
-Top-half bench-press from pins
 Towel hamstring slides (single-leg)
 Towel single-arm row
 Toy soldier
@@ -1618,7 +1609,7 @@ Triceps dips
 Triceps dips + hold
 Triceps extensions (band/dumbbell)
 Triceps kickbacks
-Triceps press-down
+Triceps pressdown
 Triceps presses
 Triceps push-ups
 Triceps pushdowns
@@ -1662,7 +1653,7 @@ Underhand lat pulldown
 Unilateral dumbbell hip thrust mezi lavicemi
 Unilateral dumbbell press in semi-lunge
 Unilateral glute bridge
-Unilateral kettlebell floor-press
+Unilateral kettlebell floor press
 Unilateral kettlebell press seated on floor
 Unilateral kettlebell squat/double kettlebell squat
 Unilateral kettlebell swing + clean
@@ -1684,7 +1675,7 @@ Vertical pull-ups (vertical bar path)
 Vertical pull-ups to chest
 VMO squat
 Walk out to shoulder tap
-Walking dumbbell cross-carry
+Walking dumbbell cross carry
 Walking farmer's carry
 Walking goblet carry
 Walking goblet heartbeat carry
@@ -1692,7 +1683,7 @@ Walking goblet lunge
 Walking knee to chest
 Walking lunges
 Walking offset dumbbell lunge
-Walking pull-back butt kick
+Walking pull back butt kick
 Walking push-up with pause
 Walking Spiderman
 Walking Spiderman with hip lift
@@ -1710,11 +1701,11 @@ Wall glute iso march
 Wall handstand push-ups (handstand push-up)
 Wall hip flexor mobilization
 Wall plank
+Wall press abs
 Wall scapular push-up
 Wall sit
 Wall slides
 Wall walk, belly to wall (there and back)
-Wall-press abs
 Weighted bench dip
 Weighted burpee
 Weighted burpee to squat thruster
@@ -1770,7 +1761,7 @@ Wrist stretch against wall
 Wrist stretch with the other hand
 X-band box walk
 X-band walk
-X-lat band pull-down
+X-lat band pulldown
 Y cable raises
 Yates rows
 Yoga downward dog stretch
