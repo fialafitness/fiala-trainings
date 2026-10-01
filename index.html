@@ -38,9 +38,9 @@
     --brand-deep: #494664;              /* app-purple-deep — reserved for brand moments */
     --group-1: #5e8ca7;                 /* Steel blue */
     --group-2: #a2845e;                 /* Sand — Apple system brown, light */
-    --done: #5a742c;                    /* Olive deep — success text on light */
-    --done-fill: #cde261;               /* Lime — fills on light, same family as the dark glow */
-    --done-line: #9bbf2e;               /* Lime deep — outlines on light */
+    --done: #80a826;                    /* one green for light mode: text, outlines, fills */
+    --done-fill: #80a826;
+    --done-line: #80a826;
     --achieve: #c5a253;                 /* Champagne — PR / milestone, both modes */
     --done-ink: #1d1d1f;
     --danger: #a63a46;                  /* Crimson deep — red text on light */
@@ -240,12 +240,12 @@
   body.client .row .top { grid-template-columns: 56px 1fr; }
   .block.done { --ss: var(--done-line); }
   .block.done:not(.open) .group { cursor: pointer; }
-  .block.done:not(.open) .row { padding: 6px 16px; }
+  .block.done:not(.open) .row { padding: 10px 16px 4px; }
   .block.done:not(.open) .row .specs, .block.done:not(.open) .row .weights, .block.done:not(.open) .row .note, .block.done:not(.open) .row .x { display: none; }
   .block.done:not(.open) .row .top { pointer-events: none; }
   .block.done:not(.open) .row .top .name { color: var(--text-secondary); min-height: 36px; }
   .block.done:not(.open) .row .top input.label { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
-  .block.done:not(.open) .card-foot { padding: 4px 16px 12px; }
+  .block.done:not(.open) .card-foot { padding: 6px 16px 10px; }
   .card-foot { padding: 4px 16px 16px; display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
   .fold-btn {
     appearance: none; cursor: pointer; border-radius: 50px; min-height: 40px; padding: 10px 24px;
