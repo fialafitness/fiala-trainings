@@ -302,16 +302,14 @@
   .note-field { font-style: italic; min-height: 44px; resize: none; overflow: hidden; }
   .add { margin-top: 16px; }
   .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-  .week button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: 12px; padding: 8px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text-secondary); transition: background-color 150ms ease; }
+  .week button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: 12px; padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-secondary); transition: background-color 150ms ease; }
   .week button:hover { background: var(--field); }
   .week .wd { font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
   .week .dn { font-size: 17px; font-weight: 500; color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-  .week .dn { border: 1.5px solid transparent; }
-  .week button.today .wd { color: var(--text-primary); font-weight: 600; }
   .week button.today .dn { background: var(--btn-bg); color: var(--btn-fg); }
-  .week button.planned .dn { border-color: var(--brand); }
-  .week button.today.planned .dn { border-color: transparent; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--brand); }
-  .week button.finished .dn { background: var(--brand); border-color: var(--brand); color: #ffffff; box-shadow: none; }
+  .week .dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid transparent; }
+  .week button.planned .dot { border-color: var(--text-secondary); }
+  .week button.finished .dot { background: var(--done-fill); border-color: var(--done-fill); }
   .month { margin-top: 12px; }
   .month > button { appearance: none; border: 0; background: none; width: 100%; cursor: pointer; display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 0 4px; font-size: 17px; color: var(--text-primary); }
   .month > button .sub { color: var(--text-tertiary); font-size: 13px; }
@@ -916,7 +914,8 @@
       const wd = document.createElement("span"); wd.className = "wd"; wd.textContent = d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 3);
       const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(d.getDate());
       if (dayWorkouts.length) b.classList.add(dayWorkouts.every((t) => t.completedAt) ? "finished" : "planned");
-      b.append(wd, dn);
+      const dot = document.createElement("span"); dot.className = "dot";
+      b.append(wd, dn, dot);
       b.addEventListener("click", () => {
         if (dayWorkouts.length) go({ name: "training", id: dayWorkouts[0].id });
         else if (!clientMode) addTraining(c.id, null, key);
