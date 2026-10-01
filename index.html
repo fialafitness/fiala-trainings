@@ -301,6 +301,21 @@
   .note-toggle:hover { opacity: 0.7; }
   .note-field { font-style: italic; min-height: 44px; resize: none; overflow: hidden; }
   .add { margin-top: 16px; }
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .week button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: 12px; padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--text-secondary); transition: background-color 150ms ease; }
+  .week button:hover { background: var(--field); }
+  .week .wd { font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
+  .week .dn { font-size: 17px; font-weight: 500; color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .week button.today .dn { background: var(--btn-bg); color: var(--btn-fg); }
+  .week .dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid transparent; margin-top: 2px; }
+  .week .dot.planned { border-color: var(--text-tertiary); }
+  .week .dot.done { background: var(--done-fill); border-color: var(--done-fill); }
+  .month { margin-top: 12px; }
+  .month > button { appearance: none; border: 0; background: none; width: 100%; cursor: pointer; display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 0 4px; font-size: 17px; color: var(--text-primary); }
+  .month > button .sub { color: var(--text-tertiary); font-size: 13px; }
+  .month .list { margin-top: 8px; }
+  .list .pri { display: block; }
+  .list .sec { display: block; font-size: 13px; color: var(--text-tertiary); letter-spacing: 0; margin-top: 2px; }
   .finish { margin-top: 32px; }
   .cele { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 24px; padding: 40px 0; }
   .cele h1 { margin: 0; }
@@ -362,7 +377,7 @@
       <div class="cele-check">&#10003;</div>
       <h1>Congratulations</h1>
       <p id="celeText"></p>
-      <button class="btn" id="celeBack" type="button">Back to trainings</button>
+      <button class="btn" id="celeBack" type="button">Back to workouts</button>
     </div>
   </section>
 
@@ -392,10 +407,14 @@
         <button type="button" data-unit="lb" class="on">lb</button><button type="button" data-unit="kg">kg</button>
       </div>
     </div>
-    <h2>Trainings</h2>
-    <button class="btn trainer-only" id="newTraining" style="width:100%">+ New training</button>
-    <ul class="list" id="trainingList" style="margin-top:12px"></ul>
-    <div class="empty" id="trainingEmpty" hidden>No trainings yet.</div>
+    <h2>This week</h2>
+    <div class="week" id="week"></div>
+    <button class="btn trainer-only" id="newTraining" style="width:100%;margin-top:16px">+ New workout</button>
+    <h2 id="nextHead" hidden>Up next</h2>
+    <ul class="list" id="nextList" hidden></ul>
+    <h2 id="histHead" hidden>History</h2>
+    <div id="histList"></div>
+    <div class="empty" id="trainingEmpty" hidden>No workouts yet.</div>
     <div class="trainer-only">
       <h2>Notes</h2>
       <textarea id="cNotes" placeholder="Injuries, preferences, anything to remember"></textarea>
@@ -409,7 +428,7 @@
 
   <section id="vTraining" hidden>
     <div class="ttl">
-      <textarea id="tTitle" class="title" rows="1" placeholder="Training title" autocapitalize="sentences"></textarea>
+      <textarea id="tTitle" class="title" rows="1" placeholder="Focus, e.g. Bench-press and back" autocapitalize="sentences"></textarea>
       <input id="tDate" type="date">
     </div>
     <div class="rows" id="rows"></div>
@@ -419,8 +438,8 @@
       <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn quiet" id="unfinishBtn" type="button">Undo</button></div>
     </div>
     <div class="foot trainer-only">
-      <button class="btn quiet" id="copyTraining">Copy training</button>
-      <button class="btn danger" id="delTraining">Delete training</button>
+      <button class="btn quiet" id="copyTraining">Copy workout</button>
+      <button class="btn danger" id="delTraining">Delete workout</button>
       <span class="confirm" id="delTrainingConfirm" hidden><button class="btn danger" id="delTrainingYes">Delete</button> <button class="btn quiet" id="delTrainingNo">Keep</button></span>
     </div>
   </section>
@@ -599,7 +618,7 @@
     let c, t;
     if (clientMode) {
       const res = await sb.rpc("client_my_data");
-      if (res.error) { showProblem("Couldn\u2019t load your trainings \u00b7 check your signal and tap Try again"); return; }
+      if (res.error) { showProblem("Couldn\u2019t load your workouts \u00b7 check your signal and tap Try again"); return; }
       c = { data: res.data.clients || [] }; t = { data: res.data.trainings || [] };
     } else {
       [c, t] = await Promise.all([
@@ -782,11 +801,10 @@
   }
   function newRow(label) { return { id: uid(), label, name: "", sets: 3, reps: "", tempo: "", rest: "", weights: [], note: "" }; }
   function nextLabel(t) { let max = 0; for (const r of t.rows) { const n = labelKey(r.label)[0]; if (Number.isFinite(n)) max = Math.max(max, n); } return String(max + 1); }
-  function addTraining(clientId, from) {
-    const list = clientTrainings(clientId);
+  function addTraining(clientId, from, date) {
     const t = {
-      id: uid(), clientId, date: today(), createdAt: now(),
-      title: from ? from.title : "Training " + (list.length + 1), completedAt: null,
+      id: uid(), clientId, date: date || today(), createdAt: now(),
+      title: from ? from.title : "", completedAt: null,
       rows: from ? from.rows.map((r) => ({ ...r, id: uid(), weights: [], done: false })) : [],
     };
     trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
@@ -839,7 +857,7 @@
     $("brand").hidden = !(view.name === "clients" || (clientMode && view.name === "client"));
     if (view.name === "clients") { renderedTraining = null; renderClients(); }
     else if (view.name === "client") { renderedTraining = null; $("backLabel").textContent = "Clients"; renderClient(); }
-    else { const t = trainings.get(view.id); $("backLabel").textContent = clientMode ? "Trainings" : (clients.get(t.clientId)?.name || "Client"); renderTraining(t); }
+    else { const t = trainings.get(view.id); $("backLabel").textContent = clientMode ? "Workouts" : (clients.get(t.clientId)?.name || "Client"); renderTraining(t); }
   }
 
   function renderClients() {
@@ -849,7 +867,7 @@
       const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
       const n = clientTrainings(c.id).length;
       b.innerHTML = `<span></span><span class="sub"></span>`;
-      b.firstChild.textContent = c.name; b.lastChild.textContent = (n ? n + (n === 1 ? " training" : " trainings") : "") ; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
+      b.firstChild.textContent = c.name; b.lastChild.textContent = (n ? n + (n === 1 ? " workout" : " workouts") : "") ; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
       b.addEventListener("click", () => go({ name: "client", id: c.id }));
       li.appendChild(b); ul.appendChild(li);
     }
@@ -864,18 +882,65 @@
     for (const b of $("unitSeg").querySelectorAll("button")) b.classList.toggle("on", (c.unit || "lb") === b.dataset.unit);
     if (document.activeElement !== $("cNotes")) $("cNotes").value = c.notes || "";
     const list = clientTrainings(c.id);
-    const ul = $("trainingList"); ul.replaceChildren();
-    for (const t of list) {
+    const rowOf = (t) => {
       const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
       const cards = new Map();
       t.rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!cards.has(k)) cards.set(k, true); if (!r.done) cards.set(k, false); });
       const total = cards.size, done = [...cards.values()].filter(Boolean).length;
-      const progress = t.completedAt ? "\u2713 " : done ? done + " of " + total + " done \u00b7 " : "";
-      b.innerHTML = `<span></span><span class="sub tab"></span>`;
-      b.firstChild.textContent = t.title || "Untitled";
-      b.lastChild.textContent = progress + fmtDate(t.date); b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
+      const d = new Date(t.date + "T12:00:00");
+      const pri = document.createElement("span"); pri.className = "pri";
+      pri.textContent = (t.completedAt ? "\u2713 " : "") + d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      const sec = document.createElement("span"); sec.className = "sec";
+      sec.textContent = [t.title, !t.completedAt && done ? done + " of " + total + " done" : ""].filter(Boolean).join(" \u00b7 ");
+      const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.textContent) left.append(sec);
+      const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a";
+      b.append(left, chev);
       b.addEventListener("click", () => go({ name: "training", id: t.id }));
-      li.appendChild(b); ul.appendChild(li);
+      li.appendChild(b); return li;
+    };
+
+    const base = new Date(); base.setHours(12, 0, 0, 0);
+    const monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
+    const iso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    const weekEl = $("week"); weekEl.replaceChildren();
+    const weekStart = iso(monday);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday); d.setDate(monday.getDate() + i); const key = iso(d);
+      const dayWorkouts = list.filter((t) => t.date === key);
+      const b = document.createElement("button"); b.type = "button";
+      if (key === today()) b.classList.add("today");
+      const wd = document.createElement("span"); wd.className = "wd"; wd.textContent = d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 3);
+      const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(d.getDate());
+      const dot = document.createElement("span"); dot.className = "dot" + (dayWorkouts.length ? (dayWorkouts.every((t) => t.completedAt) ? " done" : " planned") : "");
+      b.append(wd, dn, dot);
+      b.addEventListener("click", () => {
+        if (dayWorkouts.length) go({ name: "training", id: dayWorkouts[0].id });
+        else if (!clientMode) addTraining(c.id, null, key);
+      });
+      weekEl.appendChild(b);
+    }
+
+    const next = list.filter((t) => !t.completedAt && t.date >= weekStart).sort((a, b) => a.date.localeCompare(b.date));
+    $("nextHead").hidden = next.length === 0; $("nextList").hidden = next.length === 0;
+    $("nextList").replaceChildren(...next.map(rowOf));
+
+    const rest = list.filter((t) => !next.includes(t));
+    const months = new Map();
+    for (const t of rest) { const k = t.date.slice(0, 7); if (!months.has(k)) months.set(k, []); months.get(k).push(t); }
+    const hist = $("histList"); hist.replaceChildren();
+    $("histHead").hidden = rest.length === 0;
+    const thisMonth = today().slice(0, 7);
+    for (const [k, items] of months) {
+      const wrap = document.createElement("div"); wrap.className = "month";
+      const head = document.createElement("button"); head.type = "button";
+      const md = new Date(k + "-15T12:00:00");
+      head.innerHTML = "<span></span><span class=\"sub\"></span>";
+      head.firstChild.textContent = md.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+      head.lastChild.textContent = items.length + (items.length === 1 ? " workout" : " workouts") + " \u203a";
+      const ul = document.createElement("ul"); ul.className = "list"; ul.hidden = k !== thisMonth;
+      ul.replaceChildren(...items.map(rowOf));
+      head.addEventListener("click", () => { ul.hidden = !ul.hidden; });
+      wrap.append(head, ul); hist.appendChild(wrap);
     }
     $("trainingEmpty").hidden = list.length > 0;
     $("delClientConfirm").hidden = true; $("delClient").hidden = false;
@@ -1124,7 +1189,7 @@
     for (const x of $("unitSeg").querySelectorAll("button")) x.classList.toggle("on", x === b);
   });
   $("cEmail").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.email = e.target.value.trim().toLowerCase(); scheduleSave("clients", c.id); });
-  $("newTraining").addEventListener("click", () => addTraining(view.id));
+  $("newTraining").addEventListener("click", () => addTraining(view.id, null, today()));
   $("delClient").addEventListener("click", () => { $("delClient").hidden = true; $("delClientConfirm").hidden = false; });
   $("delClientNo").addEventListener("click", () => { $("delClientConfirm").hidden = true; $("delClient").hidden = false; });
   $("delClientYes").addEventListener("click", () => deleteClient(view.id));
