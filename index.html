@@ -436,6 +436,8 @@
     <div class="finish" id="finishWrap" hidden>
       <button class="btn" id="finishBtn" style="width:100%">Finish workout</button>
       <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn quiet" id="unfinishBtn" type="button">Undo</button></div>
+      <div class="finished" id="skipLine"><button class="btn quiet" id="skipBtn" type="button">Skip workout</button></div>
+      <div class="finished" id="skippedLine" hidden><span class="muted" id="skippedText" style="font-size:17px"></span><button class="btn quiet" id="unskipBtn" type="button">Undo</button></div>
     </div>
     <div class="foot trainer-only">
       <button class="btn quiet" id="copyTraining">Copy workout</button>
@@ -542,6 +544,7 @@
   const pendingWeightRows = new Map();   // trainingId -> Set(rowId), client mode only
   const pendingDoneRows = new Map();     // trainingId -> Set(rowId), client mode only
   const pendingFinish = new Set();       // trainingId, client mode only
+  const pendingSkip = new Set();         // trainingId, client mode only
   const seenAt = new Map();              // "trainings/<id>" -> updated_at last received from the server
   const trainerTouched = new Map();      // trainingId -> Set(rowId) whose weights the trainer edited since the last sync
   const TABLE = { clients: "ft_clients", trainings: "ft_trainings" };
@@ -595,6 +598,11 @@
           const { error } = await sb.rpc("client_set_weights", { p_training: id, p_row: ids[i], p_weights: (r.weights || []).map((w) => String(w == null ? "" : w).slice(0, 16)) });
           if (error) { for (const rest of ids.slice(i)) rows.add(rest); throw error; }
         }
+      }
+      if (pendingSkip.has(id)) {
+        const { error } = await sb.rpc("client_skip_training", { p_training: id, p_skipped: !!data.skippedAt });
+        if (error) throw error;
+        pendingSkip.delete(id);
       }
       if (pendingFinish.has(id)) {
         const { error } = await sb.rpc("client_finish_training", { p_training: id, p_finished: !!data.completedAt });
@@ -772,7 +780,7 @@
     if (dirty.size) { $("status").textContent = "Some weights are not saved yet \u00b7 try again when online"; return; }
     await sb.auth.signOut();
     for (const tm of timers.values()) clearTimeout(tm);
-    timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingFinish.clear(); failed = false;
+    timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingFinish.clear(); pendingSkip.clear(); failed = false;
     clients.clear(); trainings.clear(); localBackend.save();
     view = { name: "clients" }; showLogin("");
   };
@@ -808,7 +816,7 @@
   function addTraining(clientId, from, date) {
     const t = {
       id: uid(), clientId, date: date || today(), createdAt: now(),
-      title: from ? from.title : "", completedAt: null,
+      title: from ? from.title : "", completedAt: null, skippedAt: null,
       rows: from ? from.rows.map((r) => ({ ...r, id: uid(), weights: [], done: false })) : [],
     };
     trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
@@ -893,7 +901,9 @@
       const total = cards.size, done = [...cards.values()].filter(Boolean).length;
       const d = new Date(effDate(t) + "T12:00:00");
       const pri = document.createElement("span"); pri.className = "pri";
-      pri.textContent = (t.completedAt ? "\u2713 " : "") + d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      const skipped = !t.completedAt && !!t.skippedAt;
+      pri.textContent = (t.completedAt ? "\u2713 " : skipped ? "Skipped \u00b7 " : "") + d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      if (skipped) pri.style.color = "var(--text-tertiary)";
       const sec = document.createElement("span"); sec.className = "sec";
       sec.textContent = [t.title, !t.completedAt && done ? done + " of " + total + " done" : ""].filter(Boolean).join(" \u00b7 ");
       const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.textContent) left.append(sec);
@@ -910,7 +920,7 @@
     const weekStart = iso(monday);
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday); d.setDate(monday.getDate() + i); const key = iso(d);
-      const dayWorkouts = list.filter((t) => effDate(t) === key);
+      const dayWorkouts = list.filter((t) => effDate(t) === key && !(t.skippedAt && !t.completedAt));
       const b = document.createElement("button"); b.type = "button";
       if (key === today()) b.classList.add("today");
       const wd = document.createElement("span"); wd.className = "wd"; wd.textContent = d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 3);
@@ -925,7 +935,7 @@
       weekEl.appendChild(b);
     }
 
-    const next = list.filter((t) => !t.completedAt && effDate(t) >= weekStart).sort((a, b) => effDate(a).localeCompare(effDate(b)));
+    const next = list.filter((t) => !t.completedAt && !t.skippedAt).sort((a, b) => effDate(a).localeCompare(effDate(b)));
     $("nextHead").hidden = next.length === 0; $("nextList").hidden = next.length === 0;
     $("nextList").replaceChildren(...next.map(rowOf));
 
@@ -953,8 +963,10 @@
 
   function paintFinish(t) {
     $("finishWrap").hidden = t.rows.length === 0;
-    const done = !!t.completedAt;
-    $("finishBtn").hidden = done; $("finishedLine").hidden = !done;
+    const done = !!t.completedAt, skipped = !done && !!t.skippedAt;
+    $("finishBtn").hidden = done || skipped; $("finishedLine").hidden = !done;
+    $("skipLine").hidden = done || skipped; $("skippedLine").hidden = !skipped;
+    if (skipped) $("skippedText").textContent = "Skipped";
     if (done) { const d = new Date(t.completedAt); $("finishedText").textContent = "\u2713 Finished \u00b7 " + d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); }
   }
   const ordinal = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
@@ -1208,6 +1220,15 @@
     renderedTraining = null; render();
     const el = document.querySelector('.row[data-id="' + r.id + '"]'); if (el) el.querySelector(".name").focus();
   });
+  function setSkipped(skipped) {
+    const t = trainings.get(view.id); if (!t) return;
+    t.skippedAt = skipped ? now() : null;
+    if (clientMode) pendingSkip.add(t.id);
+    scheduleSave("trainings", t.id); paintFinish(t);
+    if (skipped) go({ name: "client", id: t.clientId });
+  }
+  $("skipBtn").addEventListener("click", () => setSkipped(true));
+  $("unskipBtn").addEventListener("click", () => setSkipped(false));
   $("finishBtn").addEventListener("click", () => setFinished(true));
   $("unfinishBtn").addEventListener("click", () => setFinished(false));
   $("copyTraining").addEventListener("click", () => { const t = trainings.get(view.id); if (t) addTraining(t.clientId, t); });
