@@ -40,6 +40,7 @@
     --group-2: #a2845e;                 /* Sand — Apple system brown, light */
     --done: #5a742c;                    /* Olive deep — success text on light */
     --done-fill: #a9b96b;               /* Olive — fills and badges on light */
+    --achieve: #c5a253;                 /* Champagne — PR / milestone, both modes */
     --done-ink: #ffffff;
     --danger: #a63a46;                  /* Crimson deep — red text on light */
     --btn-bg: #1d1d1f;                  /* Secondary tier: dark button on light */
@@ -301,7 +302,7 @@
   .cele { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 24px; padding: 40px 0; }
   .cele h1 { margin: 0; }
   .cele p { margin: 0; font-size: 17px; color: var(--text-secondary); max-width: 320px; }
-  .cele-check { width: 96px; height: 96px; border-radius: 50%; background: var(--done-fill); color: var(--done-ink); font-size: 48px; display: flex; align-items: center; justify-content: center; animation: pop 600ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .cele-check { width: 96px; height: 96px; border-radius: 50%; background: var(--achieve); color: #1d1d1f; font-size: 48px; display: flex; align-items: center; justify-content: center; animation: pop 600ms cubic-bezier(0.22, 1, 0.36, 1); }
   @keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .cele-check { animation: none; } }
   .finished { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 17px; }
@@ -355,7 +356,7 @@
 
   <section id="vCelebrate" hidden>
     <div class="cele">
-      <div class="cele-check">\u2713</div>
+      <div class="cele-check">&#10003;</div>
       <h1>Congratulations</h1>
       <p id="celeText"></p>
       <button class="btn" id="celeBack" type="button">Back to trainings</button>
