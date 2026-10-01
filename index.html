@@ -302,14 +302,14 @@
   .note-field { font-style: italic; min-height: 44px; resize: none; overflow: hidden; }
   .add { margin-top: 16px; }
   .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-  .week button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: 12px; padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--text-secondary); transition: background-color 150ms ease; }
+  .week button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: 12px; padding: 8px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text-secondary); transition: background-color 150ms ease; }
   .week button:hover { background: var(--field); }
   .week .wd { font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
   .week .dn { font-size: 17px; font-weight: 500; color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-  .week button.today .dn { background: var(--btn-bg); color: var(--btn-fg); }
-  .week .dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid transparent; margin-top: 2px; }
-  .week .dot.planned { border-color: var(--text-tertiary); }
-  .week .dot.done { background: var(--done-fill); border-color: var(--done-fill); }
+  .week .dn { border: 1.5px solid transparent; }
+  .week button.today .wd { color: var(--brand); font-weight: 600; }
+  .week button.planned .dn { border-color: var(--brand); }
+  .week button.finished .dn { background: var(--brand); border-color: var(--brand); color: #ffffff; }
   .month { margin-top: 12px; }
   .month > button { appearance: none; border: 0; background: none; width: 100%; cursor: pointer; display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 0 4px; font-size: 17px; color: var(--text-primary); }
   .month > button .sub { color: var(--text-tertiary); font-size: 13px; }
@@ -795,9 +795,11 @@
     clients.set(c.id, c); scheduleSave("clients", c.id, 0);
     go({ name: "client", id: c.id });
   }
+  const localIso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  const effDate = (t) => t.completedAt ? localIso(new Date(t.completedAt)) : (t.date || "");
   function clientTrainings(clientId) {
     return [...trainings.values()].filter((t) => t.clientId === clientId)
-      .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
+      .sort((a, b) => effDate(b).localeCompare(effDate(a)) || (b.createdAt || "").localeCompare(a.createdAt || ""));
   }
   function newRow(label) { return { id: uid(), label, name: "", sets: 3, reps: "", tempo: "", rest: "", weights: [], note: "" }; }
   function nextLabel(t) { let max = 0; for (const r of t.rows) { const n = labelKey(r.label)[0]; if (Number.isFinite(n)) max = Math.max(max, n); } return String(max + 1); }
@@ -825,8 +827,8 @@
     const name = norm(row.name); if (!name) return null;
     for (const other of clientTrainings(t.clientId)) {
       if (other.id === t.id) continue;
-      if ((other.date || "") > (t.date || "")) continue;
-      if (other.date === t.date && (other.createdAt || "") >= (t.createdAt || "")) continue;
+      if (effDate(other) > effDate(t)) continue;
+      if (effDate(other) === effDate(t) && (other.createdAt || "") >= (t.createdAt || "")) continue;
       const r = other.rows.find((x) => norm(x.name) === name && (x.weights || []).some((w) => String(w || "").trim() !== ""));
       if (r) return { date: other.date, weights: r.weights };
     }
@@ -887,7 +889,7 @@
       const cards = new Map();
       t.rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!cards.has(k)) cards.set(k, true); if (!r.done) cards.set(k, false); });
       const total = cards.size, done = [...cards.values()].filter(Boolean).length;
-      const d = new Date(t.date + "T12:00:00");
+      const d = new Date(effDate(t) + "T12:00:00");
       const pri = document.createElement("span"); pri.className = "pri";
       pri.textContent = (t.completedAt ? "\u2713 " : "") + d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
       const sec = document.createElement("span"); sec.className = "sec";
@@ -906,13 +908,13 @@
     const weekStart = iso(monday);
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday); d.setDate(monday.getDate() + i); const key = iso(d);
-      const dayWorkouts = list.filter((t) => t.date === key);
+      const dayWorkouts = list.filter((t) => effDate(t) === key);
       const b = document.createElement("button"); b.type = "button";
       if (key === today()) b.classList.add("today");
       const wd = document.createElement("span"); wd.className = "wd"; wd.textContent = d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 3);
       const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(d.getDate());
-      const dot = document.createElement("span"); dot.className = "dot" + (dayWorkouts.length ? (dayWorkouts.every((t) => t.completedAt) ? " done" : " planned") : "");
-      b.append(wd, dn, dot);
+      if (dayWorkouts.length) b.classList.add(dayWorkouts.every((t) => t.completedAt) ? "finished" : "planned");
+      b.append(wd, dn);
       b.addEventListener("click", () => {
         if (dayWorkouts.length) go({ name: "training", id: dayWorkouts[0].id });
         else if (!clientMode) addTraining(c.id, null, key);
@@ -920,13 +922,13 @@
       weekEl.appendChild(b);
     }
 
-    const next = list.filter((t) => !t.completedAt && t.date >= weekStart).sort((a, b) => a.date.localeCompare(b.date));
+    const next = list.filter((t) => !t.completedAt && effDate(t) >= weekStart).sort((a, b) => effDate(a).localeCompare(effDate(b)));
     $("nextHead").hidden = next.length === 0; $("nextList").hidden = next.length === 0;
     $("nextList").replaceChildren(...next.map(rowOf));
 
     const rest = list.filter((t) => !next.includes(t));
     const months = new Map();
-    for (const t of rest) { const k = t.date.slice(0, 7); if (!months.has(k)) months.set(k, []); months.get(k).push(t); }
+    for (const t of rest) { const k = effDate(t).slice(0, 7); if (!months.has(k)) months.set(k, []); months.get(k).push(t); }
     const hist = $("histList"); hist.replaceChildren();
     $("histHead").hidden = rest.length === 0;
     const thisMonth = today().slice(0, 7);
