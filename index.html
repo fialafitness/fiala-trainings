@@ -281,9 +281,11 @@
     padding: 12px 16px; font-size: 16px; letter-spacing: -0.01em; color: var(--text-primary);
   }
   .sugg button:hover, .sugg button:focus { background: var(--field); outline: none; }
-  .vid { display: inline-block; margin: 8px 2px 0; font-size: 13px; letter-spacing: 0; color: var(--brand); text-decoration: none; min-height: 32px; line-height: 32px; transition: opacity 300ms ease; }
+  .vid { appearance: none; border: 0; background: none; padding: 0 2px; cursor: pointer; display: inline-block; margin: 8px 0 0; font-size: 13px; letter-spacing: 0; color: var(--brand); min-height: 32px; line-height: 32px; transition: opacity 300ms ease; }
   .vid:hover { opacity: 0.7; }
-  .block.done:not(.open) .row .vid { display: none; }
+  .player { margin-top: 8px; aspect-ratio: 16 / 9; width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
+  .player iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .block.done:not(.open) .row .vid, .block.done:not(.open) .row .player { display: none; }
   .specs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
   .specs label { display: block; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; cursor: pointer; white-space: nowrap; }
   .specs label .kb { letter-spacing: 0; text-transform: none; font-weight: 400; }
@@ -1087,7 +1089,8 @@
         <div class="exwrap"><textarea class="name" rows="1" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><ul class="sugg" hidden></ul></div>
         <button class="x" type="button" aria-label="Remove exercise">\u00d7</button>
       </div>
-      <a class="vid" target="_blank" rel="noopener" hidden>&#9654; Watch video</a>
+      <button class="vid" type="button" hidden>&#9654; Watch video</button>
+      <div class="player" hidden></div>
       <div class="specs">
         <div><label>Sets</label><input class="sets tab" inputmode="numeric" pattern="[0-9]*" placeholder="3"></div>
         <div class="cell"><div class="lab-row"><label data-kb>Reps</label><button class="dash" type="button" tabindex="-1" aria-label="Insert dash">\u2013</button></div><input class="reps tab" inputmode="decimal" placeholder="10"></div>
@@ -1100,7 +1103,21 @@
     q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(46, n.scrollHeight) + "px"; };
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; if (VIDEOS[s]) return VIDEOS[s]; const low = s.toLowerCase(); for (const k in VIDEOS) if (k.toLowerCase() === low) return VIDEOS[k]; return null; };
-    const paintVideo = () => { const id = videoFor(r.name); const a = q(".vid"); a.hidden = !id; if (id) a.href = "https://www.youtube.com/watch?v=" + id; };
+    let videoId = null;
+    const paintVideo = () => {
+      const id = videoFor(r.name); const b = q(".vid"), pl = q(".player");
+      if (id !== videoId) { videoId = id; pl.replaceChildren(); pl.hidden = true; b.textContent = "\u25b6 Watch video"; }
+      b.hidden = !id;
+    };
+    q(".vid").addEventListener("click", () => {
+      const pl = q(".player"), b = q(".vid");
+      if (!pl.hidden) { pl.replaceChildren(); pl.hidden = true; b.textContent = "\u25b6 Watch video"; return; }
+      const f = document.createElement("iframe");
+      f.src = "https://www.youtube-nocookie.com/embed/" + videoId + "?playsinline=1&rel=0&modestbranding=1";
+      f.allow = "accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"; f.setAttribute("allowfullscreen", "");
+      f.setAttribute("playsinline", ""); f.title = r.name || "Exercise video"; f.loading = "lazy";
+      pl.replaceChildren(f); pl.hidden = false; b.textContent = "Hide video";
+    });
     paintVideo();
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
     requestAnimationFrame(growName);
