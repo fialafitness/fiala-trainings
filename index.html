@@ -277,9 +277,9 @@
   .specs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
   .specs label { display: block; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; cursor: pointer; white-space: nowrap; }
   .specs label .kb { letter-spacing: 0; text-transform: none; font-weight: 400; }
-  .lab-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 8px; }
+  .lab-row { position: relative; height: 13px; margin-bottom: 8px; }
   .lab-row label { margin-bottom: 0; }
-  .dash { appearance: none; border: 1px solid var(--card-border); background: var(--field); color: var(--text-primary); border-radius: 12px; width: 32px; height: 24px; font-size: 16px; line-height: 1; padding: 0; cursor: pointer; visibility: hidden; margin-top: -4px; }
+  .dash { position: absolute; right: 0; top: -7px; appearance: none; border: 1px solid var(--card-border); background: var(--field); color: var(--text-primary); border-radius: 12px; width: 32px; height: 26px; font-size: 16px; line-height: 1; padding: 0; cursor: pointer; visibility: hidden; }
   .cell:focus-within .dash { visibility: visible; }
   .specs input { padding: 12px 8px; text-align: center; }
   .weights { margin-top: 16px; }
