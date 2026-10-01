@@ -289,7 +289,7 @@
     background: none; color: var(--text-tertiary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity 300ms ease;
   }
   .alt-btn[hidden] { display: none; }
-  .alt-btn.some { color: var(--brand); }
+  .alt-btn.some { color: var(--ss); }
   .alt-btn:hover { opacity: 0.7; }
   .block.done:not(.open) .alt-btn { display: none; }
   .block.done:not(.open) .row .top .exwrap.has-alt .name { padding-right: 16px; }
@@ -509,7 +509,13 @@
   const dirty = new Map();     // key -> local version counter (unconfirmed edits)
   const timers = new Map();
   const chains = new Map();
-  let inflight = 0, failed = false;
+  let inflight = 0, failed = false, failReason = "";
+  const reasonOf = (e) => {
+    const m = String((e && e.message) || "");
+    if ((e && e.code === "PGRST202") || /Could not find the function/i.test(m)) return "database rule missing";
+    if (e && e.code === "P0001" && m && m.length < 40) return m;
+    return "";
+  };
 
   // ---------- persistence ----------
   function key(kind, id) { return kind + "/" + id; }
@@ -546,6 +552,7 @@
           return;
         } catch (e) {
           attempt++;
+          failReason = reasonOf(e);
           if (e && e.fatal) { failed = true; return; }
           if (attempt > 3) { failed = true; return; }
           await new Promise((r) => setTimeout(r, 700 * attempt + Math.random() * 400));
@@ -559,7 +566,7 @@
   function setStatus() {
     const el = $("status");
     const pending = timers.size + inflight;
-    if (failed && pending === 0 && dirty.size > 0) { el.textContent = "Couldn't save \u00b7 tap to retry"; el.className = "err"; return; }
+    if (failed && pending === 0 && dirty.size > 0) { el.textContent = "Couldn't save \u00b7 " + (failReason ? failReason + " \u00b7 " : "") + "tap to retry"; el.className = "err"; return; }
     el.className = "";
     if (backend && backend !== localBackend && !navigator.onLine) { el.textContent = "Offline \u00b7 will sync"; return; }
     el.textContent = pending > 0 ? "Saving\u2026" : (backend ? "Saved" : "");
