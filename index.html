@@ -184,6 +184,9 @@
   .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
   .stack { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
+  .seg { display: inline-flex; border: 1px solid var(--card-border); border-radius: 50px; padding: 2px; background: var(--field); }
+  .seg button { appearance: none; border: 0; background: transparent; color: var(--text-secondary); border-radius: 50px; min-height: 36px; padding: 0 20px; font-size: 14px; cursor: pointer; transition: background-color 150ms ease, color 150ms ease; }
+  .seg button.on { background: var(--btn-bg); color: var(--btn-fg); }
   body.client .trainer-only { display: none !important; }
   body.client .row .x, body.client .row .note { display: none; }
   body.client input[readonly], body.client textarea[readonly] { caret-color: transparent; }
@@ -385,6 +388,9 @@
     <div class="trainer-only" id="cEmailWrap" style="margin-top:8px">
       <input id="cEmail" type="email" placeholder="Their sign-in email" autocomplete="off" inputmode="email" autocapitalize="none">
       <p class="muted" style="margin:8px 2px 0">They create their own account with this email and see their trainings.</p>
+      <div class="seg" id="unitSeg" style="margin-top:16px" role="radiogroup" aria-label="Weight unit">
+        <button type="button" data-unit="lb" class="on">lb</button><button type="button" data-unit="kg">kg</button>
+      </div>
     </div>
     <h2>Trainings</h2>
     <button class="btn trainer-only" id="newTraining" style="width:100%">+ New training</button>
@@ -855,6 +861,7 @@
     if (document.activeElement !== $("cName")) $("cName").value = c.name;
     $("cName").readOnly = clientMode;
     if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
+    for (const b of $("unitSeg").querySelectorAll("button")) b.classList.toggle("on", (c.unit || "lb") === b.dataset.unit);
     if (document.activeElement !== $("cNotes")) $("cNotes").value = c.notes || "";
     const list = clientTrainings(c.id);
     const ul = $("trainingList"); ul.replaceChildren();
@@ -994,9 +1001,10 @@
         <div><label data-kb>Tempo</label><input class="tempo tab" inputmode="decimal" placeholder="1010" autocapitalize="characters"></div>
         <div><label class="rest-lab">Rest<span class="kb unit"> \u00b7 sec</span></label><input class="rest tab" inputmode="decimal" placeholder="60"></div>
       </div>
-      <div class="weights"><div class="cap"><span>Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
+      <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="note"><button type="button" class="note-toggle"></button><textarea class="note-field" rows="1" placeholder="Note" hidden></textarea></div>`;
     const q = (s) => el.querySelector(s);
+    q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(46, n.scrollHeight) + "px"; };
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
     requestAnimationFrame(growName);
@@ -1110,6 +1118,11 @@
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
   $("cName").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.name = e.target.value; scheduleSave("clients", c.id); });
   $("cNotes").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.notes = e.target.value; scheduleSave("clients", c.id); });
+  $("unitSeg").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-unit]"); const c = clients.get(view.id); if (!b || !c) return;
+    c.unit = b.dataset.unit; scheduleSave("clients", c.id);
+    for (const x of $("unitSeg").querySelectorAll("button")) x.classList.toggle("on", x === b);
+  });
   $("cEmail").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.email = e.target.value.trim().toLowerCase(); scheduleSave("clients", c.id); });
   $("newTraining").addEventListener("click", () => addTraining(view.id));
   $("delClient").addEventListener("click", () => { $("delClient").hidden = true; $("delClientConfirm").hidden = false; });
