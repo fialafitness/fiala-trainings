@@ -185,9 +185,7 @@
   .stack { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
   body.client .trainer-only { display: none !important; }
   body.client .row .x, body.client .row .note { display: none; }
-  body.client input[readonly] { background: transparent; padding-left: 0; padding-right: 0; }
-  body.client .row .top input.label[readonly] { padding: 0; text-align: center; }
-  body.client .specs input[readonly] { padding-left: 0; padding-right: 0; }
+  body.client input[readonly], body.client textarea[readonly] { caret-color: transparent; }
   .addrow { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
   .addrow input { flex: 1; }
 
@@ -230,7 +228,8 @@
   .row { padding: 16px; }
   .group .row + .row { border-top: 1px solid var(--card-border); }
   .group .row .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
-  .row .top { display: grid; grid-template-columns: 56px 1fr 40px; gap: 8px; align-items: center; }
+  .row .top { display: grid; grid-template-columns: 56px 1fr 40px; gap: 8px; align-items: stretch; }
+  .row .top .x { align-self: center; }
   body.client .row .top { grid-template-columns: 56px 1fr; }
   .block.done { --ss: var(--done-fill); }
   .block.done:not(.open) .group { cursor: pointer; }
@@ -257,9 +256,9 @@
   .done-btn:hover { opacity: 0.85; }
   .block.done .done-btn { background: var(--done-fill); border-color: var(--done-fill); color: var(--done-ink); }
   .block.done .group-cap b { color: var(--done); }
-  .row .top input.label { text-align: center; font-weight: 500; padding-left: 8px; padding-right: 8px; }
+  .row .top input.label { text-align: center; font-weight: 500; padding: 0 8px; height: 100%; min-height: 46px; }
   .row .top .exwrap { position: relative; }
-  .row .top .name { font-weight: 500; resize: none; overflow: hidden; min-height: 44px; line-height: 1.3; }
+  .row .top .name { font-weight: 500; resize: none; overflow: hidden; min-height: 46px; padding: 11px 16px; line-height: 22px; display: block; }
   .row .x {
     appearance: none; border: 0; background: none; color: var(--text-tertiary); cursor: pointer;
     width: 40px; height: 44px; font-size: 20px; line-height: 1; border-radius: 12px; transition: opacity 300ms ease;
@@ -276,7 +275,8 @@
   }
   .sugg button:hover, .sugg button:focus { background: var(--field); outline: none; }
   .specs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
-  .specs label { display: block; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; }
+  .specs label { display: block; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; cursor: pointer; white-space: nowrap; }
+  .specs label .kb { letter-spacing: 0; text-transform: none; font-weight: 400; }
   .specs input { padding: 12px 8px; text-align: center; }
   .weights { margin-top: 16px; }
   .weights .cap { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; display: flex; justify-content: space-between; gap: 8px; }
@@ -935,14 +935,14 @@
       </div>
       <div class="specs">
         <div><label>Sets</label><input class="sets tab" inputmode="numeric" pattern="[0-9]*" placeholder="3"></div>
-        <div><label>Reps</label><input class="reps tab" placeholder="10"></div>
-        <div><label>Tempo</label><input class="tempo tab" placeholder="1010" autocapitalize="characters"></div>
-        <div><label>Rest</label><input class="rest tab" placeholder="60 s"></div>
+        <div><label data-kb>Reps</label><input class="reps tab" inputmode="decimal" placeholder="10"></div>
+        <div><label data-kb>Tempo</label><input class="tempo tab" inputmode="decimal" placeholder="1010" autocapitalize="characters"></div>
+        <div><label data-kb>Rest</label><input class="rest tab" inputmode="decimal" placeholder="60"></div>
       </div>
       <div class="weights"><div class="cap"><span>Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="note"><button type="button" class="note-toggle"></button><textarea class="note-field" rows="1" placeholder="Note" hidden></textarea></div>`;
     const q = (s) => el.querySelector(s);
-    const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; };
+    const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(46, n.scrollHeight) + "px"; };
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
     requestAnimationFrame(growName);
     q(".name").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
@@ -950,6 +950,17 @@
     q(".rest").value = r.rest || "";
 
     const save = () => scheduleSave("trainings", t.id);
+    // the numeric keypad has no "-" or letters: tapping the label flips that field to the full keyboard and back
+    for (const lab of el.querySelectorAll("label[data-kb]")) {
+      const inp = lab.nextElementSibling; const base = lab.textContent;
+      lab.addEventListener("click", (e) => {
+        e.preventDefault();
+        const text = inp.inputMode !== "text";
+        inp.inputMode = text ? "text" : "decimal";
+        lab.innerHTML = ""; lab.append(base); if (text) { const k = document.createElement("span"); k.className = "kb"; k.textContent = " \u00b7 abc"; lab.appendChild(k); }
+        if (!inp.readOnly) { inp.blur(); setTimeout(() => inp.focus(), 50); }
+      });
+    }
     if (clientMode) { for (const s of [".label", ".name", ".sets", ".reps", ".tempo", ".rest"]) q(s).readOnly = true; }
     const bind = (sel, field, transform) => { if (clientMode) return; q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); }); };
     if (!clientMode) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
