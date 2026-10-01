@@ -4,7 +4,7 @@ import json, re, sys, openpyxl
 ROOT = "/Users/michalfiala/Projects/Workout_Tracker"
 ABBREV = {"db":"dumbbell","dbs":"dumbbell","bb":"barbell","kb":"kettlebell","cg":"close grip","sl":"single leg",
           "sa":"single arm","oh":"overhead","rdl":"romanian deadlift","dumbbells":"dumbbell","barbells":"barbell",
-          "kettlebells":"kettlebell","alt":"alternating","banded":"band","bw":"bodyweight"}
+          "kettlebells":"kettlebell","alt":"alternating","banded":"band","bw":"bodyweight","mb":"medicine ball","sb":"stability ball","dl":"deadlift","laying":"lying"}
 DROP = {"the","a","an","of","on","onto","with","to","position","and"}
 FIX = [(r"dumbell", "dumbbell"), (r"pectorial", "pectoral"), (r"\bbicep\b", "biceps"), (r"\btricep\b", "triceps"),
        (r"\bflyes\b|\bflys\b|\bfly\b", "flies"), (r"\bpush ?ups?\b", "push up"), (r"\bpull ?ups?\b", "pull up"),
@@ -14,7 +14,8 @@ FIX = [(r"dumbell", "dumbbell"), (r"pectorial", "pectoral"), (r"\bbicep\b", "bic
        (r"\bdead lift", "deadlift"), (r"\bcurtsey\b", "curtsy"), (r"stiff[- ]legged", "stiff leg"), (r"jack ?kni(fe|ves)", "jackknife"),
        (r"\bpress ?downs?\b", "pressdown"), (r"\bbench press\b", "benchpress"), (r"\bface ?pull", "facepull"), (r"\bfrench press\b", "frenchpress")]
 def key(name):
-    s = name.lower()
+    s = name.lower().replace("-", " ")
+    s = re.sub(r"\bw/\s*", "with ", s)
     for pat, rep in FIX: s = re.sub(pat, rep, s)
     s = re.sub(r"[^a-z0-9]+", " ", s)
     out = []
