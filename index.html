@@ -587,12 +587,14 @@
   const clientBackend = {
     async set(kind, id, data) {
       if (kind !== "trainings") return;
-      const rows = pendingWeightRows.get(id); if (!rows) return;
-      const ids = [...rows]; rows.clear();
-      for (let i = 0; i < ids.length; i++) {
-        const r = (data.rows || []).find((x) => x.id === ids[i]); if (!r) continue;
-        const { error } = await sb.rpc("client_set_weights", { p_training: id, p_row: ids[i], p_weights: (r.weights || []).map((w) => String(w == null ? "" : w).slice(0, 16)) });
-        if (error) { for (const rest of ids.slice(i)) rows.add(rest); throw error; }
+      const rows = pendingWeightRows.get(id);
+      if (rows) {
+        const ids = [...rows]; rows.clear();
+        for (let i = 0; i < ids.length; i++) {
+          const r = (data.rows || []).find((x) => x.id === ids[i]); if (!r) continue;
+          const { error } = await sb.rpc("client_set_weights", { p_training: id, p_row: ids[i], p_weights: (r.weights || []).map((w) => String(w == null ? "" : w).slice(0, 16)) });
+          if (error) { for (const rest of ids.slice(i)) rows.add(rest); throw error; }
+        }
       }
       if (pendingFinish.has(id)) {
         const { error } = await sb.rpc("client_finish_training", { p_training: id, p_finished: !!data.completedAt });
