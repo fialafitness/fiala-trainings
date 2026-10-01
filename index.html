@@ -937,7 +937,7 @@
         <div><label>Sets</label><input class="sets tab" inputmode="numeric" pattern="[0-9]*" placeholder="3"></div>
         <div><label data-kb>Reps</label><input class="reps tab" inputmode="decimal" placeholder="10"></div>
         <div><label data-kb>Tempo</label><input class="tempo tab" inputmode="decimal" placeholder="1010" autocapitalize="characters"></div>
-        <div><label data-kb>Rest</label><input class="rest tab" inputmode="decimal" placeholder="60"></div>
+        <div><label class="rest-lab">Rest<span class="kb unit"> \u00b7 s</span></label><input class="rest tab" inputmode="decimal" placeholder="60"></div>
       </div>
       <div class="weights"><div class="cap"><span>Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="note"><button type="button" class="note-toggle"></button><textarea class="note-field" rows="1" placeholder="Note" hidden></textarea></div>`;
@@ -947,7 +947,6 @@
     requestAnimationFrame(growName);
     q(".name").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
     q(".sets").value = r.sets || ""; q(".reps").value = r.reps || ""; q(".tempo").value = r.tempo || "";
-    q(".rest").value = r.rest || "";
 
     const save = () => scheduleSave("trainings", t.id);
     // the numeric keypad has no "-" or letters: tapping the label flips that field to the full keyboard and back
@@ -964,7 +963,18 @@
     if (clientMode) { for (const s of [".label", ".name", ".sets", ".reps", ".tempo", ".rest"]) q(s).readOnly = true; }
     const bind = (sel, field, transform) => { if (clientMode) return; q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); }); };
     if (!clientMode) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
-    bind(".reps", "reps"); bind(".tempo", "tempo"); bind(".rest", "rest");
+    bind(".reps", "reps"); bind(".tempo", "tempo");
+    // Rest = number + unit; the unit lives in the label and flips on tap (s <-> min)
+    const restParse = (s) => { s = String(s || "").trim(); const m = s.match(/[\d.,:]+/); return { n: m ? m[0] : s, unit: /min/i.test(s) ? "min" : "s" }; };
+    let restUnit = restParse(r.rest).unit;
+    const restLab = q(".rest-lab"), restInp = q(".rest");
+    const paintRest = () => { restLab.querySelector(".unit").textContent = " \u00b7 " + restUnit; };
+    restInp.value = restParse(r.rest).n; paintRest();
+    const composeRest = () => { const v = restInp.value.trim(); r.rest = v ? v + " " + restUnit : ""; };
+    if (!clientMode) {
+      restInp.addEventListener("input", () => { composeRest(); save(); });
+      restLab.addEventListener("click", (e) => { e.preventDefault(); restUnit = restUnit === "s" ? "min" : "s"; paintRest(); composeRest(); save(); });
+    }
     const numpick = q(".numpick");
     function showNumbers() {
       let max = 0;
