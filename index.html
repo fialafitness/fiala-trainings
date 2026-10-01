@@ -307,9 +307,11 @@
   .week .wd { font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
   .week .dn { font-size: 17px; font-weight: 500; color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .week .dn { border: 1.5px solid transparent; }
-  .week button.today .wd { color: var(--brand); font-weight: 600; }
+  .week button.today .wd { color: var(--text-primary); font-weight: 600; }
+  .week button.today .dn { background: var(--btn-bg); color: var(--btn-fg); }
   .week button.planned .dn { border-color: var(--brand); }
-  .week button.finished .dn { background: var(--brand); border-color: var(--brand); color: #ffffff; }
+  .week button.today.planned .dn { border-color: transparent; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--brand); }
+  .week button.finished .dn { background: var(--brand); border-color: var(--brand); color: #ffffff; box-shadow: none; }
   .month { margin-top: 12px; }
   .month > button { appearance: none; border: 0; background: none; width: 100%; cursor: pointer; display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 0 4px; font-size: 17px; color: var(--text-primary); }
   .month > button .sub { color: var(--text-tertiary); font-size: 13px; }
