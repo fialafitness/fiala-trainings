@@ -277,6 +277,10 @@
   .specs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
   .specs label { display: block; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; cursor: pointer; white-space: nowrap; }
   .specs label .kb { letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .lab-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 8px; }
+  .lab-row label { margin-bottom: 0; }
+  .dash { appearance: none; border: 1px solid var(--card-border); background: var(--field); color: var(--text-primary); border-radius: 12px; width: 32px; height: 24px; font-size: 16px; line-height: 1; padding: 0; cursor: pointer; visibility: hidden; margin-top: -4px; }
+  .cell:focus-within .dash { visibility: visible; }
   .specs input { padding: 12px 8px; text-align: center; }
   .weights { margin-top: 16px; }
   .weights .cap { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; display: flex; justify-content: space-between; gap: 8px; }
@@ -935,9 +939,9 @@
       </div>
       <div class="specs">
         <div><label>Sets</label><input class="sets tab" inputmode="numeric" pattern="[0-9]*" placeholder="3"></div>
-        <div><label data-kb>Reps</label><input class="reps tab" inputmode="decimal" placeholder="10"></div>
+        <div class="cell"><div class="lab-row"><label data-kb>Reps</label><button class="dash" type="button" tabindex="-1" aria-label="Insert dash">\u2013</button></div><input class="reps tab" inputmode="decimal" placeholder="10"></div>
         <div><label data-kb>Tempo</label><input class="tempo tab" inputmode="decimal" placeholder="1010" autocapitalize="characters"></div>
-        <div><label class="rest-lab">Rest<span class="kb unit"> \u00b7 s</span></label><input class="rest tab" inputmode="decimal" placeholder="60"></div>
+        <div><label class="rest-lab">Rest<span class="kb unit"> \u00b7 sec</span></label><input class="rest tab" inputmode="decimal" placeholder="60"></div>
       </div>
       <div class="weights"><div class="cap"><span>Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="note"><button type="button" class="note-toggle"></button><textarea class="note-field" rows="1" placeholder="Note" hidden></textarea></div>`;
@@ -951,7 +955,7 @@
     const save = () => scheduleSave("trainings", t.id);
     // the numeric keypad has no "-" or letters: tapping the label flips that field to the full keyboard and back
     for (const lab of el.querySelectorAll("label[data-kb]")) {
-      const inp = lab.nextElementSibling; const base = lab.textContent;
+      const inp = lab.parentElement.classList.contains("lab-row") ? lab.parentElement.parentElement.querySelector("input") : lab.nextElementSibling; const base = lab.textContent;
       lab.addEventListener("click", (e) => {
         e.preventDefault();
         const text = inp.inputMode !== "text";
@@ -964,8 +968,18 @@
     const bind = (sel, field, transform) => { if (clientMode) return; q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); }); };
     if (!clientMode) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
     bind(".reps", "reps"); bind(".tempo", "tempo");
+    const dash = q(".dash"), repsInp = q(".reps");
+    dash.addEventListener("mousedown", (e) => e.preventDefault());
+    dash.addEventListener("click", () => {
+      if (repsInp.readOnly) return;
+      const a = repsInp.selectionStart ?? repsInp.value.length, b = repsInp.selectionEnd ?? a;
+      repsInp.value = repsInp.value.slice(0, a) + "-" + repsInp.value.slice(b);
+      repsInp.setSelectionRange(a + 1, a + 1);
+      repsInp.dispatchEvent(new Event("input", { bubbles: true }));
+      repsInp.focus();
+    });
     // Rest = number + unit; the unit lives in the label and flips on tap (s <-> min)
-    const restParse = (s) => { s = String(s || "").trim(); const m = s.match(/[\d.,:]+/); return { n: m ? m[0] : s, unit: /min/i.test(s) ? "min" : "s" }; };
+    const restParse = (s) => { s = String(s || "").trim(); const m = s.match(/[\d.,:]+/); return { n: m ? m[0] : s, unit: /min/i.test(s) ? "min" : "sec" }; };
     let restUnit = restParse(r.rest).unit;
     const restLab = q(".rest-lab"), restInp = q(".rest");
     const paintRest = () => { restLab.querySelector(".unit").textContent = " \u00b7 " + restUnit; };
@@ -973,7 +987,7 @@
     const composeRest = () => { const v = restInp.value.trim(); r.rest = v ? v + " " + restUnit : ""; };
     if (!clientMode) {
       restInp.addEventListener("input", () => { composeRest(); save(); });
-      restLab.addEventListener("click", (e) => { e.preventDefault(); restUnit = restUnit === "s" ? "min" : "s"; paintRest(); composeRest(); save(); });
+      restLab.addEventListener("click", (e) => { e.preventDefault(); restUnit = restUnit === "sec" ? "min" : "sec"; paintRest(); composeRest(); save(); });
     }
     const numpick = q(".numpick");
     function showNumbers() {
