@@ -207,6 +207,28 @@
   .list .sub { color: var(--text-tertiary); font-size: 13px; letter-spacing: 0; white-space: nowrap; }
   .list .chev { color: var(--text-tertiary); margin-left: 8px; }
   .empty { color: var(--text-tertiary); font-size: 13px; letter-spacing: 0; padding: 16px 0 4px; }
+  /* Templates card: the one place the brand purple carries a surface */
+  .tplcard {
+    appearance: none; border: 0; cursor: pointer; width: 100%; text-align: left; margin-top: 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; border-radius: 20px;
+    background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%); color: #fff;
+    box-shadow: 0 10px 28px rgba(73, 70, 100, 0.28), inset 0 1px 0 rgba(255,255,255,0.14); transition: opacity 300ms ease, transform 300ms ease;
+  }
+  .tplcard:hover { opacity: 0.94; }
+  .tplcard:active { transform: scale(0.99); }
+  .tplcard[hidden] { display: none; }
+  .tc-text { display: flex; flex-direction: column; min-width: 0; }
+  .tc-kicker { font-size: 12px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(255,255,255,0.72); }
+  .tc-title { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; margin-top: 4px; }
+  .tc-sub { font-size: 13px; color: rgba(255,255,255,0.78); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tc-chev { font-size: 24px; color: rgba(255,255,255,0.7); flex: none; }
+  .listbar { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin: 12px 0 4px; }
+  .listbar .muted { font-size: 13px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); padding-left: 4px; }
+  .listbar .btn.quiet { color: var(--brand); font-size: 15px; min-height: 44px; }
+  .list .rowline { min-height: 56px; padding: 6px 12px 6px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 17px; letter-spacing: -0.01em; color: var(--text-primary); }
+  .list .mv { display: flex; gap: 6px; flex: none; }
+  .list .mv button { width: 44px; min-height: 44px; padding: 0; border-radius: 12px; background: var(--field); color: var(--text-primary); font-size: 15px; justify-content: center; }
+  .list .mv button:disabled { opacity: 0.25; cursor: default; }
 
   /* Training */
   .ttl { display: grid; grid-template-columns: 1fr; gap: 8px; align-items: start; margin-top: 20px; }
@@ -441,7 +463,12 @@
       <button class="btn sm" type="submit">Add</button>
     </form>
     <div class="foot" id="localFoot" hidden><span class="muted" id="dataNote">Saved on this device</span><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="btn quiet" id="signout" type="button" hidden>Sign out</button></div>
-    <ul class="list" id="clientList" style="margin-top:16px"></ul>
+    <button class="tplcard" id="tplCard" type="button" hidden>
+      <span class="tc-text"><span class="tc-kicker">Workout library</span><span class="tc-title">Templates</span><span class="tc-sub" id="tplCardSub"></span></span>
+      <span class="tc-chev">&rsaquo;</span>
+    </button>
+    <div class="listbar"><span class="muted" id="clientCount"></span><button class="btn quiet" id="reorderBtn" type="button" hidden>Reorder</button></div>
+    <ul class="list" id="clientList"></ul>
     <div class="empty" id="clientEmpty" hidden>No clients yet. Add the first one above.</div>
   </section>
 
@@ -948,7 +975,7 @@
   }
 
   // ---------- navigation ----------
-  function go(next) { view = next; lsSet("fiala.trainings.view", view); render(); window.scrollTo(0, 0); }
+  function go(next) { reordering = false; view = next; lsSet("fiala.trainings.view", view); render(); window.scrollTo(0, 0); }
   $("back").addEventListener("click", () => {
     if (view.name === "training") { const t = trainings.get(view.id); go(t ? { name: "client", id: t.clientId } : { name: "clients" }); }
     else go({ name: "clients" });
@@ -1135,20 +1162,48 @@
     else { const t = trainings.get(view.id); $("backLabel").textContent = clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
   }
 
+  // clients keep the order he sets (c.sort); unsorted ones follow alphabetically
+  const clientOrder = (a, b) => ((a.sort ?? Infinity) - (b.sort ?? Infinity)) || a.name.localeCompare(b.name);
+  const peopleList = () => [...clients.values()].filter((c) => !isTemplateClient(c.id)).sort(clientOrder);
+  let reordering = false;
+  function moveClient(id, dir) {
+    const list = peopleList(); const i = list.findIndex((c) => c.id === id); const j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    list.forEach((c, k) => { if (c.sort !== k) { c.sort = k; scheduleSave("clients", c.id); } });
+    renderClients();
+  }
   function renderClients() {
-    const list = [...clients.values()].filter((c) => !isTemplateClient(c.id)).sort((a, b) => a.name.localeCompare(b.name));
-    const tpl = clients.get(TEMPLATES_ID); if (tpl) list.unshift(tpl);
+    const list = peopleList();
+    const tpl = clients.get(TEMPLATES_ID);
+    $("tplCard").hidden = !tpl || clientMode;
+    if (tpl) { const n = clientTrainings(tpl.id).length; const porder = ["Fat Burn", "Hypertrophy", "Strength"]; const progs = [...new Set(clientTrainings(tpl.id).map((t) => templateMeta(t).program))].filter((p) => p !== MY_TEMPLATES).sort((a, b) => (porder.indexOf(a) + 1 || 99) - (porder.indexOf(b) + 1 || 99) || a.localeCompare(b)); $("tplCardSub").textContent = n + (n === 1 ? " workout" : " workouts") + (progs.length ? " \u00b7 " + progs.join(" \u00b7 ") : ""); }
+    $("clientCount").textContent = list.length ? list.length + (list.length === 1 ? " client" : " clients") : "";
+    $("reorderBtn").hidden = clientMode || list.length < 2; $("reorderBtn").textContent = reordering ? "Done" : "Reorder";
     const ul = $("clientList"); ul.replaceChildren();
-    for (const c of list) {
-      const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
-      const n = clientTrainings(c.id).length;
-      b.innerHTML = `<span></span><span class="sub"></span>`;
-      b.firstChild.textContent = c.name; b.lastChild.textContent = (n ? n + (n === 1 ? " workout" : " workouts") : "") ; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
-      b.addEventListener("click", () => go({ name: "client", id: c.id }));
-      li.appendChild(b); ul.appendChild(li);
-    }
+    list.forEach((c, i) => {
+      const li = document.createElement("li");
+      if (reordering) {
+        const row = document.createElement("div"); row.className = "rowline";
+        const name = document.createElement("span"); name.textContent = c.name;
+        const mv = document.createElement("span"); mv.className = "mv";
+        const up = document.createElement("button"); up.type = "button"; up.textContent = "\u2191"; up.setAttribute("aria-label", "Move up"); up.disabled = i === 0; up.addEventListener("click", () => moveClient(c.id, -1));
+        const dn = document.createElement("button"); dn.type = "button"; dn.textContent = "\u2193"; dn.setAttribute("aria-label", "Move down"); dn.disabled = i === list.length - 1; dn.addEventListener("click", () => moveClient(c.id, 1));
+        mv.append(up, dn); row.append(name, mv); li.appendChild(row);
+      } else {
+        const b = document.createElement("button"); b.type = "button";
+        const n = clientTrainings(c.id).length;
+        b.innerHTML = `<span></span><span class="sub"></span>`;
+        b.firstChild.textContent = c.name; b.lastChild.textContent = (n ? n + (n === 1 ? " workout" : " workouts") : ""); b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
+        b.addEventListener("click", () => go({ name: "client", id: c.id }));
+        li.appendChild(b);
+      }
+      ul.appendChild(li);
+    });
     $("clientEmpty").hidden = list.length > 0;
   }
+  $("tplCard").addEventListener("click", () => go({ name: "client", id: TEMPLATES_ID }));
+  $("reorderBtn").addEventListener("click", () => { reordering = !reordering; renderClients(); });
 
   function renderClient() {
     const c = clients.get(view.id);
@@ -1583,7 +1638,7 @@
   $("useBtn").addEventListener("click", () => {
     const t = trainings.get(view.id); if (!t) return;
     const ul = $("usePick"); if (!ul.hidden) { ul.hidden = true; return; }
-    const people = [...clients.values()].filter((c) => !isTemplateClient(c.id)).sort((a, b) => a.name.localeCompare(b.name));
+    const people = peopleList();
     ul.replaceChildren(...people.map((c) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.innerHTML = "<span></span><span class=\"chev\">\u203a</span>"; b.firstChild.textContent = c.name || "Unnamed"; b.addEventListener("click", () => applyTemplate(t, c.id)); li.appendChild(b); return li; }));
     if (!people.length) { const li = document.createElement("li"); li.className = "empty"; li.style.padding = "12px 16px"; li.textContent = "Add a client first."; ul.appendChild(li); }
     ul.hidden = false;
