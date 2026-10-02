@@ -312,12 +312,8 @@
   .player iframe { width: 100%; height: 100%; border: 0; display: block; }
   .block.done:not(.open) .row .vid, .block.done:not(.open) .row .player { display: none; }
   .specs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
-  .specs label { display: block; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; cursor: pointer; white-space: nowrap; }
+  .specs label { display: block; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; white-space: nowrap; }
   .specs label .kb { letter-spacing: 0; text-transform: none; font-weight: 400; }
-  .lab-row { position: relative; height: 13px; margin-bottom: 8px; }
-  .lab-row label { margin-bottom: 0; }
-  .dash { position: absolute; right: 0; top: -7px; appearance: none; border: 1px solid var(--card-border); background: var(--field); color: var(--text-primary); border-radius: 12px; width: 32px; height: 26px; font-size: 16px; line-height: 1; padding: 0; cursor: pointer; visibility: hidden; }
-  .cell:focus-within .dash { visibility: visible; }
   .specs input { padding: 12px 8px; text-align: center; }
   .weights { margin-top: 16px; }
   .weights .cap { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; display: flex; justify-content: space-between; gap: 8px; }
@@ -331,6 +327,8 @@
   #kbbar .kb-mode { font-variant-numeric: tabular-nums; min-width: 60px; }
   #kbbar .kb-chips { display: flex; gap: 8px; }
   #kbbar .kb-done { margin-left: auto; background: transparent; color: var(--brand); font-weight: 600; padding: 0 6px; }
+  #kbbar button.quiet { background: var(--field); color: var(--text-primary); }
+  #kbbar .kb-mode[hidden] { display: none; }
 
   .note { margin-top: 12px; }
   .note-toggle {
@@ -943,6 +941,7 @@
     if (el.closest(".boxes")) return "weights";
     if (el.classList.contains("reps")) return "reps";
     if (el.classList.contains("tempo")) return "tempo";
+    if (el.classList.contains("rest")) return "rest";
     return "";
   };
   function placeKb() {
@@ -959,12 +958,12 @@
     const kind = kbKind(t);
     kbMode.textContent = t.inputMode === "text" ? "123" : "ABC";
     kbChips.replaceChildren();
-    const chip = (label, fn) => { const b = document.createElement("button"); b.type = "button"; b.tabIndex = -1; b.textContent = label; b.addEventListener("click", fn); kbChips.appendChild(b); };
-    if (kind === "weights") {
-      chip("BW", () => kbSet("BW"));
-      chip("sec", () => { const v = kbTarget.value.trim().replace(/\s*sec$/i, ""); if (v) kbSet(v + " sec", true); });
-    }
-    if (kind === "reps") chip("\u2013", () => kbInsert("\u2013"));
+    const chip = (label, fn, quiet) => { const b = document.createElement("button"); b.type = "button"; b.tabIndex = -1; b.textContent = label; if (quiet) b.className = "quiet"; b.addEventListener("click", fn); kbChips.appendChild(b); };
+    const secChip = () => chip("sec", () => { const v = kbTarget.value.trim().replace(/\s*(sec|s)$/i, ""); if (v) kbSet(v + " sec", true); });
+    kbMode.hidden = kind === "rest";
+    if (kind === "weights") { chip("BW", () => kbSet("BW")); secChip(); }
+    if (kind === "reps") { chip("\u2013", () => kbInsert("\u2013")); secChip(); }
+    if (kind === "rest") { const cur = t.dataset.unit || "sec"; for (const u of ["sec", "min"]) chip(u, () => { if (t.setUnit) t.setUnit(u); paintKb(); }, u !== cur); }
     kbDone.textContent = (kind === "weights" && t.nextElementSibling) ? "Next" : "Done";
   }
   function showKb(el) {
@@ -1222,8 +1221,8 @@
       <div class="player" hidden></div>
       <div class="specs">
         <div><label>Sets</label><input class="sets tab" inputmode="numeric" pattern="[0-9]*" placeholder="3"></div>
-        <div class="cell"><div class="lab-row"><label data-kb>Reps</label><button class="dash" type="button" tabindex="-1" aria-label="Insert dash">\u2013</button></div><input class="reps tab" inputmode="decimal" placeholder="10"></div>
-        <div><label data-kb>Tempo</label><input class="tempo tab" inputmode="decimal" placeholder="1010" autocapitalize="characters"></div>
+        <div><label>Reps</label><input class="reps tab" inputmode="decimal" placeholder="10"></div>
+        <div><label>Tempo</label><input class="tempo tab" inputmode="decimal" placeholder="1010" autocapitalize="characters"></div>
         <div><label class="rest-lab">Rest<span class="kb unit"> \u00b7 sec</span></label><input class="rest tab" inputmode="decimal" placeholder="60"></div>
       </div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
@@ -1331,41 +1330,20 @@
     q(".sets").value = r.sets || ""; q(".reps").value = r.reps || ""; q(".tempo").value = r.tempo || "";
 
     const save = () => scheduleSave("trainings", t.id);
-    // the numeric keypad has no "-" or letters: tapping the label flips that field to the full keyboard and back
-    for (const lab of el.querySelectorAll("label[data-kb]")) {
-      const inp = lab.parentElement.classList.contains("lab-row") ? lab.parentElement.parentElement.querySelector("input") : lab.nextElementSibling; const base = lab.textContent;
-      lab.addEventListener("click", (e) => {
-        e.preventDefault();
-        const text = inp.inputMode !== "text";
-        inp.inputMode = text ? "text" : "decimal";
-        lab.innerHTML = ""; lab.append(base); if (text) { const k = document.createElement("span"); k.className = "kb"; k.textContent = " \u00b7 abc"; lab.appendChild(k); }
-        if (!inp.readOnly) { inp.blur(); setTimeout(() => inp.focus(), 50); }
-      });
-    }
     if (clientMode) { for (const s of [".label", ".name", ".sets", ".reps", ".tempo", ".rest"]) q(s).readOnly = true; }
     const bind = (sel, field, transform) => { if (clientMode) return; q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); }); };
     if (!clientMode) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
     bind(".reps", "reps"); bind(".tempo", "tempo");
-    const dash = q(".dash"), repsInp = q(".reps");
-    dash.addEventListener("mousedown", (e) => e.preventDefault());
-    dash.addEventListener("click", () => {
-      if (repsInp.readOnly) return;
-      const a = repsInp.selectionStart ?? repsInp.value.length, b = repsInp.selectionEnd ?? a;
-      repsInp.value = repsInp.value.slice(0, a) + "-" + repsInp.value.slice(b);
-      repsInp.setSelectionRange(a + 1, a + 1);
-      repsInp.dispatchEvent(new Event("input", { bubbles: true }));
-      repsInp.focus();
-    });
-    // Rest = number + unit; the unit lives in the label and flips on tap (s <-> min)
+    // Rest = number + unit; the unit shows in the label and is picked on the keyboard bar (sec / min)
     const restParse = (s) => { s = String(s || "").trim(); const m = s.match(/[\d.,:]+/); return { n: m ? m[0] : s, unit: /min/i.test(s) ? "min" : "sec" }; };
     let restUnit = restParse(r.rest).unit;
     const restLab = q(".rest-lab"), restInp = q(".rest");
-    const paintRest = () => { restLab.querySelector(".unit").textContent = " \u00b7 " + restUnit; };
+    const paintRest = () => { restLab.querySelector(".unit").textContent = " \u00b7 " + restUnit; restInp.dataset.unit = restUnit; };
     restInp.value = restParse(r.rest).n; paintRest();
     const composeRest = () => { const v = restInp.value.trim(); r.rest = v ? v + " " + restUnit : ""; };
     if (!clientMode) {
       restInp.addEventListener("input", () => { composeRest(); save(); });
-      restLab.addEventListener("click", (e) => { e.preventDefault(); restUnit = restUnit === "sec" ? "min" : "sec"; paintRest(); composeRest(); save(); });
+      restInp.setUnit = (u) => { restUnit = u; paintRest(); composeRest(); save(); };
     }
     const numpick = q(".numpick");
     function showNumbers() {
