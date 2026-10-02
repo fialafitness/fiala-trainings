@@ -354,6 +354,18 @@
   .specs label { display: block; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; white-space: nowrap; }
   .specs label .kb { letter-spacing: 0; text-transform: none; font-weight: 400; }
   .specs input { padding: 12px 8px; text-align: center; }
+  .tempo-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+  .tempo-tiles[hidden] { display: none; }
+  .tempo-tiles > div { background: var(--field); border-radius: 12px; min-height: 38px; padding: 5px 4px 4px; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+  .tempo-tiles b { font-size: 15px; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tempo-tiles span { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; letter-spacing: 0; line-height: 1; }
+  body.client .specs.tempo-below { grid-template-columns: repeat(3, 1fr); }
+  body.client .specs.tempo-below .tempo-cell { display: none; }
+  .tempo-tiles .tt-label { display: none; grid-column: 1 / -1; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 4px 0 0 2px; }
+  body.client .tempo-tiles .tt-label { display: block; }
+  .block.done:not(.open) .row .tempo-tiles { display: none; }
+  #kbbar .kb-chips { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  #kbbar .kb-chips::-webkit-scrollbar { display: none; }
   .weights { margin-top: 16px; }
   .weights .cap { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; display: flex; justify-content: space-between; gap: 8px; }
   .weights .cap span:last-child { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-tertiary); }
@@ -1345,6 +1357,7 @@
     const unitChip = (u) => chip(u, () => { const v = kbTarget.value.trim().replace(/\s*(sec|s|min)$/i, ""); if (v) kbSet(v + " " + u, true); }); // 60 → 60 sec, 4 min → 4 sec
     if (kind === "weights") { chip("BW", () => kbSet("BW")); unitChip("sec"); }
     if (kind === "reps") { chip("\u2013", () => kbInsert("\u2013")); unitChip("sec"); }
+    if (kind === "tempo") { chip("X", () => kbInsert("X")); for (const w of ["Normal", "Controlled", "Slow"]) chip(w, () => kbSet(w, true)); for (const c of ["3010", "4010", "10X0", "41X0"]) chip(c, () => kbSet(c, true)); }
     if (kind === "rest") { unitChip("sec"); unitChip("min"); }
     kbDone.textContent = (kind === "weights" && t.nextElementSibling) ? "Next" : "Done";
   }
@@ -1819,9 +1832,10 @@
       <div class="specs">
         <div><label>Sets</label><div class="setwrap"><input class="sets tab" inputmode="numeric" pattern="[0-9]*" placeholder="4"><div class="numpick sets-pick" hidden></div></div></div>
         <div><label>Reps</label><input class="reps tab" inputmode="decimal" placeholder="10"></div>
-        <div><label>Tempo</label><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"></div>
+        <div class="tempo-cell"><label>Tempo</label><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"></div>
         <div><label>Rest</label><input class="rest tab" inputmode="decimal" placeholder="60 sec"></div>
       </div>
+      <div class="tempo-tiles" hidden></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="note"><button type="button" class="note-toggle"></button><textarea class="note-field" rows="1" placeholder="Note" hidden></textarea></div>`;
     const q = (s) => el.querySelector(s);
@@ -1940,7 +1954,7 @@
     if (clientMode) { for (const s of [".label", ".name", ".sets", ".reps", ".tempo", ".rest"]) q(s).readOnly = true; for (const s of [".reps", ".tempo", ".rest"]) { const el = q(s); if (!el.value) el.value = el.placeholder; } }   // the trainer's grey defaults read as filled in for the client
     const bind = (sel, field, transform) => { if (clientMode) return; q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); }); };
     if (!clientMode) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
-    bind(".reps", "reps"); bind(".tempo", "tempo");
+    bind(".reps", "reps"); bind(".tempo", "tempo", (v) => { setTimeout(paintTempo, 0); return v; });
     bind(".rest", "rest");
     const numpick = q(".numpick");
     function showNumbers() {
@@ -1980,6 +1994,21 @@
       q(".x").addEventListener("click", () => { t.rows = t.rows.filter((x) => x.id !== r.id); save(); renderedTraining = null; render(); });
     }
 
+    const tempoTiles = q(".tempo-tiles");
+    const paintTempo = () => {
+      const m = /^([0-9])([0-9])([0-9X])([0-9])$/i.exec(String(r.tempo || "").trim());
+      tempoTiles.replaceChildren(); tempoTiles.hidden = !m; q(".specs").classList.toggle("tempo-below", !!m);
+      if (!m) return;
+      const tile = (d, text) => { const e = document.createElement("div"); const b = document.createElement("b"); b.textContent = d; const s = document.createElement("span"); s.textContent = text; e.append(b, s); return e; };
+      const n = (x) => parseInt(x, 10);
+      const lab = document.createElement("label"); lab.className = "tt-label"; lab.textContent = "Tempo";
+      tempoTiles.append(lab,
+        tile(m[1], "sec down"),
+        tile(m[2], n(m[2]) ? "sec hold" : "no hold"),
+        tile(m[3].toUpperCase(), /x/i.test(m[3]) ? "fast up" : "sec up"),
+        tile(m[4], n(m[4]) ? "hold top" : "no hold"));
+    };
+    paintTempo();
     const noteToggle = q(".note-toggle"), noteField = q(".note-field");
     const growNote = () => { noteField.style.height = "auto"; noteField.style.height = noteField.scrollHeight + "px"; };
     const showNote = () => { const v = (r.note || "").trim(); noteToggle.textContent = v ? "Read note" : "Add note"; noteToggle.classList.toggle("has", !!v); };
