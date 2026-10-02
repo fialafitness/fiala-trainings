@@ -210,7 +210,7 @@
   /* Templates card: the one place the brand purple carries a surface */
   .tplcard {
     appearance: none; border: 0; cursor: pointer; width: 100%; text-align: left; margin-top: 16px;
-    display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; border-radius: 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 20px 22px; border-radius: 20px;
     background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%); color: #fff;
     box-shadow: 0 10px 28px rgba(73, 70, 100, 0.28), inset 0 1px 0 rgba(255,255,255,0.14); transition: opacity 300ms ease, transform 300ms ease;
   }
@@ -220,11 +220,10 @@
   .tc-text { display: flex; flex-direction: column; min-width: 0; }
   .tc-kicker { font-size: 12px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(255,255,255,0.72); }
   .tc-title { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; margin-top: 4px; }
-  .tc-sub { font-size: 13px; color: rgba(255,255,255,0.78); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tc-chev { font-size: 24px; color: rgba(255,255,255,0.7); flex: none; }
   .listbar { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin: 12px 0 4px; }
   .listbar .muted { font-size: 13px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); padding-left: 4px; }
-  .listbar .btn.quiet { color: var(--brand); font-size: 15px; min-height: 44px; }
+  .listbar .btn.quiet { color: var(--text-tertiary); font-size: 15px; min-height: 44px; }
   .list .rowline { min-height: 56px; padding: 6px 12px 6px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 17px; letter-spacing: -0.01em; color: var(--text-primary); }
   .list .mv { display: flex; gap: 6px; flex: none; }
   .list .mv button { width: 44px; min-height: 44px; padding: 0; border-radius: 12px; background: var(--field); color: var(--text-primary); font-size: 15px; justify-content: center; }
@@ -462,14 +461,14 @@
       <input id="clientName" placeholder="New client" autocomplete="off" autocapitalize="words">
       <button class="btn sm" type="submit">Add</button>
     </form>
-    <div class="foot" id="localFoot" hidden><span class="muted" id="dataNote">Saved on this device</span><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="btn quiet" id="signout" type="button" hidden>Sign out</button></div>
     <button class="tplcard" id="tplCard" type="button" hidden>
-      <span class="tc-text"><span class="tc-kicker">Workout library</span><span class="tc-title">Templates</span><span class="tc-sub" id="tplCardSub"></span></span>
+      <span class="tc-text"><span class="tc-kicker">Workout library</span><span class="tc-title">Templates</span></span>
       <span class="tc-chev">&rsaquo;</span>
     </button>
     <div class="listbar"><span class="muted" id="clientCount"></span><button class="btn quiet" id="reorderBtn" type="button" hidden>Reorder</button></div>
     <ul class="list" id="clientList"></ul>
     <div class="empty" id="clientEmpty" hidden>No clients yet. Add the first one above.</div>
+    <div class="foot" id="localFoot" hidden><span class="muted" id="dataNote">Saved on this device</span><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="btn quiet" id="signout" type="button" hidden>Sign out</button></div>
   </section>
 
   <section id="vClient" hidden>
@@ -1177,7 +1176,6 @@
     const list = peopleList();
     const tpl = clients.get(TEMPLATES_ID);
     $("tplCard").hidden = !tpl || clientMode;
-    if (tpl) { const n = clientTrainings(tpl.id).length; const porder = ["Fat Burn", "Hypertrophy", "Strength"]; const progs = [...new Set(clientTrainings(tpl.id).map((t) => templateMeta(t).program))].filter((p) => p !== MY_TEMPLATES).sort((a, b) => (porder.indexOf(a) + 1 || 99) - (porder.indexOf(b) + 1 || 99) || a.localeCompare(b)); $("tplCardSub").textContent = n + (n === 1 ? " workout" : " workouts") + (progs.length ? " \u00b7 " + progs.join(" \u00b7 ") : ""); }
     $("clientCount").textContent = list.length ? list.length + (list.length === 1 ? " client" : " clients") : "";
     $("reorderBtn").hidden = clientMode || list.length < 2; $("reorderBtn").textContent = reordering ? "Done" : "Reorder";
     const ul = $("clientList"); ul.replaceChildren();
