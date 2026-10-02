@@ -171,7 +171,7 @@ for pdf in sorted(glob.glob(os.path.join(SRC, "*", "*", "*", "*.pdf"))):
   out.append({"id": str(uuid.uuid5(NS, key)), "program": prog, "phase": int(ph.group(1)), "stage": int(wk.group(1)), "n": int(tr.group(1)), "sub": xsub(sub), "src": os.path.basename(pdf), "rows": trows})
 
 out.sort(key=lambda t: (list(PROG.values()).index(t["program"]), t["phase"], t["stage"], t["n"]))
-json.dump(out, open(f"{ROOT}/templates.json", "w", encoding="utf-8"), ensure_ascii=False, indent=0)
+json.dump(out, open(f"{ROOT}/tools/odboj-raw.json", "w", encoding="utf-8"), ensure_ascii=False, indent=0)   # tools/merge_templates.py builds templates.json
 print(f"templates: {len(out)}, rows: {sum(len(t['rows']) for t in out)}, anomalies: {len(anomalies)}, unmapped names: {len(unmapped)} (rows {sum(u['count'] for u in unmapped.values())})")
 json.dump(unmapped, open(f"{ROOT}/tools/odboj-unmapped.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 for a in anomalies[:15]: print("  anomaly:", a)

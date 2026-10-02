@@ -43,6 +43,7 @@ ATG squat
 ATG squat (bodyweight)
 ATG squat on Smith machine against band
 ATG squat with bands
+ATG squat – DEM
 Back deadlift
 Back extension
 Back extension to y's
@@ -123,7 +124,7 @@ Barbell incline bench row
 Barbell incline bench triceps extension
 Barbell JM press
 Barbell jump squat
-Barbell low decline frenchpress
+Barbell low decline French press
 Barbell lunge
 Barbell overhead press
 Barbell overhead shrug
@@ -183,6 +184,7 @@ Bench press
 Bench press from pins
 Bench press narrow
 Bench press with chains
+Bench press – DEM
 Bench push-up
 Bench stretch
 Bent knee air crunch
@@ -285,6 +287,7 @@ Cable incline bench press
 Cable incline bench triceps extension
 Cable kickback
 Cable lat pulldown
+Cable lat pulldown to knees
 Cable lat pullover
 Cable lateral kick
 Cable lateral raise
@@ -335,12 +338,12 @@ Chest press machine
 Chest press machine/push-up
 Chest press with dead bug legs
 Chest supported dumbbell row
-Chest supported dumbbell row – neutral k pasu
-Chest supported dumbbell row – underhand grip, k pasu
 Chest supported machine row
-Chest supported row – stroj
 Chest to wall handstand with walk-up
+Chest-supported dumbbell row, neutral grip, to waist
 Chest-supported dumbbell row, overhand grip, elbows out
+Chest-supported dumbbell row, underhand grip, to waist
+Chest-supported machine row
 CHI breathing (kneeling/seated)
 Chin-up
 Chop with ball
@@ -439,6 +442,7 @@ Dumbbell ab twist
 Dumbbell alternate biceps curl
 Dumbbell Arnold press
 Dumbbell bench press
+Dumbbell bench press – DEM
 Dumbbell bent-over lateral raise
 Dumbbell bent-over row
 Dumbbell bent-over row with band
@@ -471,7 +475,7 @@ Dumbbell goblet squat
 Dumbbell hammer curl (hands turned in)
 Dumbbell hammer Scott curl
 Dumbbell hip thrust
-Dumbbell hyperextenze
+Dumbbell hyperextension
 Dumbbell incline bench reverse fly
 Dumbbell incline bench row
 Dumbbell incline chest press
@@ -481,6 +485,7 @@ Dumbbell lateral lunge
 Dumbbell lateral raise
 Dumbbell lateral raise – partial reps with cheating
 Dumbbell leg raise
+Dumbbell low decline French press
 Dumbbell lunge (stationary/walking)
 Dumbbell neutral overhead press
 Dumbbell overhead press
@@ -503,6 +508,7 @@ Dumbbell row straddling bench
 Dumbbell Scott curl
 Dumbbell seated bent-over raise
 Dumbbell seated bent-over shrug
+Dumbbell seated bent-over shrug – iso
 Dumbbell seated front raise
 Dumbbell seated partial lat raise
 Dumbbell seated semi lateral raise
@@ -697,6 +703,7 @@ Heel elevated front squat
 Heel elevated single hip thrust
 Heel elevated step down
 Heel tap
+Heels elevated front ATG squat
 Heels elevated sumo squat pulses
 Helms dumbbell row
 Heretic lunge
@@ -731,7 +738,7 @@ Hip extension machine
 Hip flexor rocker
 Hip flexor stretch
 Hip rotation
-Hyperextenze
+Hyperextension
 In and out jump
 Inch worm
 Inchworm to push-up
@@ -820,9 +827,11 @@ Leg circle
 Leg curl
 Leg drop
 Leg extension
+Leg extension, feet parallel
 Leg extension, feet straight
 Leg extension, feet turned out
 Leg extension, toes turned in
+Leg extension, toes turned out
 Leg kick-up to the bar
 Leg lift
 Leg lift and touch through
@@ -867,11 +876,15 @@ Lying EZ bar press, medium grip
 Lying hamstring curl
 Lying leg curl
 Lying leg curl, feet neutral
+Lying leg curl, feet parallel, dorsiflexed
+Lying leg curl, feet parallel, plantarflexed
 Lying leg curl, feet straight, dorsiflexed
 Lying leg curl, feet straight, plantarflexed
 Lying leg curl, feet turned in, dorsiflexed
 Lying leg curl, feet turned out, dorsiflexed
 Lying leg curl, feet turned out, plantarflexed
+Lying leg curl, toes in, dorsiflexed
+Lying leg curl, toes out, dorsiflexed
 Lying leg raise
 Lying slide pulldown
 Lying triceps extension on crossover cables
@@ -1125,7 +1138,7 @@ Reverse lunge shoulder press
 Reverse lunge to single-leg skip
 Reverse Nordic
 Reverse pattern single-leg Romanian deadlift
-Reverse peck deck
+Reverse pec deck
 Reverse pectoral fly
 Reverse plank
 Reverse plank hold
@@ -1184,6 +1197,8 @@ Seated cable chest press
 Seated cable row
 Seated calf press
 Seated calf raise
+Seated calf raise, feet parallel
+Seated calf raise, toes out
 Seated calf raise, toes turned in
 Seated calf raise, toes turned out
 Seated chest press
@@ -1206,7 +1221,7 @@ Seated EZ bar French press behind head
 Seated face pull
 Seated face pull to forehead
 Seated face pull to shoulders
-Seated football press (lehce incline)
+Seated football press (slight incline)
 Seated French press, close-grip
 Seated good morning
 Seated hammer curl
@@ -1223,6 +1238,7 @@ Seated low cable row, underhand grip
 Seated military press
 Seated overhead press
 Seated overhead press from pins (low)
+Seated overhead press isometric (high)
 Seated overhead triceps extension
 Seated partial lat pulldown, underhand grip
 Seated plate loaded row
@@ -1364,6 +1380,7 @@ Single-leg lift
 Single-leg lying leg curl
 Single-leg lying leg curl, foot straight, dorsiflexed
 Single-leg lying leg curl, foot turned in, dorsiflexed
+Single-leg lying leg curl, toes in, dorsiflexed
 Single-leg offset dumbbell Romanian deadlift
 Single-leg plank
 Single-leg press
@@ -1474,6 +1491,7 @@ Standing cable chest press
 Standing cable low row (rope)
 Standing cable upper chest fly
 Standing calf raise
+Standing calf raise, feet straight
 Standing dumbbell press
 Standing dumbbell push press
 Standing elbow to knee
