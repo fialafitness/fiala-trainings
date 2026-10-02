@@ -381,9 +381,13 @@
   #vClient.tpl #notesWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot { display: none; }
   .use { margin-top: 24px; }
-  .from-tpl { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 2px 12px; font-size: 13px; color: var(--text-tertiary); }
-  .from-tpl[hidden] { display: none; }
-  .from-tpl .btn.quiet { color: var(--brand); font-size: 15px; padding: 0 4px; min-height: 40px; white-space: nowrap; flex: none; }
+  .tpl-pill { justify-self: start; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; border: 0; cursor: pointer; padding: 8px 12px; border-radius: 12px;
+    font-size: 13px; font-weight: 500; letter-spacing: 0; color: #fff; background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
+    box-shadow: 0 4px 12px rgba(73, 70, 100, 0.22), inset 0 1px 0 rgba(255,255,255,0.12); transition: opacity 300ms ease; }
+  .tpl-pill:hover { opacity: 0.92; }
+  .tpl-pill[hidden] { display: none; }
+  .tpl-pill span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tpl-pill .chev { color: rgba(255,255,255,0.72); flex: none; font-size: 16px; line-height: 1; }
   .list li.last-used button .pri::after { content: " \00b7  last used"; font-size: 13px; color: var(--brand); font-weight: 400; }
   .list li.flash { animation: flash 1200ms ease; }
   @keyframes flash { 0% { background: rgba(111,107,153,0.28); } 100% { background: transparent; } }
@@ -524,8 +528,8 @@
     <div class="ttl">
       <textarea id="tTitle" class="title" rows="1" placeholder="Focus, e.g. Bench-press and back" autocapitalize="sentences"></textarea>
       <input id="tDate" type="date">
+      <button class="tpl-pill trainer-only" id="fromTpl" type="button" hidden><span id="fromTplText"></span><span class="chev">&rsaquo;</span></button>
     </div>
-    <div class="from-tpl trainer-only" id="fromTpl" hidden><span id="fromTplText"></span><button class="btn quiet" id="fromTplGo" type="button">Templates &rsaquo;</button></div>
     <div class="rows" id="rows"></div>
     <button class="btn quiet add trainer-only" id="addRow">+ Add exercise</button>
     <div class="finish" id="finishWrap" hidden>
@@ -1154,7 +1158,7 @@
     go({ name: "client", id: TEMPLATES_ID });
     requestAnimationFrame(() => { const li = document.querySelector('#tplList li[data-tid="' + tid + '"]'); if (li) { li.scrollIntoView({ block: "center" }); li.classList.add("flash"); setTimeout(() => li.classList.remove("flash"), 1300); } });
   }
-  $("fromTplGo").addEventListener("click", () => { const t = trainings.get(view.id); if (t && t.fromTemplate) backToTemplates(t.fromTemplate); });
+  $("fromTpl").addEventListener("click", () => { const t = trainings.get(view.id); if (t && t.fromTemplate) backToTemplates(t.fromTemplate); });
   function saveAsTemplate(src) {
     const mine = [...trainings.values()].filter((t) => isTemplateClient(t.clientId) && templateMeta(t).program === MY_TEMPLATES);
     const t = { id: uid(), clientId: TEMPLATES_ID, date: "2026-01-01", createdAt: now(), title: src.title || "", completedAt: null, skippedAt: null,
@@ -1421,7 +1425,7 @@
     const isTpl = isTemplateClient(t.clientId);
     if (isTpl) draftFor(t);
     const src = !clientMode && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
-    $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = "From template \u00b7 " + templatePath(src);
+    $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = templatePath(src);
     $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || clientMode; if (!isTpl) $("usePick").hidden = true;
     $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
     paintFinish(t);
