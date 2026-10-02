@@ -505,6 +505,8 @@
   const labelKey = (l) => { const m = String(l || "").trim().match(/^(\d+)\s*([a-z]*)/i); return m ? [parseInt(m[1], 10), m[2].toLowerCase()] : [Infinity, String(l || "").toLowerCase()]; };
   const cmpLabel = (a, b) => { const [an, as] = labelKey(a), [bn, bs] = labelKey(b); return an - bn || (as < bs ? -1 : as > bs ? 1 : 0); };
   const norm = (s) => String(s || "").trim().toLowerCase();
+  const squash = (s) => norm(s).replace(/[^a-z0-9]+/g, "");   // "Push-up", "push up" and "pushup" all become "pushup"
+  const NAME_KEYS = NAMES.map(squash);
   const lsGet = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 
@@ -1270,9 +1272,10 @@
       const inp = mk("input", "alt-input"); inp.maxLength = 120; inp.placeholder = "Alternative exercise"; inp.autocomplete = "off"; inp.setAttribute("autocapitalize", "sentences"); inp.setAttribute("enterkeyhint", "done");
       const hits = mk("div", "alt-hits"); altMenu.append(inp, hits);
       const paintHits = () => {
-        const s = norm(inp.value); hits.replaceChildren(); if (s.length < 2) return;
-        const taken = new Set([norm(r.name), ...altList().map(norm)]); const starts = [], contains = [];
-        for (const n of NAMES) { const ln = n.toLowerCase(); if (taken.has(ln)) continue; if (ln.startsWith(s)) starts.push(n); else if (ln.includes(s)) contains.push(n); }
+        const s = squash(inp.value); hits.replaceChildren(); if (s.length < 2) return;
+        const taken = new Set([squash(r.name), ...altList().map(squash)]); const starts = [], contains = [];
+        NAMES.forEach((n, i) => { const k = NAME_KEYS[i]; if (taken.has(k)) return; if (k.startsWith(s)) starts.push(n); else if (k.includes(s)) contains.push(n); });
+        starts.sort((a, b) => a.length - b.length || a.localeCompare(b));
         for (const n of [...starts, ...contains]) hits.appendChild(menuItem(n, "", () => addAlt(n)));
       };
       inp.addEventListener("input", paintHits);
@@ -1368,11 +1371,12 @@
     showNote();
 
     function suggest(v) {
-      const ul = q(".sugg"); const s = norm(v);
+      const ul = q(".sugg"); const s = squash(v);
       if (s.length < 2) { ul.hidden = true; return; }
-      const starts = [], contains = [];
-      for (const n of NAMES) { const ln = n.toLowerCase(); if (ln === s) continue; if (ln.startsWith(s)) starts.push(n); else if (ln.includes(s)) contains.push(n); }
-      const hits = [...starts, ...contains];
+      const exact = [], starts = [], contains = [], typed = norm(v);
+      NAMES.forEach((n, i) => { const k = NAME_KEYS[i]; if (k === s) { if (n.toLowerCase() !== typed) exact.push(n); } else if (k.startsWith(s)) starts.push(n); else if (k.includes(s)) contains.push(n); }); // "push up" offers "Push-up" first
+      starts.sort((a, b) => a.length - b.length || a.localeCompare(b));
+      const hits = [...exact, ...starts, ...contains];
       ul.replaceChildren(...hits.map((n) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { r.name = n; markNamed(); dropAltNamed(); q(".name").value = n; growName(); ul.hidden = true; save(); renderWeights(); paintVideo(); }); li.appendChild(b); return li; }));
       ul.hidden = hits.length === 0;
     }
