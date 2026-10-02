@@ -17094,7 +17094,7 @@
 "label": "1a",
 "name": "Incline plyo push-up",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "same weight · Explosive push-ups with a push-off, hands on the bench."
@@ -17103,7 +17103,7 @@
 "label": "1b",
 "name": "Medicine ball slam",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "same weight · Start with arms overhead, holding the med ball with both hands."
@@ -17121,7 +17121,7 @@
 "label": "2a",
 "name": "Speed band bench press",
 "sets": 5,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Performance reps: max effort, fast tempo. Loop the band over the bar and lie on it so your back pins it down"
@@ -17130,7 +17130,7 @@
 "label": "2b",
 "name": "Jumping pull-up",
 "sets": 5,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "90 sec",
 "note": "add weight · Jump high to the bar and always finish the pull-up; focus on coordinating the movements."
@@ -17139,7 +17139,7 @@
 "label": "3a",
 "name": "Bench press – DEM",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "30X0",
 "rest": "10 sec",
 "note": "add weight · DEM (double extension method): at the bottom, do a quick bounce, lifting the weight 2-3 cm and dropping back down dynamically to use the elastic energy of the connective tissue."
@@ -17148,7 +17148,7 @@
 "label": "3b",
 "name": "Dumbbell seated bent-over shrug – iso",
 "sets": 4,
-"reps": "3 sec",
+"reps": "3",
 "tempo": "10-15 s",
 "rest": "10 sec",
 "note": "add weight · Hold each rep for 10-15 s in the contracted position"
@@ -17178,7 +17178,7 @@
 "label": "1a",
 "name": "Heels elevated front ATG squat",
 "sets": 5,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "2020",
 "rest": "15-20 sec",
 "note": "add weight · Heels on a large bumper plate or a wedge made for high-heel squats. This puts more load on the quads."
@@ -17187,7 +17187,7 @@
 "label": "1b",
 "name": "ATG squat",
 "sets": 5,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "2020",
 "rest": "3-4 min",
 "note": "same weight 1a · Classic back squat through a full range of motion."
@@ -17217,7 +17217,7 @@
 "label": "1a",
 "name": "High incline bench press narrow",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "41X0",
 "rest": "10 sec",
 "note": "add weight · Set the bench to a 45° incline, elbows tracking along the body. This recruits the triceps more."
@@ -17226,7 +17226,7 @@
 "label": "1b",
 "name": "Trap 3 raise",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2021",
 "rest": "90 sec",
 "note": "same weight · Prone front raise, straddling an incline bench. Pull the shoulder blades down as you raise"
@@ -17235,7 +17235,7 @@
 "label": "2a",
 "name": "Seated behind-the-neck press",
 "sets": 4,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Behind-the-neck barbell press, no back support. Shoulders in external rotation"
@@ -17244,7 +17244,7 @@
 "label": "2b",
 "name": "Close-grip reverse EZ bar curl, back against rack",
 "sets": 4,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Brace against the rack or a wall. Pull the shoulders down away from the ears by engaging the shoulder blades. Overhand grip on the bar"
@@ -17253,7 +17253,7 @@
 "label": "2c",
 "name": "Dumbbell French press to shoulders with rotation",
 "sets": 4,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "add weight · Lie on a flat bench; when the weight is at the shoulders, hands are in a neutral grip."
@@ -17283,7 +17283,7 @@
 "label": "2",
 "name": "Barbell seal row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2021",
 "rest": "60 sec",
 "note": "add weight · Horizontal row to the chest on a special bench with a cambered bar. If unavailable, raise a flat bench on plates, lie face down and row an EZ bar."
@@ -17292,7 +17292,7 @@
 "label": "3a",
 "name": "Pull-up",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2021",
 "rest": "10 sec",
 "note": "BW · Grip wider than shoulder width"
@@ -17301,7 +17301,7 @@
 "label": "3b",
 "name": "Overhand lat pulldown",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "same weight · Agonist superset: finish off the back on the cable after pre-fatiguing it with pull-ups."
@@ -17310,7 +17310,7 @@
 "label": "4a",
 "name": "Cable lat pullover",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "30X1",
 "rest": "0 sec",
 "note": "add weight · Pull straight arms down to the body. Hinge at the hips as the arms go forward, stand tall as they come back"
@@ -17319,7 +17319,7 @@
 "label": "4b",
 "name": "Cable lat pulldown to knees",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight 4a · Same setup as the previous exercise, but unlock the elbows and pull with bent arms toward the knees"
@@ -17328,7 +17328,7 @@
 "label": "4c",
 "name": "Bent-over underhand cable row to waist",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "same weight 4b · Switch to an underhand grip on the attachment, hinge until the torso is nearly parallel to the floor (weight in the hips) and row the cable to your waist"
@@ -17349,7 +17349,7 @@
 "label": "1a",
 "name": "Low decline bench press",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "2020",
 "rest": "15 sec",
 "note": "add weight · Set the bench to a slight decline (20°). Keep the shoulder blades pulled down and together."
@@ -17358,7 +17358,7 @@
 "label": "1b",
 "name": "Wide-grip dip",
 "sets": 4,
-"reps": "9 sec",
+"reps": "9",
 "tempo": "1010",
 "rest": "15 sec",
 "note": "BW / same weight"
@@ -17367,7 +17367,7 @@
 "label": "1c",
 "name": "Dumbbell floor French press",
 "sets": 4,
-"reps": "13 sec",
+"reps": "13",
 "tempo": "1010",
 "rest": "15 sec",
 "note": "same weight · Standard skull crusher (French press), but lying on the floor"
@@ -17385,7 +17385,7 @@
 "label": "2a",
 "name": "Seated dumbbell overhead press",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "3020",
 "rest": "15 sec",
 "note": "add weight · Do it seated with back support."
@@ -17394,7 +17394,7 @@
 "label": "2b",
 "name": "Barbell snatch shrug",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "X0X0",
 "rest": "15 sec",
 "note": "same weight · Do it from a dead hang."
@@ -17412,7 +17412,7 @@
 "label": "2d",
 "name": "Barbell power shrug",
 "sets": 4,
-"reps": "12-14 sec",
+"reps": "12-14",
 "tempo": "X0X0",
 "rest": "120 sec",
 "note": "same weight same as 2b · Do it from a dead hang."
@@ -17421,7 +17421,7 @@
 "label": "3a",
 "name": "Chest press machine",
 "sets": 2,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · Do the exercise in whatever way feels comfortable."
@@ -17430,7 +17430,7 @@
 "label": "3b",
 "name": "Machine shoulder press",
 "sets": 2,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · Do the exercise in whatever way feels comfortable."
@@ -17451,7 +17451,7 @@
 "label": "1a",
 "name": "Incline plyo push-up",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "same weight · Explosive push-ups with a push-off, hands on the bench."
@@ -17460,7 +17460,7 @@
 "label": "1b",
 "name": "Medicine ball slam",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "same weight · Start with arms overhead, holding the med ball with both hands."
@@ -17478,7 +17478,7 @@
 "label": "2a",
 "name": "Speed band bench press",
 "sets": 5,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Performance reps: max effort, fast tempo. Loop the band over the bar and lie on it so your back pins it down"
@@ -17487,7 +17487,7 @@
 "label": "2b",
 "name": "Jumping pull-up",
 "sets": 5,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "90 sec",
 "note": "add weight · Jump high to the bar and always finish the pull-up; focus on coordinating the movements."
@@ -17496,7 +17496,7 @@
 "label": "3a",
 "name": "Bench press – DEM",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "30X0",
 "rest": "10 sec",
 "note": "add weight · DEM (double extension method): at the bottom, do a quick bounce, lifting the weight 2-3 cm and dropping back down dynamically to use the elastic energy of the connective tissue."
@@ -17505,7 +17505,7 @@
 "label": "3b",
 "name": "Dumbbell seated bent-over shrug – iso",
 "sets": 4,
-"reps": "3 sec",
+"reps": "3",
 "tempo": "10-15 s",
 "rest": "10 sec",
 "note": "add weight · Hold each rep for 10-15 s in the contracted position"
@@ -17535,7 +17535,7 @@
 "label": "1a",
 "name": "Heels elevated front ATG squat",
 "sets": 5,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "2020",
 "rest": "15-20 sec",
 "note": "add weight · Heels on a large bumper plate or a wedge made for high-heel squats. This puts more load on the quads."
@@ -17544,7 +17544,7 @@
 "label": "1b",
 "name": "ATG squat",
 "sets": 5,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "2020",
 "rest": "3-4 min",
 "note": "same weight 1a · Classic back squat through a full range of motion."
@@ -17574,7 +17574,7 @@
 "label": "1a",
 "name": "High incline bench press narrow",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "41X0",
 "rest": "10 sec",
 "note": "add weight · Set the bench to a 45° incline, elbows tracking along the body. This recruits the triceps more."
@@ -17583,7 +17583,7 @@
 "label": "1b",
 "name": "Trap 3 raise",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2021",
 "rest": "90 sec",
 "note": "same weight · Prone front raise, straddling an incline bench. Pull the shoulder blades down as you raise"
@@ -17592,7 +17592,7 @@
 "label": "2a",
 "name": "Seated behind-the-neck press",
 "sets": 4,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Behind-the-neck barbell press, no back support. Shoulders in external rotation"
@@ -17601,7 +17601,7 @@
 "label": "2b",
 "name": "Close-grip reverse EZ bar curl, back against rack",
 "sets": 4,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Brace against the rack or a wall. Pull the shoulders down away from the ears by engaging the shoulder blades. Overhand grip on the bar"
@@ -17610,7 +17610,7 @@
 "label": "2c",
 "name": "Dumbbell French press to shoulders with rotation",
 "sets": 4,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "add weight · Lie on a flat bench; when the weight is at the shoulders, hands are in a neutral grip."
@@ -17640,7 +17640,7 @@
 "label": "2",
 "name": "Barbell seal row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2021",
 "rest": "60 sec",
 "note": "add weight · Horizontal row to the chest on a special bench with a cambered bar. If unavailable, raise a flat bench on plates, lie face down and row an EZ bar."
@@ -17649,7 +17649,7 @@
 "label": "3a",
 "name": "Pull-up",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2021",
 "rest": "10 sec",
 "note": "BW · Grip wider than shoulder width"
@@ -17658,7 +17658,7 @@
 "label": "3b",
 "name": "Overhand lat pulldown",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "same weight · Agonist superset: finish off the back on the cable after pre-fatiguing it with pull-ups."
@@ -17667,7 +17667,7 @@
 "label": "4a",
 "name": "Cable lat pullover",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "30X1",
 "rest": "0 sec",
 "note": "add weight · Pull straight arms down to the body. Hinge at the hips as the arms go forward, stand tall as they come back"
@@ -17676,7 +17676,7 @@
 "label": "4b",
 "name": "Cable lat pulldown to knees",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight 4a · Same setup as the previous exercise, but unlock the elbows and pull with bent arms toward the knees"
@@ -17685,7 +17685,7 @@
 "label": "4c",
 "name": "Bent-over underhand cable row to waist",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "same weight 4b · Switch to an underhand grip on the attachment, hinge until the torso is nearly parallel to the floor (weight in the hips) and row the cable to your waist"
@@ -17706,7 +17706,7 @@
 "label": "1a",
 "name": "Low decline bench press",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "2020",
 "rest": "15 sec",
 "note": "add weight · Set the bench to a slight decline (20°). Keep the shoulder blades pulled down and together."
@@ -17715,7 +17715,7 @@
 "label": "1b",
 "name": "Wide-grip dip",
 "sets": 4,
-"reps": "9 sec",
+"reps": "9",
 "tempo": "1010",
 "rest": "15 sec",
 "note": "BW / same weight"
@@ -17724,7 +17724,7 @@
 "label": "1c",
 "name": "Dumbbell floor French press",
 "sets": 4,
-"reps": "13 sec",
+"reps": "13",
 "tempo": "1010",
 "rest": "15 sec",
 "note": "same weight · Standard skull crusher (French press), but lying on the floor"
@@ -17742,7 +17742,7 @@
 "label": "2a",
 "name": "Seated dumbbell overhead press",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "3020",
 "rest": "15 sec",
 "note": "add weight · Do it seated with back support."
@@ -17751,7 +17751,7 @@
 "label": "2b",
 "name": "Barbell snatch shrug",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "X0X0",
 "rest": "15 sec",
 "note": "same weight · Do it from a dead hang."
@@ -17769,7 +17769,7 @@
 "label": "2d",
 "name": "Barbell power shrug",
 "sets": 4,
-"reps": "12-14 sec",
+"reps": "12-14",
 "tempo": "X0X0",
 "rest": "120 sec",
 "note": "same weight same as 2b · Do it from a dead hang."
@@ -17778,7 +17778,7 @@
 "label": "3a",
 "name": "Chest press machine",
 "sets": 2,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · Do the exercise in whatever way feels comfortable."
@@ -17787,7 +17787,7 @@
 "label": "3b",
 "name": "Machine shoulder press",
 "sets": 2,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · Do the exercise in whatever way feels comfortable."
@@ -17808,7 +17808,7 @@
 "label": "1a",
 "name": "Jumping lunge",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "BW · Jump lunges: weight evenly split between the front and back leg, torso upright"
@@ -17817,7 +17817,7 @@
 "label": "1b",
 "name": "Power clean from hips",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "same weight · Dynamic barbell clean from the hips: focus on dropping under the bar and catching it solidly in the front rack. Then drive up through the concentric phase of the squat."
@@ -17826,7 +17826,7 @@
 "label": "1c",
 "name": "Front squat drop to pins",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "X0X0",
 "rest": "60 sec",
 "note": "same weight 1b · Bar in the front rack; without any dip, do a small hop and drop into the squat. Catch the bar stable in the bottom, then stand up."
@@ -17835,7 +17835,7 @@
 "label": "2a",
 "name": "Squat clean from hang",
 "sets": 5,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Explosive clean from above the knees using ankles, hips, traps and arms. Whip the elbows through to catch the bar in the front rack in a squat, then stand up out of the squat."
@@ -17844,7 +17844,7 @@
 "label": "2b",
 "name": "Dumbbell Romanian deadlift with band",
 "sets": 5,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "same weight · Stand on the band and loop it around your neck so it's taut from the start of the movement."
@@ -17853,7 +17853,7 @@
 "label": "3",
 "name": "ATG squat – DEM",
 "sets": 4,
-"reps": "3 sec",
+"reps": "3",
 "tempo": "X1X0",
 "rest": "90 sec",
 "note": "add weight from 2 · DEM (double extension method): bounce at the bottom (3-5 cm up)."
@@ -17862,7 +17862,7 @@
 "label": "4",
 "name": "Dynamic leg extension",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "X0X1",
 "rest": "60 sec",
 "note": "add weight · Accelerate the positive as much as possible (the machine should bounce with you), but pause one second at the top to absorb the weight."
@@ -17883,7 +17883,7 @@
 "label": "1a",
 "name": "High incline bench press narrow",
 "sets": 4,
-"reps": "2-4 sec",
+"reps": "2-4",
 "tempo": "41X0",
 "rest": "10 sec",
 "note": "add weight · Set the bench to a 45° incline, elbows tracking along the body. This recruits the triceps more."
@@ -17892,7 +17892,7 @@
 "label": "1b",
 "name": "Trap 3 raise",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2021",
 "rest": "90 sec",
 "note": "same weight · Prone front raise, straddling an incline bench. Pull the shoulder blades down as you raise"
@@ -17901,7 +17901,7 @@
 "label": "2a",
 "name": "Seated behind-the-neck press",
 "sets": 4,
-"reps": "3-4 sec",
+"reps": "3-4",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Behind-the-neck barbell press, no back support. Shoulders in external rotation"
@@ -17910,7 +17910,7 @@
 "label": "2b",
 "name": "Close-grip reverse EZ bar curl, back against rack",
 "sets": 4,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Brace against the rack or a wall. Pull the shoulders down away from the ears by engaging the shoulder blades. Overhand grip on the bar"
@@ -17919,7 +17919,7 @@
 "label": "2c",
 "name": "Dumbbell French press to shoulders with rotation",
 "sets": 4,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "add weight · Lie on a flat bench; when the weight is at the shoulders, hands are in a neutral grip."
@@ -17940,7 +17940,7 @@
 "label": "1a",
 "name": "Heels elevated front ATG squat",
 "sets": 5,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Heels on a large bumper plate or a wedge made for high-heel squats. This puts more load on the quads."
@@ -17949,7 +17949,7 @@
 "label": "1b",
 "name": "ATG squat",
 "sets": 5,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "same weight 1a · Classic back squat through a full range of motion."
@@ -17958,7 +17958,7 @@
 "label": "2a",
 "name": "Clean deadlift",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Clean pull: start with hips lower than in a deadlift, torso upright, shoulder blades and shoulders pulled down, elbows locked. The pull uses more legs."
@@ -17967,7 +17967,7 @@
 "label": "2b",
 "name": "Lying leg curl, feet straight, dorsiflexed",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "40X0",
 "rest": "60 sec",
 "note": "add weight · Feet parallel, toes pulled up toward the shins."
@@ -17997,7 +17997,7 @@
 "label": "2",
 "name": "Barbell seal row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2021",
 "rest": "60 sec",
 "note": "add weight · Horizontal row to the chest on a special bench with a cambered bar. If unavailable, raise a flat bench on plates, lie face down and row an EZ bar."
@@ -18006,7 +18006,7 @@
 "label": "3a",
 "name": "Pull-up",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2021",
 "rest": "10 sec",
 "note": "BW · Grip wider than shoulder width"
@@ -18015,7 +18015,7 @@
 "label": "3b",
 "name": "Overhand lat pulldown",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "same weight · Agonist superset: finish off the back on the cable after pre-fatiguing it with pull-ups."
@@ -18024,7 +18024,7 @@
 "label": "4a",
 "name": "Cable lat pullover",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "30X1",
 "rest": "0 sec",
 "note": "add weight · Pull straight arms down to the body. Hinge at the hips as the arms go forward, stand tall as they come back"
@@ -18033,7 +18033,7 @@
 "label": "4b",
 "name": "Cable lat pulldown to knees",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight 4a · Same setup as the previous exercise, but unlock the elbows and pull with bent arms toward the knees"
@@ -18042,7 +18042,7 @@
 "label": "4c",
 "name": "Bent-over underhand cable row to waist",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "same weight 4b · Switch to an underhand grip on the attachment, hinge until the torso is nearly parallel to the floor (weight in the hips) and row the cable to your waist"
@@ -18063,7 +18063,7 @@
 "label": "1a",
 "name": "Trap bar deadlift",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · The movement is more like a squat, with more leg drive."
@@ -18072,7 +18072,7 @@
 "label": "1b",
 "name": "Lying leg curl, toes in, dorsiflexed",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Toes pointed in and pulled up toward the shins"
@@ -18081,7 +18081,7 @@
 "label": "1c",
 "name": "Leg press",
 "sets": 4,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "same weight · Leg press with feet shoulder-width apart, toes pointing forward or slightly turned out."
@@ -18099,7 +18099,7 @@
 "label": "2b",
 "name": "Barbell Romanian deadlift",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "4040",
 "rest": "20 sec",
 "note": "same weight · Keep the shoulder blades pulled down and together; don't let the arms hang out of the shoulder sockets."
@@ -18108,7 +18108,7 @@
 "label": "2c",
 "name": "Lying leg curl",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "3030",
 "rest": "10 sec",
 "note": "same weight · Classic leg curl, feet neutral; really feel the hamstrings working."
@@ -18117,7 +18117,7 @@
 "label": "2d",
 "name": "Seated leg extension",
 "sets": 4,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "same weight · Classic leg extension; make sure the setup is correct, feet neutral."
@@ -18126,7 +18126,7 @@
 "label": "3a",
 "name": "Standing calf raise",
 "sets": 3,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "44X4",
 "rest": "10 sec",
 "note": "add weight · Feet neutral."
@@ -18135,7 +18135,7 @@
 "label": "3b",
 "name": "Seated calf raise",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "same weight · Feet neutral."
@@ -18144,7 +18144,7 @@
 "label": "3c",
 "name": "Tibialis raise with kettlebell/band",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2022",
 "rest": "60 sec",
 "note": "same weight · Shoes off for the whole complex. Hook the tops of your feet into the handles of large enough kettlebells and pull them toward your shins"
@@ -18165,7 +18165,7 @@
 "label": "1a",
 "name": "Jumping lunge",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "BW · Jump lunges: weight evenly split between the front and back leg, torso upright"
@@ -18174,7 +18174,7 @@
 "label": "1b",
 "name": "Power clean from hips",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "same weight · Dynamic barbell clean from the hips: focus on dropping under the bar and catching it solidly in the front rack. Then drive up through the concentric phase of the squat."
@@ -18183,7 +18183,7 @@
 "label": "1c",
 "name": "Front squat drop to pins",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "X0X0",
 "rest": "60 sec",
 "note": "same weight 1b · Bar in the front rack; without any dip, do a small hop and drop into the squat. Catch the bar stable in the bottom, then stand up."
@@ -18192,7 +18192,7 @@
 "label": "2a",
 "name": "Squat clean from hang",
 "sets": 5,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Explosive clean from above the knees using ankles, hips, traps and arms. Whip the elbows through to catch the bar in the front rack in a squat, then stand up out of the squat."
@@ -18201,7 +18201,7 @@
 "label": "2b",
 "name": "Dumbbell Romanian deadlift with band",
 "sets": 5,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "same weight · Stand on the band and loop it around your neck so it's taut from the start of the movement."
@@ -18210,7 +18210,7 @@
 "label": "3",
 "name": "ATG squat – DEM",
 "sets": 4,
-"reps": "3 sec",
+"reps": "3",
 "tempo": "X1X0",
 "rest": "90 sec",
 "note": "add weight from 2 · DEM (double extension method): bounce at the bottom (3-5 cm up)."
@@ -18219,7 +18219,7 @@
 "label": "4",
 "name": "Dynamic leg extension",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "X0X1",
 "rest": "60 sec",
 "note": "add weight · Accelerate the positive as much as possible (the machine should bounce with you), but pause one second at the top to absorb the weight."
@@ -18240,7 +18240,7 @@
 "label": "1a",
 "name": "High incline bench press narrow",
 "sets": 4,
-"reps": "2-4 sec",
+"reps": "2-4",
 "tempo": "41X0",
 "rest": "10 sec",
 "note": "add weight · Set the bench to a 45° incline, elbows tracking along the body. This recruits the triceps more."
@@ -18249,7 +18249,7 @@
 "label": "1b",
 "name": "Trap 3 raise",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2021",
 "rest": "90 sec",
 "note": "same weight · Prone front raise, straddling an incline bench. Pull the shoulder blades down as you raise"
@@ -18258,7 +18258,7 @@
 "label": "2a",
 "name": "Seated behind-the-neck press",
 "sets": 4,
-"reps": "3-4 sec",
+"reps": "3-4",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Behind-the-neck barbell press, no back support. Shoulders in external rotation"
@@ -18267,7 +18267,7 @@
 "label": "2b",
 "name": "Close-grip reverse EZ bar curl, back against rack",
 "sets": 4,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Brace against the rack or a wall. Pull the shoulders down away from the ears by engaging the shoulder blades. Overhand grip on the bar"
@@ -18276,7 +18276,7 @@
 "label": "2c",
 "name": "Dumbbell French press to shoulders with rotation",
 "sets": 4,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "add weight · Lie on a flat bench; when the weight is at the shoulders, hands are in a neutral grip."
@@ -18297,7 +18297,7 @@
 "label": "1a",
 "name": "Heels elevated front ATG squat",
 "sets": 5,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Heels on a large bumper plate or a wedge made for high-heel squats. This puts more load on the quads."
@@ -18306,7 +18306,7 @@
 "label": "1b",
 "name": "ATG squat",
 "sets": 5,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "same weight 1a · Classic back squat through a full range of motion."
@@ -18315,7 +18315,7 @@
 "label": "2a",
 "name": "Clean deadlift",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Clean pull: start with hips lower than in a deadlift, torso upright, shoulder blades and shoulders pulled down, elbows locked. The pull uses more legs."
@@ -18324,7 +18324,7 @@
 "label": "2b",
 "name": "Lying leg curl, feet straight, dorsiflexed",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "40X0",
 "rest": "60 sec",
 "note": "add weight · Feet parallel, toes pulled up toward the shins."
@@ -18354,7 +18354,7 @@
 "label": "2",
 "name": "Barbell seal row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2021",
 "rest": "60 sec",
 "note": "add weight · Horizontal row to the chest on a special bench with a cambered bar. If unavailable, raise a flat bench on plates, lie face down and row an EZ bar."
@@ -18363,7 +18363,7 @@
 "label": "3a",
 "name": "Pull-up",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2021",
 "rest": "10 sec",
 "note": "BW · Grip wider than shoulder width"
@@ -18372,7 +18372,7 @@
 "label": "3b",
 "name": "Overhand lat pulldown",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "same weight · Agonist superset: finish off the back on the cable after pre-fatiguing it with pull-ups."
@@ -18381,7 +18381,7 @@
 "label": "4a",
 "name": "Cable lat pullover",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "30X1",
 "rest": "0 sec",
 "note": "add weight · Pull straight arms down to the body. Hinge at the hips as the arms go forward, stand tall as they come back"
@@ -18390,7 +18390,7 @@
 "label": "4b",
 "name": "Cable lat pulldown to knees",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight 4a · Same setup as the previous exercise, but unlock the elbows and pull with bent arms toward the knees"
@@ -18399,7 +18399,7 @@
 "label": "4c",
 "name": "Bent-over underhand cable row to waist",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "same weight 4b · Switch to an underhand grip on the attachment, hinge until the torso is nearly parallel to the floor (weight in the hips) and row the cable to your waist"
@@ -18420,7 +18420,7 @@
 "label": "1a",
 "name": "Trap bar deadlift",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · The movement is more like a squat, with more leg drive."
@@ -18429,7 +18429,7 @@
 "label": "1b",
 "name": "Lying leg curl, toes in, dorsiflexed",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Toes pointed in and pulled up toward the shins"
@@ -18438,7 +18438,7 @@
 "label": "1c",
 "name": "Leg press",
 "sets": 4,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "same weight · Leg press with feet shoulder-width apart, toes pointing forward or slightly turned out."
@@ -18456,7 +18456,7 @@
 "label": "2b",
 "name": "Barbell Romanian deadlift",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "4040",
 "rest": "20 sec",
 "note": "same weight · Keep the shoulder blades pulled down and together; don't let the arms hang out of the shoulder sockets."
@@ -18465,7 +18465,7 @@
 "label": "2c",
 "name": "Lying leg curl",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "3030",
 "rest": "10 sec",
 "note": "same weight · Classic leg curl with feet in a neutral position."
@@ -18474,7 +18474,7 @@
 "label": "2d",
 "name": "Seated leg extension",
 "sets": 4,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "same weight · Classic leg extension; make sure the setup is correct."
@@ -18483,7 +18483,7 @@
 "label": "3a",
 "name": "Standing calf raise",
 "sets": 3,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "44X4",
 "rest": "10 sec",
 "note": "add weight · Feet neutral."
@@ -18492,7 +18492,7 @@
 "label": "3b",
 "name": "Seated calf raise",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "same weight · Feet neutral."
@@ -18501,7 +18501,7 @@
 "label": "3c",
 "name": "Tibialis raise with kettlebell/band",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2022",
 "rest": "60 sec",
 "note": "same weight · Shoes off for the whole complex. Hook the tops of your feet into the handles of large enough kettlebells and pull them toward your shins"
@@ -18522,7 +18522,7 @@
 "label": "1a",
 "name": "Dumbbell bench press – DEM",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "30X0",
 "rest": "20 sec",
 "note": "add weight · Double extension method"
@@ -18531,7 +18531,7 @@
 "label": "1b",
 "name": "Plyo push-up",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "BW · Minimize ground contact time"
@@ -18540,7 +18540,7 @@
 "label": "1c",
 "name": "Medball push press",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X2X0",
 "rest": "45 sec",
 "note": "9-12 kg · Let the weight drop between reps."
@@ -18549,7 +18549,7 @@
 "label": "2",
 "name": "Bench press",
 "sets": 6,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "1-2 min",
 "note": "Ramping · Performance reps: accelerate the positive of every rep as much as possible."
@@ -18558,7 +18558,7 @@
 "label": "3a",
 "name": "Paused bench press",
 "sets": 4,
-"reps": "3-5 sec",
+"reps": "3-5",
 "tempo": "42X0",
 "rest": "20 sec",
 "note": "Od 80 % B · Pause 2 s on the chest."
@@ -18567,7 +18567,7 @@
 "label": "3b",
 "name": "Military press",
 "sets": 4,
-"reps": "3-5 sec",
+"reps": "3-5",
 "tempo": "20X0",
 "rest": "90 sec",
 "note": "same weight · Elbows point forward or only slightly out; in the bottom position the shoulder blades are pulled down."
@@ -18588,7 +18588,7 @@
 "label": "1",
 "name": "Weighted neutral pull-up",
 "sets": 6,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "40X1",
 "rest": "180 sec",
 "note": "Ramping · Add weight to the belt every set."
@@ -18597,7 +18597,7 @@
 "label": "2",
 "name": "Pendlay power row",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Body parallel to the floor, pull the bar to your chest. Set the bar down on the floor between reps"
@@ -18606,7 +18606,7 @@
 "label": "3a",
 "name": "T-bar row",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "20X1",
 "rest": "10 sec",
 "note": "add weight · Torso leans slightly forward, shoulder blades pulled back. Works the rhomboids, delts, and lower and middle traps"
@@ -18615,7 +18615,7 @@
 "label": "3b",
 "name": "Lat pulldown with V-handle",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Shoulder blades pulled down; the lower traps and mid-back do the work."
@@ -18636,7 +18636,7 @@
 "label": "1a",
 "name": "Dumbbell vertical jump",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X5X0",
 "rest": "10 sec",
 "note": "same weight · 5 s reset between reps."
@@ -18663,7 +18663,7 @@
 "label": "2",
 "name": "ATG squat",
 "sets": 6,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "1-2 min",
 "note": "Ramping · Performance reps: accelerate the positive on every rep."
@@ -18672,7 +18672,7 @@
 "label": "3",
 "name": "Band deadlift",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "X0X0",
 "rest": "120 sec",
 "note": "add weight · Loop the band around your neck and stand on the bottom end (more tension than holding it at the bar). If you have a suitable power rack, you can set it up there."
@@ -18702,7 +18702,7 @@
 "label": "1b",
 "name": "Band face pull",
 "sets": 5,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2021",
 "rest": "90 sec",
 "note": "add weight · Mainly the rear delts working, not the upper traps"
@@ -18711,7 +18711,7 @@
 "label": "2a",
 "name": "High incline neutral dumbbell press",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "31X0",
 "rest": "10 sec",
 "note": "same weight · Neutral-grip chest press, finishing at the bottom with the dumbbells touching the sides of the chest."
@@ -18720,7 +18720,7 @@
 "label": "2b",
 "name": "Barbell shrug (isometric)",
 "sets": 4,
-"reps": "3 sec",
+"reps": "3",
 "tempo": "10-15 s",
 "rest": "90 sec",
 "note": "same weight · Standard shrugs, holding each rep at the top for the prescribed number of seconds."
@@ -18729,7 +18729,7 @@
 "label": "3a",
 "name": "Pectoral fly",
 "sets": 3,
-"reps": "15 sec",
+"reps": "15",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "same weight · Use the largest range of motion you can manage (the assisted version is ideal here)."
@@ -18738,7 +18738,7 @@
 "label": "3b",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "15 sec",
+"reps": "15",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "same weight · Same machine as the previous exercise; just switch to the fullest range of motion possible. Keep the arms straight and focus on the rear delts."
@@ -18759,7 +18759,7 @@
 "label": "1",
 "name": "Zercher squat",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "20X0",
 "rest": "120 sec",
 "note": "add weight · Set the safeties at waist height. Hold the bar in the crook of your elbows; use a foam pad or something soft under it"
@@ -18768,7 +18768,7 @@
 "label": "2",
 "name": "Low bar ATG squat",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "21X0",
 "rest": "2-3 min",
 "note": "add weight from 1 · Keep adding weight from the last set of the previous exercise, but adjust the pin height. Bar sits on the rear delts (powerlifting style)."
@@ -18777,7 +18777,7 @@
 "label": "3",
 "name": "Box squat",
 "sets": 4,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "21X0",
 "rest": "2-3 min",
 "note": "add weight from 2 · Keep adding weight from the last set of the previous exercise. Set the bench / box height so you sit down almost to parallel."
@@ -18786,7 +18786,7 @@
 "label": "4",
 "name": "Barbell good morning",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "3030",
 "rest": "1-2 min",
 "note": "add weight · Torso hinges forward, legs nearly straight, weight stays in the hips"
@@ -18825,7 +18825,7 @@
 "label": "1a",
 "name": "EZ Scott curl",
 "sets": 10,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "1010",
 "rest": "20 sec",
 "note": "same weight · Full range of motion"
@@ -18834,7 +18834,7 @@
 "label": "1b",
 "name": "Standard dip on parallel bars",
 "sets": 10,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "same weight · Perform so you feel the triceps"
@@ -18855,7 +18855,7 @@
 "label": "1a",
 "name": "Dumbbell bench press – DEM",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "30X0",
 "rest": "20 sec",
 "note": "add weight · Double extension method"
@@ -18864,7 +18864,7 @@
 "label": "1b",
 "name": "Plyo push-up",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "BW · Minimize ground contact time"
@@ -18873,7 +18873,7 @@
 "label": "1c",
 "name": "Medball push press",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X2X0",
 "rest": "45 sec",
 "note": "9-12 kg · Let the weight drop between reps."
@@ -18882,7 +18882,7 @@
 "label": "2",
 "name": "Bench press",
 "sets": 6,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "X0X0",
 "rest": "1-2 min",
 "note": "Ramping · Performance reps: accelerate the positive of every rep as much as possible."
@@ -18891,7 +18891,7 @@
 "label": "3a",
 "name": "Paused bench press",
 "sets": 4,
-"reps": "3-5 sec",
+"reps": "3-5",
 "tempo": "42X0",
 "rest": "20 sec",
 "note": "Od 80 % B · Pause 2 s on the chest."
@@ -18900,7 +18900,7 @@
 "label": "3b",
 "name": "Military press",
 "sets": 4,
-"reps": "3-5 sec",
+"reps": "3-5",
 "tempo": "20X0",
 "rest": "90 sec",
 "note": "same weight · Elbows point forward or slightly out; in the bottom position the shoulder blades are pulled down."
@@ -18921,7 +18921,7 @@
 "label": "1",
 "name": "Weighted neutral pull-up",
 "sets": 6,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "40X0",
 "rest": "180 sec",
 "note": "Ramping · Add weight to the belt every set."
@@ -18930,7 +18930,7 @@
 "label": "2",
 "name": "Pendlay power row",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Body parallel to the floor, pull the bar to your chest. Set the bar down on the floor between reps"
@@ -18939,7 +18939,7 @@
 "label": "3a",
 "name": "T-bar row",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "20X1",
 "rest": "10 sec",
 "note": "add weight · Torso leans slightly forward, shoulder blades pulled back. Works the rhomboids, delts, and lower and middle traps"
@@ -18948,7 +18948,7 @@
 "label": "3b",
 "name": "Lat pulldown with V-handle",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Shoulder blades pulled down; the lower traps and mid-back do the work."
@@ -18969,7 +18969,7 @@
 "label": "1a",
 "name": "Dumbbell vertical jump",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X5X0",
 "rest": "10 sec",
 "note": "same weight · 5 s reset between reps."
@@ -18996,7 +18996,7 @@
 "label": "2",
 "name": "ATG squat",
 "sets": 6,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "X0X0",
 "rest": "1-2 min",
 "note": "Ramping · Performance reps: accelerate the positive on every rep."
@@ -19005,7 +19005,7 @@
 "label": "3",
 "name": "Band deadlift",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "X0X0",
 "rest": "120 sec",
 "note": "add weight · Loop the band around your neck and stand on the bottom end (more tension than holding it at the bar). If you have a suitable power rack, you can set it up there."
@@ -19035,7 +19035,7 @@
 "label": "1b",
 "name": "Band face pull",
 "sets": 5,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2021",
 "rest": "90 sec",
 "note": "add weight · Mainly the rear delts working, not the upper traps"
@@ -19044,7 +19044,7 @@
 "label": "2a",
 "name": "High incline neutral dumbbell press",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "31X0",
 "rest": "10 sec",
 "note": "same weight · Neutral-grip chest press, finishing at the bottom with the dumbbells touching the sides of the chest."
@@ -19053,7 +19053,7 @@
 "label": "2b",
 "name": "Barbell shrug (isometric)",
 "sets": 4,
-"reps": "3 sec",
+"reps": "3",
 "tempo": "10-15 s",
 "rest": "90 sec",
 "note": "same weight · Standard shrugs, holding each rep at the top for the prescribed number of seconds."
@@ -19062,7 +19062,7 @@
 "label": "3a",
 "name": "Pectoral fly",
 "sets": 3,
-"reps": "15 sec",
+"reps": "15",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "same weight · Use the largest range of motion you can manage (the assisted version is ideal here)."
@@ -19071,7 +19071,7 @@
 "label": "3b",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "15 sec",
+"reps": "15",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "same weight · Same machine as the previous exercise; just switch to the fullest range of motion possible. Keep the arms straight and focus on the rear delts."
@@ -19092,7 +19092,7 @@
 "label": "1",
 "name": "Zercher squat",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "20X0",
 "rest": "120 sec",
 "note": "add weight · Set the safeties at waist height. Hold the bar in the crook of your elbows; use a foam pad or something soft under it"
@@ -19101,7 +19101,7 @@
 "label": "2",
 "name": "Low bar ATG squat",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "21X0",
 "rest": "2-3 min",
 "note": "add weight from 1 · Keep adding weight from the last set of the previous exercise, but adjust the pin height. Bar sits on the rear delts (powerlifting style)."
@@ -19110,7 +19110,7 @@
 "label": "3",
 "name": "Box squat",
 "sets": 4,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "21X0",
 "rest": "2-3 min",
 "note": "add weight from 2 · Keep adding weight from the last set of the previous exercise. Set the bench / box height so you sit down almost to parallel."
@@ -19119,7 +19119,7 @@
 "label": "4",
 "name": "Barbell good morning",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "3030",
 "rest": "1-2 min",
 "note": "add weight · Torso hinges forward, legs nearly straight, weight stays in the hips"
@@ -19158,7 +19158,7 @@
 "label": "1a",
 "name": "EZ Scott curl",
 "sets": 10,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "1010",
 "rest": "20 sec",
 "note": "same weight · Full range of motion"
@@ -19167,7 +19167,7 @@
 "label": "1b",
 "name": "Standard dip on parallel bars",
 "sets": 10,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "same weight · Perform so you feel the triceps"
@@ -19188,7 +19188,7 @@
 "label": "1a",
 "name": "Dumbbell bench press – DEM",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "30X0",
 "rest": "20 sec",
 "note": "add weight · Double extension method"
@@ -19197,7 +19197,7 @@
 "label": "1b",
 "name": "Plyo push-up",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "BW · Minimize ground contact time"
@@ -19206,7 +19206,7 @@
 "label": "1c",
 "name": "Medball push press",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X2X0",
 "rest": "45 sec",
 "note": "9-12 kg · Let the weight drop between reps."
@@ -19215,7 +19215,7 @@
 "label": "2",
 "name": "Bench press",
 "sets": 6,
-"reps": "2-3 sec",
+"reps": "2-3",
 "tempo": "X0X0",
 "rest": "1-2 min",
 "note": "Ramping · Performance reps: accelerate the positive of every rep as much as possible."
@@ -19224,7 +19224,7 @@
 "label": "3a",
 "name": "Paused bench press",
 "sets": 4,
-"reps": "3-5 sec",
+"reps": "3-5",
 "tempo": "42X0",
 "rest": "20 sec",
 "note": "Od 80 % B · Pause 2 s on the chest."
@@ -19233,7 +19233,7 @@
 "label": "3b",
 "name": "Military press",
 "sets": 4,
-"reps": "3-5 sec",
+"reps": "3-5",
 "tempo": "20X0",
 "rest": "90 sec",
 "note": "same weight · Elbows point forward or slightly out; pull the shoulder blades down."
@@ -19263,7 +19263,7 @@
 "label": "2",
 "name": "Pendlay power row",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Body parallel to the floor, pull the bar to your chest. Set the bar down on the floor between reps"
@@ -19272,7 +19272,7 @@
 "label": "3a",
 "name": "T-bar row",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "20X1",
 "rest": "10 sec",
 "note": "add weight · Torso leans slightly forward, shoulder blades pulled back. Works the rhomboids, delts, and lower and middle traps"
@@ -19281,7 +19281,7 @@
 "label": "3b",
 "name": "Lat pulldown with V-handle",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Shoulder blades pulled down; the lower traps and mid-back do the work."
@@ -19302,7 +19302,7 @@
 "label": "1a",
 "name": "Dumbbell vertical jump",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X5X0",
 "rest": "10 sec",
 "note": "same weight · 5 s reset between reps."
@@ -19329,7 +19329,7 @@
 "label": "3",
 "name": "Band deadlift",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "X0X0",
 "rest": "120 sec",
 "note": "add weight · Loop the band around your neck and stand on the bottom end (more tension than holding it at the bar). If you have a suitable power rack, you can set it up there."
@@ -19359,7 +19359,7 @@
 "label": "1b",
 "name": "Band face pull",
 "sets": 5,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2021",
 "rest": "90 sec",
 "note": "add weight · Mainly the rear delts working, not the upper traps"
@@ -19368,7 +19368,7 @@
 "label": "2a",
 "name": "High incline neutral dumbbell press",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "31X0",
 "rest": "10 sec",
 "note": "same weight · Neutral-grip chest press, finishing at the bottom with the dumbbells touching the sides of the chest."
@@ -19377,7 +19377,7 @@
 "label": "2b",
 "name": "Barbell shrug (isometric)",
 "sets": 4,
-"reps": "3 sec",
+"reps": "3",
 "tempo": "10-15 s",
 "rest": "90 sec",
 "note": "same weight · Standard shrugs, holding each rep at the top for the prescribed number of seconds."
@@ -19386,7 +19386,7 @@
 "label": "3a",
 "name": "Pectoral fly",
 "sets": 3,
-"reps": "15 sec",
+"reps": "15",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "same weight · Use the largest range of motion you can manage (the assisted version is ideal here)."
@@ -19395,7 +19395,7 @@
 "label": "3b",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "15 sec",
+"reps": "15",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "same weight · Same machine as the previous exercise; just switch to the fullest range of motion possible. Keep the arms straight and focus on the rear delts."
@@ -19416,7 +19416,7 @@
 "label": "1",
 "name": "Zercher squat",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "20X0",
 "rest": "120 sec",
 "note": "add weight · Set the safeties at waist height. Hold the bar in the crook of your elbows; use a foam pad or something soft under it"
@@ -19425,7 +19425,7 @@
 "label": "2",
 "name": "Low bar ATG squat",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "21X0",
 "rest": "2-3 min",
 "note": "add weight from 1 · Keep adding weight from the last set of the previous exercise, but adjust the pin height. Bar sits on the rear delts (powerlifting style)."
@@ -19434,7 +19434,7 @@
 "label": "3",
 "name": "Box squat",
 "sets": 4,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "21X0",
 "rest": "2-3 min",
 "note": "add weight from 2 · Keep adding weight from the last set of the previous exercise. Set the bench / box height so you sit down almost to parallel."
@@ -19443,7 +19443,7 @@
 "label": "4",
 "name": "Barbell good morning",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "3030",
 "rest": "1-2 min",
 "note": "add weight · Torso hinges forward, legs nearly straight, weight stays in the hips"
@@ -19482,7 +19482,7 @@
 "label": "1a",
 "name": "EZ Scott curl",
 "sets": 10,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "1010",
 "rest": "20 sec",
 "note": "same weight · Full range of motion"
@@ -19491,7 +19491,7 @@
 "label": "1b",
 "name": "Standard dip on parallel bars",
 "sets": 10,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "same weight · Perform so you feel the triceps"
@@ -19512,7 +19512,7 @@
 "label": "1a",
 "name": "Dumbbell bench press – DEM",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "30X0",
 "rest": "20 sec",
 "note": "add weight · Double extension method"
@@ -19521,7 +19521,7 @@
 "label": "1b",
 "name": "Plyo push-up",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "BW · Minimize ground contact time"
@@ -19530,7 +19530,7 @@
 "label": "1c",
 "name": "Medball push press",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X2X0",
 "rest": "45 sec",
 "note": "9-12 kg · Let the weight drop between reps."
@@ -19548,7 +19548,7 @@
 "label": "3a",
 "name": "Paused bench press",
 "sets": 4,
-"reps": "3-5 sec",
+"reps": "3-5",
 "tempo": "42X0",
 "rest": "20 sec",
 "note": "Od 80 % B · Pause 2 s on the chest."
@@ -19557,7 +19557,7 @@
 "label": "3b",
 "name": "Military press",
 "sets": 4,
-"reps": "3-5 sec",
+"reps": "3-5",
 "tempo": "20X0",
 "rest": "90 sec",
 "note": "same weight · Elbows point forward or slightly out. Pull the shoulder blades down."
@@ -19587,7 +19587,7 @@
 "label": "2",
 "name": "Pendlay power row",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Body parallel to the floor, pull the bar to your chest. Set the bar down on the floor between reps"
@@ -19596,7 +19596,7 @@
 "label": "3a",
 "name": "T-bar row",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "20X1",
 "rest": "10 sec",
 "note": "add weight · Torso leans slightly forward, shoulder blades pulled back. Works the rhomboids, delts, and lower and middle traps"
@@ -19605,7 +19605,7 @@
 "label": "3b",
 "name": "Lat pulldown with V-handle",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Shoulder blades pulled down; the lower traps and mid-back do the work."
@@ -19626,7 +19626,7 @@
 "label": "1a",
 "name": "Dumbbell vertical jump",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X5X0",
 "rest": "10 sec",
 "note": "same weight · 5 s reset between reps."
@@ -19653,7 +19653,7 @@
 "label": "2",
 "name": "ATG squat",
 "sets": 6,
-"reps": "3 sec",
+"reps": "3",
 "tempo": "X0X0",
 "rest": "1-2 min",
 "note": "Ramping · Performance reps: accelerate the positive on every rep."
@@ -19662,7 +19662,7 @@
 "label": "3",
 "name": "Band deadlift",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "X0X0",
 "rest": "120 sec",
 "note": "add weight · Loop the band around your neck and stand on the bottom end (more tension than holding it at the bar). If you have a suitable power rack, you can set it up there."
@@ -19692,7 +19692,7 @@
 "label": "1b",
 "name": "Band face pull",
 "sets": 5,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2021",
 "rest": "90 sec",
 "note": "add weight · Mainly the rear delts working, not the upper traps"
@@ -19701,7 +19701,7 @@
 "label": "2a",
 "name": "High incline neutral dumbbell press",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "31X0",
 "rest": "10 sec",
 "note": "same weight · Neutral-grip chest press, finishing at the bottom with the dumbbells touching the sides of the chest."
@@ -19710,7 +19710,7 @@
 "label": "2b",
 "name": "Barbell shrug (isometric)",
 "sets": 4,
-"reps": "3 sec",
+"reps": "3",
 "tempo": "10-15 s",
 "rest": "90 sec",
 "note": "same weight · Standard shrugs, holding each rep at the top for the prescribed number of seconds."
@@ -19719,7 +19719,7 @@
 "label": "3a",
 "name": "Pectoral fly",
 "sets": 3,
-"reps": "15 sec",
+"reps": "15",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "same weight · Use the largest range of motion you can manage (the assisted version is ideal here)."
@@ -19728,7 +19728,7 @@
 "label": "3b",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "15 sec",
+"reps": "15",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "same weight · Same machine as the previous exercise; just switch to the fullest range of motion possible. Keep the arms straight and focus on the rear delts."
@@ -19749,7 +19749,7 @@
 "label": "1",
 "name": "Zercher squat",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "20X0",
 "rest": "120 sec",
 "note": "add weight · Set the safeties at waist height. Hold the bar in the crook of your elbows; use a foam pad or something soft under it"
@@ -19758,7 +19758,7 @@
 "label": "2",
 "name": "Low bar ATG squat",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "21X0",
 "rest": "2-3 min",
 "note": "add weight from 1 · Keep adding weight from the last set of the previous exercise, but adjust the pin height. Bar sits on the rear delts (powerlifting style)."
@@ -19767,7 +19767,7 @@
 "label": "3",
 "name": "Box squat",
 "sets": 4,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "21X0",
 "rest": "2-3 min",
 "note": "add weight from 2 · Keep adding weight from the last set of the previous exercise. Set the bench / box height so you sit down almost to parallel."
@@ -19776,7 +19776,7 @@
 "label": "4",
 "name": "Barbell good morning",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "3030",
 "rest": "1-2 min",
 "note": "add weight · Torso hinges forward, legs nearly straight, weight stays in the hips"
@@ -19815,7 +19815,7 @@
 "label": "1a",
 "name": "EZ Scott curl",
 "sets": 10,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "1010",
 "rest": "20 sec",
 "note": "same weight · Full range of motion"
@@ -19824,7 +19824,7 @@
 "label": "1b",
 "name": "Standard dip on parallel bars",
 "sets": 10,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "same weight · Perform so you feel the triceps"
@@ -19845,7 +19845,7 @@
 "label": "1a",
 "name": "Close-grip band bench press",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Loop the resistance band under your back."
@@ -19854,7 +19854,7 @@
 "label": "1b",
 "name": "TRX scarecrow",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "BW · Pull yourself up on the TRX with straight arms overhead"
@@ -19893,7 +19893,7 @@
 "label": "1",
 "name": "Barbell bent-over row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "add weight · Torso at about 30-45° to the floor, row the dumbbells to the waist. Use mainly the rear delts, lower traps and mid-back, not the upper traps"
@@ -19902,7 +19902,7 @@
 "label": "2",
 "name": "Pendlay row",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "1011",
 "rest": "90 sec",
 "note": "add weight from 2 · Set the bar on the floor between reps."
@@ -19920,7 +19920,7 @@
 "label": "4a",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "20X1",
 "rest": "10 sec",
 "note": "add weight"
@@ -19929,7 +19929,7 @@
 "label": "4b",
 "name": "Trap 3 raise",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Prone overhead raise, straddling an incline bench. Pull the shoulder blades down as you raise the arms"
@@ -19950,7 +19950,7 @@
 "label": "1a",
 "name": "Hanging band ATG squat",
 "sets": 4,
-"reps": "4-5 sec",
+"reps": "4-5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Hang plates from bands on each side of the bar."
@@ -19959,7 +19959,7 @@
 "label": "1b",
 "name": "Dumbbell hyperextension",
 "sets": 4,
-"reps": "4-5 sec",
+"reps": "4-5",
 "tempo": "40X4",
 "rest": "10 sec",
 "note": "add weight · Hold a dumbbell on your chest. Strength perk: do it with 30 kg at the prescribed tempo."
@@ -20037,7 +20037,7 @@
 "label": "1a",
 "name": "Barbell jump squat",
 "sets": 4,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Use 50 - 60 kg. Reset between reps."
@@ -20046,7 +20046,7 @@
 "label": "1b",
 "name": "Single-leg lying leg curl, toes in, dorsiflexed",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "40X1",
 "rest": "60 sec",
 "note": "add weight · Foot turned in, toes pulled up toward the shin."
@@ -20055,7 +20055,7 @@
 "label": "2",
 "name": "ATG squat",
 "sets": 4,
-"reps": "2-3 sec",
+"reps": "2-3",
 "tempo": "53X0",
 "rest": "2-3 min",
 "note": "add weight · Extra slow execution."
@@ -20094,7 +20094,7 @@
 "label": "1a",
 "name": "Close-grip band bench press",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Loop the resistance band under your back."
@@ -20103,7 +20103,7 @@
 "label": "1b",
 "name": "TRX scarecrow",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "BW · Pull yourself up on the TRX with straight arms overhead"
@@ -20142,7 +20142,7 @@
 "label": "1",
 "name": "Barbell bent-over row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "add weight · Torso at about 30-45° to the floor, row the dumbbells to the waist. Use mainly the rear delts, lower traps and mid-back, not the upper traps"
@@ -20151,7 +20151,7 @@
 "label": "2",
 "name": "Pendlay row",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "1011",
 "rest": "90 sec",
 "note": "add weight from 2 · Set the bar on the floor between reps."
@@ -20169,7 +20169,7 @@
 "label": "4a",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "20X1",
 "rest": "10 sec",
 "note": "add weight"
@@ -20178,7 +20178,7 @@
 "label": "4b",
 "name": "Trap 3 raise",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Prone overhead raise, straddling an incline bench. Pull the shoulder blades down as you raise the arms"
@@ -20199,7 +20199,7 @@
 "label": "1a",
 "name": "Hanging band ATG squat",
 "sets": 4,
-"reps": "4-5 sec",
+"reps": "4-5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Hang plates from bands on each side of the bar."
@@ -20208,7 +20208,7 @@
 "label": "1b",
 "name": "Dumbbell hyperextension",
 "sets": 4,
-"reps": "4-5 sec",
+"reps": "4-5",
 "tempo": "40X4",
 "rest": "10 sec",
 "note": "add weight · Hold a dumbbell on your chest. Strength perk: do it with 30 kg at the prescribed tempo."
@@ -20286,7 +20286,7 @@
 "label": "1a",
 "name": "Barbell jump squat",
 "sets": 4,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Use 50 - 60 kg. Reset between reps."
@@ -20295,7 +20295,7 @@
 "label": "1b",
 "name": "Single-leg lying leg curl, toes in, dorsiflexed",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "40X1",
 "rest": "60 sec",
 "note": "add weight · Foot turned in, toes pulled up toward the shin."
@@ -20304,7 +20304,7 @@
 "label": "2",
 "name": "ATG squat",
 "sets": 4,
-"reps": "2-3 sec",
+"reps": "2-3",
 "tempo": "53X0",
 "rest": "2-3 min",
 "note": "add weight · Extra slow execution."
@@ -20343,7 +20343,7 @@
 "label": "1a",
 "name": "Close-grip band bench press",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Loop the resistance band under your back."
@@ -20352,7 +20352,7 @@
 "label": "1b",
 "name": "TRX scarecrow",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "BW · Pull yourself up on the TRX with straight arms overhead"
@@ -20391,7 +20391,7 @@
 "label": "1",
 "name": "Barbell bent-over row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "add weight · Torso at about 30-45° to the floor, row the dumbbells to the waist. Use mainly the rear delts, lower traps and mid-back, not the upper traps"
@@ -20400,7 +20400,7 @@
 "label": "2",
 "name": "Pendlay row",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "1011",
 "rest": "90 sec",
 "note": "add weight from 2 · Set the bar on the floor between reps."
@@ -20418,7 +20418,7 @@
 "label": "4a",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "20X1",
 "rest": "10 sec",
 "note": "add weight"
@@ -20427,7 +20427,7 @@
 "label": "4b",
 "name": "Trap 3 raise",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Prone overhead raise, straddling an incline bench. Pull the shoulder blades down as you raise the arms"
@@ -20448,7 +20448,7 @@
 "label": "1a",
 "name": "Hanging band ATG squat",
 "sets": 4,
-"reps": "4-5 sec",
+"reps": "4-5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Hang plates from bands on each side of the bar."
@@ -20457,7 +20457,7 @@
 "label": "1b",
 "name": "Dumbbell hyperextension",
 "sets": 4,
-"reps": "4-5 sec",
+"reps": "4-5",
 "tempo": "40X4",
 "rest": "10 sec",
 "note": "add weight · Hold a dumbbell on your chest. Strength perk: do it with 30 kg at the prescribed tempo."
@@ -20535,7 +20535,7 @@
 "label": "1a",
 "name": "Barbell jump squat",
 "sets": 4,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Use 50 - 60 kg. Reset between reps."
@@ -20544,7 +20544,7 @@
 "label": "1b",
 "name": "Single-leg lying leg curl, toes in, dorsiflexed",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "40X1",
 "rest": "60 sec",
 "note": "add weight · Foot turned in, toes pulled up toward the shin."
@@ -20553,7 +20553,7 @@
 "label": "2",
 "name": "ATG squat",
 "sets": 4,
-"reps": "2-3 sec",
+"reps": "2-3",
 "tempo": "53X0",
 "rest": "2-3 min",
 "note": "add weight · Extra slow execution."
@@ -20592,7 +20592,7 @@
 "label": "1a",
 "name": "Close-grip band bench press",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Loop the resistance band under your back."
@@ -20601,7 +20601,7 @@
 "label": "1b",
 "name": "TRX scarecrow",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "BW · Pull yourself up on the TRX with straight arms overhead"
@@ -20640,7 +20640,7 @@
 "label": "1",
 "name": "Barbell bent-over row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "add weight · Torso at about 30-45° to the floor, row the dumbbells to the waist. Use mainly the rear delts, lower traps and mid-back, not the upper traps"
@@ -20649,7 +20649,7 @@
 "label": "2",
 "name": "Pendlay row",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "1011",
 "rest": "90 sec",
 "note": "add weight from 2 · Set the bar on the floor between reps."
@@ -20667,7 +20667,7 @@
 "label": "4a",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "20X1",
 "rest": "10 sec",
 "note": "add weight"
@@ -20676,7 +20676,7 @@
 "label": "4b",
 "name": "Trap 3 raise",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Prone overhead raise, straddling an incline bench. Pull the shoulder blades down as you raise the arms"
@@ -20697,7 +20697,7 @@
 "label": "1a",
 "name": "Hanging band ATG squat",
 "sets": 4,
-"reps": "4-5 sec",
+"reps": "4-5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Hang plates from bands on each side of the bar."
@@ -20706,7 +20706,7 @@
 "label": "1b",
 "name": "Dumbbell hyperextension",
 "sets": 4,
-"reps": "4-5 sec",
+"reps": "4-5",
 "tempo": "40X4",
 "rest": "10 sec",
 "note": "add weight · Hold a dumbbell on your chest. Strength perk: do it with 30 kg at the prescribed tempo."
@@ -20784,7 +20784,7 @@
 "label": "1a",
 "name": "Barbell jump squat",
 "sets": 4,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Use 50 - 60 kg. Reset between reps."
@@ -20793,7 +20793,7 @@
 "label": "1b",
 "name": "Single-leg lying leg curl, toes in, dorsiflexed",
 "sets": 4,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "40X1",
 "rest": "60 sec",
 "note": "add weight · Foot turned in, toes pulled up toward the shin."
@@ -20802,7 +20802,7 @@
 "label": "2",
 "name": "ATG squat",
 "sets": 4,
-"reps": "2-3 sec",
+"reps": "2-3",
 "tempo": "53X0",
 "rest": "2-3 min",
 "note": "add weight · Extra slow execution."
@@ -20841,7 +20841,7 @@
 "label": "1a",
 "name": "Modified incline dumbbell bench press",
 "sets": 5,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "41X0",
 "rest": "10 sec",
 "note": "add weight · Arms at 45°, dumbbells up to touch the shoulder, pause 1s at the shoulder, 4 seconds down."
@@ -20850,7 +20850,7 @@
 "label": "1b",
 "name": "Overhand EZ bar curl (one foot forward)",
 "sets": 5,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "add weight · Do it in a half-lunge stance with the hips facing forward."
@@ -20859,7 +20859,7 @@
 "label": "2a",
 "name": "Band Smith machine press",
 "sets": 4,
-"reps": "8-12 sec",
+"reps": "8-12",
 "tempo": "2010",
 "rest": "10 sec",
 "note": "add weight · Smith machine with a band. Grip wider than your bench press, elbows flared out as far as possible (only safe on the Smith machine). The band evens out the strength curve."
@@ -20868,7 +20868,7 @@
 "label": "2b",
 "name": "Kettlebell biceps curl",
 "sets": 4,
-"reps": "8-12 sec",
+"reps": "8-12",
 "tempo": "2010",
 "rest": "90 sec",
 "note": "same weight · Classic standing biceps curls with kettlebells."
@@ -20877,7 +20877,7 @@
 "label": "3a",
 "name": "Cable pectoral fly – seated",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "0 sec",
 "note": "same weight · First do the exercise seated through a full range of motion."
@@ -20886,7 +20886,7 @@
 "label": "3b",
 "name": "Cable pectoral press – seated",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "same weight · Then standing"
@@ -20895,7 +20895,7 @@
 "label": "3c",
 "name": "Cable pectoral press – standing",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "same weight · Then go straight into the presses."
@@ -20925,7 +20925,7 @@
 "label": "1b",
 "name": "Lying leg curl, toes in, dorsiflexed",
 "sets": 6,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "add weight · Toes pointed in and pulled up toward the shins"
@@ -20943,7 +20943,7 @@
 "label": "3a",
 "name": "Leg extension, toes turned out",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "10X1",
 "rest": "10 sec",
 "note": "add weight"
@@ -20952,7 +20952,7 @@
 "label": "3b",
 "name": "Seated calf raise, feet parallel",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "same weight · Lean forward on the negative to increase the load, then lean slightly back on the positive"
@@ -20973,7 +20973,7 @@
 "label": "1a",
 "name": "Y cable raise",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "20X1",
 "rest": "10 sec",
 "note": "same weight · Middle traps"
@@ -20982,7 +20982,7 @@
 "label": "1b",
 "name": "Trap 3 raise",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2021",
 "rest": "10 sec",
 "note": "same weight · Lower traps"
@@ -20991,7 +20991,7 @@
 "label": "1c",
 "name": "Shrug + low cable upright row to chin",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2021",
 "rest": "90 sec",
 "note": "same weight · Upper traps"
@@ -21000,7 +21000,7 @@
 "label": "2a",
 "name": "Seated football press (slight incline)",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "add weight · If there is no barbell, do a neutral-grip dumbbell press"
@@ -21009,7 +21009,7 @@
 "label": "2b",
 "name": "Narrow pull-up (weighted)",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "add weight · Overhand grip, shoulder width"
@@ -21027,7 +21027,7 @@
 "label": "3b",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · At chin height with arms straight (pushing away), pull the shoulder blades together – retraction"
@@ -21075,7 +21075,7 @@
 "label": "1a",
 "name": "Front foot elevated dumbbell split squat",
 "sets": 4,
-"reps": "6 – 8",
+"reps": "6–8",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Ankle and glute activation. Targets the top of the thighs (rectus femoris)."
@@ -21084,7 +21084,7 @@
 "label": "1b",
 "name": "Bulgarian split squat",
 "sets": 4,
-"reps": "6 – 8",
+"reps": "6–8",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Rear leg on a bench for a quad stretch. Hamstring and VMO activation"
@@ -21093,7 +21093,7 @@
 "label": "1c",
 "name": "Barbell Romanian deadlift from deficit",
 "sets": 4,
-"reps": "4 – 6",
+"reps": "4–6",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Underhand grip"
@@ -21102,7 +21102,7 @@
 "label": "1d",
 "name": "Lying leg curl, feet neutral",
 "sets": 4,
-"reps": "6 – 8",
+"reps": "6–8",
 "tempo": "40X0",
 "rest": "120 sec",
 "note": "add weight · Do the exercise in whatever way feels natural and comfortable for you."
@@ -21132,7 +21132,7 @@
 "label": "1a",
 "name": "Neutral-grip bench press",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "20X0",
 "rest": "10 sec",
 "note": "add weight · If unavailable, do a shoulder-width underhand-grip bench press."
@@ -21150,7 +21150,7 @@
 "label": "2a",
 "name": "Seated Zottman curl (held proximally)",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · Grip the dumbbell on the side closer to your body, elbows tucked, arms turned slightly out. Curl up underhand, rotate fully to overhand at the top (forearms take over), lower overhand under control."
@@ -21168,7 +21168,7 @@
 "label": "2c",
 "name": "Dumbbell French press (held proximally)",
 "sets": 4,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · Same"
@@ -21177,7 +21177,7 @@
 "label": "2d",
 "name": "Close-grip bench dip (behind body)",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "BW · Arms as far behind the body as possible (ideally holding the narrow end of the bench). Only use the range of motion (usually shortened) that feels comfortable."
@@ -21186,7 +21186,7 @@
 "label": "3a",
 "name": "Lying triceps extension on crossover cables",
 "sets": 3,
-"reps": "15-20 sec",
+"reps": "15-20",
 "tempo": "2010",
 "rest": "10 sec",
 "note": "same weight · Lie on the floor between the cable crossover, grab the cables crossed over and do elbow extensions. Standard crossover cables may be too far apart; bands work as a substitute"
@@ -21195,7 +21195,7 @@
 "label": "3b",
 "name": "Low cable hammer curl",
 "sets": 3,
-"reps": "15-20 sec",
+"reps": "15-20",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "same weight · Rope attachment, body in a slight forward lean"
@@ -21216,7 +21216,7 @@
 "label": "1a",
 "name": "Modified incline dumbbell bench press",
 "sets": 5,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "41X0",
 "rest": "10 sec",
 "note": "add weight · Arms at 45°, dumbbells up to touch the shoulder, pause 1s at the shoulder, 4 seconds down."
@@ -21225,7 +21225,7 @@
 "label": "1b",
 "name": "Overhand EZ bar curl (one foot forward)",
 "sets": 5,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "add weight · Do it in a half-lunge stance with the hips facing forward."
@@ -21234,7 +21234,7 @@
 "label": "2a",
 "name": "Band Smith machine press",
 "sets": 4,
-"reps": "8-12 sec",
+"reps": "8-12",
 "tempo": "2010",
 "rest": "10 sec",
 "note": "add weight · Smith machine with a band. Grip wider than your bench press, elbows flared out as far as possible (only safe on the Smith machine). The band evens out the strength curve."
@@ -21243,7 +21243,7 @@
 "label": "2b",
 "name": "Kettlebell biceps curl",
 "sets": 4,
-"reps": "8-12 sec",
+"reps": "8-12",
 "tempo": "2010",
 "rest": "90 sec",
 "note": "same weight · Classic standing biceps curls with kettlebells."
@@ -21252,7 +21252,7 @@
 "label": "3a",
 "name": "Cable pectoral fly – seated",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "0 sec",
 "note": "same weight · First do the exercise seated through a full range of motion."
@@ -21261,7 +21261,7 @@
 "label": "3b",
 "name": "Cable pectoral press – seated",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "same weight · Then standing"
@@ -21270,7 +21270,7 @@
 "label": "3c",
 "name": "Cable pectoral press – standing",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "same weight · Then go straight into the presses."
@@ -21300,7 +21300,7 @@
 "label": "1b",
 "name": "Lying leg curl, feet parallel, plantarflexed",
 "sets": 6,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "40X0",
 "rest": "120 sec",
 "note": "add weight · Feet parallel, toes pulled up toward the shins."
@@ -21318,7 +21318,7 @@
 "label": "3a",
 "name": "Leg extension, feet parallel",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "10X1",
 "rest": "10 sec",
 "note": "add weight"
@@ -21327,7 +21327,7 @@
 "label": "3b",
 "name": "Seated calf raise, feet parallel",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "same weight · Lean forward on the negative to increase the load, then lean slightly back on the positive"
@@ -21348,7 +21348,7 @@
 "label": "1a",
 "name": "Y cable raise",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "20X1",
 "rest": "10 sec",
 "note": "same weight · Middle traps"
@@ -21357,7 +21357,7 @@
 "label": "1b",
 "name": "Trap 3 raise",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2021",
 "rest": "10 sec",
 "note": "same weight · Lower traps"
@@ -21366,7 +21366,7 @@
 "label": "1c",
 "name": "Shrug + low cable upright row to chin",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2021",
 "rest": "90 sec",
 "note": "same weight · Upper traps"
@@ -21375,7 +21375,7 @@
 "label": "2a",
 "name": "Seated football press (slight incline)",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "add weight · If there is no barbell, do a neutral-grip dumbbell press"
@@ -21384,7 +21384,7 @@
 "label": "2b",
 "name": "Narrow pull-up (weighted)",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "add weight · Overhand grip, shoulder width"
@@ -21402,7 +21402,7 @@
 "label": "3b",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · At chin height with arms straight (pushing away), pull the shoulder blades together – retraction"
@@ -21450,7 +21450,7 @@
 "label": "1a",
 "name": "Front foot elevated dumbbell split squat",
 "sets": 4,
-"reps": "6 – 8",
+"reps": "6–8",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Ankle and glute activation. Targets the top of the thighs (rectus femoris)."
@@ -21459,7 +21459,7 @@
 "label": "1b",
 "name": "Bulgarian split squat",
 "sets": 4,
-"reps": "6 – 8",
+"reps": "6–8",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Rear leg on a bench for a quad stretch. Hamstring and VMO activation"
@@ -21468,7 +21468,7 @@
 "label": "1c",
 "name": "Barbell Romanian deadlift from deficit",
 "sets": 4,
-"reps": "4 – 6",
+"reps": "4–6",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Underhand grip"
@@ -21477,7 +21477,7 @@
 "label": "1d",
 "name": "Lying leg curl, feet neutral",
 "sets": 4,
-"reps": "6 – 8",
+"reps": "6–8",
 "tempo": "40X0",
 "rest": "120 sec",
 "note": "add weight · Do the exercise in whatever way feels natural and comfortable for you."
@@ -21507,7 +21507,7 @@
 "label": "1a",
 "name": "Neutral-grip bench press",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "20X0",
 "rest": "10 sec",
 "note": "add weight · If unavailable, do a shoulder-width underhand-grip bench press."
@@ -21525,7 +21525,7 @@
 "label": "2a",
 "name": "Seated Zottman curl (held proximally)",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · Grip the dumbbell on the side closer to your body, elbows tucked, arms turned slightly out. Curl up underhand, rotate fully to overhand at the top (forearms take over), lower overhand under control."
@@ -21543,7 +21543,7 @@
 "label": "2c",
 "name": "Dumbbell French press (held proximally)",
 "sets": 4,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · Same"
@@ -21552,7 +21552,7 @@
 "label": "2d",
 "name": "Close-grip bench dip (behind body)",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "BW · Arms as far behind the body as possible (ideally holding the narrow end of the bench). Only use the range of motion (usually shortened) that feels comfortable."
@@ -21561,7 +21561,7 @@
 "label": "3a",
 "name": "Lying triceps extension on crossover cables",
 "sets": 3,
-"reps": "15-20 sec",
+"reps": "15-20",
 "tempo": "2010",
 "rest": "10 sec",
 "note": "same weight · Lie on the floor between the cable crossover, grab the cables crossed over and do elbow extensions. Standard crossover cables may be too far apart; bands work as a substitute"
@@ -21570,7 +21570,7 @@
 "label": "3b",
 "name": "Low cable hammer curl",
 "sets": 3,
-"reps": "15-20 sec",
+"reps": "15-20",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "same weight · Rope attachment, body in a slight forward lean"
@@ -21591,7 +21591,7 @@
 "label": "1a",
 "name": "Modified incline dumbbell bench press",
 "sets": 5,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "41X0",
 "rest": "10 sec",
 "note": "add weight · Arms at 45°, dumbbells up to touch the shoulder, pause 1s at the shoulder, 4 seconds down."
@@ -21600,7 +21600,7 @@
 "label": "1b",
 "name": "Overhand EZ bar curl (one foot forward)",
 "sets": 5,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "add weight · Do it in a half-lunge stance with the hips facing forward."
@@ -21609,7 +21609,7 @@
 "label": "2a",
 "name": "Band Smith machine press",
 "sets": 4,
-"reps": "8-12 sec",
+"reps": "8-12",
 "tempo": "2010",
 "rest": "10 sec",
 "note": "add weight · Smith machine with a band. Grip wider than your bench press, elbows flared out as far as possible (only safe on the Smith machine). The band evens out the strength curve."
@@ -21618,7 +21618,7 @@
 "label": "2b",
 "name": "Kettlebell biceps curl",
 "sets": 4,
-"reps": "8-12 sec",
+"reps": "8-12",
 "tempo": "2010",
 "rest": "90 sec",
 "note": "same weight · Classic standing biceps curls with kettlebells."
@@ -21627,7 +21627,7 @@
 "label": "3a",
 "name": "Cable pectoral fly – seated",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "0 sec",
 "note": "same weight · First do the exercise seated through a full range of motion."
@@ -21636,7 +21636,7 @@
 "label": "3b",
 "name": "Cable pectoral press – seated",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "same weight · Then standing"
@@ -21645,7 +21645,7 @@
 "label": "3c",
 "name": "Cable pectoral press – standing",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "same weight · Then go straight into the presses."
@@ -21675,7 +21675,7 @@
 "label": "1b",
 "name": "Lying leg curl, feet parallel, dorsiflexed",
 "sets": 6,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "40X1",
 "rest": "120 sec",
 "note": "add weight · Feet parallel, toes pulled up toward the shins."
@@ -21693,7 +21693,7 @@
 "label": "3a",
 "name": "Leg extension, toes turned in",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "10X1",
 "rest": "10 sec",
 "note": "add weight"
@@ -21702,7 +21702,7 @@
 "label": "3b",
 "name": "Seated calf raise, toes out",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "22X1",
 "rest": "60 sec",
 "note": "same weight · Lean forward on the negative to increase the load, then lean slightly back on the positive"
@@ -21723,7 +21723,7 @@
 "label": "1a",
 "name": "Y cable raise",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "20X1",
 "rest": "10 sec",
 "note": "same weight · Middle traps"
@@ -21732,7 +21732,7 @@
 "label": "1b",
 "name": "Trap 3 raise",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2021",
 "rest": "10 sec",
 "note": "same weight · Lower traps"
@@ -21741,7 +21741,7 @@
 "label": "1c",
 "name": "Shrug + low cable upright row to chin",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2021",
 "rest": "90 sec",
 "note": "same weight · Upper traps"
@@ -21750,7 +21750,7 @@
 "label": "2a",
 "name": "Seated football press (slight incline)",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "add weight · If there is no barbell, do a neutral-grip dumbbell press"
@@ -21759,7 +21759,7 @@
 "label": "2b",
 "name": "Narrow pull-up (weighted)",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "add weight · Overhand grip, shoulder width"
@@ -21777,7 +21777,7 @@
 "label": "3b",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · At chin height with arms straight (pushing away), pull the shoulder blades together – retraction"
@@ -21825,7 +21825,7 @@
 "label": "1a",
 "name": "Front foot elevated dumbbell split squat",
 "sets": 4,
-"reps": "6 – 8",
+"reps": "6–8",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Ankle and glute activation. Targets the top of the thighs (rectus femoris)."
@@ -21834,7 +21834,7 @@
 "label": "1b",
 "name": "Bulgarian split squat",
 "sets": 4,
-"reps": "6 – 8",
+"reps": "6–8",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Rear leg on a bench for a quad stretch. Hamstring and VMO activation"
@@ -21843,7 +21843,7 @@
 "label": "1c",
 "name": "Barbell Romanian deadlift from deficit",
 "sets": 4,
-"reps": "4 – 6",
+"reps": "4–6",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Underhand grip"
@@ -21852,7 +21852,7 @@
 "label": "1d",
 "name": "Lying leg curl, feet neutral",
 "sets": 4,
-"reps": "6 – 8",
+"reps": "6–8",
 "tempo": "40X0",
 "rest": "120 sec",
 "note": "add weight · Do the exercise in whatever way feels natural and comfortable for you."
@@ -21882,7 +21882,7 @@
 "label": "1a",
 "name": "Neutral-grip bench press",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "20X0",
 "rest": "10 sec",
 "note": "add weight · If unavailable, do a shoulder-width underhand-grip bench press."
@@ -21900,7 +21900,7 @@
 "label": "2a",
 "name": "Seated Zottman curl (held proximally)",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · Grip the dumbbell on the side closer to your body, elbows tucked, arms turned slightly out. Curl up underhand, rotate fully to overhand at the top (forearms take over), lower overhand under control."
@@ -21918,7 +21918,7 @@
 "label": "2c",
 "name": "Dumbbell French press (held proximally)",
 "sets": 4,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · Same"
@@ -21927,7 +21927,7 @@
 "label": "2d",
 "name": "Close-grip bench dip (behind body)",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "BW · Arms as far behind the body as possible (ideally holding the narrow end of the bench). Only use the range of motion (usually shortened) that feels comfortable."
@@ -21936,7 +21936,7 @@
 "label": "3a",
 "name": "Lying triceps extension on crossover cables",
 "sets": 3,
-"reps": "15-20 sec",
+"reps": "15-20",
 "tempo": "2010",
 "rest": "10 sec",
 "note": "same weight · Lie on the floor between the cable crossover, grab the cables crossed over and do elbow extensions. Standard crossover cables may be too far apart; bands work as a substitute"
@@ -21945,7 +21945,7 @@
 "label": "3b",
 "name": "Low cable hammer curl",
 "sets": 3,
-"reps": "15-20 sec",
+"reps": "15-20",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "same weight · Rope attachment, body in a slight forward lean"
@@ -21966,7 +21966,7 @@
 "label": "1a",
 "name": "Modified incline dumbbell bench press",
 "sets": 5,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "41X0",
 "rest": "10 sec",
 "note": "add weight · Arms at 45°, dumbbells up to touch the shoulder, pause 1s at the shoulder, 4 seconds down."
@@ -21975,7 +21975,7 @@
 "label": "1b",
 "name": "Overhand EZ bar curl (one foot forward)",
 "sets": 5,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "add weight · Do it in a half-lunge stance with the hips facing forward."
@@ -21984,7 +21984,7 @@
 "label": "2a",
 "name": "Band Smith machine press",
 "sets": 4,
-"reps": "8-12 sec",
+"reps": "8-12",
 "tempo": "2010",
 "rest": "10 sec",
 "note": "add weight · Smith machine with a band. Grip wider than your bench press, elbows flared out as far as possible (only safe on the Smith machine). The band evens out the strength curve."
@@ -21993,7 +21993,7 @@
 "label": "2b",
 "name": "Kettlebell biceps curl",
 "sets": 4,
-"reps": "8-12 sec",
+"reps": "8-12",
 "tempo": "2010",
 "rest": "90 sec",
 "note": "same weight · Classic standing biceps curls with kettlebells."
@@ -22002,7 +22002,7 @@
 "label": "3a",
 "name": "Cable pectoral fly – seated",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "0 sec",
 "note": "same weight · First do the exercise seated through a full range of motion."
@@ -22011,7 +22011,7 @@
 "label": "3b",
 "name": "Cable pectoral press – seated",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "same weight · Then standing"
@@ -22020,7 +22020,7 @@
 "label": "3c",
 "name": "Cable pectoral press – standing",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "same weight · Then go straight into the presses."
@@ -22050,7 +22050,7 @@
 "label": "1b",
 "name": "Lying leg curl, toes out, dorsiflexed",
 "sets": 6,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "21X1",
 "rest": "120 sec",
 "note": "add weight · Toes pulled up toward the shins and pointed out"
@@ -22068,7 +22068,7 @@
 "label": "3a",
 "name": "Leg extension, feet straight",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "10X0",
 "rest": "10 sec",
 "note": "add weight"
@@ -22077,7 +22077,7 @@
 "label": "3b",
 "name": "Standing calf raise, feet straight",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "4044",
 "rest": "60 sec",
 "note": "same weight"
@@ -22098,7 +22098,7 @@
 "label": "1a",
 "name": "Y cable raise",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "20X1",
 "rest": "10 sec",
 "note": "same weight · Middle traps"
@@ -22107,7 +22107,7 @@
 "label": "1b",
 "name": "Trap 3 raise",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2021",
 "rest": "10 sec",
 "note": "same weight · Lower traps"
@@ -22116,7 +22116,7 @@
 "label": "1c",
 "name": "Shrug + low cable upright row to chin",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2021",
 "rest": "90 sec",
 "note": "same weight · Upper traps"
@@ -22125,7 +22125,7 @@
 "label": "2a",
 "name": "Seated football press (slight incline)",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "add weight · If there is no barbell, do a neutral-grip dumbbell press"
@@ -22134,7 +22134,7 @@
 "label": "2b",
 "name": "Narrow pull-up (weighted)",
 "sets": 4,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "add weight · Overhand grip, shoulder width"
@@ -22152,7 +22152,7 @@
 "label": "3b",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · At chin height with arms straight (pushing away), pull the shoulder blades together – retraction"
@@ -22200,7 +22200,7 @@
 "label": "1a",
 "name": "Front foot elevated dumbbell split squat",
 "sets": 4,
-"reps": "6 – 8",
+"reps": "6–8",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Ankle and glute activation. Targets the top of the thighs (rectus femoris)."
@@ -22209,7 +22209,7 @@
 "label": "1b",
 "name": "Bulgarian split squat",
 "sets": 4,
-"reps": "6 – 8",
+"reps": "6–8",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Rear leg on a bench for a quad stretch. Hamstring and VMO activation"
@@ -22218,7 +22218,7 @@
 "label": "1c",
 "name": "Barbell Romanian deadlift from deficit",
 "sets": 4,
-"reps": "4 – 6",
+"reps": "4–6",
 "tempo": "40X0",
 "rest": "10 sec",
 "note": "add weight · Underhand grip"
@@ -22227,7 +22227,7 @@
 "label": "1d",
 "name": "Lying leg curl, feet neutral",
 "sets": 4,
-"reps": "6 – 8",
+"reps": "6–8",
 "tempo": "40X0",
 "rest": "120 sec",
 "note": "add weight · Do the exercise in whatever way feels natural and comfortable for you."
@@ -22257,7 +22257,7 @@
 "label": "1a",
 "name": "Neutral-grip bench press",
 "sets": 4,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "20X0",
 "rest": "10 sec",
 "note": "add weight · If unavailable, do a shoulder-width underhand-grip bench press."
@@ -22275,7 +22275,7 @@
 "label": "2a",
 "name": "Seated Zottman curl (held proximally)",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · Grip the dumbbell on the side closer to your body, elbows tucked, arms turned slightly out. Curl up underhand, rotate fully to overhand at the top (forearms take over), lower overhand under control."
@@ -22293,7 +22293,7 @@
 "label": "2c",
 "name": "Dumbbell French press (held proximally)",
 "sets": 4,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "same weight · Same"
@@ -22302,7 +22302,7 @@
 "label": "2d",
 "name": "Close-grip bench dip (behind body)",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "BW · Arms as far behind the body as possible (ideally holding the narrow end of the bench). Only use the range of motion (usually shortened) that feels comfortable."
@@ -22311,7 +22311,7 @@
 "label": "3a",
 "name": "Lying triceps extension on crossover cables",
 "sets": 3,
-"reps": "15-20 sec",
+"reps": "15-20",
 "tempo": "2010",
 "rest": "10 sec",
 "note": "same weight · Lie on the floor between the cable crossover, grab the cables crossed over and do elbow extensions. Standard crossover cables may be too far apart; bands work as a substitute"
@@ -22320,7 +22320,7 @@
 "label": "3b",
 "name": "Low cable hammer curl",
 "sets": 3,
-"reps": "15-20 sec",
+"reps": "15-20",
 "tempo": "1010",
 "rest": "90 sec",
 "note": "same weight · Rope attachment, body in a slight forward lean"
@@ -22341,7 +22341,7 @@
 "label": "1a",
 "name": "Incline bench press",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Thumb-length grip (thumbs a thumb's length from the smooth center of the bar), lower until it touches your chest"
@@ -22350,7 +22350,7 @@
 "label": "1b",
 "name": "Trap 3 raise",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "add weight · Shoulder blades pulled down. Feel it in the lower traps."
@@ -22359,7 +22359,7 @@
 "label": "2a",
 "name": "Floor press",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "21X0",
 "rest": "10 sec",
 "note": "add weight from 1a · Always rest the entire upper arm on the floor"
@@ -22368,7 +22368,7 @@
 "label": "2b",
 "name": "Dumbbell seated bent-over shrug",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "add weight · Feel it in the middle traps."
@@ -22377,7 +22377,7 @@
 "label": "3a",
 "name": "Bench press from pins",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "12X0",
 "rest": "10 sec",
 "note": "add weight from 2a · Pins set a fist's width above the chest. Pause 2s on the pins."
@@ -22386,7 +22386,7 @@
 "label": "3b",
 "name": "Dumbbell shrug",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "X0X0",
 "rest": "90 sec",
 "note": "add weight · Focus on the upper traps. Pull the shoulders up and back"
@@ -22395,7 +22395,7 @@
 "label": "4a",
 "name": "Weighted dip",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "5 sec",
 "note": "add weight · Wide grip, elbows away from the body, torso vertical, feel the chest"
@@ -22404,7 +22404,7 @@
 "label": "4b",
 "name": "Dumbbell floor French press",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "11X0",
 "rest": "90 sec",
 "note": "add weight · Lying French press behind the head, neutral grip."
@@ -22425,7 +22425,7 @@
 "label": "1a",
 "name": "Pendulum squat",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Done on a reverse hack squat machine. If unavailable, do leg press."
@@ -22434,7 +22434,7 @@
 "label": "1b",
 "name": "Lying leg curl, feet straight, dorsiflexed",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "41X1",
 "rest": "45 sec",
 "note": "add weight · Feet parallel, toes pulled up toward the shins. Goal: controlled tempo and max weight. If the lower back takes over, lift your torso slightly off the bench on the way down."
@@ -22443,7 +22443,7 @@
 "label": "2",
 "name": "Anderson front squat",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "21X0",
 "rest": "120 sec",
 "note": "add weight · Set the safeties in the rack at about hip height, or as low as you can still stand up from in a front squat"
@@ -22452,7 +22452,7 @@
 "label": "3",
 "name": "Anderson squat",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "22X0",
 "rest": "120 sec",
 "note": "add weight from 2 · Safeties at the same height as in B, but now do a back squat"
@@ -22461,7 +22461,7 @@
 "label": "4a",
 "name": "Pendulum squat",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "20X0",
 "rest": "10 sec",
 "note": "add weight from 1a · Keep adding weight from the last set of the first exercise."
@@ -22470,7 +22470,7 @@
 "label": "4b",
 "name": "Seated leg extension",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "21X1",
 "rest": "90 sec",
 "note": "add weight · Set the back pad further forward than usual so the quads stay loaded and fully stretch at the bottom (Tom Platz style), lifting your butt slightly off the seat if needed. Pause 1s at the top."
@@ -22491,7 +22491,7 @@
 "label": "1",
 "name": "Chest-supported machine row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "21X1",
 "rest": "90 sec",
 "note": "add weight · Chest-supported row on a plate-loaded machine or cable; the exact variant doesn't matter. Let the shoulder blades protract forward at the start and retract together on the pull to target the rhomboids and mid-back."
@@ -22500,7 +22500,7 @@
 "label": "2",
 "name": "Barbell bent-over row",
 "sets": 3,
-"reps": "8-12 sec",
+"reps": "8-12",
 "tempo": "20X1",
 "rest": "90 sec",
 "note": "add weight · Bent-over row: no straps, thumbs-around grip. Whole body stays active; shoulder blades protract on the way down and retract on the pull. Use a weight you can row strictly, no swing, with a 1 s hold in contraction"
@@ -22509,7 +22509,7 @@
 "label": "3a",
 "name": "Semi grip pull-up",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2021",
 "rest": "10 sec",
 "note": "BW · Mixed grip between overhand and neutral. If the bar doesn't have suitable handles, use a regular straight bar."
@@ -22518,7 +22518,7 @@
 "label": "3b",
 "name": "Gentleman row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "30X1",
 "rest": "60 sec",
 "note": "add weight · One-arm bent-over row, technically demanding. Head rests on the free hand, torso near parallel to the floor, rear foot behind the support leg's heel. Rotate from overhand to underhand as you pull"
@@ -22527,7 +22527,7 @@
 "label": "4a",
 "name": "Chest-supported dumbbell row, overhand grip, elbows out",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "1010",
 "rest": "0 sec",
 "note": "same weight · Row at upper-back level. Targets the rhomboids and middle traps"
@@ -22536,7 +22536,7 @@
 "label": "4b",
 "name": "Chest-supported dumbbell row, underhand grip, to waist",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "1010",
 "rest": "0 sec",
 "note": "same weight · This variation: underhand grip, row to the waist. Targets the teres major and the lats"
@@ -22545,7 +22545,7 @@
 "label": "4c",
 "name": "Chest-supported dumbbell row, neutral grip, to waist",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "same weight · Here you're targeting the mid-back overall, plus the lower traps / lat fibers."
@@ -22554,7 +22554,7 @@
 "label": "5a",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "add weight · Ideally on a machine with a rounded pad instead of a flat bench, or put a foam roller under your chest. Keep arms as straight as possible, pull shoulder blades together and focus on the mid-back."
@@ -22563,7 +22563,7 @@
 "label": "5b",
 "name": "Modified full stretch row – high cable",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "add weight · Kneeling on the floor. Reach forward with your head between your arms, then pull toward the chest and lean back. Aim for a maximal stretch."
@@ -22584,7 +22584,7 @@
 "label": "1a",
 "name": "Seated dumbbell overhead press",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "31X0",
 "rest": "5 sec",
 "note": "add weight · Full range of motion, shoulder blades and shoulders pulled down and together. Each rep the dumbbells touch the delts. A bench with a low back pad helps you set your back."
@@ -22602,7 +22602,7 @@
 "label": "2",
 "name": "Military press",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "90 sec",
 "note": "add weight · Shoulder-width grip, shoulders pulled back"
@@ -22611,7 +22611,7 @@
 "label": "3",
 "name": "Plate loaded machine shoulder press (seated/kneeling)",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Do the exercise in whatever way feels comfortable."
@@ -22620,7 +22620,7 @@
 "label": "4",
 "name": "Cable machine shoulder press (straddling, reversed)",
 "sets": 3,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "30 sec",
 "note": "add weight · Do the exercise in whatever way feels comfortable."
@@ -22641,7 +22641,7 @@
 "label": "1a",
 "name": "Pendulum squat narrow (with band)",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Unlike the standard pendulum squat with an ATG stance, place your feet parallel to each other and do classic bodybuilding squats to parallel"
@@ -22650,7 +22650,7 @@
 "label": "1b",
 "name": "Seated calf raise",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "add weight · Barefoot, full range of motion. At the bottom, push your hands into your knees for a max calf stretch and tibialis contraction. At the top, lean back."
@@ -22659,7 +22659,7 @@
 "label": "2",
 "name": "Romanian deadlift (below knees)",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "31X1",
 "rest": "120 sec",
 "note": "add weight · Barefoot. Lower only a few centimeters below the knees and stop there; stretch the hamstrings as much as possible at the bottom and feel the glutes on the way up"
@@ -22668,7 +22668,7 @@
 "label": "3a",
 "name": "Front foot elevated dumbbell heretic split squat",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Place a step box in front of you, put the toes of your front foot on it and lunge forward. Targets the rectus femoris and improves ankle and hip mobility"
@@ -22677,7 +22677,7 @@
 "label": "3b",
 "name": "Dumbbell Romanian deadlift",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "30X0",
 "rest": "90 sec",
 "note": "add weight · 2/3: do partial reps only in the range where you feel the hamstrings working (from the bottom position up to about 5 cm above the knees)."
@@ -22686,7 +22686,7 @@
 "label": "4a",
 "name": "Seated leg extension",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "30X1",
 "rest": "10 sec",
 "note": "add weight · As in the first leg workout, pause at the top and position yourself on the bench so the thigh gets a maximal stretch at the bottom"
@@ -22695,7 +22695,7 @@
 "label": "4b",
 "name": "Cable overhead triceps extension on high pulley",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "3131",
 "rest": "45 sec",
 "note": "add weight · Use a rope attachment. On the way up, stretch the abs as much as possible."
@@ -22725,7 +22725,7 @@
 "label": "1b",
 "name": "Trap 3 raise",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "add weight · Shoulder blades pulled down. Feel it in the lower traps."
@@ -22743,7 +22743,7 @@
 "label": "2b",
 "name": "Dumbbell seated bent-over shrug",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "add weight · Feel it in the middle traps."
@@ -22761,7 +22761,7 @@
 "label": "3b",
 "name": "Dumbbell shrug",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "X0X0",
 "rest": "90 sec",
 "note": "add weight · Focus on the upper traps. Pull the shoulders up and back"
@@ -22779,7 +22779,7 @@
 "label": "4b",
 "name": "Dumbbell floor French press",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "11X0",
 "rest": "90 sec",
 "note": "add weight · Lying French press behind the head, neutral grip."
@@ -22800,7 +22800,7 @@
 "label": "1a",
 "name": "Pendulum squat",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Done on a reverse hack squat machine. If unavailable, do leg press."
@@ -22809,7 +22809,7 @@
 "label": "1b",
 "name": "Lying leg curl, feet straight, dorsiflexed",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "41X1",
 "rest": "45 sec",
 "note": "add weight · Feet parallel, toes pulled up toward the shins. Goal: controlled tempo and max weight. If the lower back takes over, lift your torso slightly off the bench on the way down."
@@ -22836,7 +22836,7 @@
 "label": "4a",
 "name": "Pendulum squat",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "20X0",
 "rest": "10 sec",
 "note": "add weight from 1a · Keep adding weight from the last set of the first exercise."
@@ -22845,7 +22845,7 @@
 "label": "4b",
 "name": "Seated leg extension",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "21X1",
 "rest": "90 sec",
 "note": "add weight · Set the back pad further forward than usual so the quads stay loaded and fully stretch at the bottom (Tom Platz style), lifting your butt slightly off the seat if needed. Pause 1s at the top."
@@ -22866,7 +22866,7 @@
 "label": "1",
 "name": "Chest-supported machine row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "21X1",
 "rest": "90 sec",
 "note": "add weight · Chest-supported row on a plate-loaded machine or cable; the exact variant doesn't matter. Let the shoulder blades protract forward at the start and retract together on the pull to target the rhomboids and mid-back."
@@ -22884,7 +22884,7 @@
 "label": "3a",
 "name": "Semi grip pull-up",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2021",
 "rest": "10 sec",
 "note": "BW · Mixed grip between overhand and neutral. If the bar doesn't have suitable handles, use a regular straight bar."
@@ -22893,7 +22893,7 @@
 "label": "3b",
 "name": "Gentleman row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "30X1",
 "rest": "60 sec",
 "note": "add weight · One-arm bent-over row, technically demanding. Head rests on the free hand, torso near parallel to the floor, rear foot behind the support leg's heel. Rotate from overhand to underhand as you pull"
@@ -22902,7 +22902,7 @@
 "label": "4a",
 "name": "Chest-supported dumbbell row, overhand grip, elbows out",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "1010",
 "rest": "0 sec",
 "note": "same weight · Row at upper-back level. Targets the rhomboids and middle traps"
@@ -22911,7 +22911,7 @@
 "label": "4b",
 "name": "Chest-supported dumbbell row, underhand grip, to waist",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "1010",
 "rest": "0 sec",
 "note": "same weight · This variation: underhand grip, row to the waist. Targets the teres major and the lats"
@@ -22920,7 +22920,7 @@
 "label": "4c",
 "name": "Chest-supported dumbbell row, neutral grip, to waist",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "same weight · Here you're targeting the mid-back overall, plus the lower traps / lat fibers."
@@ -22929,7 +22929,7 @@
 "label": "5a",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "add weight · Ideally on a machine with a rounded pad instead of a flat bench, or put a foam roller under your chest. Keep arms as straight as possible, pull shoulder blades together and focus on the mid-back."
@@ -22938,7 +22938,7 @@
 "label": "5b",
 "name": "Modified full stretch row – high cable",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "add weight · Kneeling on the floor. Reach forward with your head between your arms, then pull toward the chest and lean back. Aim for a maximal stretch."
@@ -22986,7 +22986,7 @@
 "label": "3",
 "name": "Plate loaded machine shoulder press (seated/kneeling)",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Do the exercise in whatever way feels comfortable."
@@ -22995,7 +22995,7 @@
 "label": "4",
 "name": "Cable machine shoulder press (straddling, reversed)",
 "sets": 3,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "30 sec",
 "note": "add weight · Do the exercise in whatever way feels comfortable."
@@ -23016,7 +23016,7 @@
 "label": "1a",
 "name": "Pendulum squat narrow (with band)",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "X0X0",
 "rest": "10 sec",
 "note": "add weight · Unlike the standard pendulum squat with an ATG stance, place your feet parallel to each other and do classic bodybuilding squats to parallel"
@@ -23025,7 +23025,7 @@
 "label": "1b",
 "name": "Seated calf raise",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "add weight · Barefoot, full range of motion. At the bottom, push your hands into your knees for a max calf stretch and tibialis contraction. At the top, lean back."
@@ -23034,7 +23034,7 @@
 "label": "2",
 "name": "Romanian deadlift (below knees)",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "31X1",
 "rest": "120 sec",
 "note": "add weight · Barefoot. Lower only a few centimeters below the knees and stop there; stretch the hamstrings as much as possible at the bottom and feel the glutes on the way up"
@@ -23043,7 +23043,7 @@
 "label": "3a",
 "name": "Front foot elevated dumbbell heretic split squat",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Place a step box in front of you, put the toes of your front foot on it and lunge forward. Targets the rectus femoris and improves ankle and hip mobility"
@@ -23052,7 +23052,7 @@
 "label": "3b",
 "name": "Dumbbell Romanian deadlift",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "30X0",
 "rest": "90 sec",
 "note": "add weight · 2/3: do partial reps only in the range where you feel the hamstrings working (from the bottom position up to about 5 cm above the knees)."
@@ -23061,7 +23061,7 @@
 "label": "4a",
 "name": "Seated leg extension",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "30X1",
 "rest": "10 sec",
 "note": "add weight · As in the first leg workout, pause at the top and position yourself on the bench so the thigh gets a maximal stretch at the bottom"
@@ -23070,7 +23070,7 @@
 "label": "4b",
 "name": "Cable overhead triceps extension on high pulley",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "3131",
 "rest": "45 sec",
 "note": "add weight · Use a rope attachment. On the way up, stretch the abs as much as possible."
@@ -23100,7 +23100,7 @@
 "label": "1b",
 "name": "Trap 3 raise",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "add weight · Shoulder blades pulled down. Feel it in the lower traps."
@@ -23118,7 +23118,7 @@
 "label": "2b",
 "name": "Dumbbell seated bent-over shrug",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "add weight · Feel it in the middle traps."
@@ -23136,7 +23136,7 @@
 "label": "3b",
 "name": "Dumbbell shrug",
 "sets": 4,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "X0X0",
 "rest": "90 sec",
 "note": "add weight · Focus on the upper traps. Pull the shoulders up and back"
@@ -23154,7 +23154,7 @@
 "label": "4b",
 "name": "Dumbbell floor French press",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "11X0",
 "rest": "90 sec",
 "note": "add weight · Lying French press behind the head, neutral grip."
@@ -23175,7 +23175,7 @@
 "label": "1a",
 "name": "Pendulum squat",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Done on a reverse hack squat machine. If unavailable, do leg press."
@@ -23184,7 +23184,7 @@
 "label": "1b",
 "name": "Lying leg curl, feet straight, dorsiflexed",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "41X1",
 "rest": "45 sec",
 "note": "add weight · Feet parallel, toes pulled up toward the shins. Goal: controlled tempo and max weight. If the lower back takes over, lift your torso slightly off the bench on the way down."
@@ -23211,7 +23211,7 @@
 "label": "4a",
 "name": "Pendulum squat",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "20X0",
 "rest": "10 sec",
 "note": "add weight from 1a · Keep adding weight from the last set of the first exercise."
@@ -23220,7 +23220,7 @@
 "label": "4b",
 "name": "Seated leg extension",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "21X1",
 "rest": "90 sec",
 "note": "add weight · Set the back pad further forward than usual so the quads stay loaded and fully stretch at the bottom (Tom Platz style), lifting your butt slightly off the seat if needed. Pause 1s at the top."
@@ -23241,7 +23241,7 @@
 "label": "1",
 "name": "Chest-supported machine row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "21X1",
 "rest": "90 sec",
 "note": "add weight · Chest-supported row on a machine or cable; let shoulder blades protract at the start and retract on the pull to hit the rhomboids and mid-back. B BB Bent over rows 4 10, 8, 6, 6 20X1 Add weight 90 s. Bent-over rows: no straps, thumbs-around grip, whole body engaged, shoulder blades protract on the way down and retract on the pull. Use only a weight you can row strictly without swinging, holding the bar 1 s in contraction."
@@ -23250,7 +23250,7 @@
 "label": "3a",
 "name": "Semi grip pull-up",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2021",
 "rest": "10 sec",
 "note": "BW · Mixed grip between overhand and neutral. If the bar doesn't have suitable handles, use a regular straight bar."
@@ -23259,7 +23259,7 @@
 "label": "3b",
 "name": "Gentleman row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "30X1",
 "rest": "60 sec",
 "note": "add weight · One-arm bent-over row, technically demanding. Head rests on the free hand, torso near parallel to the floor, rear foot behind the support leg's heel. Rotate from overhand to underhand as you pull"
@@ -23268,7 +23268,7 @@
 "label": "4a",
 "name": "Chest-supported dumbbell row, overhand grip, elbows out",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "1010",
 "rest": "0 sec",
 "note": "same weight · Row at upper-back level. Targets the rhomboids and middle traps"
@@ -23277,7 +23277,7 @@
 "label": "4b",
 "name": "Chest-supported dumbbell row, underhand grip, to waist",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "1010",
 "rest": "0 sec",
 "note": "same weight · This variation: underhand grip, row to the waist. Targets the teres major and the lats"
@@ -23286,7 +23286,7 @@
 "label": "4c",
 "name": "Chest-supported dumbbell row, neutral grip, to waist",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "same weight · Here you're targeting the mid-back overall, plus the lower traps / lat fibers."
@@ -23295,7 +23295,7 @@
 "label": "5a",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "add weight · Ideally on a machine with a rounded pad instead of a flat bench, or put a foam roller under your chest. Keep arms as straight as possible, pull shoulder blades together and focus on the mid-back."
@@ -23304,7 +23304,7 @@
 "label": "5b",
 "name": "Modified full stretch row – high cable",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "add weight · Kneeling on the floor. Reach forward with your head between your arms, then pull toward the chest and lean back. Aim for a maximal stretch."
@@ -23352,7 +23352,7 @@
 "label": "3",
 "name": "Plate loaded machine shoulder press (seated/kneeling)",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Do the exercise in whatever way feels comfortable."
@@ -23361,7 +23361,7 @@
 "label": "4",
 "name": "Cable machine shoulder press (straddling, reversed)",
 "sets": 3,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "30 sec",
 "note": "add weight · Do the exercise in whatever way feels comfortable."
@@ -23391,7 +23391,7 @@
 "label": "1b",
 "name": "Seated calf raise",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "add weight · Barefoot, full range of motion. At the bottom, push your hands into your knees for a max calf stretch and tibialis contraction. At the top, lean back."
@@ -23400,7 +23400,7 @@
 "label": "2",
 "name": "Romanian deadlift (below knees)",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "31X1",
 "rest": "120 sec",
 "note": "add weight · Barefoot. Lower only a few centimeters below the knees and stop there; stretch the hamstrings as much as possible at the bottom and feel the glutes on the way up"
@@ -23409,7 +23409,7 @@
 "label": "3a",
 "name": "Front foot elevated dumbbell heretic split squat",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Place a step box in front of you, put the toes of your front foot on it and lunge forward. Targets the rectus femoris and improves ankle and hip mobility"
@@ -23418,7 +23418,7 @@
 "label": "3b",
 "name": "Dumbbell Romanian deadlift",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "30X0",
 "rest": "90 sec",
 "note": "add weight · 2/3: do partial reps only in the range where you feel the hamstrings working (from the bottom position up to about 5 cm above the knees)."
@@ -23427,7 +23427,7 @@
 "label": "4a",
 "name": "Seated leg extension",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "30X1",
 "rest": "10 sec",
 "note": "add weight · As in the first leg workout, pause at the top and position yourself on the bench so the thigh gets a maximal stretch at the bottom"
@@ -23436,7 +23436,7 @@
 "label": "4b",
 "name": "Cable overhead triceps extension on high pulley",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "3131",
 "rest": "45 sec",
 "note": "add weight · Use a rope attachment. On the way up, stretch the abs as much as possible."
@@ -23466,7 +23466,7 @@
 "label": "1b",
 "name": "Trap 3 raise",
 "sets": 4,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "add weight · Shoulder blades pulled down. Feel it in the lower traps."
@@ -23484,7 +23484,7 @@
 "label": "2b",
 "name": "Dumbbell seated bent-over shrug",
 "sets": 4,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "20X1",
 "rest": "60 sec",
 "note": "add weight · Feel it in the middle traps."
@@ -23502,7 +23502,7 @@
 "label": "3b",
 "name": "Dumbbell shrug",
 "sets": 4,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "X0X0",
 "rest": "90 sec",
 "note": "add weight · Focus on the upper traps. Pull the shoulders up and back"
@@ -23520,7 +23520,7 @@
 "label": "4b",
 "name": "Dumbbell floor French press",
 "sets": 4,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "11X0",
 "rest": "90 sec",
 "note": "add weight · Lying French press behind the head, neutral grip."
@@ -23541,7 +23541,7 @@
 "label": "1a",
 "name": "Pendulum squat",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Done on a reverse hack squat machine. If unavailable, do leg press."
@@ -23550,7 +23550,7 @@
 "label": "1b",
 "name": "Lying leg curl, feet straight, dorsiflexed",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "41X1",
 "rest": "45 sec",
 "note": "add weight · Feet parallel, toes pulled up toward the shins. Goal: controlled tempo and max weight. If the lower back takes over, lift your torso slightly off the bench on the way down."
@@ -23577,7 +23577,7 @@
 "label": "4a",
 "name": "Pendulum squat",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "20X0",
 "rest": "10 sec",
 "note": "add weight from 1a · Keep adding weight from the last set of the first exercise."
@@ -23586,7 +23586,7 @@
 "label": "4b",
 "name": "Seated leg extension",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "21X1",
 "rest": "90 sec",
 "note": "add weight · Set the back pad further forward than usual so the quads stay loaded and fully stretch at the bottom (Tom Platz style), lifting your butt slightly off the seat if needed. Pause 1s at the top."
@@ -23607,7 +23607,7 @@
 "label": "1",
 "name": "Chest-supported machine row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "21X1",
 "rest": "90 sec",
 "note": "add weight · Chest-supported row on a machine or cable; let shoulder blades protract at the start and retract on the pull to hit the rhomboids and mid-back. B BB Bent over rows 4 8, 6, 6, 4 20X1 Add weight 90 s. Bent-over rows: no straps, thumbs-around grip, whole body engaged, shoulder blades protract on the way down and retract on the pull. Use only a weight you can row strictly without swinging, holding the bar 1 s in contraction."
@@ -23616,7 +23616,7 @@
 "label": "3a",
 "name": "Semi grip pull-up",
 "sets": 3,
-"reps": "12 sec",
+"reps": "12",
 "tempo": "2021",
 "rest": "10 sec",
 "note": "BW · Mixed grip between overhand and neutral. If the bar doesn't have suitable handles, use a regular straight bar."
@@ -23625,7 +23625,7 @@
 "label": "3b",
 "name": "Gentleman row",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "30X1",
 "rest": "60 sec",
 "note": "add weight · One-arm bent-over row, technically demanding. Head rests on the free hand, torso near parallel to the floor, rear foot behind the support leg's heel. Rotate from overhand to underhand as you pull"
@@ -23634,7 +23634,7 @@
 "label": "4a",
 "name": "Chest-supported dumbbell row, overhand grip, elbows out",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "1010",
 "rest": "0 sec",
 "note": "same weight · Row at upper-back level. Targets the rhomboids and middle traps"
@@ -23643,7 +23643,7 @@
 "label": "4b",
 "name": "Chest-supported dumbbell row, underhand grip, to waist",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "1010",
 "rest": "0 sec",
 "note": "same weight · This variation: underhand grip, row to the waist. Targets the teres major and the lats"
@@ -23652,7 +23652,7 @@
 "label": "4c",
 "name": "Chest-supported dumbbell row, neutral grip, to waist",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "same weight · Here you're targeting the mid-back overall, plus the lower traps / lat fibers."
@@ -23661,7 +23661,7 @@
 "label": "5a",
 "name": "Reverse pectoral fly",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "1010",
 "rest": "10 sec",
 "note": "add weight · Ideally on a machine with a rounded pad instead of a flat bench, or put a foam roller under your chest. Keep arms as straight as possible, pull shoulder blades together and focus on the mid-back."
@@ -23670,7 +23670,7 @@
 "label": "5b",
 "name": "Modified full stretch row – high cable",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "add weight · Kneeling on the floor. Reach forward with your head between your arms, then pull toward the chest and lean back. Aim for a maximal stretch."
@@ -23718,7 +23718,7 @@
 "label": "3",
 "name": "Plate loaded machine shoulder press (seated/kneeling)",
 "sets": 3,
-"reps": "10-12 sec",
+"reps": "10-12",
 "tempo": "2020",
 "rest": "60 sec",
 "note": "add weight · Do the exercise in whatever way feels comfortable."
@@ -23727,7 +23727,7 @@
 "label": "4",
 "name": "Cable machine shoulder press (straddling, reversed)",
 "sets": 3,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "30 sec",
 "note": "add weight · Do the exercise in whatever way feels comfortable."
@@ -23757,7 +23757,7 @@
 "label": "1b",
 "name": "Seated calf raise",
 "sets": 4,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2020",
 "rest": "120 sec",
 "note": "add weight · Barefoot, full range of motion. At the bottom, push your hands into your knees for a max calf stretch and tibialis contraction. At the top, lean back."
@@ -23766,7 +23766,7 @@
 "label": "2",
 "name": "Romanian deadlift (below knees)",
 "sets": 3,
-"reps": "4-6 sec",
+"reps": "4-6",
 "tempo": "31X1",
 "rest": "120 sec",
 "note": "add weight · Barefoot. Lower only a few centimeters below the knees and stop there; stretch the hamstrings as much as possible at the bottom and feel the glutes on the way up"
@@ -23775,7 +23775,7 @@
 "label": "3a",
 "name": "Front foot elevated dumbbell heretic split squat",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Place a step box in front of you, put the toes of your front foot on it and lunge forward. Targets the rectus femoris and improves ankle and hip mobility"
@@ -23784,7 +23784,7 @@
 "label": "3b",
 "name": "Dumbbell Romanian deadlift",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "30X0",
 "rest": "90 sec",
 "note": "add weight · 2/3: do partial reps only in the range where you feel the hamstrings working (from the bottom position up to about 5 cm above the knees)."
@@ -23793,7 +23793,7 @@
 "label": "4a",
 "name": "Seated leg extension",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "30X1",
 "rest": "10 sec",
 "note": "add weight · As in the first leg workout, pause at the top and position yourself on the bench so the thigh gets a maximal stretch at the bottom"
@@ -23802,7 +23802,7 @@
 "label": "4b",
 "name": "Cable overhead triceps extension on high pulley",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "3131",
 "rest": "45 sec",
 "note": "add weight · Use a rope attachment. On the way up, stretch the abs as much as possible."
@@ -23823,7 +23823,7 @@
 "label": "1",
 "name": "Bench press",
 "sets": 5,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "4020",
 "rest": "120 sec",
 "note": "add weight · Slow negative (4s). Slow positive (2s)"
@@ -23841,7 +23841,7 @@
 "label": "3a",
 "name": "Dip on rings",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "BW/ add weight · No rings: use a TRX or regular parallel bars. If you hit the prescribed reps, add weight on a belt."
@@ -23850,7 +23850,7 @@
 "label": "3b",
 "name": "Triceps push-up",
 "sets": 3,
-"reps": "12 sec",
+"reps": "12",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "BW · If they're too easy, do diamond push-ups."
@@ -23871,7 +23871,7 @@
 "label": "1",
 "name": "Front squat",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "add weight · Keep the movement comfortable and try to get into a flow (don't stop)"
@@ -23919,7 +23919,7 @@
 "label": "1",
 "name": "Pendlay row",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "X0X0",
 "rest": "90 sec",
 "note": "add weight · Unlike a classic bent-over row, torso nearly parallel to the floor (bottom of an RDL); row the bar to the chest, squeezing shoulder blades together, not down. Targets the mid-back."
@@ -23946,7 +23946,7 @@
 "label": "4a",
 "name": "Seated low cable row (V-handle, Arnold variation)",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "3020",
 "rest": "0 sec",
 "note": "add weight · Classic Arnold seated low cable row: lean far forward and let the shoulder blades protract, then row back without leaning back, finishing with the torso vertical."
@@ -23955,7 +23955,7 @@
 "label": "4b",
 "name": "Seated cable row",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2020",
 "rest": "0 sec",
 "note": "same weight 4a · Then the classic version: row the handle to the waist with a vertical torso, leaning forward only very slightly or not at all."
@@ -23964,7 +23964,7 @@
 "label": "4c",
 "name": "Seated back extension on low cable",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2020",
 "rest": "90 sec",
 "note": "add weight · The last part of the superset is tricky: you are no longer pulling, just leaning back as far as possible from upright with straight arms. Essentially a form of hyperextension."
@@ -24003,7 +24003,7 @@
 "label": "2a",
 "name": "Seated overhead press isometric (high)",
 "sets": 3,
-"reps": "3 sec",
+"reps": "3",
 "tempo": "10 s",
 "rest": "10 sec",
 "note": "add weight from 1a · Same setup as the previous exercise, but set the safeties 1 position higher. Continue from the previous exercise's weight. 3 reps, holding 10 s at the top of each"
@@ -24012,7 +24012,7 @@
 "label": "2b",
 "name": "Bent-over lateral raise (head supported on bench)",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "add weight · Rest your forehead on a medium-incline bench and do bent-over dumbbell rear delt raises"
@@ -24021,7 +24021,7 @@
 "label": "3a",
 "name": "Reverse pec deck",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Arms straight, shoulder blades pulled down and together."
@@ -24030,7 +24030,7 @@
 "label": "3b",
 "name": "Single-arm cable lateral raise",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "add weight · Use the low cable, hold the frame with the other arm and lean slightly to the side"
@@ -24039,7 +24039,7 @@
 "label": "4",
 "name": "Seated incline EZ front raise (undergrip)",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "3010",
 "rest": "90 sec",
 "note": "add weight · Sit back on a medium-incline bench. Hold an EZ bar shoulder-width underhand and raise it until your arms are at a right angle to your torso."
@@ -24060,7 +24060,7 @@
 "label": "1a",
 "name": "Band leg press (wide stance)",
 "sets": 3,
-"reps": "8-10 sec",
+"reps": "8-10",
 "tempo": "20X0",
 "rest": "20 sec",
 "note": "add weight · Attach a heavy band (thick green) from the top plate peg to the bottom handle so resistance rises through the range. Wide stance hits hamstrings and glutes more in the bottom, activating them before the deadlift"
@@ -24171,7 +24171,7 @@
 "label": "4a",
 "name": "Triceps pushdown",
 "sets": 2,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "15 sec",
 "note": "same weight · High cable pulldown, ideally upright with elbows out to the sides (there is a dedicated station with a back pad for this)"
@@ -24180,7 +24180,7 @@
 "label": "4b",
 "name": "Low cable biceps curl",
 "sets": 2,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "30 sec",
 "note": "same weight · Biceps curls on the low cable."
@@ -24201,7 +24201,7 @@
 "label": "1",
 "name": "Bench press",
 "sets": 5,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "3010",
 "rest": "120 sec",
 "note": "add weight · Slow negative (4s). Slow positive (2s)"
@@ -24219,7 +24219,7 @@
 "label": "3a",
 "name": "Dip on rings",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "BW/ add weight · No rings: use a TRX or regular parallel bars. If you hit the prescribed reps, add weight on a belt."
@@ -24228,7 +24228,7 @@
 "label": "3b",
 "name": "Triceps push-up",
 "sets": 3,
-"reps": "12 sec",
+"reps": "12",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "BW · If they're too easy, do diamond push-ups."
@@ -24249,7 +24249,7 @@
 "label": "1",
 "name": "Front squat",
 "sets": 3,
-"reps": "5 sec",
+"reps": "5",
 "tempo": "30X0",
 "rest": "120 sec",
 "note": "add weight · Slow, controlled negative, then drive up as fast as possible. Weights heavier than last week."
@@ -24324,7 +24324,7 @@
 "label": "4a",
 "name": "Seated low cable row (V-handle, Arnold variation)",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "3020",
 "rest": "0 sec",
 "note": "add weight · Classic Arnold seated low cable row: lean far forward and let the shoulder blades protract, then row back without leaning back, finishing with the torso vertical."
@@ -24333,7 +24333,7 @@
 "label": "4b",
 "name": "Seated cable row",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2020",
 "rest": "0 sec",
 "note": "same weight 4a · Then the classic version: row the handle to the waist with a vertical torso, leaning forward only very slightly or not at all."
@@ -24342,7 +24342,7 @@
 "label": "4c",
 "name": "Seated back extension on low cable",
 "sets": 3,
-"reps": "6 sec",
+"reps": "6",
 "tempo": "2020",
 "rest": "90 sec",
 "note": "add weight · The last part of the superset is tricky: you are no longer pulling, just leaning back as far as possible from upright with straight arms. Essentially a form of hyperextension."
@@ -24381,7 +24381,7 @@
 "label": "2a",
 "name": "Seated overhead press isometric (high)",
 "sets": 3,
-"reps": "2 sec",
+"reps": "2",
 "tempo": "10 s",
 "rest": "10 sec",
 "note": "add weight from 1a · Same setup as the previous exercise, but set the safeties 1 position higher. Continue from the previous exercise's weight. 3 reps, holding 10 s at the top of each"
@@ -24390,7 +24390,7 @@
 "label": "2b",
 "name": "Bent-over lateral raise (head supported on bench)",
 "sets": 3,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "add weight · Rest your forehead on a medium-incline bench and do bent-over dumbbell rear delt raises"
@@ -24399,7 +24399,7 @@
 "label": "3a",
 "name": "Reverse pec deck",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Arms straight, shoulder blades pulled down."
@@ -24408,7 +24408,7 @@
 "label": "3b",
 "name": "Single-arm cable lateral raise",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "add weight · Use the low cable, hold the frame with the other arm and lean slightly to the side"
@@ -24417,7 +24417,7 @@
 "label": "4",
 "name": "Seated incline EZ front raise (undergrip)",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "3010",
 "rest": "90 sec",
 "note": "add weight · Sit back on a medium-incline bench. Hold an EZ bar shoulder-width underhand and raise it until your arms are at a right angle to your torso."
@@ -24549,7 +24549,7 @@
 "label": "4a",
 "name": "Triceps pushdown",
 "sets": 2,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "15 sec",
 "note": "same weight · High cable pulldown, ideally upright with elbows out to the sides (there is a dedicated station with a back pad for this)"
@@ -24558,7 +24558,7 @@
 "label": "4b",
 "name": "Low cable biceps curl",
 "sets": 2,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "30 sec",
 "note": "same weight · Biceps curls on the low cable."
@@ -24579,7 +24579,7 @@
 "label": "1",
 "name": "Bench press",
 "sets": 5,
-"reps": "3 sec",
+"reps": "3",
 "tempo": "2010",
 "rest": "120 sec",
 "note": "add weight · Slow negative (4s). Slow positive (2s)"
@@ -24606,7 +24606,7 @@
 "label": "3b",
 "name": "Overhead extension on TRX/rings",
 "sets": 3,
-"reps": "12 sec",
+"reps": "12",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "BW · Adjust your body angle to your strength (the closer to horizontal, the harder the exercise)."
@@ -24627,7 +24627,7 @@
 "label": "1",
 "name": "Front squat",
 "sets": 4,
-"reps": "3 sec",
+"reps": "3",
 "tempo": "2010",
 "rest": "120 sec",
 "note": "add weight · Use heavier weights than last week on all sets."
@@ -24702,7 +24702,7 @@
 "label": "4a",
 "name": "Back pullover machine",
 "sets": 3,
-"reps": "12 sec",
+"reps": "12",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · If your gym doesn't have the machine, substitute a straight-arm high cable pulldown (lat pullover)."
@@ -24711,7 +24711,7 @@
 "label": "4b",
 "name": "Machine horizontal row",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Use a cable or lever machine where you pull the weight horizontally toward you while seated. A seated cable row works as a substitute."
@@ -24720,7 +24720,7 @@
 "label": "4c",
 "name": "Machine vertical row",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2020",
 "rest": "90 sec",
 "note": "add weight · Use a cable or plate-loaded lever machine where you pull the weight vertically toward you."
@@ -24759,7 +24759,7 @@
 "label": "2a",
 "name": "Seated overhead press isometric (high)",
 "sets": 4,
-"reps": "2 sec",
+"reps": "2",
 "tempo": "10 s",
 "rest": "10 sec",
 "note": "add weight from 1a · Same setup as the previous exercise, but set the safeties 1 position higher. Continue from the previous exercise's weight. 3 reps, holding 10 s at the top of each"
@@ -24768,7 +24768,7 @@
 "label": "2b",
 "name": "Bent-over lateral raise (head supported on bench)",
 "sets": 4,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "add weight · Rest your forehead on a medium-incline bench and do bent-over dumbbell rear delt raises"
@@ -24777,7 +24777,7 @@
 "label": "3a",
 "name": "Reverse pec deck",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight"
@@ -24786,7 +24786,7 @@
 "label": "3b",
 "name": "Single-arm cable lateral raise",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "add weight · Use the low cable, hold the frame with the other arm and lean slightly to the side"
@@ -24795,7 +24795,7 @@
 "label": "4",
 "name": "Seated incline EZ front raise (undergrip)",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "3010",
 "rest": "90 sec",
 "note": "add weight · Sit back on a medium-incline bench. Hold an EZ bar shoulder-width underhand and raise it until your arms are at a right angle to your torso."
@@ -24843,7 +24843,7 @@
 "label": "3a",
 "name": "Band glute ham raise",
 "sets": 3,
-"reps": "4 sec",
+"reps": "4",
 "tempo": "3030",
 "rest": "10 sec",
 "note": "BW+band · Loop a resistance band around the base of the GHD and place it behind your neck. Use a thin band and have a spotter. For Russian curls you can hold a dumbbell"
@@ -24927,7 +24927,7 @@
 "label": "4a",
 "name": "Triceps pushdown",
 "sets": 2,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "15 sec",
 "note": "same weight · High cable pulldown, ideally upright with elbows out to the sides (there is a dedicated station with a back pad for this)"
@@ -24936,7 +24936,7 @@
 "label": "4b",
 "name": "Low cable biceps curl",
 "sets": 2,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "30 sec",
 "note": "same weight · Biceps curls on the low cable."
@@ -24984,7 +24984,7 @@
 "label": "3b",
 "name": "Overhead extension on TRX/rings",
 "sets": 3,
-"reps": "12 sec",
+"reps": "12",
 "tempo": "1010",
 "rest": "120 sec",
 "note": "BW · Adjust your body angle to your strength (the closer to horizontal, the harder the exercise)."
@@ -25005,7 +25005,7 @@
 "label": "1",
 "name": "Front squat",
 "sets": 5,
-"reps": "2 sec",
+"reps": "2",
 "tempo": "2010",
 "rest": "120 sec",
 "note": "add weight · Pace yourself. Don't go too heavy from the first set and burn out on the first exercise; find a comfortable 2RM by ramping"
@@ -25014,7 +25014,7 @@
 "label": "2",
 "name": "Squat",
 "sets": 5,
-"reps": "2 sec",
+"reps": "2",
 "tempo": "20X0",
 "rest": "120 sec",
 "note": "add weight from 1 · Again: fast, comfortable sets with one all-out final set. If you can't add weight over your last front squat set, your technique probably favors the (already exhausted) quads over hamstrings and hips."
@@ -25053,7 +25053,7 @@
 "label": "1",
 "name": "Pendlay row",
 "sets": 2,
-"reps": "8 sec",
+"reps": "8",
 "tempo": "X1X1",
 "rest": "90 sec",
 "note": "add weight · Use a heavier weight than last week; the bar rests on the floor between reps."
@@ -25080,7 +25080,7 @@
 "label": "3a",
 "name": "Back pullover machine",
 "sets": 3,
-"reps": "12 sec",
+"reps": "12",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · If your gym doesn't have the machine, substitute a straight-arm high cable pulldown (lat pullover)."
@@ -25089,7 +25089,7 @@
 "label": "3b",
 "name": "Machine horizontal row",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Use a cable or lever machine where you pull the weight horizontally toward you while seated. A seated cable row works as a substitute."
@@ -25098,7 +25098,7 @@
 "label": "3c",
 "name": "Machine vertical row",
 "sets": 3,
-"reps": "10 sec",
+"reps": "10",
 "tempo": "2020",
 "rest": "90 sec",
 "note": "add weight · Use a cable or plate-loaded lever machine where you pull the weight vertically toward you."
@@ -25128,7 +25128,7 @@
 "label": "2",
 "name": "Seated overhead press isometric (high)",
 "sets": 3,
-"reps": "1 sec",
+"reps": "1",
 "tempo": "10 s",
 "rest": "10 sec",
 "note": "add weight from 1a · Same setup as the previous exercise, but set the safeties 1 position higher. Continue from the previous exercise's weight. 3 reps, holding 10 s at the top of each"
@@ -25137,7 +25137,7 @@
 "label": "3a",
 "name": "Reverse pec deck",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "2020",
 "rest": "10 sec",
 "note": "add weight · Arms straight, shoulder blades pulled down."
@@ -25146,7 +25146,7 @@
 "label": "3b",
 "name": "Single-arm cable lateral raise",
 "sets": 3,
-"reps": "6-8 sec",
+"reps": "6-8",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "add weight · Use the low cable, hold the frame with the other arm and lean slightly to the side"
@@ -25155,8 +25155,8 @@
 "label": "4",
 "name": "Seated incline EZ front raise (undergrip)",
 "sets": 3,
-"reps": "3010 sec",
-"tempo": "10110",
+"reps": "6-8",
+"tempo": "3010",
 "rest": "90 sec",
 "note": "add weight · Sit back on a medium-incline bench. Hold an EZ bar shoulder-width underhand and raise it until your arms are at a right angle to your torso."
 }
@@ -25224,7 +25224,7 @@
 "label": "1a",
 "name": "Close-grip bench press",
 "sets": 8,
-"reps": "2 sec",
+"reps": "2",
 "tempo": "40X0",
 "rest": "20 sec",
 "note": "add weight · Note: this is now a standard close-grip bench press; the goal is to test your max for 2 reps (2RM)."
@@ -25233,7 +25233,7 @@
 "label": "1b",
 "name": "Olympic barbell biceps curl",
 "sets": 8,
-"reps": "3-4 sec",
+"reps": "3-4",
 "tempo": "40X0",
 "rest": "60 sec",
 "note": "add weight · The last 2-3 sets can use some cheating."
@@ -25242,7 +25242,7 @@
 "label": "2a",
 "name": "Triceps pushdown",
 "sets": 4,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "15 sec",
 "note": "same weight · High cable pulldown, ideally upright with elbows out to the sides (there is a dedicated station with a back pad for this)"
@@ -25251,7 +25251,7 @@
 "label": "2b",
 "name": "Low cable biceps curl",
 "sets": 4,
-"reps": "25 sec",
+"reps": "25",
 "tempo": "1010",
 "rest": "60 sec",
 "note": "same weight · Biceps curls on the low cable."

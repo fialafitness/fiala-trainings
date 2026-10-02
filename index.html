@@ -381,6 +381,12 @@
   #vClient.tpl #notesWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot { display: none; }
   .use { margin-top: 24px; }
+  #draftBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: center; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--card-border); box-shadow: 0 -6px 20px rgba(0,0,0,0.10); }
+  #draftBar[hidden], #draftBar.kb { display: none; }
+  #draftBar .draft-text { flex: 1; font-size: 15px; color: var(--text-secondary); }
+  #draftBar.nudge { animation: nudge 500ms ease; }
+  @keyframes nudge { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-8px); } 60% { transform: translateY(0); } 80% { transform: translateY(-4px); } }
+  body.draft main { padding-bottom: 96px; }
   .list .pri { display: block; }
   .list .sec { display: block; font-size: 13px; color: var(--text-tertiary); letter-spacing: 0; margin-top: 2px; }
   .finish { margin-top: 32px; }
@@ -534,6 +540,7 @@
   </section>
 </main>
 
+<div id="draftBar" hidden><span class="draft-text">Unsaved changes</span><button class="btn quiet" id="draftDiscard" type="button">Discard</button><button class="btn sm" id="draftSave" type="button">Save template</button></div>
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script>
@@ -580,7 +587,34 @@
   function key(kind, id) { return kind + "/" + id; }
   function markDirty(kind, id) { const k = key(kind, id); dirty.set(k, (dirty.get(k) || 0) + 1); }
 
+  // ---- template drafts: editing a template changes nothing until "Save template"; a client's copy is always separate
+  let templateDraft = null;              // { id, snapshot, dirty, saving }
+  let pendingGo = null;                  // where he wanted to go while a draft was unsaved
+  function draftFor(t) {
+    if (clientMode || !isTemplateClient(t.clientId)) return null;
+    if (!templateDraft || templateDraft.id !== t.id) templateDraft = { id: t.id, snapshot: JSON.stringify(t), dirty: false, saving: false };
+    return templateDraft;
+  }
+  function paintDraftBar() {
+    const d = templateDraft; const show = !!(d && d.dirty && view.name === "training" && view.id === d.id);
+    $("draftBar").hidden = !show; document.body.classList.toggle("draft", show);
+  }
+  function saveDraft() {
+    const d = templateDraft; if (!d) return;
+    const t = trainings.get(d.id); if (!t) { templateDraft = null; paintDraftBar(); return; }
+    d.dirty = false; d.saving = true; scheduleSave("trainings", d.id, 0); d.saving = false; d.snapshot = JSON.stringify(t);
+    paintDraftBar(); const n = pendingGo; pendingGo = null; if (n) go(n);
+  }
+  function discardDraft() {
+    const d = templateDraft; if (!d) return;
+    if (trainings.has(d.id)) trainings.set(d.id, JSON.parse(d.snapshot));
+    d.dirty = false; localBackend.save(); renderedTraining = null; paintDraftBar();
+    const n = pendingGo; pendingGo = null; if (n) go(n); else render();
+  }
+  $("draftSave").addEventListener("click", saveDraft);
+  $("draftDiscard").addEventListener("click", discardDraft);
   function scheduleSave(kind, id, delay = 500) {
+    if (kind === "trainings" && templateDraft && templateDraft.id === id && !templateDraft.saving) { templateDraft.dirty = true; paintDraftBar(); return; }
     markDirty(kind, id);
     const k = key(kind, id);
     clearTimeout(timers.get(k));
@@ -781,6 +815,7 @@
         const seen = new Set();
         for (const r of rows) {
           seen.add(r.id); if (dirty.has(key(kind, r.id))) continue;
+          if (kind === "trainings" && templateDraft && templateDraft.dirty && templateDraft.id === r.id) continue;   // unsaved template edits
           if (kind === "trainings" && renderedTraining === r.id && $("rows").contains(document.activeElement)) continue; // being edited right now: next sync
           map.set(r.id, { ...r.data, id: r.id });
         }
@@ -957,6 +992,7 @@
   }
   function deleteTraining(id) {
     const t = trainings.get(id); if (!t) return;
+    if (templateDraft && templateDraft.id === id) { templateDraft = null; pendingGo = null; paintDraftBar(); }
     trainings.delete(id); scheduleSave("trainings", id, 0);
     go({ name: "client", id: t.clientId });
   }
@@ -980,7 +1016,11 @@
   }
 
   // ---------- navigation ----------
-  function go(next) { reordering = false; view = next; lsSet("fiala.trainings.view", view); render(); window.scrollTo(0, 0); }
+  function go(next) {
+    if (templateDraft && templateDraft.dirty && view.name === "training" && view.id === templateDraft.id) {
+      pendingGo = next; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
+    }
+    reordering = false; view = next; lsSet("fiala.trainings.view", view); render(); window.scrollTo(0, 0); }
   $("back").addEventListener("click", () => {
     if (view.name === "training") { const t = trainings.get(view.id); go(t ? { name: "client", id: t.clientId } : { name: "clients" }); }
     else go({ name: "clients" });
@@ -1020,11 +1060,11 @@
     kbDone.textContent = (kind === "weights" && t.nextElementSibling) ? "Next" : "Done";
   }
   function showKb(el) {
-    kbTarget = el; paintKb(); kbbar.hidden = false; placeKb();
+    kbTarget = el; paintKb(); kbbar.hidden = false; placeKb(); $("draftBar").classList.add("kb");
     if (window.visualViewport) { window.visualViewport.addEventListener("resize", placeKb); window.visualViewport.addEventListener("scroll", placeKb); }
   }
   function hideKb() {
-    kbTarget = null; kbbar.hidden = true;
+    kbTarget = null; kbbar.hidden = true; $("draftBar").classList.remove("kb");
     if (window.visualViewport) { window.visualViewport.removeEventListener("resize", placeKb); window.visualViewport.removeEventListener("scroll", placeKb); }
   }
   kbbar.addEventListener("pointerdown", (e) => e.preventDefault()); // taps on the bar must not take focus (and the keyboard) away from the box
@@ -1044,7 +1084,7 @@
   let closeOpenAlt = null;
   // ---- templates: workouts filed under a built-in "Templates" entry; clients never receive them (their data is read per client id)
   const TEMPLATES_ID = "00000000-0000-4000-8000-0000000000f1";
-  const TEMPLATES_VERSION = 2;           // 2: Lean Type + Muscle Type added
+  const TEMPLATES_VERSION = 3;           // 2: Lean Type + Muscle Type added; 3: reps repaired
   const MY_TEMPLATES = "My templates";
   const isTemplateClient = (id) => id === TEMPLATES_ID;
   let pickFor = null;                      // client id while choosing a template for them
@@ -1063,7 +1103,13 @@
     if (!tc) { tc = { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }; clients.set(tc.id, tc); }
     const fresh = [];
     for (const T of list) {
-      if (trainings.has(T.id)) continue;
+      const have = trainings.get(T.id);
+      if (have) {                                   // version 3 repair: reps that were wrongly given a "sec" unit
+        let fixed = false;
+        for (const r of have.rows || []) { const src = T.rows.find((x) => x.label === r.label && x.name === r.name); if (src && r.reps === src.reps + " sec") { r.reps = src.reps; fixed = true; } }
+        if (fixed) fresh.push(have);
+        continue;
+      }
       const t = { id: T.id, clientId: TEMPLATES_ID, date: "2026-01-01", createdAt: now(), title: T.sub || "", completedAt: null, skippedAt: null,
         template: { program: T.program, phase: T.phase, stage: T.stage, n: T.n, phaseName: T.phaseName || "" },
         rows: T.rows.map((r) => ({ id: uid(), label: r.label, name: r.name, sets: r.sets, reps: r.reps || "", tempo: r.tempo || "", rest: r.rest || "", weights: [], note: r.note || "", done: false, alts: r.alts || [] })) };
@@ -1166,6 +1212,7 @@
     if (view.name === "clients") { renderedTraining = null; renderClients(); }
     else if (view.name === "client") { renderedTraining = null; $("backLabel").textContent = "Clients"; renderClient(); }
     else { const t = trainings.get(view.id); $("backLabel").textContent = clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
+    paintDraftBar();
   }
 
   // clients keep the order he sets (c.sort); unsorted ones follow alphabetically
@@ -1350,6 +1397,7 @@
     if (document.activeElement !== $("tDate")) $("tDate").value = t.date || "";
     $("tTitle").readOnly = clientMode; $("tDate").readOnly = clientMode;
     const isTpl = isTemplateClient(t.clientId);
+    if (isTpl) draftFor(t);
     $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || clientMode; if (!isTpl) $("usePick").hidden = true;
     $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
     paintFinish(t);

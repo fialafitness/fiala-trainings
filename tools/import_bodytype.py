@@ -81,6 +81,9 @@ def xscheme(s):
   s = s.strip()
   for pat, to in SCHEME: s = re.sub(pat, to, s, flags=re.I)
   return s
+def xreps(v):
+  v = re.sub(r"\s*([-–])\s*", r"\1", v.strip()); v = re.sub(r"^(\d+(?:[-–]\d+)?)\s*s$", r"\1 sec", v)
+  return v
 def xrest(v):
   v = v.strip(); v = re.sub(r"\s*-\s*", "-", v)
   v = re.sub(r"^(\d+(?:-\d+)?)\s*s$", r"\1 sec", v); v = re.sub(r"^(\d+)\s*min$", r"\1 min", v); v = re.sub(r"^(\d+(?:-\d+)?)$", r"\1 sec", v)
@@ -173,7 +176,8 @@ for T in out:
     if r["vaha"]: bits.append(xscheme(r["vaha"]))
     note = " · ".join(bits)
     if r["note"]: notes_cz[r["note"]] = notes_cz.get(r["note"], 0) + 1
-    rows.append({"label": r["label"], "name": name, "sets": sets, "reps": xrest(r["reps"]), "tempo": "normal" if r["tempo"].lower() == "normální" else r["tempo"], "rest": xrest(r["rest"]), "note": note, "cue_cz": r["note"]})
+    if r["reps"] == "3010" and r["tempo"] == "10110": r["reps"], r["tempo"] = "6-8", "3010"   # typo in the Muscle Type book (P3 S4 W4 D); the other stages read 6-8 / 3010
+    rows.append({"label": r["label"], "name": name, "sets": sets, "reps": xreps(r["reps"]), "tempo": "normal" if r["tempo"].lower() == "normální" else r["tempo"], "rest": xrest(r["rest"]), "note": note, "cue_cz": r["note"]})
   T["rows"] = rows
 
 json.dump(out, open(os.path.join(ROOT, "tools", "bodytype-raw.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=0)
