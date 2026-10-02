@@ -381,6 +381,12 @@
   #vClient.tpl #notesWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot { display: none; }
   .use { margin-top: 24px; }
+  .from-tpl { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 2px 12px; font-size: 13px; color: var(--text-tertiary); }
+  .from-tpl[hidden] { display: none; }
+  .from-tpl .btn.quiet { color: var(--brand); font-size: 15px; padding: 0 4px; min-height: 40px; white-space: nowrap; flex: none; }
+  .list li.last-used button .pri::after { content: " \00b7  last used"; font-size: 13px; color: var(--brand); font-weight: 400; }
+  .list li.flash { animation: flash 1200ms ease; }
+  @keyframes flash { 0% { background: rgba(111,107,153,0.28); } 100% { background: transparent; } }
   #draftBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: center; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--card-border); box-shadow: 0 -6px 20px rgba(0,0,0,0.10); }
   #draftBar[hidden], #draftBar.kb { display: none; }
   #draftBar .draft-text { flex: 1; font-size: 15px; color: var(--text-secondary); }
@@ -519,6 +525,7 @@
       <textarea id="tTitle" class="title" rows="1" placeholder="Focus, e.g. Bench-press and back" autocapitalize="sentences"></textarea>
       <input id="tDate" type="date">
     </div>
+    <div class="from-tpl trainer-only" id="fromTpl" hidden><span id="fromTplText"></span><button class="btn quiet" id="fromTplGo" type="button">Templates &rsaquo;</button></div>
     <div class="rows" id="rows"></div>
     <button class="btn quiet add trainer-only" id="addRow">+ Add exercise</button>
     <div class="finish" id="finishWrap" hidden>
@@ -987,6 +994,7 @@
       title: from ? from.title : "", completedAt: null, skippedAt: null,
       rows: from ? from.rows.map((r) => ({ ...r, id: uid(), weights: [], done: false, alts: [...(r.alts || [])] })) : [],
     };
+    if (from && from.fromTemplate) t.fromTemplate = from.fromTemplate;
     trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
     go({ name: "training", id: t.id });
   }
@@ -1088,6 +1096,8 @@
   const MY_TEMPLATES = "My templates";
   const isTemplateClient = (id) => id === TEMPLATES_ID;
   let pickFor = null;                      // client id while choosing a template for them
+  const lastUse = lsGet("fiala.templates.last") || { template: null, client: null };   // where he was when he last used a template
+  let flashTemplate = null;                // template id to scroll to and flash on the Templates page
   let seeding = false;                     // a sync must not run while the templates are being written
   const tplOpen = new Set();               // expanded groups on the Templates page
   async function seedTemplates() {
@@ -1131,9 +1141,20 @@
   }
   function templateMeta(t) { return t.template || { program: MY_TEMPLATES, phase: 0, stage: 0, n: 0, phaseName: "" }; }
   function templateTitle(t) { const m = templateMeta(t); return (m.n ? "Workout " + m.n : "") + (t.title ? (m.n ? " \u00b7 " : "") + t.title : "") || "Template"; }
+  function templatePath(T) { const m = templateMeta(T); return [m.program, m.phase ? "Phase " + m.phase : "", m.stage ? "Stage " + m.stage : "", m.n ? "Workout " + m.n : (T.title || "")].filter(Boolean).join(" \u00b7 "); }
   function applyTemplate(T, clientId, date) {
-    addTraining(clientId, { ...T, title: T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : "") }, date || today());
+    lastUse.template = T.id; lastUse.client = clientId; lsSet("fiala.templates.last", lastUse);
+    addTraining(clientId, { ...T, title: T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : ""), fromTemplate: T.id }, date || today());
   }
+  function backToTemplates(tid) {
+    const T = trainings.get(tid); const m = T ? templateMeta(T) : null;
+    if (m) { tplOpen.add(m.program); if (m.phase) tplOpen.add(m.program + "/" + m.phase); }
+    flashTemplate = tid; pickFor = null;
+    if (!clients.has(TEMPLATES_ID)) return;
+    go({ name: "client", id: TEMPLATES_ID });
+    requestAnimationFrame(() => { const li = document.querySelector('#tplList li[data-tid="' + tid + '"]'); if (li) { li.scrollIntoView({ block: "center" }); li.classList.add("flash"); setTimeout(() => li.classList.remove("flash"), 1300); } });
+  }
+  $("fromTplGo").addEventListener("click", () => { const t = trainings.get(view.id); if (t && t.fromTemplate) backToTemplates(t.fromTemplate); });
   function saveAsTemplate(src) {
     const mine = [...trainings.values()].filter((t) => isTemplateClient(t.clientId) && templateMeta(t).program === MY_TEMPLATES);
     const t = { id: uid(), clientId: TEMPLATES_ID, date: "2026-01-01", createdAt: now(), title: src.title || "", completedAt: null, skippedAt: null,
@@ -1153,7 +1174,8 @@
     for (const t of list) { const m = templateMeta(t); if (!progs.has(m.program)) progs.set(m.program, []); progs.get(m.program).push(t); }
     const progNames = [...progs.keys()].sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99) || a.localeCompare(b));
     const rowOf = (t) => {
-      const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
+      const li = document.createElement("li"); li.dataset.tid = t.id; if (t.id === lastUse.template) li.classList.add("last-used");
+      const b = document.createElement("button"); b.type = "button";
       const m = templateMeta(t);
       const pri = document.createElement("span"); pri.className = "pri"; pri.textContent = m.n ? "Workout " + m.n : (t.title || "Template");
       const sec = document.createElement("span"); sec.className = "sec"; sec.textContent = m.n ? (t.title || "") : (t.rows.length + (t.rows.length === 1 ? " exercise" : " exercises"));
@@ -1398,6 +1420,8 @@
     $("tTitle").readOnly = clientMode; $("tDate").readOnly = clientMode;
     const isTpl = isTemplateClient(t.clientId);
     if (isTpl) draftFor(t);
+    const src = !clientMode && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
+    $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = "From template \u00b7 " + templatePath(src);
     $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || clientMode; if (!isTpl) $("usePick").hidden = true;
     $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
     paintFinish(t);
@@ -1720,8 +1744,8 @@
   $("useBtn").addEventListener("click", () => {
     const t = trainings.get(view.id); if (!t) return;
     const ul = $("usePick"); if (!ul.hidden) { ul.hidden = true; return; }
-    const people = peopleList();
-    ul.replaceChildren(...people.map((c) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.innerHTML = "<span></span><span class=\"chev\">\u203a</span>"; b.firstChild.textContent = c.name || "Unnamed"; b.addEventListener("click", () => applyTemplate(t, c.id)); li.appendChild(b); return li; }));
+    const people = peopleList(); if (lastUse.client) { const i = people.findIndex((c) => c.id === lastUse.client); if (i > 0) people.unshift(people.splice(i, 1)[0]); }
+    ul.replaceChildren(...people.map((c) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = c.name || "Unnamed"; b.lastChild.textContent = c.id === lastUse.client ? "last used" : ""; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>'); b.addEventListener("click", () => applyTemplate(t, c.id)); li.appendChild(b); return li; }));
     if (!people.length) { const li = document.createElement("li"); li.className = "empty"; li.style.padding = "12px 16px"; li.textContent = "Add a client first."; ul.appendChild(li); }
     ul.hidden = false;
   });
