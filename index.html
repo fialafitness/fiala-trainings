@@ -1264,7 +1264,7 @@
     return [...trainings.values()].filter((t) => t.clientId === clientId)
       .sort((a, b) => effDate(b).localeCompare(effDate(a)) || (b.createdAt || "").localeCompare(a.createdAt || ""));
   }
-  function newRow(label) { return { id: uid(), label, name: "", sets: 3, reps: "", tempo: "", rest: "", weights: [], note: "" }; }
+  function newRow(label) { return { id: uid(), label, name: "", sets: 4, reps: "", tempo: "", rest: "", weights: [], note: "" }; }
   function nextLabel(t) { let max = 0; for (const r of t.rows) { const n = labelKey(r.label)[0]; if (Number.isFinite(n)) max = Math.max(max, n); } return String(max + 1); }
   function addTraining(clientId, from, date) {
     const t = {
@@ -1817,9 +1817,9 @@
       <div class="vid-form" hidden><input class="vid-url" type="url" placeholder="Paste a YouTube link" autocomplete="off" autocapitalize="none" inputmode="url"><div class="vid-actions"><button class="btn sm vid-save" type="button">Save</button><button class="btn quiet vid-remove" type="button" hidden>Remove</button><button class="btn quiet vid-cancel" type="button">Cancel</button></div></div>
       <div class="player" hidden></div>
       <div class="specs">
-        <div><label>Sets</label><div class="setwrap"><input class="sets tab" inputmode="numeric" pattern="[0-9]*" placeholder="3"><div class="numpick sets-pick" hidden></div></div></div>
+        <div><label>Sets</label><div class="setwrap"><input class="sets tab" inputmode="numeric" pattern="[0-9]*" placeholder="4"><div class="numpick sets-pick" hidden></div></div></div>
         <div><label>Reps</label><input class="reps tab" inputmode="decimal" placeholder="10"></div>
-        <div><label>Tempo</label><input class="tempo tab" inputmode="decimal" placeholder="1010" autocapitalize="characters"></div>
+        <div><label>Tempo</label><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"></div>
         <div><label>Rest</label><input class="rest tab" inputmode="decimal" placeholder="60 sec"></div>
       </div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
@@ -1937,7 +1937,7 @@
     q(".sets").value = r.sets || ""; q(".reps").value = r.reps || ""; q(".tempo").value = r.tempo || ""; q(".rest").value = r.rest || "";
 
     const save = () => scheduleSave("trainings", t.id);
-    if (clientMode) { for (const s of [".label", ".name", ".sets", ".reps", ".tempo", ".rest"]) q(s).readOnly = true; }
+    if (clientMode) { for (const s of [".label", ".name", ".sets", ".reps", ".tempo", ".rest"]) q(s).readOnly = true; for (const s of [".reps", ".tempo", ".rest"]) { const el = q(s); if (!el.value) el.value = el.placeholder; } }   // the trainer's grey defaults read as filled in for the client
     const bind = (sel, field, transform) => { if (clientMode) return; q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); }); };
     if (!clientMode) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
     bind(".reps", "reps"); bind(".tempo", "tempo");
