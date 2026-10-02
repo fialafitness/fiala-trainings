@@ -415,8 +415,13 @@
   .foot { margin-top: 40px; border-top: 1px solid var(--card-border); padding-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .confirm { color: var(--text-secondary); font-size: 17px; }
   .foot.foot-col { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .auth-split { display: flex; align-items: center; gap: 4px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--card-border); max-width: 360px; }
+  .auth-split .muted { font-size: 15px; }
+  .btn.quiet.link { color: var(--brand); padding: 0 6px; font-weight: 500; }
   .foot.foot-col .muted { font-size: 13px; }
-  .foot-actions { display: flex; gap: 16px; align-items: center; margin-left: -8px; }
+  .foot-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin-left: -8px; }
+  .foot-actions .btn { white-space: nowrap; }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   @media (max-width: 400px) {
     .alt-menu { left: -60px; right: -44px; }
@@ -449,16 +454,50 @@
       <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" required>
       <button class="btn" type="submit" id="loginBtn" style="width:100%">Sign in</button>
       <p class="muted" id="loginMsg"></p>
-      <button class="btn quiet" type="button" id="createBtn" style="width:100%">First time here? Create the account</button>
       <button class="btn quiet" type="button" id="forgotBtn" style="width:100%">Forgot password?</button>
+    </form>
+    <div class="auth-split"><span class="muted">First time here?</span><button class="btn quiet link" type="button" id="createBtn">Create an account</button></div>
+  </section>
+
+  <section id="vSignup" hidden>
+    <div id="suForm">
+      <h1>Create your account</h1>
+      <form id="signupForm" class="stack">
+        <input id="suName" placeholder="Full name" autocomplete="name" autocapitalize="words" required>
+        <input id="suEmail" type="email" placeholder="Email" autocomplete="username" inputmode="email" autocapitalize="none" required>
+        <input id="suPhone" type="tel" placeholder="Phone number" autocomplete="tel" inputmode="tel" required>
+        <input id="suPassword" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" required>
+        <input id="suPassword2" type="password" placeholder="Retype password" autocomplete="new-password" required>
+        <button class="btn" type="submit" id="suBtn" style="width:100%">Create account</button>
+        <p class="muted" id="suMsg"></p>
+      </form>
+      <div class="auth-split"><span class="muted">Already have an account?</span><button class="btn quiet link" type="button" id="suBack">Sign in</button></div>
+    </div>
+    <div id="suDone" hidden>
+      <h1>Check your email</h1>
+      <p id="suDoneText" style="max-width:420px"></p>
+      <button class="btn" type="button" id="suDoneBtn" style="width:100%;max-width:360px;margin-top:16px">Back to sign in</button>
+    </div>
+  </section>
+
+  <section id="vPassword" hidden>
+    <h1>Change password</h1>
+    <form id="passwordForm" class="stack">
+      <input id="pwUser" class="vh" type="email" autocomplete="username" readonly tabindex="-1" aria-hidden="true">
+      <input id="pwNew" type="password" placeholder="New password (8+ characters)" autocomplete="new-password" required>
+      <input id="pwNew2" type="password" placeholder="Retype new password" autocomplete="new-password" required>
+      <button class="btn" type="submit" id="pwBtn" style="width:100%">Save new password</button>
+      <p class="muted" id="pwMsg"></p>
     </form>
   </section>
 
   <section id="vRecovery" hidden>
     <h1>New password</h1>
     <form id="recoveryForm" class="stack">
+      <input id="recoveryUser" class="vh" type="email" autocomplete="username" readonly tabindex="-1" aria-hidden="true">
       <input id="recoveryPassword" type="password" placeholder="New password (8+ characters)" autocomplete="new-password" required>
-      <button class="btn" type="submit" style="width:100%">Save password</button>
+      <input id="recoveryPassword2" type="password" placeholder="Retype new password" autocomplete="new-password" required>
+      <button class="btn" type="submit" id="recoveryBtn" style="width:100%">Save password</button>
       <p class="muted" id="recoveryMsg"></p>
     </form>
   </section>
@@ -493,7 +532,7 @@
     <div class="empty" id="clientEmpty" hidden>No clients yet. Add the first one above.</div>
     <div class="foot foot-col" id="localFoot" hidden>
       <span class="muted" id="dataNote">Saved on this device</span>
-      <div class="foot-actions"><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="btn quiet" id="signout" type="button" hidden>Sign out</button></div>
+      <div class="foot-actions"><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="btn quiet" id="changePw" type="button" hidden>Change password</button><button class="btn quiet" id="signout" type="button" hidden>Sign out</button></div>
     </div>
   </section>
 
@@ -522,7 +561,7 @@
       <h2>Notes</h2>
       <textarea id="cNotes" placeholder="Injuries, preferences, anything to remember"></textarea>
     </div>
-    <div class="foot" id="clientFoot" hidden><span class="muted" id="clientFootNote"></span><button class="btn quiet" id="signout2" type="button">Sign out</button></div>
+    <div class="foot foot-col" id="clientFoot" hidden><span class="muted" id="clientFootNote"></span><div class="foot-actions"><button class="btn quiet" id="changePw2" type="button">Change password</button><button class="btn quiet" id="signout2" type="button">Sign out</button></div></div>
     <div class="foot trainer-only" id="delWrap">
       <button class="btn danger" id="delClient">Delete client</button>
       <span class="confirm" id="delClientConfirm" hidden>Deletes all their trainings too. <button class="btn danger" id="delClientYes">Delete</button> <button class="btn quiet" id="delClientNo">Keep</button></span>
@@ -864,21 +903,31 @@
   }
 
   function hideAllViews() {
-    for (const id of ["vLogin", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
+    for (const id of ["vLogin", "vSignup", "vPassword", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
   }
   function showLogin(msg) {
     signedIn = false; clientMode = false; myClientId = null; document.body.classList.remove("client");
-    $("clientFoot").hidden = true; $("clientFootNote").textContent = ""; $("localFoot").hidden = true; $("signout").hidden = true;
+    $("clientFoot").hidden = true; $("clientFootNote").textContent = ""; $("localFoot").hidden = true; $("signout").hidden = true; $("changePw").hidden = true; settingsOpen = false;
     hideAllViews(); $("vLogin").hidden = false;
     $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("loginMsg").textContent = msg || "";
   }
+  function showSignup() {
+    hideAllViews(); $("vSignup").hidden = false; $("suForm").hidden = false; $("suDone").hidden = true; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
+    $("suMsg").textContent = ""; $("suEmail").value = $("loginEmail").value.trim(); setTimeout(() => $("suName").focus(), 50);
+  }
+  let settingsOpen = false;
+  function showPassword() {
+    settingsOpen = true; hideAllViews(); $("vPassword").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true;
+    $("pwMsg").textContent = ""; $("pwNew").value = ""; $("pwNew2").value = ""; $("pwBtn").disabled = false; $("pwUser").value = sessionEmail; $("status").textContent = "";
+  }
   function showRecovery() {
-    hideAllViews(); $("vRecovery").hidden = false; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
+    hideAllViews(); $("vRecovery").hidden = false; $("recoveryBtn").disabled = false;
+    if (sb) sb.auth.getUser().then(({ data }) => { $("recoveryUser").value = (data && data.user && data.user.email) || ""; }).catch(() => {}); $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
   }
   let sessionEmail = "";
   function showProblem(text) {
-    hideAllViews(); $("vWaiting").hidden = false; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
+    settingsOpen = false; hideAllViews(); $("vWaiting").hidden = false; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("waitingText").textContent = text;
   }
   function showWaiting() {
@@ -886,6 +935,7 @@
   }
 
   async function enterCloud(session) {
+    settingsOpen = false;
     signedIn = true; sessionEmail = session.user.email || "";
     let trainer = await isTrainerAccount();
     const remembered = lsGet("fiala.trainings.role");
@@ -904,7 +954,7 @@
       return;
     }
     $("dataNote").textContent = "Synced to the cloud \u00b7 " + sessionEmail;
-    $("signout").hidden = false; $("localFoot").hidden = false;
+    $("signout").hidden = false; $("changePw").hidden = false; $("localFoot").hidden = false;
     render(); setStatus();
     await syncDown();
     for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); }
@@ -922,9 +972,15 @@
     }
     return last;
   }
-  const friendly = (error) => isNetwork(error)
-    ? "Couldn\u2019t reach the server. Check your connection \u2014 try turning Wi-Fi off \u2014 and tap again."
-    : error.message;
+  const friendly = (error) => {
+    if (isNetwork(error)) return "Couldn\u2019t reach the server. Check your connection \u2014 try turning Wi-Fi off \u2014 and tap again.";
+    const m = (error && error.message) || "";
+    if (/email not confirmed/i.test(m)) return "Tap the link in the email we sent you first, then sign in.";
+    if (/invalid login credentials/i.test(m)) return "Wrong email or password.";
+    if (/different from the old/i.test(m)) return "That\u2019s already your password \u2014 choose a new one.";
+    if (/security purposes|rate limit|after \d+ seconds/i.test(m)) return "Please wait a minute and try again.";
+    return m || "Something went wrong. Please try again.";
+  };
   $("loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     $("loginMsg").textContent = "Signing in…"; $("loginBtn").disabled = true;
@@ -934,15 +990,43 @@
     $("loginMsg").textContent = "";
     await enterCloud(data.session);
   });
-  $("createBtn").addEventListener("click", async () => {
-    const email = $("loginEmail").value.trim(), password = $("loginPassword").value;
-    if (!email || password.length < 8) { $("loginMsg").textContent = "Enter your email and a password of at least 8 characters."; return; }
-    $("loginMsg").textContent = "Creating…";
-    const { data, error } = await withRetry(() => sb.auth.signUp({ email, password }));
-    if (error) { $("loginMsg").textContent = friendly(error); return; }
-    if (data.session) { $("loginMsg").textContent = ""; await enterCloud(data.session); }
-    else $("loginMsg").textContent = "Check your email for a confirmation link, then sign in. (Already have an account? Just sign in.)";
+  $("createBtn").addEventListener("click", showSignup);
+  $("suBack").addEventListener("click", () => showLogin(""));
+  $("suDoneBtn").addEventListener("click", () => showLogin(""));
+  $("signupForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = $("suName").value.trim(), email = $("suEmail").value.trim().toLowerCase(), phone = $("suPhone").value.trim();
+    const password = $("suPassword").value, again = $("suPassword2").value; const msg = $("suMsg");
+    if (!name) { msg.textContent = "Please enter your name."; $("suName").focus(); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg.textContent = "That email doesn\u2019t look right."; $("suEmail").focus(); return; }
+    if (phone.replace(/\D/g, "").length < 7) { msg.textContent = "Please enter your phone number."; $("suPhone").focus(); return; }
+    if (password.length < 8) { msg.textContent = "Use a password of at least 8 characters."; $("suPassword").focus(); return; }
+    if (password !== again) { msg.textContent = "The two passwords don\u2019t match."; $("suPassword2").focus(); $("suPassword2").select(); return; }
+    msg.textContent = "Creating your account\u2026"; $("suBtn").disabled = true;
+    let res; try { res = await sb.auth.signUp({ email, password, options: { data: { name, phone }, emailRedirectTo: location.origin + location.pathname } }); } catch (err) { res = { data: {}, error: err }; }
+    const { data, error } = res;
+    $("suBtn").disabled = false;
+    const sent = () => { $("loginEmail").value = email; $("suForm").hidden = true; $("suDone").hidden = false; $("suDoneText").textContent = "We sent a confirmation link to " + email + ". Open it on this phone, then come back here and sign in with your new password. Not there after a minute? Check Spam."; };
+    if (error && /security purposes|rate limit/i.test(error.message || "")) { sent(); return; }
+    if (error) { msg.textContent = friendly(error); return; }
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) { $("loginEmail").value = email; msg.textContent = "This email already has an account. Sign in instead, or use Forgot password."; return; }
+    if (data.session) { msg.textContent = ""; await enterCloud(data.session); return; }
+    sent();
   });
+  $("passwordForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const password = $("pwNew").value, again = $("pwNew2").value; const msg = $("pwMsg");
+    if (password.length < 8) { msg.textContent = "Use a password of at least 8 characters."; $("pwNew").focus(); return; }
+    if (password !== again) { msg.textContent = "The two passwords don\u2019t match."; $("pwNew2").focus(); $("pwNew2").select(); return; }
+    msg.textContent = "Saving\u2026"; $("pwBtn").disabled = true;
+    const { error } = await withRetry(() => sb.auth.updateUser({ password }));
+    $("pwBtn").disabled = false;
+    if (error) { msg.textContent = friendly(error); return; }
+    msg.textContent = "Password changed."; $("pwNew").value = ""; $("pwNew2").value = "";
+    setTimeout(() => { if (settingsOpen) { settingsOpen = false; hideAllViews(); render(); } }, 1200);
+  });
+  $("changePw").addEventListener("click", showPassword);
+  $("changePw2").addEventListener("click", showPassword);
   $("forgotBtn").addEventListener("click", async () => {
     const email = $("loginEmail").value.trim();
     if (!email) { $("loginMsg").textContent = "Type your email first, then tap Forgot password."; return; }
@@ -953,9 +1037,12 @@
     e.preventDefault();
     const password = $("recoveryPassword").value;
     if (password.length < 8) { $("recoveryMsg").textContent = "At least 8 characters."; return; }
-    const { error } = await sb.auth.updateUser({ password });
-    if (error) { $("recoveryMsg").textContent = error.message; return; }
-    recovering = false; $("recoveryPassword").value = "";
+    if (password !== $("recoveryPassword2").value) { $("recoveryMsg").textContent = "The two passwords don\u2019t match."; return; }
+    $("recoveryMsg").textContent = "Saving\u2026"; $("recoveryBtn").disabled = true;
+    const { error } = await withRetry(() => sb.auth.updateUser({ password }));
+    $("recoveryBtn").disabled = false;
+    if (error) { $("recoveryMsg").textContent = friendly(error); return; }
+    recovering = false; $("recoveryPassword").value = ""; $("recoveryPassword2").value = "";
     const { data: s } = await sb.auth.getSession();
     if (s && s.session) await enterCloud(s.session); else showLogin("Password saved. Sign in.");
   });
@@ -1039,6 +1126,7 @@
     }
     reordering = false; view = next; lsSet("fiala.trainings.view", view); render(); window.scrollTo(0, 0); }
   $("back").addEventListener("click", () => {
+    if (settingsOpen) { settingsOpen = false; hideAllViews(); render(); return; }
     if (view.name === "training") { const t = trainings.get(view.id); go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }); }
     else if (view.name === "client" && isTemplateClient(view.id) && view.phase) go({ name: "client", id: TEMPLATES_ID, program: view.program });
     else if (view.name === "client" && isTemplateClient(view.id) && view.program) go({ name: "client", id: TEMPLATES_ID });
@@ -1239,6 +1327,7 @@
   const templateHome = (t) => { const m = templateMeta(t); return m.program === MY_TEMPLATES ? { name: "client", id: TEMPLATES_ID } : { name: "client", id: TEMPLATES_ID, program: m.program, phase: m.phase, stage: m.stage }; };
   function render() {
     if (recovering) { showRecovery(); return; }
+    if (settingsOpen) { if (signedIn) { hideAllViews(); $("vPassword").hidden = false; $("back").hidden = false; $("brand").hidden = true; } return; }
     if (sb && !signedIn) { showLogin($("loginMsg").textContent); return; }
     if (clientMode && !myClientId) { showWaiting(); return; }
     $("vLogin").hidden = true; $("vRecovery").hidden = true; $("vWaiting").hidden = true; $("vCelebrate").hidden = true;
