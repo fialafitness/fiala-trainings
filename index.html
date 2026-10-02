@@ -328,6 +328,10 @@
   .alt-menu .alt-input { width: calc(100% - 24px); margin: 8px 12px 6px; }
   .alt-menu .alt-hits:empty { display: none; }
   .alt-menu .alt-hits { max-height: 32vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .newname { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 13px; color: var(--text-tertiary); }
+  .newname[hidden] { display: none; }
+  .newname .btn.quiet.link { font-size: 14px; min-height: 36px; padding: 0 6px; }
+  .block.done:not(.open) .row .newname { display: none; }
   .vidrow { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
   .vid-edit { appearance: none; border: 0; background: none; padding: 0 2px; cursor: pointer; margin-top: 8px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); min-height: 32px; line-height: 32px; }
   .vid-form { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
@@ -645,6 +649,25 @@
   const norm = (s) => String(s || "").trim().toLowerCase();
   const squash = (s) => norm(s).replace(/[^a-z0-9]+/g, "");   // "Push-up", "push up" and "pushup" all become "pushup"
   const NAME_KEYS = NAMES.map(squash);
+  const customNames = new Map();          // key -> name (his own exercises, table ft_exercises)
+  let ALL_NAMES = NAMES, ALL_KEYS = NAME_KEYS;
+  const builtinKeys = new Set(NAME_KEYS);
+  function refreshNames() { const extra = [...customNames.values()].sort((a, b) => a.localeCompare(b)); ALL_NAMES = extra.length ? NAMES.concat(extra) : NAMES; ALL_KEYS = extra.length ? NAME_KEYS.concat(extra.map(squash)) : NAME_KEYS; }
+  const knownName = (n) => { const k = squash(n); return !!k && (builtinKeys.has(k) || customNames.has(k)); };
+  const tidyName = (n) => { n = String(n || "").replace(/\s+/g, " ").trim(); return n ? n[0].toUpperCase() + n.slice(1) : ""; };
+  async function loadCustomNames() {
+    if (!sb || !signedIn) return;
+    const { data, error } = await sb.from("ft_exercises").select("name_key,name");
+    if (error || !data) return;
+    customNames.clear(); for (const r of data) customNames.set(r.name_key, r.name); refreshNames();
+  }
+  async function addCustomName(name) {
+    name = tidyName(name); const k = squash(name); if (!k || knownName(name)) return true;
+    if (!sb || !signedIn) return false;
+    const { error } = await sb.from("ft_exercises").upsert({ name_key: k, name });
+    if (error) return false;
+    customNames.set(k, name); refreshNames(); return true;
+  }
   const looseKey = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
   const ALIAS_LOOSE = {}; for (const o in ALIASES) ALIAS_LOOSE[looseKey(o)] = looseKey(ALIASES[o]);
   const lsGet = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
@@ -869,7 +892,7 @@
 
   async function syncDown() {
     if (!sb || !signedIn || seeding) return;
-    loadCustomVideos().catch(() => {});
+    loadCustomVideos().catch(() => {}); loadCustomNames().catch(() => {});
     let c, t;
     if (clientMode) {
       const res = await sb.rpc("client_my_data");
@@ -1658,6 +1681,7 @@
         <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><button class="alt-btn" type="button" hidden aria-label="Alternatives" title="Alternatives"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
         <button class="x" type="button" aria-label="Remove exercise">\u00d7</button>
       </div>
+      <div class="newname trainer-only" hidden><span>New exercise</span><button class="btn quiet link addname" type="button">Add to database</button></div>
       <div class="vidrow"><button class="vid" type="button" hidden>&#9654; Watch video</button><button class="vid-edit trainer-only" type="button">Add video</button></div>
       <div class="vid-form" hidden><input class="vid-url" type="url" placeholder="Paste a YouTube link" autocomplete="off" autocapitalize="none" inputmode="url"><div class="vid-actions"><button class="btn sm vid-save" type="button">Save</button><button class="btn quiet vid-remove" type="button" hidden>Remove</button><button class="btn quiet vid-cancel" type="button">Cancel</button></div></div>
       <div class="player" hidden></div>
@@ -1715,7 +1739,7 @@
       const paintHits = () => {
         const s = squash(inp.value); hits.replaceChildren(); if (s.length < 2) return;
         const taken = new Set([squash(r.name), ...altList().map(squash)]); const starts = [], contains = [];
-        NAMES.forEach((n, i) => { const k = NAME_KEYS[i]; if (taken.has(k)) return; if (k.startsWith(s)) starts.push(n); else if (k.includes(s)) contains.push(n); });
+        ALL_NAMES.forEach((n, i) => { const k = ALL_KEYS[i]; if (taken.has(k)) return; if (k.startsWith(s)) starts.push(n); else if (k.includes(s)) contains.push(n); });
         starts.sort((a, b) => a.length - b.length || a.localeCompare(b));
         for (const n of [...starts, ...contains]) hits.appendChild(menuItem(n, "", () => addAlt(n)));
       };
@@ -1731,6 +1755,15 @@
       paintAltList(); document.addEventListener("pointerdown", outside, true); closeOpenAlt = closeAlt;
     });
     paintAltBtn();
+    const newName = q(".newname");
+    const paintNewName = () => { const n = String(r.name || "").trim(); newName.hidden = clientMode || !n || knownName(n); };
+    q(".addname").addEventListener("click", async () => {
+      const b = q(".addname"); b.disabled = true; b.textContent = "Adding\u2026";
+      const ok = await addCustomName(r.name); b.disabled = false; b.textContent = "Add to database";
+      if (ok) { const t2 = tidyName(r.name); if (t2 !== r.name) { r.name = t2; q(".name").value = t2; save(); } paintNewName(); $("status").textContent = "Added to your exercises"; setTimeout(setStatus, 1500); }
+      else { $("status").textContent = "Couldn\u2019t add \u00b7 run supabase/exercises.sql, or try again online"; $("status").className = "err"; setTimeout(setStatus, 4000); }
+    });
+    paintNewName();
     let videoId = null;
     const paintVideo = () => {
       const id = videoFor(r.name); const b = q(".vid"), pl = q(".player");
@@ -1810,7 +1843,7 @@
         setsPick.hidden = false;
       });
       setsInp.addEventListener("blur", () => { setsPick.hidden = true; });
-      q(".name").addEventListener("input", (e) => { closeAlt(); r.name = e.target.value.replace(/\n/g, " "); markNamed(); dropAltNamed(); growName(); save(); suggest(e.target.value); renderWeights(); paintVideo(); });
+      q(".name").addEventListener("input", (e) => { closeAlt(); r.name = e.target.value.replace(/\n/g, " "); markNamed(); dropAltNamed(); growName(); save(); suggest(e.target.value); renderWeights(); paintVideo(); paintNewName(); });
       q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
       q(".name").addEventListener("focus", (e) => { closeAlt(); suggest(e.target.value); });
       q(".x").addEventListener("click", () => { t.rows = t.rows.filter((x) => x.id !== r.id); save(); renderedTraining = null; render(); });
@@ -1828,10 +1861,10 @@
       const ul = q(".sugg"); const s = squash(v);
       if (s.length < 2) { ul.hidden = true; return; }
       const exact = [], starts = [], contains = [], typed = norm(v);
-      NAMES.forEach((n, i) => { const k = NAME_KEYS[i]; if (k === s) { if (n.toLowerCase() !== typed) exact.push(n); } else if (k.startsWith(s)) starts.push(n); else if (k.includes(s)) contains.push(n); }); // "push up" offers "Push-up" first
+      ALL_NAMES.forEach((n, i) => { const k = ALL_KEYS[i]; if (k === s) { if (n.toLowerCase() !== typed) exact.push(n); } else if (k.startsWith(s)) starts.push(n); else if (k.includes(s)) contains.push(n); }); // "push up" offers "Push-up" first
       starts.sort((a, b) => a.length - b.length || a.localeCompare(b));
       const hits = [...exact, ...starts, ...contains];
-      ul.replaceChildren(...hits.map((n) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { r.name = n; markNamed(); dropAltNamed(); q(".name").value = n; growName(); ul.hidden = true; save(); renderWeights(); paintVideo(); }); li.appendChild(b); return li; }));
+      ul.replaceChildren(...hits.map((n) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { r.name = n; markNamed(); dropAltNamed(); q(".name").value = n; growName(); ul.hidden = true; save(); renderWeights(); paintVideo(); paintNewName(); }); li.appendChild(b); return li; }));
       ul.hidden = hits.length === 0;
     }
 
