@@ -225,9 +225,9 @@
   .listbar .muted { font-size: 13px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); padding-left: 4px; }
   .listbar .btn.quiet { color: var(--text-tertiary); font-size: 15px; min-height: 44px; }
   .list .rowline { min-height: 56px; padding: 6px 12px 6px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 17px; letter-spacing: -0.01em; color: var(--text-primary); }
-  .list .mv { display: flex; gap: 6px; flex: none; }
-  .list .mv button { width: 44px; min-height: 44px; padding: 0; border-radius: 12px; background: var(--field); color: var(--text-primary); font-size: 15px; justify-content: center; }
-  .list .mv button:disabled { opacity: 0.25; cursor: default; }
+  .list li.drag-row { touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; transition: transform 160ms ease; background: var(--card); }
+  .list li.drag-row.dragging { transition: none; position: relative; z-index: 2; cursor: grabbing; background: var(--surface); box-shadow: 0 10px 28px rgba(0,0,0,0.28); border-radius: 14px; }
+  .list .rowline .grip { color: var(--text-tertiary); font-size: 22px; line-height: 1; padding: 0 6px; }
 
   /* Training */
   .ttl { display: grid; grid-template-columns: 1fr; gap: 8px; align-items: start; margin-top: 20px; }
@@ -1171,12 +1171,42 @@
   const clientOrder = (a, b) => ((a.sort ?? Infinity) - (b.sort ?? Infinity)) || a.name.localeCompare(b.name);
   const peopleList = () => [...clients.values()].filter((c) => !isTemplateClient(c.id)).sort(clientOrder);
   let reordering = false;
-  function moveClient(id, dir) {
-    const list = peopleList(); const i = list.findIndex((c) => c.id === id); const j = i + dir;
-    if (i < 0 || j < 0 || j >= list.length) return;
-    [list[i], list[j]] = [list[j], list[i]];
-    list.forEach((c, k) => { if (c.sort !== k) { c.sort = k; scheduleSave("clients", c.id); } });
+  function moveClientTo(id, j) {
+    const list = peopleList(); const i = list.findIndex((c) => c.id === id);
+    if (i < 0 || j < 0 || j >= list.length || i === j) { renderClients(); return; }
+    const [c] = list.splice(i, 1); list.splice(j, 0, c);
+    list.forEach((x, k) => { if (x.sort !== k) { x.sort = k; scheduleSave("clients", x.id); } });
     renderClients();
+  }
+  // drag a row with the finger; the others slide out of the way; the order is saved on release
+  function dragRow(li, id) {
+    li.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 && e.pointerType === "mouse") return;
+      const ul = li.parentElement, rows = [...ul.children], i = rows.indexOf(li);
+      const rect = rows.map((r) => r.getBoundingClientRect()), h0 = rect[i].height, c0 = rect[i].top + h0 / 2;
+      const minDy = rect[0].top - rect[i].top, maxDy = rect[rows.length - 1].bottom - rect[i].bottom;
+      let dy = 0, target = i;
+      li.setPointerCapture(e.pointerId); li.classList.add("dragging");
+      const move = (ev) => {
+        dy = Math.max(minDy, Math.min(maxDy, ev.clientY - e.clientY));
+        const c = c0 + dy; let up = 0, down = 0;
+        rows.forEach((r, k) => {
+          if (k === i) return;
+          const ck = rect[k].top + rect[k].height / 2;
+          if (k > i && c > ck) { r.style.transform = "translateY(" + (-h0) + "px)"; up++; }
+          else if (k < i && c < ck) { r.style.transform = "translateY(" + h0 + "px)"; down++; }
+          else r.style.transform = "";
+        });
+        target = i + up - down;
+        li.style.transform = "translateY(" + dy + "px)";
+      };
+      const end = () => {
+        li.removeEventListener("pointermove", move); li.removeEventListener("pointerup", end); li.removeEventListener("pointercancel", end);
+        li.classList.remove("dragging"); rows.forEach((r) => { r.style.transform = ""; });
+        moveClientTo(id, target);
+      };
+      li.addEventListener("pointermove", move); li.addEventListener("pointerup", end); li.addEventListener("pointercancel", end);
+    });
   }
   function renderClients() {
     const list = peopleList();
@@ -1188,12 +1218,11 @@
     list.forEach((c, i) => {
       const li = document.createElement("li");
       if (reordering) {
+        li.className = "drag-row";
         const row = document.createElement("div"); row.className = "rowline";
         const name = document.createElement("span"); name.textContent = c.name;
-        const mv = document.createElement("span"); mv.className = "mv";
-        const up = document.createElement("button"); up.type = "button"; up.textContent = "\u2191"; up.setAttribute("aria-label", "Move up"); up.disabled = i === 0; up.addEventListener("click", () => moveClient(c.id, -1));
-        const dn = document.createElement("button"); dn.type = "button"; dn.textContent = "\u2193"; dn.setAttribute("aria-label", "Move down"); dn.disabled = i === list.length - 1; dn.addEventListener("click", () => moveClient(c.id, 1));
-        mv.append(up, dn); row.append(name, mv); li.appendChild(row);
+        const grip = document.createElement("span"); grip.className = "grip"; grip.textContent = "\u2261"; grip.setAttribute("aria-hidden", "true");
+        row.append(name, grip); li.appendChild(row); dragRow(li, c.id);
       } else {
         const b = document.createElement("button"); b.type = "button";
         const n = clientTrainings(c.id).length;
