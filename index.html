@@ -374,6 +374,16 @@
   .month > button .sub { color: var(--text-tertiary); font-size: 13px; }
   .month .list { margin-top: 8px; }
   .month .month { margin-left: 16px; }
+  .details-toggle { appearance: none; border: 0; background: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 2px; margin-top: 2px;
+    font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
+  .details-toggle .chev { font-size: 18px; letter-spacing: 0; line-height: 1; transition: transform 200ms ease; }
+  .details-toggle.open .chev { transform: rotate(90deg); }
+  .details-toggle .hint { letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .details { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 8px; max-width: 420px; }
+  .details[hidden] { display: none; }
+  .field-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 2px; }
+  .field-row .muted { font-size: 15px; }
+  .field-row input[type="date"] { width: auto; font-size: 15px; padding: 8px 12px; color: var(--text-primary); }
   .kicker { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 6px 1px; }
   .kicker[hidden] { display: none; }
   .seg.stages { display: flex; width: 100%; }
@@ -539,11 +549,13 @@
   <section id="vClient" hidden>
     <div class="kicker" id="tplKicker" hidden></div>
     <input id="cName" class="pagetitle" placeholder="Client name" autocapitalize="words">
-    <div class="trainer-only" id="cEmailWrap" style="margin-top:8px">
-      <input id="cEmail" type="email" placeholder="Their sign-in email" autocomplete="off" inputmode="email" autocapitalize="none">
-      <p class="muted" style="margin:8px 2px 0">They create their own account with this email and see their trainings.</p>
-      <div class="seg" id="unitSeg" style="margin-top:16px" role="radiogroup" aria-label="Weight unit">
-        <button type="button" data-unit="lb" class="on">lb</button><button type="button" data-unit="kg">kg</button>
+    <div class="trainer-only" id="cEmailWrap">
+      <button class="details-toggle" id="detailsBtn" type="button" aria-expanded="false"><span id="detailsLabel">Details</span><span class="chev">&rsaquo;</span></button>
+      <div class="details" id="detailsBody" hidden>
+        <input id="cEmail" type="email" placeholder="Sign-in email" autocomplete="off" inputmode="email" autocapitalize="none">
+        <input id="cPhone" type="tel" placeholder="Phone" autocomplete="off" inputmode="tel">
+        <div class="field-row"><span class="muted">Birthday</span><input id="cBirthday" type="date"></div>
+        <div class="field-row"><span class="muted">Weights</span><div class="seg" id="unitSeg" role="radiogroup" aria-label="Weight unit"><button type="button" data-unit="lb" class="on">lb</button><button type="button" data-unit="kg">kg</button></div></div>
       </div>
     </div>
     <h2 id="weekHead">This week</h2>
@@ -1427,6 +1439,11 @@
     if (document.activeElement !== $("cName")) $("cName").value = c.name;
     $("cName").readOnly = clientMode;
     if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
+    if (document.activeElement !== $("cPhone")) $("cPhone").value = c.phone || "";
+    if (document.activeElement !== $("cBirthday")) $("cBirthday").value = c.birthday || "";
+    if (detailsFor !== c.id) { detailsFor = c.id; detailsOpen = false; }
+    $("detailsBody").hidden = !detailsOpen; $("detailsBtn").classList.toggle("open", detailsOpen); $("detailsBtn").setAttribute("aria-expanded", String(detailsOpen));
+    $("detailsLabel").innerHTML = "Details"; if (!c.email) $("detailsLabel").insertAdjacentHTML("beforeend", ' <span class="hint">\u00b7 no sign-in email yet</span>');
     for (const b of $("unitSeg").querySelectorAll("button")) b.classList.toggle("on", (c.unit || "lb") === b.dataset.unit);
     if (document.activeElement !== $("cNotes")) $("cNotes").value = c.notes || "";
     const list = clientTrainings(c.id);
@@ -1822,6 +1839,11 @@
     for (const x of $("unitSeg").querySelectorAll("button")) x.classList.toggle("on", x === b);
   });
   $("cEmail").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.email = e.target.value.trim().toLowerCase(); scheduleSave("clients", c.id); });
+  $("cEmail").addEventListener("blur", () => { const c = clients.get(view.id); if (c) { $("detailsLabel").innerHTML = "Details"; if (!c.email) $("detailsLabel").insertAdjacentHTML("beforeend", ' <span class="hint">\u00b7 no sign-in email yet</span>'); } });
+  $("cPhone").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.phone = e.target.value.trim(); scheduleSave("clients", c.id); });
+  $("cBirthday").addEventListener("change", (e) => { const c = clients.get(view.id); if (!c) return; c.birthday = e.target.value || ""; scheduleSave("clients", c.id); });
+  let detailsOpen = false, detailsFor = null;
+  $("detailsBtn").addEventListener("click", () => { detailsOpen = !detailsOpen; $("detailsBody").hidden = !detailsOpen; $("detailsBtn").classList.toggle("open", detailsOpen); $("detailsBtn").setAttribute("aria-expanded", String(detailsOpen)); if (detailsOpen && !$("cEmail").value) $("cEmail").focus(); });
   $("newTraining").addEventListener("click", () => addTraining(view.id, null, today()));
   $("delClient").addEventListener("click", () => { $("delClient").hidden = true; $("delClientConfirm").hidden = false; });
   $("delClientNo").addEventListener("click", () => { $("delClientConfirm").hidden = true; $("delClient").hidden = false; });
