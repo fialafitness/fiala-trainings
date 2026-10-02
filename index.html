@@ -394,6 +394,9 @@
   .finished span { color: var(--done); font-weight: 500; }
   .foot { margin-top: 40px; border-top: 1px solid var(--card-border); padding-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .confirm { color: var(--text-secondary); font-size: 17px; }
+  .foot.foot-col { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .foot.foot-col .muted { font-size: 13px; }
+  .foot-actions { display: flex; gap: 16px; align-items: center; margin-left: -8px; }
 
   @media (max-width: 400px) {
     .alt-menu { left: -60px; right: -44px; }
@@ -468,7 +471,10 @@
     <div class="listbar"><span class="muted" id="clientCount"></span><button class="btn quiet" id="reorderBtn" type="button" hidden>Reorder</button></div>
     <ul class="list" id="clientList"></ul>
     <div class="empty" id="clientEmpty" hidden>No clients yet. Add the first one above.</div>
-    <div class="foot" id="localFoot" hidden><span class="muted" id="dataNote">Saved on this device</span><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="btn quiet" id="signout" type="button" hidden>Sign out</button></div>
+    <div class="foot foot-col" id="localFoot" hidden>
+      <span class="muted" id="dataNote">Saved on this device</span>
+      <div class="foot-actions"><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="btn quiet" id="signout" type="button" hidden>Sign out</button></div>
+    </div>
   </section>
 
   <section id="vClient" hidden>
