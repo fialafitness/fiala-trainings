@@ -322,6 +322,8 @@
   .weights { margin-top: 16px; }
   .weights .cap { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; display: flex; justify-content: space-between; gap: 8px; }
   .weights .cap span:last-child { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-tertiary); }
+  .weights .cap .wunit { cursor: pointer; }
+  .weights .cap .wunit .kb { letter-spacing: 0; text-transform: none; font-weight: 400; }
   .weights .boxes { display: flex; gap: 8px; flex-wrap: wrap; }
   .weights input { flex: 1 1 52px; max-width: 80px; text-align: center; padding: 12px 4px; font-weight: 500; }
 
@@ -1167,7 +1169,17 @@
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="note"><button type="button" class="note-toggle"></button><textarea class="note-field" rows="1" placeholder="Note" hidden></textarea></div>`;
     const q = (s) => el.querySelector(s);
-    q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
+    // weight boxes open the numeric keypad; tapping "Weights · lb" flips them to the full keyboard for BW, 60 sec, etc.
+    let wText = false;
+    const nonNum = (w) => !!w && !/^[\d.,\s]*$/.test(String(w));
+    const paintWunit = () => { const lab = q(".wunit"); lab.textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb"); if (wText) { const k = document.createElement("span"); k.className = "kb"; k.textContent = " \u00b7 abc"; lab.appendChild(k); } };
+    paintWunit();
+    q(".wunit").addEventListener("click", () => {
+      wText = !wText; paintWunit();
+      const boxes = q(".boxes"), active = document.activeElement;
+      for (const b of boxes.children) b.inputMode = wText ? "text" : "decimal";
+      if (active && boxes.contains(active)) { active.blur(); setTimeout(() => active.focus(), 50); }
+    });
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(46, n.scrollHeight) + "px"; };
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); if (VIDEOS[s]) return VIDEOS[s]; for (const k in VIDEOS) if (loose(k) === l) return VIDEOS[k]; return null; };
@@ -1351,8 +1363,9 @@
       const boxes = q(".boxes"); const last = lastWeights(t, r);
       q(".last").textContent = last ? "last time \u00b7 " + fmtDate(last.date) : "";
       r.weights = (r.weights || []).slice(0, n); while (r.weights.length < n) r.weights.push("");
+      if (!wText && r.weights.some(nonNum)) { wText = true; paintWunit(); } // BW / 60 sec already logged: start on the full keyboard
       boxes.replaceChildren(...Array.from({ length: n }, (_, i) => {
-        const inp = document.createElement("input"); inp.className = "tab"; inp.inputMode = "decimal"; inp.setAttribute("aria-label", "Set " + (i + 1) + " weight");
+        const inp = document.createElement("input"); inp.className = "tab"; inp.inputMode = wText ? "text" : "decimal"; inp.setAttribute("autocapitalize", "none"); inp.setAttribute("aria-label", "Set " + (i + 1) + " weight");
         inp.value = r.weights[i] || ""; const hint = !!(last && last.weights[i]); inp.placeholder = hint ? last.weights[i] : "\u2013"; inp.classList.toggle("hint", hint);
         inp.addEventListener("input", (e) => {
           r.weights[i] = e.target.value;
