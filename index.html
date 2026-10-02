@@ -242,6 +242,7 @@
   /* Training */
   .ttl { display: grid; grid-template-columns: 1fr; gap: 8px; align-items: start; margin-top: 20px; }
   .ttl input[type="date"] { justify-self: start; }
+  .ttl .date-row { justify-self: stretch; }
   .ttl .title { font-size: 26px; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; background: transparent; padding: 0; border-radius: 12px; resize: none; overflow: hidden; min-height: 32px; }
   .ttl .title:focus { background: var(--field); padding: 8px 12px; }
   .ttl input[type="date"] { width: auto; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); padding: 8px 12px; }
@@ -416,6 +417,13 @@
   .msg-pill { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; min-height: 40px; border-radius: 50px; text-decoration: none; font-size: 15px; font-weight: 500; letter-spacing: 0; color: #fff;
     background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%); box-shadow: 0 6px 16px rgba(73, 70, 100, 0.24), inset 0 1px 0 rgba(255,255,255,0.12); transition: opacity 300ms ease, transform 300ms ease; }
   .msg-pill:hover { opacity: 0.92; }
+  .msg-pill.small { min-height: 34px; padding: 0 14px; font-size: 14px; gap: 6px; }
+  .msg-pill[hidden] { display: none; }
+  .client-only { display: none; }
+  body.client .client-only { display: flex; }
+  body.client .contact-row.client-only[hidden] { display: none; }
+  .date-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  #vTraining.tpl .date-row { display: none; }
   .msg-pill:active { transform: scale(0.98); }
   .details[hidden] { display: none; }
   .field-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 2px; }
@@ -536,6 +544,13 @@
     <div class="empty" id="exEmpty" hidden></div>
   </section>
 
+  <section id="vNumber" hidden>
+    <h1>My number</h1>
+    <p class="muted" style="margin:0 0 16px;max-width:420px">Clients get a <b style="font-weight:500;color:var(--text-primary)">Message Michal</b> button that opens a conversation with this number, in the app you chose for them (Messages or WhatsApp).</p>
+    <input id="myPhone" type="tel" placeholder="Your phone number" autocomplete="tel" inputmode="tel" style="max-width:360px">
+    <p class="muted" id="myPhoneMsg" style="margin-top:12px"></p>
+  </section>
+
   <section id="vPassword" hidden>
     <h1>Change password</h1>
     <form id="passwordForm" class="stack">
@@ -588,7 +603,7 @@
     <div class="empty" id="clientEmpty" hidden>No clients yet. Add the first one above.</div>
     <div class="foot foot-col" id="localFoot" hidden>
       <span class="muted" id="dataNote">Saved on this device</span>
-      <div class="foot-actions"><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="btn quiet" id="myExercises" type="button" hidden>Exercises</button><button class="btn quiet" id="changePw" type="button" hidden>Change password</button><button class="btn quiet" id="signout" type="button" hidden>Sign out</button></div>
+      <div class="foot-actions"><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="btn quiet" id="myExercises" type="button" hidden>Exercises</button><button class="btn quiet" id="myNumber" type="button" hidden>My number</button><button class="btn quiet" id="changePw" type="button" hidden>Change password</button><button class="btn quiet" id="signout" type="button" hidden>Sign out</button></div>
     </div>
   </section>
 
@@ -598,6 +613,7 @@
       <input id="cName" class="pagetitle" placeholder="Client name" autocapitalize="words" readonly>
       <button class="disc trainer-only" id="detailsBtn" type="button" aria-label="Details" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 7l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
+    <div class="contact-row client-only" id="trainerRow" hidden><a class="msg-pill" id="trainerBtn" href="#"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
     <div class="contact-row trainer-only" id="contactRow" hidden><a class="msg-pill" id="msgBtn" href="#"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="msgText">Message</span></a></div>
     <div class="trainer-only" id="cEmailWrap">
       <div class="details" id="detailsBody" hidden>
@@ -634,7 +650,7 @@
   <section id="vTraining" hidden>
     <div class="ttl">
       <textarea id="tTitle" class="title" rows="1" placeholder="Focus, e.g. Bench-press and back" autocapitalize="sentences"></textarea>
-      <input id="tDate" type="date">
+      <div class="date-row"><input id="tDate" type="date"><a class="msg-pill small client-only" id="trainerBtn2" href="#" hidden><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
       <button class="tpl-pill trainer-only" id="fromTpl" type="button" hidden><span id="fromTplText"></span><span class="chev">&rsaquo;</span></button>
     </div>
     <div class="rows" id="rows"></div>
@@ -992,11 +1008,11 @@
   }
 
   function hideAllViews() {
-    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
+    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
   }
   function showLogin(msg) {
     signedIn = false; clientMode = false; myClientId = null; document.body.classList.remove("client");
-    $("clientFoot").hidden = true; $("clientFootNote").textContent = ""; $("localFoot").hidden = true; $("signout").hidden = true; $("changePw").hidden = true; $("myExercises").hidden = true; settingsOpen = false;
+    $("clientFoot").hidden = true; $("clientFootNote").textContent = ""; $("localFoot").hidden = true; $("signout").hidden = true; $("changePw").hidden = true; $("myExercises").hidden = true; $("myNumber").hidden = true; settingsOpen = false;
     hideAllViews(); $("vLogin").hidden = false;
     $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("loginMsg").textContent = msg || "";
@@ -1005,7 +1021,17 @@
     hideAllViews(); $("vSignup").hidden = false; $("suForm").hidden = false; $("suDone").hidden = true; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("suMsg").textContent = ""; $("suEmail").value = $("loginEmail").value.trim(); setTimeout(() => $("suName").focus(), 50);
   }
-  let settingsOpen = false;              // false | "password" | "exercises"
+  let settingsOpen = false;              // false | "password" | "exercises" | "number"
+  function showNumber() {
+    settingsOpen = "number"; hideAllViews(); $("vNumber").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
+    $("myPhone").value = trainerPhone(); $("myPhoneMsg").textContent = "";
+  }
+  // the trainer's number is copied onto every client row (that is what a client can read)
+  const trainerPhone = () => { for (const c of clients.values()) if (!isTemplateClient(c.id) && c.trainerPhone) return c.trainerPhone; return lsGet("fiala.trainer.phone") || ""; };
+  function setTrainerPhone(v) {
+    v = String(v || "").trim(); lsSet("fiala.trainer.phone", v);
+    for (const c of clients.values()) { if (isTemplateClient(c.id)) continue; if ((c.trainerPhone || "") !== v) { c.trainerPhone = v; scheduleSave("clients", c.id); } }
+  }
   function showExercises() {
     settingsOpen = "exercises"; hideAllViews(); $("vExercises").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
     exShown = 80; exOpenKey = null; renderExercises();
@@ -1147,7 +1173,7 @@
       return;
     }
     $("dataNote").textContent = "Synced to the cloud \u00b7 " + sessionEmail;
-    $("signout").hidden = false; $("changePw").hidden = false; $("myExercises").hidden = false; $("localFoot").hidden = false;
+    $("signout").hidden = false; $("changePw").hidden = false; $("myExercises").hidden = false; $("myNumber").hidden = false; $("localFoot").hidden = false;
     render(); setStatus();
     await syncDown();
     for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); }
@@ -1220,6 +1246,8 @@
   });
   $("changePw").addEventListener("click", showPassword);
   $("myExercises").addEventListener("click", showExercises);
+  $("myNumber").addEventListener("click", showNumber);
+  $("myPhone").addEventListener("change", () => { setTrainerPhone($("myPhone").value); $("myPhoneMsg").textContent = phoneDigits($("myPhone").value) ? "Saved. Clients now see Message Michal." : "Saved. Without a number clients see no button."; });
   $("changePw2").addEventListener("click", showPassword);
   $("forgotBtn").addEventListener("click", async () => {
     const email = $("loginEmail").value.trim();
@@ -1266,7 +1294,7 @@
 
   // ---------- data ops ----------
   function addClient(name) {
-    const c = { id: uid(), name, notes: "", createdAt: now() };
+    const c = { id: uid(), name, notes: "", createdAt: now(), trainerPhone: trainerPhone() };
     clients.set(c.id, c); scheduleSave("clients", c.id, 0);
     go({ name: "client", id: c.id });
   }
@@ -1522,7 +1550,7 @@
   const templateHome = (t) => { const m = templateMeta(t); return m.program === MY_TEMPLATES ? { name: "client", id: TEMPLATES_ID } : { name: "client", id: TEMPLATES_ID, program: m.program, phase: m.phase, stage: m.stage }; };
   function render() {
     if (recovering) { showRecovery(); return; }
-    if (settingsOpen) { if (signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : "vPassword").hidden = false; $("back").hidden = false; $("brand").hidden = true; } return; }
+    if (settingsOpen) { if (signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "number" ? "vNumber" : "vPassword").hidden = false; $("back").hidden = false; $("brand").hidden = true; } return; }
     if (sb && !signedIn) { showLogin($("loginMsg").textContent); return; }
     if (clientMode && !myClientId) { showWaiting(); return; }
     $("vLogin").hidden = true; $("vRecovery").hidden = true; $("vWaiting").hidden = true; $("vCelebrate").hidden = true;
@@ -1628,7 +1656,7 @@
     $("detailsBody").hidden = !detailsOpen; $("detailsBtn").classList.toggle("open", detailsOpen); $("detailsBtn").setAttribute("aria-expanded", String(detailsOpen));
     $("detailsBtn").classList.toggle("needs", !c.email);
     for (const b of $("chatSeg").querySelectorAll("button")) b.classList.toggle("on", (c.chat || "sms") === b.dataset.chat);
-    paintMsg(c);
+    paintMsg(c); paintTrainerMsg(c);
     for (const b of $("unitSeg").querySelectorAll("button")) b.classList.toggle("on", (c.unit || "lb") === b.dataset.unit);
     if (document.activeElement !== $("cNotes")) $("cNotes").value = c.notes || "";
     const list = clientTrainings(c.id);
@@ -1731,6 +1759,7 @@
     $("tTitle").readOnly = clientMode; $("tDate").readOnly = clientMode;
     const isTpl = isTemplateClient(t.clientId);
     if (isTpl) draftFor(t);
+    paintTrainerMsg(clients.get(t.clientId));
     const src = !clientMode && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
     $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = templatePath(src);
     $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || clientMode; if (!isTpl) $("usePick").hidden = true;
@@ -2068,6 +2097,10 @@
   $("cBirthday").addEventListener("change", (e) => { const c = clients.get(view.id); if (!c) return; c.birthday = e.target.value || ""; scheduleSave("clients", c.id); });
   // phone -> international digits for sms: and wa.me (US numbers without a country code get +1)
   const phoneDigits = (p) => { let d = String(p || "").replace(/\D/g, ""); if (!d) return ""; if (String(p).trim().startsWith("+")) return d; if (d.length === 10) return "1" + d; if (d.length === 11 && d[0] === "1") return d; return d.length >= 7 ? d : ""; };
+  function paintTrainerMsg(c) {
+    const tel = c ? phoneDigits(c.trainerPhone) : ""; const wa = c && (c.chat || "sms") === "whatsapp";
+    for (const id of ["trainerBtn", "trainerBtn2"]) { const a = $(id); if (!tel || !clientMode) { a.hidden = true; if (id === "trainerBtn") $("trainerRow").hidden = true; continue; } a.hidden = false; if (id === "trainerBtn") $("trainerRow").hidden = false; a.href = wa ? "https://wa.me/" + tel : "sms:+" + tel; if (wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); } }
+  }
   function paintMsg(c) {
     const tel = phoneDigits(c.phone); $("contactRow").hidden = !tel || clientMode; if (!tel) return;
     const wa = (c.chat || "sms") === "whatsapp"; const a = $("msgBtn");
