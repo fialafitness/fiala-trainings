@@ -65,6 +65,7 @@ FIX = {  # whole-name fixes (reviewed 1 Oct 2026): typos, leftover Czech, proper
   "Weighted frog pumps": "Weighted frog pump",
   "Weighted jacknives": "Weighted jackknife",
   "Kick back to knees to elbows both ways": "Kickback to knees to elbows both ways",
+  "Jump lunge with punches": "Jump lunge with punches", "Sit-up with punches": "Sit-up with punches",   # "punches" is a descriptor here
 }
 FIX_WORDS = {"farmers": "farmer's"}
 
@@ -84,33 +85,34 @@ def singularize(name):
   if name in FIX: return FIX[name]
   return re.sub(r"[A-Za-z][A-Za-z'\-]*", lambda m: fix_word(m.group(0)), name)
 
-alias = json.load(open(f"{ROOT}/exercise-aliases.json", encoding="utf-8"))
-videos = json.load(open(f"{ROOT}/exercise-videos.json", encoding="utf-8"))
-seen = {}          # lowercase new name -> canonical new name
-final, renames, merged = [], {}, []
-for n in names:
-  s = singularize(n)
-  key = s.lower()
-  if key in seen:
-    if s != n: merged.append((n, seen[key]))
-    renames[n] = seen[key]; continue
-  seen[key] = s; final.append(s)
-  if s != n: renames[n] = s
+if __name__ == "__main__":
+  alias = json.load(open(f"{ROOT}/exercise-aliases.json", encoding="utf-8"))
+  videos = json.load(open(f"{ROOT}/exercise-videos.json", encoding="utf-8"))
+  seen = {}          # lowercase new name -> canonical new name
+  final, renames, merged = [], {}, []
+  for n in names:
+    s = singularize(n)
+    key = s.lower()
+    if key in seen:
+      if s != n: merged.append((n, seen[key]))
+      renames[n] = seen[key]; continue
+    seen[key] = s; final.append(s)
+    if s != n: renames[n] = s
 
-if "--write" in sys.argv:
-  for old, new in renames.items(): alias[old] = new
-  for old, tgt in list(alias.items()):              # older aliases must point at the new spelling
-    if tgt in renames: alias[old] = renames[tgt]
-  alias = {o: t for o, t in alias.items() if o != t}
-  newv = {}
-  for k, v in videos.items():
-    nk = renames.get(k, k)
-    if nk not in newv: newv[nk] = v
-  open(f"{ROOT}/exercises.txt", "w", encoding="utf-8").write("\n".join(final) + "\n")
-  json.dump(alias, open(f"{ROOT}/exercise-aliases.json", "w", encoding="utf-8"), ensure_ascii=False, indent=0)
-  json.dump(dict(sorted(newv.items())), open(f"{ROOT}/exercise-videos.json", "w", encoding="utf-8"), ensure_ascii=False, indent=0)
-  print(f"wrote {len(final)} names, {len(alias)} aliases, {len(newv)} videos")
-else:
-  for old, new in renames.items(): print(f"{old}  ->  {new}")
-  print(f"\n{len(renames)} renames ({len(merged)} merge into an existing name), {len(final)} names after")
-  for old, into in merged: print("   merge:", old, "->", into)
+  if "--write" in sys.argv:
+    for old, new in renames.items(): alias[old] = new
+    for old, tgt in list(alias.items()):              # older aliases must point at the new spelling
+      if tgt in renames: alias[old] = renames[tgt]
+    alias = {o: t for o, t in alias.items() if o != t}
+    newv = {}
+    for k, v in videos.items():
+      nk = renames.get(k, k)
+      if nk not in newv: newv[nk] = v
+    open(f"{ROOT}/exercises.txt", "w", encoding="utf-8").write("\n".join(final) + "\n")
+    json.dump(alias, open(f"{ROOT}/exercise-aliases.json", "w", encoding="utf-8"), ensure_ascii=False, indent=0)
+    json.dump(dict(sorted(newv.items())), open(f"{ROOT}/exercise-videos.json", "w", encoding="utf-8"), ensure_ascii=False, indent=0)
+    print(f"wrote {len(final)} names, {len(alias)} aliases, {len(newv)} videos")
+  else:
+    for old, new in renames.items(): print(f"{old}  ->  {new}")
+    print(f"\n{len(renames)} renames ({len(merged)} merge into an existing name), {len(final)} names after")
+    for old, into in merged: print("   merge:", old, "->", into)

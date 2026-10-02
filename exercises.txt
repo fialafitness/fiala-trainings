@@ -31,8 +31,8 @@ Archer squat
 Arms across stretch
 Arnold press
 Arnold shoulder press
-Around the world squat
 Around the world (weight optional)
+Around the world squat
 Assisted bodyweight squat to box
 Assisted chin-up
 Assisted lateral squat
@@ -41,8 +41,8 @@ Assisted pull-up
 Assisted reverse lunge with blocked knee
 ATG squat
 ATG squat (bodyweight)
-ATG squat with bands
 ATG squat on Smith machine against band
+ATG squat with bands
 Back deadlift
 Back extension
 Back extension to y's
@@ -200,9 +200,9 @@ Bent-over plate row
 Bent-over pronated grip (overhand) row
 Bent-over rear delt row
 Bent-over reverse fly
+Bent-over row overhand grip
 Bent-over row to biceps curl
 Bent-over row to overhead press
-Bent-over row overhand grip
 Bent-over row underhand grip
 Bent-over tempo row
 Bent-over underhand cable row to waist
@@ -226,9 +226,9 @@ Bodyweight pull-up
 Bodyweight reverse lunge with blocked knee
 Bodyweight side step
 Bodyweight split squat
+Bodyweight squat
 Bodyweight squat thrust
 Bodyweight squat to box
-Bodyweight squat
 Bodyweight standing lunge
 Bodyweight step-up
 Bodyweight tibialis raise
@@ -240,20 +240,20 @@ Box squat
 Box step-up
 Box/tuck jump
 Breath of fire
+Broad jump
 Broad jump reset
 Broad jump, hustle back
-Broad jump
 Bulgarian lunge
 Bulgarian split squat
 Bulgarian split squat with dumbbell/kettlebell in goblet position
 Bulgarian squat
 Bulgarian squat with tempo
+Burpee
 Burpee plank jack to jump jack
-Burpee push-up to break dancer
 Burpee push-up
+Burpee push-up to break dancer
 Burpee to jump lunge
 Burpee without push-up
-Burpee
 Butt kick
 Butterfly and spinal twist
 Butterfly crunch
@@ -332,7 +332,7 @@ Chest medicine ball throw
 Chest opener knee raise
 Chest press + hollow hold
 Chest press machine
-Chest press stroj/push-up
+Chest press machine/push-up
 Chest press with dead bug legs
 Chest supported dumbbell row
 Chest supported dumbbell row – neutral k pasu
@@ -353,6 +353,7 @@ Clean pull (dynamic extension)
 Close-grip band bench press
 Close-grip barbell preacher curl
 Close-grip bench dip (behind body)
+Close-grip bench press
 Close-grip bench press from dead start
 Close-grip chin-up
 Close-grip chin-up with band
@@ -400,6 +401,7 @@ Deadlift with chains
 Deadmill sprint
 Decline bench press
 Decline close-grip bench press with band
+Decline close-grip bench press with chains
 Decline EZ bar bench press, medium grip
 Decline EZ bar French press, medium grip, behind head
 Decline EZ bar French press, neutral-grip, to forehead
@@ -487,12 +489,13 @@ Dumbbell pectoral fly
 Dumbbell Pendlay row
 Dumbbell power fly
 Dumbbell power shrug
-Dumbbell pullover across bench
 Dumbbell pullover
+Dumbbell pullover across bench
 Dumbbell reverse curl, hands shoulder width
 Dumbbell reverse fly
 Dumbbell reverse lunge
 Dumbbell Romanian deadlift
+Dumbbell Romanian deadlift (starting from the top)
 Dumbbell Romanian deadlift (starting from top)
 Dumbbell Romanian deadlift 2/3
 Dumbbell Romanian deadlift with band
@@ -565,8 +568,8 @@ Figure 4 cross body bike crunch
 Figure 4 crunch
 Figure 4 hip up
 Figure 4 stretch
-Fire hydrant leg extension
 Fire hydrant
+Fire hydrant leg extension
 Fire hydrant to kick back
 Floor chest press hollow hold
 Floor dumbbell hip thrust
@@ -590,8 +593,8 @@ Frogger
 Front and back lunge
 Front foot elevated dumbbell heretic split squat
 Front foot elevated dumbbell split squat
-Front foot elevated lunge + step-up
 Front foot elevated lunge
+Front foot elevated lunge + step-up
 Front foot elevated split squat
 Front lever protraction (drill)
 Front lunge to overhead triceps
@@ -641,7 +644,6 @@ Half get-up
 Half kneeling face pull
 Half kneeling lift and chop
 Half kneeling overhead press
-Half-kneeling Pallof press
 Half kneeling row
 Half kneeling shoulder press
 Half kneeling single-arm Arnold press
@@ -652,17 +654,18 @@ Half-kneeling band lift
 Half-kneeling band overhead shrug
 Half-kneeling cable chop
 Half-kneeling cable lift
+Half-kneeling Pallof press
 Half-kneeling Pallof press iso
 Half-kneeling Pallof press iso with band
-Hammer curl to eccentric suppination
 Hammer curl
 Hammer curl held by one end
+Hammer curl to eccentric suppination
 Hammer curl with rope attachment
 Hamstring curl
 Hamstring mobilization with lacrosse ball
 Hamstring scoop
-Hamstring slide curl
 Hamstring slide
+Hamstring slide curl
 Hamstring strap stretch
 Hamstring switch
 Hamstring walk out
@@ -747,6 +750,7 @@ Jackknife sit-up
 Jaguar crawl
 Javelin press (EZ bar)
 Jefferson curl (kettlebell)
+Jump in and out of tire
 Jump lunge
 Jump lunge with overhead extension
 Jump lunge with punches
@@ -755,7 +759,6 @@ Jump squat
 Jumping jack
 Jumping lunge
 Jumping pull-up
-Jump in and out of tire
 KAS hip thrust
 Kettlebell armbar
 Kettlebell biceps curl
@@ -769,8 +772,8 @@ Kettlebell swing
 Kettlebell Turkish get-up
 Kettlebell walking lunge (forward/backward, held in rack position)
 Kettlebell/dumbbell waiter walking lunge
-Kickback to knees to elbows both ways
 Kick-up + hold in wall handstand
+Kickback to knees to elbows both ways
 Kipping handstand push-up from headstand + slow negative
 Klokov squat
 Klokov squat – short
@@ -821,8 +824,8 @@ Leg extension, feet straight
 Leg extension, feet turned out
 Leg extension, toes turned in
 Leg kick-up to the bar
-Leg lift and touch through
 Leg lift
+Leg lift and touch through
 Leg lower
 Leg press
 Leg press IZO/dynamic
@@ -933,8 +936,8 @@ Momentary single-arm handstand facing wall
 Monkey walk (sideways)
 Morning breathing exercise (wim hof method)
 Mountain climber
-Mountain climber jump switch
 Mountain climber from base position
+Mountain climber jump switch
 Narrow front squat
 Narrow pull-up (weighted)
 Narrow push-up
@@ -949,6 +952,7 @@ Neutral-grip bench press
 Neutral-grip dumbbell curl (arms away from body)
 Neutral-grip dumbbell French press to shoulders
 Neutral-grip EZ bar biceps curl
+Neutral-grip lat pulldown
 Neutral-grip pull-up
 Nordic curl
 Nordic hamstring curl
@@ -994,8 +998,8 @@ Pectoral fly on crossover cables/bands, high to low
 Pelvic thrust
 Pendlay power row
 Pendlay row
-Pendulum squat narrow (with band)
 Pendulum squat
+Pendulum squat narrow (with band)
 Perfect dip (extra deep, to support hold)
 Performance breathing (standing/seated)
 Performance HIIT (stationary bike/assault bike)
@@ -1015,11 +1019,11 @@ Plank circle
 Plank elbow to knee touch
 Plank hold walk-out
 Plank hop in-and-out
-Plank jack with shoulder tap
 Plank jack
+Plank jack with shoulder tap
 Plank kick through
-Plank knee tuck to chest (feet in TRX)
 Plank knee to elbow
+Plank knee tuck to chest (feet in TRX)
 Plank opposite toe touch
 Plank pop up
 Plank pull
@@ -1068,18 +1072,20 @@ Prone YTI
 Protrakce lopatek
 Prowler pull
 Prowler push
-Pull-up top hold + slow negative
-Pull-up with iso
 Pull-up
 Pull-up on bar
 Pull-up to chin from active hang (no dead hang)
 Pull-up to chin from passive hang (to dead hang)
+Pull-up top hold + slow negative
+Pull-up with iso
 Pull-up, mid range pulses
 Pull-up, neutral/overhand grip
 Pulse jump squat
 Pulse squat
 Push press
+Push-up
 Push-up donkey kick
+Push-up on knees
 Push-up to alternating knee tap
 Push-up to knee tap
 Push-up to plank pull through
@@ -1089,10 +1095,8 @@ Push-up to renegade row
 Push-up to starfish
 Push-up to Superman
 Push-up to tucked bent-arm planche
-Push-up with rotation
-Push-up
-Push-up on knees
 Push-up with feet on unstable surface
+Push-up with rotation
 Push-up with shoulder tap
 Quad rocker
 Quad rocker/child's pose
@@ -1123,9 +1127,9 @@ Reverse Nordic
 Reverse pattern single-leg Romanian deadlift
 Reverse peck deck
 Reverse pectoral fly
+Reverse plank
 Reverse plank hold
 Reverse plank knee drive
-Reverse plank
 Reverse step-up
 Reverse table top knee raise
 Reverse triceps extension
@@ -1133,11 +1137,11 @@ Ring dip (cluster sets)
 Ring dip with support
 Ring plank
 Ring pull-up (feet on floor)
+Ring pull-up (overhand grip)
 Ring pull-up, neutral-grip (cluster sets)
 Ring push-up
 Ring row
 Ring row with feet elevated
-Ring pull-up (overhand grip)
 Rocked back quadruped extension-rotation
 Roll out to combat stance
 Roll out to V-sit
@@ -1169,13 +1173,13 @@ Scapular retraction and depression drill for deadlift with stick/barbell
 Scapular retraction and depression drill, standing bench press position with stick/barbell
 Scapular retraction and depression with band, straight arms
 Scapular wall slide
-Skull crusher
 Seal jack
 Seated alternating dumbbell press
 Seated ankle dorsiflexsion
 Seated back extension on low cable
 Seated behind-the-neck press
 Seated behind-the-neck press (narrow grip)
+Seated bent-over dumbbell shrug
 Seated cable chest press
 Seated cable row
 Seated calf press
@@ -1184,8 +1188,8 @@ Seated calf raise, toes turned in
 Seated calf raise, toes turned out
 Seated chest press
 Seated dumbbell biceps curl
-Seated dumbbell curl iso hold – V kontrakci
 Seated dumbbell curl
+Seated dumbbell curl iso hold – V kontrakci
 Seated dumbbell curl without support
 Seated dumbbell front raise, neutral-grip
 Seated dumbbell hammer curl
@@ -1380,15 +1384,16 @@ Single-leg V-up
 Single-leg wall push-off
 Single-leg weighted hip thrust
 Sissy squat
-Sit-up with punches
+Sit-up
 Sit-up and twist
 Sit-up to stand up
 Sit-up to wall throw
-Sit-up
+Sit-up with punches
 Sitting knee to chest stretch
-Skater hop
 Skater
+Skater hop
 Skipping
+Skull crusher
 Skull crusher to hip thrust
 Slam ball ground slam
 Slam ball push press
@@ -1429,12 +1434,14 @@ Sprint with tire drag (rope)
 Sprinter crunch
 Sprinty (15 – 50 m)
 Squat
+Squat (bodyweight/goblet)
 Squat 4-3-1
 Squat clean from hang
 Squat hold with slam ball
 Squat hop side to side
 Squat jump to overhead press
 Squat jump with press
+Squat on pendulum machine/leg press
 Squat pulses with isometric hold
 Squat thruster
 Squat to diagonal press
@@ -1447,8 +1454,6 @@ Squat to stand
 Squat to stand with overhead reach
 Squat to standing triple extension
 Squat with hold
-Squat (bodyweight/goblet)
-Squat on pendulum machine/leg press
 Squatting hip internal rotation
 Stability ball crunch
 Stability ball hamstring curl
@@ -1513,8 +1518,8 @@ Straight leg V-up
 Straight-arm band pull apart + hold
 Straight-arm forward lean hold
 Straight-arm forward lean on parallettes
-Straight-arm press to sides + hold (with band)
 Straight-arm press in front of body (band support press)
+Straight-arm press to sides + hold (with band)
 Stretch – arm sweep
 Stretch – catcow
 Stretch – child's pose
@@ -1607,8 +1612,8 @@ Triceps dip
 Triceps dip + hold
 Triceps extension (band/dumbbell)
 Triceps kickback
-Triceps pressdown
 Triceps press
+Triceps pressdown
 Triceps push-up
 Triceps pushdown
 Triceps rope pushdown (cable/band)
