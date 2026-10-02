@@ -374,6 +374,10 @@
   .month > button .sub { color: var(--text-tertiary); font-size: 13px; }
   .month .list { margin-top: 8px; }
   .month .month { margin-left: 16px; }
+  .kicker { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 6px 1px; }
+  .kicker[hidden] { display: none; }
+  .seg.stages { display: flex; width: 100%; }
+  .seg.stages button { flex: 1; padding: 0 8px; }
   .tpl-stage { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 14px 4px 8px; }
   .pick-note { margin: 12px 2px 0; font-size: 15px; color: var(--text-secondary); }
   .pick-note b { font-weight: 500; color: var(--text-primary); }
@@ -494,6 +498,7 @@
   </section>
 
   <section id="vClient" hidden>
+    <div class="kicker" id="tplKicker" hidden></div>
     <input id="cName" class="pagetitle" placeholder="Client name" autocapitalize="words">
     <div class="trainer-only" id="cEmailWrap" style="margin-top:8px">
       <input id="cEmail" type="email" placeholder="Their sign-in email" autocomplete="off" inputmode="email" autocapitalize="none">
@@ -1034,7 +1039,9 @@
     }
     reordering = false; view = next; lsSet("fiala.trainings.view", view); render(); window.scrollTo(0, 0); }
   $("back").addEventListener("click", () => {
-    if (view.name === "training") { const t = trainings.get(view.id); go(t ? { name: "client", id: t.clientId } : { name: "clients" }); }
+    if (view.name === "training") { const t = trainings.get(view.id); go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }); }
+    else if (view.name === "client" && isTemplateClient(view.id) && view.phase) go({ name: "client", id: TEMPLATES_ID, program: view.program });
+    else if (view.name === "client" && isTemplateClient(view.id) && view.program) go({ name: "client", id: TEMPLATES_ID });
     else go({ name: "clients" });
   });
 
@@ -1103,7 +1110,6 @@
   const lastUse = lsGet("fiala.templates.last") || { template: null, client: null };   // where he was when he last used a template
   let flashTemplate = null;                // template id to scroll to and flash on the Templates page
   let seeding = false;                     // a sync must not run while the templates are being written
-  const tplOpen = new Set();               // expanded groups on the Templates page
   async function seedTemplates() {
     if (clientMode || seeding) return;
     let tc = clients.get(TEMPLATES_ID);
@@ -1151,11 +1157,10 @@
     addTraining(clientId, { ...T, title: T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : ""), fromTemplate: T.id }, date || today());
   }
   function backToTemplates(tid) {
-    const T = trainings.get(tid); const m = T ? templateMeta(T) : null;
-    if (m) { tplOpen.add(m.program); if (m.phase) tplOpen.add(m.program + "/" + m.phase); }
+    const T = trainings.get(tid);
     flashTemplate = tid; pickFor = null;
     if (!clients.has(TEMPLATES_ID)) return;
-    go({ name: "client", id: TEMPLATES_ID });
+    go(T ? templateHome(T) : { name: "client", id: TEMPLATES_ID });
     requestAnimationFrame(() => { const li = document.querySelector('#tplList li[data-tid="' + tid + '"]'); if (li) { li.scrollIntoView({ block: "center" }); li.classList.add("flash"); setTimeout(() => li.classList.remove("flash"), 1300); } });
   }
   $("fromTpl").addEventListener("click", () => { const t = trainings.get(view.id); if (t && t.fromTemplate) backToTemplates(t.fromTemplate); });
@@ -1168,60 +1173,70 @@
     trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
     go({ name: "training", id: t.id });
   }
+  const PROG_ORDER = [MY_TEMPLATES, "Fat Burn", "Hypertrophy", "Strength", "Lean Type", "Muscle Type"];
+  const progRank = (p) => (PROG_ORDER.indexOf(p) + 1 || 99);
+  function tplRow(t, pick) {
+    const li = document.createElement("li"); li.dataset.tid = t.id; if (t.id === lastUse.template) li.classList.add("last-used");
+    const b = document.createElement("button"); b.type = "button";
+    const m = templateMeta(t);
+    const pri = document.createElement("span"); pri.className = "pri"; pri.textContent = m.n ? "Workout " + m.n : (t.title || "Template");
+    const sec = document.createElement("span"); sec.className = "sec"; sec.textContent = m.n ? (t.title || "") : (t.rows.length + (t.rows.length === 1 ? " exercise" : " exercises"));
+    const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.textContent) left.append(sec);
+    const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = pick ? "Use" : "›"; if (pick) chev.style.color = "var(--brand)";
+    b.append(left, chev);
+    b.addEventListener("click", () => { if (pick) { const cid = pickFor; pickFor = null; applyTemplate(t, cid); } else go({ name: "training", id: t.id }); });
+    li.appendChild(b); return li;
+  }
+  function navRow(title, sub, onClick) {
+    const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
+    b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = title; b.lastChild.textContent = sub; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
+    b.addEventListener("click", onClick); li.appendChild(b); return li;
+  }
+  const h2 = (text) => { const e = document.createElement("h2"); e.textContent = text; e.style.marginTop = "24px"; return e; };
   function renderTemplates(c) {
-    const list = clientTrainings(c.id);
+    const all = clientTrainings(c.id);
     const wrap = $("tplList"); wrap.replaceChildren(); wrap.hidden = false;
+    const prog = view.program || null, ph = view.phase || null;
     $("pickNote").hidden = !pickFor;
-    if (pickFor) { const pc = clients.get(pickFor); $("pickNote").innerHTML = "Choose a workout for <b></b> \u00b7 <button class=\"btn quiet\" type=\"button\" id=\"pickCancel\">Cancel</button>"; $("pickNote").querySelector("b").textContent = pc ? pc.name : "the client"; $("pickCancel").addEventListener("click", () => { pickFor = null; render(); }); }
-    const order = [MY_TEMPLATES, "Fat Burn", "Hypertrophy", "Strength", "Lean Type", "Muscle Type"];
-    const progs = new Map();
-    for (const t of list) { const m = templateMeta(t); if (!progs.has(m.program)) progs.set(m.program, []); progs.get(m.program).push(t); }
-    const progNames = [...progs.keys()].sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99) || a.localeCompare(b));
-    const rowOf = (t) => {
-      const li = document.createElement("li"); li.dataset.tid = t.id; if (t.id === lastUse.template) li.classList.add("last-used");
-      const b = document.createElement("button"); b.type = "button";
-      const m = templateMeta(t);
-      const pri = document.createElement("span"); pri.className = "pri"; pri.textContent = m.n ? "Workout " + m.n : (t.title || "Template");
-      const sec = document.createElement("span"); sec.className = "sec"; sec.textContent = m.n ? (t.title || "") : (t.rows.length + (t.rows.length === 1 ? " exercise" : " exercises"));
-      const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.textContent) left.append(sec);
-      const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = pickFor ? "Use" : "\u203a";
-      if (pickFor) chev.style.color = "var(--brand)";
-      b.append(left, chev);
-      b.addEventListener("click", () => { if (pickFor) { const cid = pickFor; pickFor = null; applyTemplate(t, cid); } else go({ name: "training", id: t.id }); });
-      li.appendChild(b); return li;
-    };
-    const section = (title, count, key, open, build) => {
-      const sec = document.createElement("div"); sec.className = "month";
-      const head = document.createElement("button"); head.type = "button"; head.innerHTML = "<span></span><span class=\"sub\"></span>";
-      head.firstChild.textContent = title; head.lastChild.textContent = count + (count === 1 ? " workout" : " workouts") + " \u203a";
-      const body = document.createElement("div"); body.hidden = !(tplOpen.has(key) || open);
-      head.addEventListener("click", () => { body.hidden = !body.hidden; if (body.hidden) tplOpen.delete(key); else tplOpen.add(key); });
-      if (!body.hidden) build(body);
-      else { let built = false; head.addEventListener("click", () => { if (!built) { built = true; build(body); } }); }
-      sec.append(head, body); return sec;
-    };
-    for (const prog of progNames) {
-      const items = progs.get(prog);
-      wrap.appendChild(section(prog, items.length, prog, progNames.length === 1, (body) => {
-        if (prog === MY_TEMPLATES) { const ul = document.createElement("ul"); ul.className = "list"; ul.style.marginTop = "8px"; ul.replaceChildren(...items.sort((a, b) => templateMeta(a).n - templateMeta(b).n).map(rowOf)); body.appendChild(ul); return; }
-        const phases = new Map();
-        for (const t of items) { const m = templateMeta(t); if (!phases.has(m.phase)) phases.set(m.phase, []); phases.get(m.phase).push(t); }
-        for (const [ph, pitems] of [...phases.entries()].sort((a, b) => a[0] - b[0])) {
-          const pn = (pitems.find((t) => templateMeta(t).phaseName) || { template: {} }).template.phaseName || "";
-          body.appendChild(section("Phase " + ph + (pn ? " \u00b7 " + pn : ""), pitems.length, prog + "/" + ph, false, (pb) => {
-            const stages = new Map();
-            for (const t of pitems) { const m = templateMeta(t); if (!stages.has(m.stage)) stages.set(m.stage, []); stages.get(m.stage).push(t); }
-            for (const [st, sitems] of [...stages.entries()].sort((a, b) => a[0] - b[0])) {
-              const lab = document.createElement("div"); lab.className = "tpl-stage"; lab.textContent = "Stage " + st;
-              const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...sitems.sort((a, b) => templateMeta(a).n - templateMeta(b).n).map(rowOf));
-              pb.append(lab, ul);
-            }
-          }));
-        }
-      }));
+    if (pickFor) { const pc = clients.get(pickFor); $("pickNote").innerHTML = "Choose a workout for <b></b> · <button class=\"btn quiet\" type=\"button\" id=\"pickCancel\">Cancel</button>"; $("pickNote").querySelector("b").textContent = pc ? pc.name : "the client"; $("pickCancel").addEventListener("click", () => { pickFor = null; render(); }); }
+    $("newTraining").hidden = !!prog;
+    const byProg = new Map();
+    for (const t of all) { const m = templateMeta(t); if (!byProg.has(m.program)) byProg.set(m.program, []); byProg.get(m.program).push(t); }
+    const wn = (n) => n + (n === 1 ? " workout" : " workouts");
+    if (!prog) {                                             // level 1: programs
+      $("tplKicker").textContent = "Workout library"; $("cName").value = "Templates";
+      const mine = (byProg.get(MY_TEMPLATES) || []).sort((x, y) => templateMeta(x).n - templateMeta(y).n);
+      if (mine.length) { wrap.appendChild(h2("My templates")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...mine.map((t) => tplRow(t, !!pickFor))); wrap.appendChild(ul); }
+      const progs = [...byProg.keys()].filter((p) => p !== MY_TEMPLATES).sort((x, y) => progRank(x) - progRank(y) || x.localeCompare(y));
+      if (progs.length) { wrap.appendChild(h2("Programs")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...progs.map((p) => navRow(p, wn(byProg.get(p).length), () => go({ ...view, program: p, phase: null, stage: null })))); wrap.appendChild(ul); }
+      if (!all.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "No templates yet. Open a workout and tap Save as template."; wrap.appendChild(e); }
+      return;
     }
-    if (!list.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "No templates yet. Open a workout and tap Save as template."; wrap.appendChild(e); }
-  }                 // closes whichever alternatives menu is open
+    const items = byProg.get(prog) || [];
+    if (!ph) {                                               // level 2: phases of a program
+      $("tplKicker").textContent = "Templates"; $("cName").value = prog;
+      const phases = new Map();
+      for (const t of items) { const m = templateMeta(t); if (!phases.has(m.phase)) phases.set(m.phase, []); phases.get(m.phase).push(t); }
+      wrap.appendChild(h2("Phases")); const ul = document.createElement("ul"); ul.className = "list";
+      for (const [n, pitems] of [...phases.entries()].sort((x, y) => x[0] - y[0])) {
+        const pn = (pitems.find((t) => templateMeta(t).phaseName) || { template: {} }).template.phaseName || "";
+        ul.appendChild(navRow("Phase " + n + (pn ? " · " + pn : ""), wn(pitems.length), () => go({ ...view, phase: n, stage: 1 })));
+      }
+      wrap.appendChild(ul); return;
+    }
+    const pitems = items.filter((t) => templateMeta(t).phase === ph);   // level 3: stage tabs + workouts
+    const pn = (pitems.find((t) => templateMeta(t).phaseName) || { template: {} }).template.phaseName || "";
+    $("tplKicker").textContent = prog; $("cName").value = "Phase " + ph + (pn ? " · " + pn : "");
+    const stages = [...new Set(pitems.map((t) => templateMeta(t).stage))].sort((x, y) => x - y);
+    const cur = stages.includes(view.stage) ? view.stage : stages[0];
+    const seg = document.createElement("div"); seg.className = "seg stages"; seg.setAttribute("role", "tablist");
+    for (const s of stages) { const b = document.createElement("button"); b.type = "button"; b.textContent = "Stage " + s; b.classList.toggle("on", s === cur); b.addEventListener("click", () => { view.stage = s; lsSet("fiala.trainings.view", view); renderTemplates(c); }); seg.appendChild(b); }
+    wrap.appendChild(seg);
+    const ul = document.createElement("ul"); ul.className = "list"; ul.style.marginTop = "16px";
+    ul.replaceChildren(...pitems.filter((t) => templateMeta(t).stage === cur).sort((x, y) => templateMeta(x).n - templateMeta(y).n).map((t) => tplRow(t, !!pickFor)));
+    wrap.appendChild(ul);
+  }
+  const templateHome = (t) => { const m = templateMeta(t); return m.program === MY_TEMPLATES ? { name: "client", id: TEMPLATES_ID } : { name: "client", id: TEMPLATES_ID, program: m.program, phase: m.phase, stage: m.stage }; };
   function render() {
     if (recovering) { showRecovery(); return; }
     if (sb && !signedIn) { showLogin($("loginMsg").textContent); return; }
@@ -1236,7 +1251,7 @@
     $("back").hidden = view.name === "clients" || (clientMode && view.name === "client");
     $("brand").hidden = !(view.name === "clients" || (clientMode && view.name === "client"));
     if (view.name === "clients") { renderedTraining = null; renderClients(); }
-    else if (view.name === "client") { renderedTraining = null; $("backLabel").textContent = "Clients"; renderClient(); }
+    else if (view.name === "client") { renderedTraining = null; $("backLabel").textContent = isTemplateClient(view.id) && view.phase ? view.program : (isTemplateClient(view.id) && view.program ? "Templates" : "Clients"); renderClient(); }
     else { const t = trainings.get(view.id); $("backLabel").textContent = clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
     paintDraftBar();
   }
@@ -1309,7 +1324,7 @@
     });
     $("clientEmpty").hidden = list.length > 0;
   }
-  $("tplCard").addEventListener("click", () => go({ name: "client", id: TEMPLATES_ID }));
+  $("tplCard").addEventListener("click", () => go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }));
   $("reorderBtn").addEventListener("click", () => { reordering = !reordering; renderClients(); });
 
   function renderClient() {
@@ -1318,7 +1333,8 @@
     $("vClient").classList.toggle("tpl", isTpl);
     $("newTraining").textContent = isTpl ? "+ New template" : "+ New workout";
     if (!isTpl) { $("tplList").hidden = true; $("pickNote").hidden = true; }
-    if (isTpl) { $("cName").value = "Templates"; $("cName").readOnly = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }
+    $("tplKicker").hidden = !isTpl;
+    if (isTpl) { $("cName").readOnly = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }
     if (document.activeElement !== $("cName")) $("cName").value = c.name;
     $("cName").readOnly = clientMode;
     if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
@@ -1744,7 +1760,7 @@
   $("unfinishBtn").addEventListener("click", () => setFinished(false));
   $("copyTraining").addEventListener("click", () => { const t = trainings.get(view.id); if (t) addTraining(t.clientId, t); });
   $("saveTemplate").addEventListener("click", () => { const t = trainings.get(view.id); if (t) saveAsTemplate(t); });
-  $("fromTemplate").addEventListener("click", () => { pickFor = view.id; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID }); });
+  $("fromTemplate").addEventListener("click", () => { pickFor = view.id; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });
   $("useBtn").addEventListener("click", () => {
     const t = trainings.get(view.id); if (!t) return;
     const ul = $("usePick"); if (!ul.hidden) { ul.hidden = true; return; }
