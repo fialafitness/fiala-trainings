@@ -274,7 +274,7 @@
   .sugg, .alt-menu {
     position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 4;
     background: var(--surface); border: 1px solid var(--card-border); border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12); overflow: hidden; padding: 4px 0; margin: 0; list-style: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12); overflow-x: hidden; overflow-y: auto; max-height: 40vh; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 4px 0; margin: 0; list-style: none;
   }
   .sugg button, .alt-menu button {
     appearance: none; border: 0; background: none; width: 100%; text-align: left; cursor: pointer;
@@ -295,6 +295,7 @@
   .block.done:not(.open) .row .top .exwrap.has-alt .name { padding-right: 16px; }
   .alt-menu { left: -64px; right: -48px; }
   body.client .alt-menu { right: 0; }
+  .alt-menu { max-height: none; overflow: hidden; }
   .alt-menu .cur { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 16px; letter-spacing: -0.01em; color: var(--text-secondary); }
   .alt-menu .cur .ck { color: var(--brand); font-weight: 600; }
   .alt-menu .item { display: flex; align-items: stretch; }
@@ -303,6 +304,7 @@
   .alt-menu .add { color: var(--brand); }
   .alt-menu .alt-input { width: calc(100% - 24px); margin: 8px 12px 6px; }
   .alt-menu .alt-hits:empty { display: none; }
+  .alt-menu .alt-hits { max-height: 32vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
   .vidrow { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
   .vid-edit { appearance: none; border: 0; background: none; padding: 0 2px; cursor: pointer; margin-top: 8px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); min-height: 32px; line-height: 32px; }
   .vid-form { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
@@ -1270,8 +1272,8 @@
       const paintHits = () => {
         const s = norm(inp.value); hits.replaceChildren(); if (s.length < 2) return;
         const taken = new Set([norm(r.name), ...altList().map(norm)]); const starts = [], contains = [];
-        for (const n of NAMES) { const ln = n.toLowerCase(); if (taken.has(ln)) continue; if (ln.startsWith(s)) starts.push(n); else if (ln.includes(s)) contains.push(n); if (starts.length >= 6) break; }
-        for (const n of [...starts, ...contains].slice(0, 6)) hits.appendChild(menuItem(n, "", () => addAlt(n)));
+        for (const n of NAMES) { const ln = n.toLowerCase(); if (taken.has(ln)) continue; if (ln.startsWith(s)) starts.push(n); else if (ln.includes(s)) contains.push(n); }
+        for (const n of [...starts, ...contains]) hits.appendChild(menuItem(n, "", () => addAlt(n)));
       };
       inp.addEventListener("input", paintHits);
       inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); if (inp.value.trim()) addAlt(inp.value); else paintAltList(); } else if (e.key === "Escape") paintAltList(); });
@@ -1369,8 +1371,8 @@
       const ul = q(".sugg"); const s = norm(v);
       if (s.length < 2) { ul.hidden = true; return; }
       const starts = [], contains = [];
-      for (const n of NAMES) { const ln = n.toLowerCase(); if (ln === s) continue; if (ln.startsWith(s)) starts.push(n); else if (ln.includes(s)) contains.push(n); if (starts.length >= 6) break; }
-      const hits = [...starts, ...contains].slice(0, 6);
+      for (const n of NAMES) { const ln = n.toLowerCase(); if (ln === s) continue; if (ln.startsWith(s)) starts.push(n); else if (ln.includes(s)) contains.push(n); }
+      const hits = [...starts, ...contains];
       ul.replaceChildren(...hits.map((n) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { r.name = n; markNamed(); dropAltNamed(); q(".name").value = n; growName(); ul.hidden = true; save(); renderWeights(); paintVideo(); }); li.appendChild(b); return li; }));
       ul.hidden = hits.length === 0;
     }
