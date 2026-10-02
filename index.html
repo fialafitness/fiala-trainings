@@ -322,10 +322,15 @@
   .weights { margin-top: 16px; }
   .weights .cap { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; display: flex; justify-content: space-between; gap: 8px; }
   .weights .cap span:last-child { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-tertiary); }
-  .weights .cap .wunit { cursor: pointer; }
-  .weights .cap .wunit .kb { letter-spacing: 0; text-transform: none; font-weight: 400; }
   .weights .boxes { display: flex; gap: 8px; flex-wrap: wrap; }
   .weights input { flex: 1 1 52px; max-width: 80px; text-align: center; padding: 12px 4px; font-weight: 500; }
+  /* bar that rides above the phone keyboard while a reps / tempo / weight box is being typed in */
+  #kbbar { position: fixed; left: 0; right: 0; top: 0; z-index: 50; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--surface); border-top: 1px solid var(--card-border); box-shadow: 0 -6px 20px rgba(0,0,0,0.10); }
+  #kbbar[hidden] { display: none; }
+  #kbbar button { appearance: none; border: 0; cursor: pointer; min-height: 36px; padding: 0 14px; border-radius: 50px; background: var(--field); color: var(--text-primary); font-size: 15px; font-weight: 500; letter-spacing: 0; white-space: nowrap; }
+  #kbbar .kb-mode { font-variant-numeric: tabular-nums; min-width: 60px; }
+  #kbbar .kb-chips { display: flex; gap: 8px; }
+  #kbbar .kb-done { margin-left: auto; background: transparent; color: var(--brand); font-weight: 600; padding: 0 6px; }
 
   .note { margin-top: 12px; }
   .note-toggle {
@@ -482,6 +487,8 @@
     </div>
   </section>
 </main>
+
+<div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script>
 (() => {
@@ -928,6 +935,59 @@
   });
 
   // ---------- render ----------
+  // ---- keyboard bar (above the phone keyboard): 123/ABC switch, quick entries, Next/Done. The number keypad on iPhone has no Return key.
+  const kbbar = $("kbbar"), kbMode = kbbar.querySelector(".kb-mode"), kbChips = kbbar.querySelector(".kb-chips"), kbDone = kbbar.querySelector(".kb-done");
+  let kbTarget = null;
+  const kbKind = (el) => {
+    if (!el || el.tagName !== "INPUT" || el.readOnly) return "";
+    if (el.closest(".boxes")) return "weights";
+    if (el.classList.contains("reps")) return "reps";
+    if (el.classList.contains("tempo")) return "tempo";
+    return "";
+  };
+  function placeKb() {
+    const vv = window.visualViewport;
+    if (vv) kbbar.style.top = Math.round(vv.offsetTop + vv.height - kbbar.offsetHeight) + "px";
+    else { kbbar.style.top = "auto"; kbbar.style.bottom = "0"; }
+  }
+  const kbFire = (t) => t.dispatchEvent(new Event("input", { bubbles: true }));
+  function kbNext() { const t = kbTarget; if (!t) return; const nx = t.closest(".boxes") ? t.nextElementSibling : null; if (nx) nx.focus(); else t.blur(); }
+  const kbSet = (v, stay) => { const t = kbTarget; if (!t) return; t.value = v; kbFire(t); if (!stay) kbNext(); };
+  const kbInsert = (s) => { const t = kbTarget; if (!t) return; const a = t.selectionStart == null ? t.value.length : t.selectionStart, b = t.selectionEnd == null ? a : t.selectionEnd; t.value = t.value.slice(0, a) + s + t.value.slice(b); try { t.setSelectionRange(a + s.length, a + s.length); } catch (_) {} kbFire(t); };
+  function paintKb() {
+    const t = kbTarget; if (!t) return;
+    const kind = kbKind(t);
+    kbMode.textContent = t.inputMode === "text" ? "123" : "ABC";
+    kbChips.replaceChildren();
+    const chip = (label, fn) => { const b = document.createElement("button"); b.type = "button"; b.tabIndex = -1; b.textContent = label; b.addEventListener("click", fn); kbChips.appendChild(b); };
+    if (kind === "weights") {
+      chip("BW", () => kbSet("BW"));
+      chip("sec", () => { const v = kbTarget.value.trim().replace(/\s*sec$/i, ""); if (v) kbSet(v + " sec", true); });
+    }
+    if (kind === "reps") chip("\u2013", () => kbInsert("\u2013"));
+    kbDone.textContent = (kind === "weights" && t.nextElementSibling) ? "Next" : "Done";
+  }
+  function showKb(el) {
+    kbTarget = el; paintKb(); kbbar.hidden = false; placeKb();
+    if (window.visualViewport) { window.visualViewport.addEventListener("resize", placeKb); window.visualViewport.addEventListener("scroll", placeKb); }
+  }
+  function hideKb() {
+    kbTarget = null; kbbar.hidden = true;
+    if (window.visualViewport) { window.visualViewport.removeEventListener("resize", placeKb); window.visualViewport.removeEventListener("scroll", placeKb); }
+  }
+  kbbar.addEventListener("pointerdown", (e) => e.preventDefault()); // taps on the bar must not take focus (and the keyboard) away from the box
+  kbbar.addEventListener("mousedown", (e) => e.preventDefault());
+  kbMode.addEventListener("click", () => {
+    const t = kbTarget; if (!t) return;
+    const text = t.inputMode !== "text";
+    const group = t.closest(".boxes") ? [...t.closest(".boxes").children] : [t];
+    for (const b of group) b.inputMode = text ? "text" : "decimal";
+    t.blur(); setTimeout(() => t.focus(), 50);   // the phone reads the keyboard type when the box takes focus
+  });
+  kbDone.addEventListener("click", kbNext);
+  document.addEventListener("focusin", (e) => { if (kbKind(e.target)) showKb(e.target); else if (kbTarget) hideKb(); });
+  document.addEventListener("focusout", () => { setTimeout(() => { if (!kbKind(document.activeElement)) hideKb(); }, 80); });
+
   let renderedTraining = null;
   let closeOpenAlt = null;                 // closes whichever alternatives menu is open
   function render() {
@@ -1169,17 +1229,9 @@
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="note"><button type="button" class="note-toggle"></button><textarea class="note-field" rows="1" placeholder="Note" hidden></textarea></div>`;
     const q = (s) => el.querySelector(s);
-    // weight boxes open the numeric keypad; tapping "Weights · lb" flips them to the full keyboard for BW, 60 sec, etc.
-    let wText = false;
+    let wText = false;                       // a row that already holds BW / 60 sec opens on the full keyboard (the bar above the keyboard switches it)
     const nonNum = (w) => !!w && !/^[\d.,\s]*$/.test(String(w));
-    const paintWunit = () => { const lab = q(".wunit"); lab.textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb"); if (wText) { const k = document.createElement("span"); k.className = "kb"; k.textContent = " \u00b7 abc"; lab.appendChild(k); } };
-    paintWunit();
-    q(".wunit").addEventListener("click", () => {
-      wText = !wText; paintWunit();
-      const boxes = q(".boxes"), active = document.activeElement;
-      for (const b of boxes.children) b.inputMode = wText ? "text" : "decimal";
-      if (active && boxes.contains(active)) { active.blur(); setTimeout(() => active.focus(), 50); }
-    });
+    q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(46, n.scrollHeight) + "px"; };
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); if (VIDEOS[s]) return VIDEOS[s]; for (const k in VIDEOS) if (loose(k) === l) return VIDEOS[k]; return null; };
@@ -1363,7 +1415,7 @@
       const boxes = q(".boxes"); const last = lastWeights(t, r);
       q(".last").textContent = last ? "last time \u00b7 " + fmtDate(last.date) : "";
       r.weights = (r.weights || []).slice(0, n); while (r.weights.length < n) r.weights.push("");
-      if (!wText && r.weights.some(nonNum)) { wText = true; paintWunit(); } // BW / 60 sec already logged: start on the full keyboard
+      if (!wText && r.weights.some(nonNum)) wText = true;
       boxes.replaceChildren(...Array.from({ length: n }, (_, i) => {
         const inp = document.createElement("input"); inp.className = "tab"; inp.inputMode = wText ? "text" : "decimal"; inp.setAttribute("autocapitalize", "none"); inp.setAttribute("aria-label", "Set " + (i + 1) + " weight");
         inp.value = r.weights[i] || ""; const hint = !!(last && last.weights[i]); inp.placeholder = hint ? last.weights[i] : "\u2013"; inp.classList.toggle("hint", hint);
