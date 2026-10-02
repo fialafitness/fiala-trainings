@@ -227,6 +227,9 @@
   .list .rowline { min-height: 56px; padding: 6px 12px 6px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 17px; letter-spacing: -0.01em; color: var(--text-primary); }
   .list li.drag-row { touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; transition: transform 160ms ease; background: var(--card); }
   .list li.drag-row.dragging { transition: none; position: relative; z-index: 2; cursor: grabbing; background: var(--surface); box-shadow: 0 10px 28px rgba(0,0,0,0.28); border-radius: 14px; }
+  .list .rowline .exname { flex: 1 1 auto; width: auto; min-width: 0; background: transparent; padding: 8px 0; border-radius: 8px; font-size: 17px; }
+  .list .rowline .exname:focus { background: var(--field); padding: 8px 12px; }
+  .list .rowline .x { flex: none; width: 44px; min-height: 44px; padding: 0; justify-content: center; font-size: 22px; color: var(--text-tertiary); }
   .list .rowline .grip { color: var(--text-tertiary); font-size: 22px; line-height: 1; padding: 0 6px; }
 
   /* Training */
@@ -505,6 +508,13 @@
     </div>
   </section>
 
+  <section id="vExercises" hidden>
+    <h1>My exercises</h1>
+    <p class="muted" style="margin:0 0 16px">Names you added. Tap a name to fix it, &times; to remove it. The built-in exercises can&rsquo;t be changed here.</p>
+    <ul class="list" id="exList"></ul>
+    <div class="empty" id="exEmpty" hidden>Nothing added yet. Type a new exercise in a workout and tap Add to database.</div>
+  </section>
+
   <section id="vPassword" hidden>
     <h1>Change password</h1>
     <form id="passwordForm" class="stack">
@@ -557,7 +567,7 @@
     <div class="empty" id="clientEmpty" hidden>No clients yet. Add the first one above.</div>
     <div class="foot foot-col" id="localFoot" hidden>
       <span class="muted" id="dataNote">Saved on this device</span>
-      <div class="foot-actions"><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="btn quiet" id="changePw" type="button" hidden>Change password</button><button class="btn quiet" id="signout" type="button" hidden>Sign out</button></div>
+      <div class="foot-actions"><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="btn quiet" id="myExercises" type="button" hidden>My exercises</button><button class="btn quiet" id="changePw" type="button" hidden>Change password</button><button class="btn quiet" id="signout" type="button" hidden>Sign out</button></div>
     </div>
   </section>
 
@@ -954,11 +964,11 @@
   }
 
   function hideAllViews() {
-    for (const id of ["vLogin", "vSignup", "vPassword", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
+    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
   }
   function showLogin(msg) {
     signedIn = false; clientMode = false; myClientId = null; document.body.classList.remove("client");
-    $("clientFoot").hidden = true; $("clientFootNote").textContent = ""; $("localFoot").hidden = true; $("signout").hidden = true; $("changePw").hidden = true; settingsOpen = false;
+    $("clientFoot").hidden = true; $("clientFootNote").textContent = ""; $("localFoot").hidden = true; $("signout").hidden = true; $("changePw").hidden = true; $("myExercises").hidden = true; settingsOpen = false;
     hideAllViews(); $("vLogin").hidden = false;
     $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("loginMsg").textContent = msg || "";
@@ -967,9 +977,46 @@
     hideAllViews(); $("vSignup").hidden = false; $("suForm").hidden = false; $("suDone").hidden = true; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("suMsg").textContent = ""; $("suEmail").value = $("loginEmail").value.trim(); setTimeout(() => $("suName").focus(), 50);
   }
-  let settingsOpen = false;
+  let settingsOpen = false;              // false | "password" | "exercises"
+  function showExercises() {
+    settingsOpen = "exercises"; hideAllViews(); $("vExercises").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
+    renderExercises();
+  }
+  function renderExercises() {
+    const ul = $("exList"); ul.replaceChildren();
+    const items = [...customNames.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+    $("exEmpty").hidden = items.length > 0;
+    for (const [k, name] of items) {
+      const li = document.createElement("li"); const row = document.createElement("div"); row.className = "rowline";
+      const inp = document.createElement("input"); inp.className = "exname"; inp.value = name; inp.setAttribute("autocapitalize", "sentences"); inp.setAttribute("autocomplete", "off");
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
+      inp.addEventListener("blur", async () => { const nn = tidyName(inp.value); if (!nn || nn === name) { inp.value = name; return; } const ok = await renameCustom(k, nn); if (!ok) { inp.value = name; $("status").textContent = "Couldn\u2019t rename \u00b7 try again online"; } renderExercises(); });
+      const x = document.createElement("button"); x.type = "button"; x.className = "x"; x.textContent = "\u00d7"; x.setAttribute("aria-label", "Remove " + name);
+      x.addEventListener("click", async () => { x.disabled = true; const ok = await removeCustom(k); if (!ok) { x.disabled = false; $("status").textContent = "Couldn\u2019t remove \u00b7 try again online"; } renderExercises(); });
+      row.append(inp, x); li.appendChild(row); ul.appendChild(li);
+    }
+  }
+  async function removeCustom(k) {
+    if (!sb || !signedIn) return false;
+    const { error } = await sb.from("ft_exercises").delete().eq("name_key", k); if (error) return false;
+    customNames.delete(k); refreshNames(); return true;
+  }
+  async function renameCustom(k, newName) {
+    const old = customNames.get(k); const nk = squash(newName);
+    if (nk !== k && !builtinKeys.has(nk) && !customNames.has(nk)) { const { error } = await sb.from("ft_exercises").upsert({ name_key: nk, name: newName }); if (error) return false; customNames.set(nk, newName); }
+    else if (nk === k) { const { error } = await sb.from("ft_exercises").update({ name: newName }).eq("name_key", k); if (error) return false; customNames.set(k, newName); }
+    if (nk !== k) { const ok = await removeCustom(k); if (!ok) return false; }
+    refreshNames();
+    // workouts and templates that use the old spelling follow the rename
+    for (const t of trainings.values()) {
+      let touched = false;
+      for (const r of t.rows || []) { if (r.name === old) { r.name = newName; touched = true; } if (Array.isArray(r.alts) && r.alts.includes(old)) { r.alts = r.alts.map((a) => (a === old ? newName : a)); touched = true; } }
+      if (touched) scheduleSave("trainings", t.id);
+    }
+    return true;
+  }
   function showPassword() {
-    settingsOpen = true; hideAllViews(); $("vPassword").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true;
+    settingsOpen = "password"; hideAllViews(); $("vPassword").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true;
     $("pwMsg").textContent = ""; $("pwNew").value = ""; $("pwNew2").value = ""; $("pwBtn").disabled = false; $("pwUser").value = sessionEmail; $("status").textContent = "";
   }
   function showRecovery() {
@@ -1005,7 +1052,7 @@
       return;
     }
     $("dataNote").textContent = "Synced to the cloud \u00b7 " + sessionEmail;
-    $("signout").hidden = false; $("changePw").hidden = false; $("localFoot").hidden = false;
+    $("signout").hidden = false; $("changePw").hidden = false; $("myExercises").hidden = false; $("localFoot").hidden = false;
     render(); setStatus();
     await syncDown();
     for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); }
@@ -1077,6 +1124,7 @@
     setTimeout(() => { if (settingsOpen) { settingsOpen = false; hideAllViews(); render(); } }, 1200);
   });
   $("changePw").addEventListener("click", showPassword);
+  $("myExercises").addEventListener("click", showExercises);
   $("changePw2").addEventListener("click", showPassword);
   $("forgotBtn").addEventListener("click", async () => {
     const email = $("loginEmail").value.trim();
@@ -1378,7 +1426,7 @@
   const templateHome = (t) => { const m = templateMeta(t); return m.program === MY_TEMPLATES ? { name: "client", id: TEMPLATES_ID } : { name: "client", id: TEMPLATES_ID, program: m.program, phase: m.phase, stage: m.stage }; };
   function render() {
     if (recovering) { showRecovery(); return; }
-    if (settingsOpen) { if (signedIn) { hideAllViews(); $("vPassword").hidden = false; $("back").hidden = false; $("brand").hidden = true; } return; }
+    if (settingsOpen) { if (signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : "vPassword").hidden = false; $("back").hidden = false; $("brand").hidden = true; } return; }
     if (sb && !signedIn) { showLogin($("loginMsg").textContent); return; }
     if (clientMode && !myClientId) { showWaiting(); return; }
     $("vLogin").hidden = true; $("vRecovery").hidden = true; $("vWaiting").hidden = true; $("vCelebrate").hidden = true;
