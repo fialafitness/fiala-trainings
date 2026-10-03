@@ -39,6 +39,7 @@
     --brand-deep: #494664;              /* app-purple-deep — reserved for brand moments */
     --group-1: #5e8ca7;                 /* Steel blue */
     --group-2: #a2845e;                 /* Sand — Apple system brown, light */
+    --group-w: #505055;                 /* Warm-up: off-black on light */
     --done: #7c8b3e;                    /* sage green, darker cut for text */
     --done-fill: #a9b96b;               /* sage green: Done button, card outline */
     --done-line: #a9b96b;
@@ -70,6 +71,7 @@
       --brand-deep: #494664;
       --group-1: #5e8ca7;
       --group-2: #ac8e68;               /* Sand — Apple system brown, dark */
+      --group-w: #d6d6d8;               /* Warm-up: off-white on dark */
       --done: #e9f5a0;                  /* Olive glow */
       --done-fill: #e9f5a0;
       --done-line: #e9f5a0;
@@ -100,6 +102,7 @@
     --brand-deep: #494664;
     --group-1: #5e8ca7;
     --group-2: #ac8e68;               /* Sand — Apple system brown, dark */
+    --group-w: #d6d6d8;
     --done: #e9f5a0;
     --done-fill: #e9f5a0;
     --done-line: #e9f5a0;
@@ -254,7 +257,7 @@
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
   .block.ss-1 { --ss: var(--group-1); }
   .block.ss-2 { --ss: var(--group-2); }
-  .block.ss-w { --ss: var(--btn-bg); }      /* warm-up: neutral, dark on light / white on dark */
+  .block.ss-w { --ss: var(--group-w); }     /* warm-up: neutral, off-black on light / off-white on dark */
   .group-cap { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; margin: 0 0 8px 2px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); }
   .group-cap b { font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--ss); }
   .group { background: var(--card); border: 1.5px solid var(--ss); border-radius: 20px; }
