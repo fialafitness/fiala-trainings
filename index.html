@@ -432,12 +432,19 @@
   .field-row input[type="date"] { width: auto; font-size: 15px; padding: 8px 12px; color: var(--text-primary); }
   .kicker { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 6px 1px; }
   .kicker[hidden] { display: none; }
+  .paused-card { display: flex; flex-direction: column; gap: 6px; margin-top: 24px; padding: 18px 20px; background: var(--card); border: 1px solid var(--card-border); border-radius: 20px; }
+  .paused-card b { font-weight: 500; font-size: 17px; letter-spacing: -0.01em; }
+  .paused-card span { font-size: 15px; color: var(--text-secondary); line-height: 1.45; }
+  .paused-card[hidden] { display: none; }
+  body.client.paused #weekHead, body.client.paused #week, body.client.paused #nextHead, body.client.paused #nextList, body.client.paused #histHead, body.client.paused #histList, body.client.paused #trainingEmpty { display: none; }
+  .list.inactive button > span:first-child { color: var(--text-secondary); }
+  .list[hidden], .listbar[hidden] { display: none; }
   .seg.stages { display: flex; width: 100%; }
   .seg.stages button { flex: 1; padding: 0 8px; }
   .tpl-stage { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 14px 4px 8px; }
   .pick-note { margin: 12px 2px 0; font-size: 15px; color: var(--text-secondary); }
   .pick-note b { font-weight: 500; color: var(--text-primary); }
-  #vClient.tpl .disc, #vClient.tpl .contact-row, #vClient.tpl #cEmailWrap, #vClient.tpl #weekHead, #vClient.tpl #week, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
+  #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .contact-row, #vClient.tpl #cEmailWrap, #vClient.tpl #weekHead, #vClient.tpl #week, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
   #vClient.tpl #notesWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot { display: none; }
   .use { margin-top: 24px; }
@@ -627,9 +634,11 @@
       <span class="tc-text"><span class="tc-kicker">Workout library</span><span class="tc-title">Templates</span></span>
       <span class="tc-chev">&rsaquo;</span>
     </button>
-    <div class="listbar"><span class="muted" id="clientCount"></span><button class="btn quiet" id="reorderBtn" type="button" hidden>Reorder</button></div>
+    <div class="listbar" id="clientBar"><span class="muted" id="clientCount"></span><button class="btn quiet" id="reorderBtn" type="button" hidden>Reorder</button></div>
     <ul class="list" id="clientList"></ul>
     <div class="empty" id="clientEmpty" hidden>No clients yet. Add the first one above.</div>
+    <div class="listbar" id="inactiveBar" hidden><span class="muted">Inactive</span></div>
+    <ul class="list inactive" id="inactiveList" hidden></ul>
     <div class="foot foot-col" id="localFoot" hidden>
       <span class="muted" id="dataNote">Saved on this device</span>
       <div class="foot-pills"><button class="pill" id="backup" type="button">Back up</button><button class="pill" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="pill" id="myExercises" type="button" hidden>Exercises</button><button class="pill" id="settingsBtn" type="button" hidden>Settings</button></div>
@@ -638,6 +647,7 @@
 
   <section id="vClient" hidden>
     <div class="kicker" id="tplKicker" hidden></div>
+    <div class="kicker trainer-only" id="pausedKicker" hidden>Access paused</div>
     <div class="name-row">
       <input id="cName" class="pagetitle" placeholder="Client name" autocapitalize="words" readonly>
       <button class="disc trainer-only" id="detailsBtn" type="button" aria-label="Details" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 7l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -652,8 +662,10 @@
         <div class="field-row"><span class="muted">Birthday</span><input id="cBirthday" type="date"></div>
         <div class="field-row"><span class="muted">Weights</span><div class="seg" id="unitSeg" role="radiogroup" aria-label="Weight unit"><button type="button" data-unit="lb" class="on">lb</button><button type="button" data-unit="kg">kg</button></div></div>
         <div class="field-row"><span class="muted">Messages via</span><div class="seg" id="chatSeg" role="radiogroup" aria-label="Messaging app"><button type="button" data-chat="sms" class="on">Messages</button><button type="button" data-chat="whatsapp">WhatsApp</button></div></div>
+        <div class="field-row"><span class="muted">Access</span><div class="seg" id="accessSeg" role="radiogroup" aria-label="Access"><button type="button" data-access="active" class="on">Active</button><button type="button" data-access="paused">Paused</button></div></div>
       </div>
     </div>
+    <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
     <h2 id="weekHead">This week</h2>
     <div class="week" id="week"></div>
     <button class="btn trainer-only" id="newTraining" style="width:100%;margin-top:16px">+ New workout</button>
@@ -1612,6 +1624,7 @@
     if (clientMode && !myClientId) { showWaiting(); return; }
     $("vLogin").hidden = true; $("vRecovery").hidden = true; $("vWaiting").hidden = true; $("vCelebrate").hidden = true;
     if (clientMode && (view.name === "clients" || (view.name === "client" && view.id !== myClientId))) view = { name: "client", id: myClientId };
+    if (clientMode && clients.get(myClientId)?.paused) view = { name: "client", id: myClientId };
     if (view.name === "client" && !clients.has(view.id)) view = clientMode ? { name: "client", id: myClientId } : { name: "clients" };
     if (view.name === "training" && !trainings.has(view.id)) view = clientMode ? { name: "client", id: myClientId } : { name: "clients" };
     $("vClients").hidden = view.name !== "clients";
@@ -1628,9 +1641,10 @@
   // clients keep the order he sets (c.sort); unsorted ones follow alphabetically
   const clientOrder = (a, b) => ((a.sort ?? Infinity) - (b.sort ?? Infinity)) || a.name.localeCompare(b.name);
   const peopleList = () => [...clients.values()].filter((c) => !isTemplateClient(c.id)).sort(clientOrder);
+  const activeList = () => peopleList().filter((c) => !c.paused);
   let reordering = false;
   function moveClientTo(id, j) {
-    const list = peopleList(); const i = list.findIndex((c) => c.id === id);
+    const list = activeList(); const i = list.findIndex((c) => c.id === id);
     if (i < 0 || j < 0 || j >= list.length || i === j) { renderClients(); return; }
     const [c] = list.splice(i, 1); list.splice(j, 0, c);
     list.forEach((x, k) => { if (x.sort !== k) { x.sort = k; scheduleSave("clients", x.id); } });
@@ -1667,7 +1681,7 @@
     });
   }
   function renderClients() {
-    const list = peopleList();
+    const list = activeList(), inactive = peopleList().filter((c) => c.paused);
     const tpl = clients.get(TEMPLATES_ID);
     $("tplCard").hidden = !tpl || clientMode;
     $("clientCount").textContent = list.length ? list.length + (list.length === 1 ? " client" : " clients") : "";
@@ -1691,7 +1705,14 @@
       }
       ul.appendChild(li);
     });
-    $("clientEmpty").hidden = list.length > 0;
+    $("clientEmpty").hidden = list.length > 0 || inactive.length > 0;
+    $("clientBar").hidden = !list.length && inactive.length > 0; $("clientList").hidden = !list.length;
+    $("inactiveBar").hidden = !inactive.length; $("inactiveList").hidden = !inactive.length;
+    $("inactiveList").replaceChildren(...inactive.map((c) => {
+      const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
+      b.innerHTML = `<span></span><span class="sub">Paused<span class="chev">&rsaquo;</span></span>`; b.firstChild.textContent = c.name;
+      b.addEventListener("click", () => go({ name: "client", id: c.id })); li.appendChild(b); return li;
+    }));
   }
   $("tplCard").addEventListener("click", () => go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }));
   $("reorderBtn").addEventListener("click", () => { reordering = !reordering; renderClients(); });
@@ -1702,7 +1723,7 @@
     $("vClient").classList.toggle("tpl", isTpl);
     $("newTraining").textContent = isTpl ? "+ New template" : "+ New workout";
     if (!isTpl) { $("tplList").hidden = true; $("pickNote").hidden = true; }
-    $("tplKicker").hidden = !isTpl;
+    $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !c.paused;
     if (isTpl) { $("cName").readOnly = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }
     $("cName").value = c.name; $("cName").readOnly = true;
     if (document.activeElement !== $("cNameField")) $("cNameField").value = c.name || "";
@@ -1715,6 +1736,10 @@
     for (const b of $("chatSeg").querySelectorAll("button")) b.classList.toggle("on", (c.chat || "sms") === b.dataset.chat);
     paintMsg(c); paintTrainerMsg(c);
     for (const b of $("unitSeg").querySelectorAll("button")) b.classList.toggle("on", (c.unit || "lb") === b.dataset.unit);
+    for (const b of $("accessSeg").querySelectorAll("button")) b.classList.toggle("on", (c.paused ? "paused" : "active") === b.dataset.access);
+    $("pausedCard").hidden = !(c.paused && clientMode);
+    $("pausedText").textContent = phoneDigits(c.trainerPhone) ? "Your workouts are on hold for now. Message Michal when you’re ready to pick up again." : "Your workouts are on hold for now. Michal will switch them back on when you’re ready to pick up again.";
+    document.body.classList.toggle("paused", !!(c.paused && clientMode));
     if (document.activeElement !== $("cNotes")) $("cNotes").value = c.notes || "";
     const list = clientTrainings(c.id);
     const rowOf = (t) => {
@@ -2174,6 +2199,12 @@
     if (wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); }
   }
   $("cPhone").addEventListener("blur", () => { const c = clients.get(view.id); if (c) paintMsg(c); });
+  $("accessSeg").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    const c = clients.get(view.id); if (!c || isTemplateClient(c.id)) return;
+    const paused = b.dataset.access === "paused"; if (!!c.paused === paused) return;
+    c.paused = paused; if (!paused) c.sort = activeList().length; scheduleSave("clients", c.id); renderClient();
+  });
   $("chatSeg").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-chat]"); const c = clients.get(view.id); if (!b || !c) return;
     c.chat = b.dataset.chat; scheduleSave("clients", c.id);

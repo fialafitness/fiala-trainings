@@ -32,6 +32,7 @@ drop trigger if exists ft_trainings_touch on ft_trainings;
 create trigger ft_trainings_touch before update on ft_trainings for each row execute function ft_touch();
 
 -- what a client may see: their profile without notes, their trainings without per-exercise notes
+-- (paused clients get no trainings; keep this body identical to client-pause.sql)
 create or replace function client_my_data()
 returns jsonb language sql stable security definer set search_path = public as $$
   with me as (
@@ -44,7 +45,7 @@ returns jsonb language sql stable security definer set search_path = public as $
     'trainings', coalesce((
       select jsonb_agg(jsonb_build_object('id', t.id, 'data',
         jsonb_set(t.data, '{rows}', coalesce((select jsonb_agg(r - 'note') from jsonb_array_elements(coalesce(t.data -> 'rows', '[]'::jsonb)) r), '[]'::jsonb))))
-      from ft_trainings t where t.client_id in (select id from me)), '[]'::jsonb)
+      from ft_trainings t where t.client_id in (select id from me where coalesce(data ->> 'paused', '') <> 'true')), '[]'::jsonb)
   );
 $$;
 revoke execute on function client_my_data() from public, anon;
