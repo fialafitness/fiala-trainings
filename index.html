@@ -476,6 +476,18 @@
   .foot.foot-col .muted { font-size: 13px; }
   .foot-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin-left: -8px; }
   .foot-actions .btn { white-space: nowrap; }
+  .foot-pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .pill { appearance: none; border: 0; cursor: pointer; border-radius: 50px; min-height: 36px; padding: 0 16px; font-size: 14px; font-weight: 500; letter-spacing: 0; white-space: nowrap;
+    background: var(--btn-bg); color: var(--btn-fg); transition: opacity 300ms ease, transform 120ms ease; }
+  .pill:hover { opacity: 0.85; }
+  .pill:active { transform: scale(0.98); }
+  .pill[hidden] { display: none; }
+  .pill:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .settings-list { max-width: 480px; }
+  .settings-list .srow { min-height: 56px; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 17px; letter-spacing: -0.01em; color: var(--text-primary); }
+  .settings-list button > span:first-child, .settings-list .srow > span:first-child { flex: none; }
+  .settings-list .sub { display: inline-flex; align-items: center; min-width: 0; font-size: 15px; }
+  .settings-list .val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   @media (max-width: 400px) {
@@ -487,7 +499,7 @@
     .specs input { padding-left: 4px; padding-right: 4px; font-size: 16px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .btn, .back, .list button, .x, input, textarea { transition: none; }
+    .btn, .pill, .back, .list button, .x, input, textarea { transition: none; }
   }
 </style>
 </head>
@@ -542,6 +554,16 @@
     <ul class="list" id="exList"></ul>
     <button class="btn quiet add" id="exMore" type="button" hidden>Show more</button>
     <div class="empty" id="exEmpty" hidden></div>
+  </section>
+
+  <section id="vSettings" hidden>
+    <h1>Settings</h1>
+    <ul class="list settings-list">
+      <li><button type="button" id="setNumber"><span>My number</span><span class="sub"><span class="val" id="setNumberVal"></span><span class="chev">&rsaquo;</span></span></button></li>
+      <li><div class="srow"><span>Email</span><span class="sub"><span class="val" id="setEmail"></span></span></div></li>
+      <li><button type="button" id="changePw"><span>Change password</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
+    </ul>
+    <div class="foot"><button class="btn quiet" id="signout" type="button">Sign out</button></div>
   </section>
 
   <section id="vNumber" hidden>
@@ -603,7 +625,7 @@
     <div class="empty" id="clientEmpty" hidden>No clients yet. Add the first one above.</div>
     <div class="foot foot-col" id="localFoot" hidden>
       <span class="muted" id="dataNote">Saved on this device</span>
-      <div class="foot-actions"><button class="btn quiet" id="backup" type="button">Back up</button><button class="btn quiet" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="btn quiet" id="myExercises" type="button" hidden>Exercises</button><button class="btn quiet" id="myNumber" type="button" hidden>My number</button><button class="btn quiet" id="changePw" type="button" hidden>Change password</button><button class="btn quiet" id="signout" type="button" hidden>Sign out</button></div>
+      <div class="foot-pills"><button class="pill" id="backup" type="button">Back up</button><button class="pill" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="pill" id="myExercises" type="button" hidden>Exercises</button><button class="pill" id="settingsBtn" type="button" hidden>Settings</button></div>
     </div>
   </section>
 
@@ -1008,11 +1030,11 @@
   }
 
   function hideAllViews() {
-    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
+    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vSettings", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
   }
   function showLogin(msg) {
     signedIn = false; clientMode = false; myClientId = null; document.body.classList.remove("client");
-    $("clientFoot").hidden = true; $("clientFootNote").textContent = ""; $("localFoot").hidden = true; $("signout").hidden = true; $("changePw").hidden = true; $("myExercises").hidden = true; $("myNumber").hidden = true; settingsOpen = false;
+    $("clientFoot").hidden = true; $("clientFootNote").textContent = ""; $("localFoot").hidden = true; $("myExercises").hidden = true; $("settingsBtn").hidden = true; settingsOpen = false; fromSettings = false;
     hideAllViews(); $("vLogin").hidden = false;
     $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("loginMsg").textContent = msg || "";
@@ -1021,9 +1043,14 @@
     hideAllViews(); $("vSignup").hidden = false; $("suForm").hidden = false; $("suDone").hidden = true; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("suMsg").textContent = ""; $("suEmail").value = $("loginEmail").value.trim(); setTimeout(() => $("suName").focus(), 50);
   }
-  let settingsOpen = false;              // false | "password" | "exercises" | "number"
+  let settingsOpen = false;              // false | "settings" | "password" | "exercises" | "number"
+  let fromSettings = false;              // number/password opened from the Settings list: Back returns there
+  function showSettings() {
+    settingsOpen = "settings"; fromSettings = false; hideAllViews(); $("vSettings").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
+    const p = trainerPhone(); $("setNumberVal").textContent = p || "Not set"; $("setEmail").textContent = sessionEmail || "";
+  }
   function showNumber() {
-    settingsOpen = "number"; hideAllViews(); $("vNumber").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
+    settingsOpen = "number"; hideAllViews(); $("vNumber").hidden = false; $("back").hidden = false; $("backLabel").textContent = fromSettings ? "Settings" : "Back"; $("brand").hidden = true; $("status").textContent = "";
     $("myPhone").value = trainerPhone(); $("myPhoneMsg").textContent = "";
   }
   // the trainer's number is copied onto every client row (that is what a client can read)
@@ -1136,8 +1163,9 @@
     }
     return true;
   }
+  let pwTimer = 0;
   function showPassword() {
-    settingsOpen = "password"; hideAllViews(); $("vPassword").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true;
+    clearTimeout(pwTimer); settingsOpen = "password"; hideAllViews(); $("vPassword").hidden = false; $("back").hidden = false; $("backLabel").textContent = fromSettings ? "Settings" : "Back"; $("brand").hidden = true;
     $("pwMsg").textContent = ""; $("pwNew").value = ""; $("pwNew2").value = ""; $("pwBtn").disabled = false; $("pwUser").value = sessionEmail; $("status").textContent = "";
   }
   function showRecovery() {
@@ -1172,8 +1200,8 @@
       setStatus();
       return;
     }
-    $("dataNote").textContent = "Synced to the cloud \u00b7 " + sessionEmail;
-    $("signout").hidden = false; $("changePw").hidden = false; $("myExercises").hidden = false; $("myNumber").hidden = false; $("localFoot").hidden = false;
+    $("dataNote").textContent = "Synced to the cloud";
+    $("myExercises").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false;
     render(); setStatus();
     await syncDown();
     for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); }
@@ -1242,13 +1270,14 @@
     $("pwBtn").disabled = false;
     if (error) { msg.textContent = friendly(error); return; }
     msg.textContent = "Password changed."; $("pwNew").value = ""; $("pwNew2").value = "";
-    setTimeout(() => { if (settingsOpen) { settingsOpen = false; hideAllViews(); render(); } }, 1200);
+    pwTimer = setTimeout(() => { if (settingsOpen === "password") { if (fromSettings) showSettings(); else { settingsOpen = false; hideAllViews(); render(); } } }, 1200);
   });
-  $("changePw").addEventListener("click", showPassword);
+  $("settingsBtn").addEventListener("click", showSettings);
+  $("changePw").addEventListener("click", () => { fromSettings = true; showPassword(); });
   $("myExercises").addEventListener("click", showExercises);
-  $("myNumber").addEventListener("click", showNumber);
+  $("setNumber").addEventListener("click", () => { fromSettings = true; showNumber(); });
   $("myPhone").addEventListener("change", () => { setTrainerPhone($("myPhone").value); $("myPhoneMsg").textContent = phoneDigits($("myPhone").value) ? "Saved. Clients now see Message Michal." : "Saved. Without a number clients see no button."; });
-  $("changePw2").addEventListener("click", showPassword);
+  $("changePw2").addEventListener("click", () => { fromSettings = false; showPassword(); });
   $("forgotBtn").addEventListener("click", async () => {
     const email = $("loginEmail").value.trim();
     if (!email) { $("loginMsg").textContent = "Type your email first, then tap Forgot password."; return; }
@@ -1348,7 +1377,10 @@
     }
     reordering = false; view = next; lsSet("fiala.trainings.view", view); render(); window.scrollTo(0, 0); }
   $("back").addEventListener("click", () => {
-    if (settingsOpen) { settingsOpen = false; $("exList").querySelectorAll(".player iframe").forEach((f) => f.remove()); hideAllViews(); render(); window.scrollTo(0, 0); return; }
+    if (settingsOpen) {
+      if (fromSettings && settingsOpen !== "settings") { showSettings(); window.scrollTo(0, 0); return; }
+      settingsOpen = false; fromSettings = false; $("exList").querySelectorAll(".player iframe").forEach((f) => f.remove()); hideAllViews(); render(); window.scrollTo(0, 0); return;
+    }
     if (view.name === "training") { const t = trainings.get(view.id); go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }); }
     else if (view.name === "client" && isTemplateClient(view.id) && view.phase) go({ name: "client", id: TEMPLATES_ID, program: view.program });
     else if (view.name === "client" && isTemplateClient(view.id) && view.program) go({ name: "client", id: TEMPLATES_ID });
@@ -1550,7 +1582,7 @@
   const templateHome = (t) => { const m = templateMeta(t); return m.program === MY_TEMPLATES ? { name: "client", id: TEMPLATES_ID } : { name: "client", id: TEMPLATES_ID, program: m.program, phase: m.phase, stage: m.stage }; };
   function render() {
     if (recovering) { showRecovery(); return; }
-    if (settingsOpen) { if (signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "number" ? "vNumber" : "vPassword").hidden = false; $("back").hidden = false; $("brand").hidden = true; } return; }
+    if (settingsOpen) { if (signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : "vPassword").hidden = false; $("back").hidden = false; $("brand").hidden = true; } return; }
     if (sb && !signedIn) { showLogin($("loginMsg").textContent); return; }
     if (clientMode && !myClientId) { showWaiting(); return; }
     $("vLogin").hidden = true; $("vRecovery").hidden = true; $("vWaiting").hidden = true; $("vCelebrate").hidden = true;
