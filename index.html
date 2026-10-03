@@ -191,7 +191,7 @@
   .btn.danger { background: transparent; color: var(--danger); padding: 0 8px; }
   .btn.quiet:hover, .btn.danger:hover { opacity: 0.7; }
   .btn:disabled { opacity: 0.5; cursor: default; }
-  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .seg button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   .cal button:focus-visible { outline-offset: -2px; }
 
   .stack { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
@@ -412,7 +412,11 @@
   /* month view: the week strip opened out to a whole month */
   .week-bar { margin: 28px 0 8px; min-height: 36px; }
   .week-bar h2 { margin: 0; }
-  .seg.sm button { min-height: 32px; padding: 0 12px; font-size: 13px; }
+  .cal-disc { appearance: none; border: 0; background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 6px 0 10px; border-radius: 50px; color: var(--brand); font-size: 15px; font-weight: 500; letter-spacing: 0; transition: opacity 300ms ease; }
+  .cal-disc:hover { opacity: 0.8; }
+  .cal-disc svg { transition: transform 220ms ease; }
+  .cal-disc.open svg { transform: rotate(180deg); }
+  @media (prefers-reduced-motion: reduce) { .cal-disc svg { transition: none; } }
   .cal-right { display: inline-flex; align-items: center; gap: 2px; }
   .cal-today { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; font-weight: 500; min-height: 36px; padding: 0 10px; border-radius: 50px; transition: opacity 300ms ease; }
   .cal-today:hover { opacity: 0.8; }
@@ -705,7 +709,7 @@
       </div>
     </div>
     <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
-    <div class="listbar week-bar" id="weekBar"><h2 id="weekHead">Calendar</h2><div class="seg sm" id="calSeg" role="radiogroup" aria-label="Calendar view"><button type="button" role="radio" data-cal="week" class="on" aria-checked="true">Week</button><button type="button" role="radio" data-cal="month" aria-checked="false">Month</button></div></div>
+    <div class="listbar week-bar" id="weekBar"><h2 id="weekHead">Calendar</h2><button class="cal-disc" id="calToggle" type="button" aria-expanded="false"><span id="calToggleText">Month</span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5.5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="week" id="week"></div>
     <div id="calWrap" hidden>
       <div class="cal-head"><button class="mnav" id="calPrev" type="button" aria-label="Previous month">&lsaquo;</button><span class="cal-title" id="calTitle"></span><span class="cal-right"><button class="cal-today" id="calToday" type="button" hidden>Today</button><button class="mnav" id="calNext" type="button" aria-label="Next month">&rsaquo;</button></span></div>
@@ -1764,10 +1768,8 @@
   let calOpen = lsGet("fiala.cal.open") === true, calMonth = today().slice(0, 7), calFor = null, calAnchor = calMonth, calSliding = false;
   const monthAdd = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1, 12); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
   const monthTitle = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1, 12).toLocaleDateString(undefined, { month: "long", year: "numeric" }); };
-  $("calSeg").addEventListener("click", (e) => {
-    const b = e.target.closest("button"); if (!b) return;
-    const open = b.dataset.cal === "month"; if (open === calOpen) return;
-    calOpen = open; lsSet("fiala.cal.open", calOpen); if (calOpen) { calMonth = today().slice(0, 7); calAnchor = calMonth; }
+  $("calToggle").addEventListener("click", () => {
+    calOpen = !calOpen; lsSet("fiala.cal.open", calOpen); if (calOpen) { calMonth = today().slice(0, 7); calAnchor = calMonth; }
     if (view.name === "client") renderClient();
   });
   $("calToday").addEventListener("click", () => { calMonth = today().slice(0, 7); calAnchor = calMonth; if (view.name === "client") renderClient(); });
@@ -1883,7 +1885,7 @@
     };
     for (let i = 0; i < 7; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); weekEl.appendChild(dayButton(d, true)); }
     // month view: three months on a sliding track (previous, shown, next) so a swipe follows the finger
-    for (const b of $("calSeg").querySelectorAll("button")) { const on = (b.dataset.cal === "month") === calOpen; b.classList.toggle("on", on); b.setAttribute("aria-checked", on ? "true" : "false"); }
+    $("calToggleText").textContent = calOpen ? "Week" : "Month"; $("calToggle").classList.toggle("open", calOpen); $("calToggle").setAttribute("aria-expanded", String(calOpen));
     weekEl.hidden = calOpen; $("calWrap").hidden = !calOpen;
     if (calOpen) {
       // a new client, or the month rolling over while "this month" is shown, re-anchors to today; a browsed month stays
