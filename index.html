@@ -39,11 +39,12 @@
     --brand-deep: #494664;              /* app-purple-deep — reserved for brand moments */
     --group-1: #5e8ca7;                 /* Steel blue */
     --group-2: #a2845e;                 /* Sand — Apple system brown, light */
-    --done: #2e8b57;                    /* one green for light mode: text, outlines, fills (emerald) */
-    --done-fill: #2e8b57;
-    --done-line: #2e8b57;
+    --done: #7c8b3e;                    /* sage green, darker cut for text */
+    --done-fill: #a9b96b;               /* sage green: Done button, card outline */
+    --done-line: #a9b96b;
+    --done-tint: rgba(169,185,107,0.07); /* the faint wash inside a finished card */
     --achieve: #c5a253;                 /* Champagne — PR / milestone, both modes */
-    --done-ink: #ffffff;
+    --done-ink: #1d1d1f;
     --danger: #a63a46;                  /* Crimson deep — red text on light */
     --btn-bg: #1d1d1f;                  /* Secondary tier: dark button on light */
     --btn-fg: #ffffff;
@@ -72,6 +73,7 @@
       --done: #e9f5a0;                  /* Olive glow */
       --done-fill: #e9f5a0;
       --done-line: #e9f5a0;
+      --done-tint: rgba(233,245,160,0.07);
       --done-ink: #1d1d1f;
       --danger: #c84653;                /* Crimson */
       --btn-bg: #ffffff;                /* Primary tier: white button on dark */
@@ -101,6 +103,7 @@
     --done: #e9f5a0;
     --done-fill: #e9f5a0;
     --done-line: #e9f5a0;
+    --done-tint: rgba(233,245,160,0.07);
     --done-ink: #1d1d1f;
     --danger: #c84653;
     --btn-bg: #ffffff;
@@ -274,6 +277,7 @@
   .row .top .x { align-self: center; }
   body.client .row .top { grid-template-columns: 56px 1fr; }
   .block.done { --ss: var(--done-line); }
+  .block.done .group { background: var(--done-tint); }
   .block.done:not(.open) .group { cursor: pointer; }
   .block.done:not(.open) .row { padding: 10px 16px 4px; }
   .block.done:not(.open) .row .specs, .block.done:not(.open) .row .weights, .block.done:not(.open) .row .note, .block.done:not(.open) .row .x { display: none; }
