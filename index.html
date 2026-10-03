@@ -720,7 +720,9 @@
   const today = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
   const fmtDate = (s) => { if (!s) return ""; const [y, m, d] = s.split("-").map(Number); const dt = new Date(y, m - 1, d); const opts = { month: "short", day: "numeric" }; if (y !== new Date().getFullYear()) opts.year = "numeric"; return dt.toLocaleDateString(undefined, opts); };
   const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
-  const labelKey = (l) => { const m = String(l || "").trim().match(/^(\d+)\s*([a-z]*)/i); return m ? [parseInt(m[1], 10), m[2].toLowerCase()] : [Infinity, String(l || "").toLowerCase()]; };
+  // "W", "Wa", "Wb" … = warm-up: groups like a number and sorts before 1
+  const isWarmLabel = (l) => /^w\s*[a-z]?$/i.test(String(l || "").trim());
+  const labelKey = (l) => { const s = String(l || "").trim(); const m = s.match(/^(\d+)\s*([a-z]*)/i); if (m) return [parseInt(m[1], 10), m[2].toLowerCase()]; const w = s.match(/^w\s*([a-z]?)$/i); return w ? [-1, w[1].toLowerCase()] : [Infinity, s.toLowerCase()]; };
   const cmpLabel = (a, b) => { const [an, as] = labelKey(a), [bn, bs] = labelKey(b); return an - bn || (as < bs ? -1 : as > bs ? 1 : 0); };
   const norm = (s) => String(s || "").trim().toLowerCase();
   const squash = (s) => norm(s).replace(/[^a-z0-9]+/g, "");   // "Push-up", "push up" and "pushup" all become "pushup"
@@ -1837,13 +1839,18 @@
     groups.forEach((g, gi) => {
       const block = document.createElement("div");
       block.className = "block " + (gi % 2 ? "ss-2" : "ss-1");
-      if (g.rows.length >= 2) {
+      const warm = g.key === "w";
+      if (g.rows.length >= 2 || warm) {
         const cap = document.createElement("div"); cap.className = "group-cap";
-        const kind = g.rows.length === 2 ? "Superset" : g.rows.length === 3 ? "Tri-set" : "Giant set";
-        const after = g.rows.length === 2 ? "rest after both" : "rest after all " + g.rows.length;
-        const b = document.createElement("b"); b.textContent = kind;
-        const s = document.createElement("span"); s.textContent = g.rows.map((r) => r.label).join(" + ") + " back to back \u00b7 " + after;
-        cap.append(b, s); block.appendChild(cap);
+        const kind = g.rows.length < 2 ? "" : g.rows.length === 2 ? "Superset" : g.rows.length === 3 ? "Tri-set" : "Giant set";
+        const b = document.createElement("b"); b.textContent = warm ? (kind ? "Warmup \u00b7 " + kind : "Warmup") : kind;
+        cap.appendChild(b);
+        if (kind) {
+          const after = g.rows.length === 2 ? "rest after both" : "rest after all " + g.rows.length;
+          const s = document.createElement("span"); s.textContent = g.rows.map((r) => r.label).join(" + ") + " back to back \u00b7 " + after;
+          cap.appendChild(s);
+        }
+        block.appendChild(cap);
       }
       const card = document.createElement("div"); card.className = "group";
       g.rows.forEach((r) => card.appendChild(rowEl(t, r)));
@@ -1870,7 +1877,8 @@
   function groupKey(label, index) {
     const s = String(label || "").trim().toLowerCase();
     const m = s.match(/^(\d+)/);
-    return m ? m[1] : (s || "row-" + index);
+    if (m) return m[1];
+    return isWarmLabel(s) ? "w" : (s || "row-" + index);
   }
   // Numbering rule: one exercise on a number is plain (2); two or more share letters (1a, 1b …).
   // The letter you type is a position: 1a moves that exercise to the top of its card,
@@ -1881,12 +1889,13 @@
     t.rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
     let changed = false;
     for (const [k, members] of groups) {
-      if (!/^\d+$/.test(k)) continue;
+      if (!/^(\d+|w)$/.test(k)) continue;
+      const base = k === "w" ? "W" : k;
       if (members.length === 1) {
-        if (members[0].label !== k) { members[0].label = k; changed = true; }
+        if (members[0].label !== base) { members[0].label = base; changed = true; }
         continue;
       }
-      const letter = (r) => ((String(r.label || "").trim().match(/^\d+\s*([a-z]*)/i) || [])[1] || "").toLowerCase();
+      const letter = (r) => ((String(r.label || "").trim().match(/^(?:\d+|w)\s*([a-z]*)/i) || [])[1] || "").toLowerCase();
       const edited = members.find((r) => r.id === lastEditedId) || null;
       const ordered = members.filter((r) => r !== edited)
         .sort((a, b) => { const la = letter(a) || "~", lb = letter(b) || "~"; return la < lb ? -1 : la > lb ? 1 : 0; });
@@ -1895,7 +1904,7 @@
         const at = L ? Math.max(0, Math.min(L.charCodeAt(0) - 97, ordered.length)) : ordered.length;
         ordered.splice(at, 0, edited);
       }
-      ordered.forEach((r, j) => { const want = k + String.fromCharCode(97 + Math.min(j, 25)); if (r.label !== want) { r.label = want; changed = true; } });
+      ordered.forEach((r, j) => { const want = base + String.fromCharCode(97 + Math.min(j, 25)); if (r.label !== want) { r.label = want; changed = true; } });
     }
     lastEditedId = null;
     return changed;
@@ -2044,9 +2053,10 @@
     function showNumbers() {
       let max = 0;
       for (const x of t.rows) { const m = String(x.label || "").match(/^(\d+)/); if (m) max = Math.max(max, Number(m[1])); }
-      const cur = (String(r.label || "").match(/^(\d+)/) || [])[1];
-      numpick.replaceChildren(...Array.from({ length: Math.max(max + 1, 1) }, (_, i) => {
-        const n = String(i + 1); const b = document.createElement("button"); b.type = "button"; b.textContent = n;
+      const cur = (String(r.label || "").match(/^(\d+)/) || [])[1] || (isWarmLabel(r.label) ? "W" : "");
+      const choices = ["W", ...Array.from({ length: Math.max(max + 1, 1) }, (_, i) => String(i + 1))];
+      numpick.replaceChildren(...choices.map((n) => {
+        const b = document.createElement("button"); b.type = "button"; b.textContent = n; if (n === "W") b.title = "Warmup";
         if (n === cur) b.classList.add("cur");
         b.addEventListener("mousedown", (ev) => ev.preventDefault());
         b.addEventListener("click", () => { r.label = n; lastEditedId = r.id; q(".label").value = n; numpick.hidden = true; save(); renderedTraining = null; render(); });
