@@ -191,7 +191,8 @@
   .btn.danger { background: transparent; color: var(--danger); padding: 0 8px; }
   .btn.quiet:hover, .btn.danger:hover { opacity: 0.7; }
   .btn:disabled { opacity: 0.5; cursor: default; }
-  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .seg button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .cal button:focus-visible { outline-offset: -2px; }
 
   .stack { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
   .seg { display: inline-flex; border: 1px solid var(--card-border); border-radius: 50px; padding: 2px; background: var(--field); }
@@ -411,15 +412,24 @@
   /* month view: the week strip opened out to a whole month */
   .week-bar { margin: 28px 0 8px; min-height: 36px; }
   .week-bar h2 { margin: 0; }
-  .week-bar .btn.quiet { min-height: 36px; }
+  .seg.sm button { min-height: 32px; padding: 0 12px; font-size: 13px; }
+  .cal-right { display: inline-flex; align-items: center; gap: 2px; }
+  .cal-today { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; font-weight: 500; min-height: 36px; padding: 0 10px; border-radius: 50px; transition: opacity 300ms ease; }
+  .cal-today:hover { opacity: 0.8; }
+  .cal-today[hidden] { display: none; }
+  .cal-view { position: relative; overflow: hidden; touch-action: pan-y; transition: height 280ms ease; }
+  .cal-track { display: flex; align-items: flex-start; width: 100%; transform: translateX(-100%); will-change: transform; }
+  .cal-panel { flex: 0 0 100%; width: 100%; }
   #calWrap[hidden] { display: none; }
-  .cal-head { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 6px; }
+  .cal-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin: 4px 0 6px; }
+  .cal-head > .mnav:first-child { justify-self: start; }
+  .cal-right { justify-self: end; }
   .cal-title { font-size: 17px; font-weight: 500; letter-spacing: -0.01em; color: var(--text-primary); }
   .mnav { appearance: none; border: 1px solid var(--card-border); cursor: pointer; width: 36px; height: 36px; border-radius: 50%; background: var(--field); color: var(--text-primary); font-size: 24px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; padding: 0 0 3px; transition: opacity 300ms ease; }
   .mnav:hover { opacity: 0.85; }
   .cal-wd { display: grid; grid-template-columns: repeat(7, 1fr); margin: 6px 0 2px; }
   .cal-wd span { text-align: center; font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
-  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; touch-action: pan-y; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; }
   .cal button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: 12px; padding: 6px 0 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
   .cal button:hover { background: var(--field); }
   .cal button.out { visibility: hidden; }
@@ -501,7 +511,7 @@
   .cele p { margin: 0; font-size: 17px; color: var(--text-secondary); max-width: 320px; }
   .cele-check { width: 96px; height: 96px; border-radius: 50%; background: var(--done-fill); color: var(--done-ink); font-size: 48px; display: flex; align-items: center; justify-content: center; animation: pop 600ms cubic-bezier(0.22, 1, 0.36, 1); }
   @keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { .cele-check { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .cele-check { animation: none; } .cal-view, .cal-track { transition: none !important; } }
   .finished { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 17px; }
   .finished span { color: var(--done); font-weight: 500; }
   .foot { margin-top: 40px; border-top: 1px solid var(--card-border); padding-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -695,12 +705,12 @@
       </div>
     </div>
     <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
-    <div class="listbar week-bar" id="weekBar"><h2 id="weekHead">This week</h2><button class="btn quiet" id="calToggle" type="button">Month</button></div>
+    <div class="listbar week-bar" id="weekBar"><h2 id="weekHead">Calendar</h2><div class="seg sm" id="calSeg" role="radiogroup" aria-label="Calendar view"><button type="button" role="radio" data-cal="week" class="on" aria-checked="true">Week</button><button type="button" role="radio" data-cal="month" aria-checked="false">Month</button></div></div>
     <div class="week" id="week"></div>
     <div id="calWrap" hidden>
-      <div class="cal-head"><button class="mnav" id="calPrev" type="button" aria-label="Previous month">&lsaquo;</button><span class="cal-title" id="calTitle"></span><button class="mnav" id="calNext" type="button" aria-label="Next month">&rsaquo;</button></div>
+      <div class="cal-head"><button class="mnav" id="calPrev" type="button" aria-label="Previous month">&lsaquo;</button><span class="cal-title" id="calTitle"></span><span class="cal-right"><button class="cal-today" id="calToday" type="button" hidden>Today</button><button class="mnav" id="calNext" type="button" aria-label="Next month">&rsaquo;</button></span></div>
       <div class="cal-wd" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
-      <div class="cal" id="cal"></div>
+      <div class="cal-view" id="calView"><div class="cal-track" id="calTrack"></div></div>
     </div>
     <button class="btn trainer-only" id="newTraining" style="width:100%;margin-top:16px">+ New workout</button>
     <div class="trainer-only" id="fromWrap"><button class="btn quiet add" id="fromTemplate" type="button">From template</button></div>
@@ -1750,18 +1760,59 @@
   }
   $("tplCard").addEventListener("click", () => go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }));
   $("reorderBtn").addEventListener("click", () => { reordering = !reordering; renderClients(); });
-  // month calendar under the week strip: toggle, arrows, swipe
-  let calOpen = lsGet("fiala.cal.open") === true, calMonth = today().slice(0, 7), calFor = null, calAnchor = calMonth;
-  const shiftMonth = (n) => { const [y, m] = calMonth.split("-").map(Number); const d = new Date(y, m - 1 + n, 1, 12); calMonth = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); if (view.name === "client") renderClient(); };
-  $("calToggle").addEventListener("click", () => { calOpen = !calOpen; lsSet("fiala.cal.open", calOpen); if (calOpen) { calMonth = today().slice(0, 7); calAnchor = calMonth; } if (view.name === "client") renderClient(); });
-  $("calPrev").addEventListener("click", () => shiftMonth(-1));
-  $("calNext").addEventListener("click", () => shiftMonth(1));
+  // month calendar under the week strip: Week | Month switch, arrows, Today, finger-follow swipe
+  let calOpen = lsGet("fiala.cal.open") === true, calMonth = today().slice(0, 7), calFor = null, calAnchor = calMonth, calSliding = false;
+  const monthAdd = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1, 12); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
+  const monthTitle = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1, 12).toLocaleDateString(undefined, { month: "long", year: "numeric" }); };
+  $("calSeg").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    const open = b.dataset.cal === "month"; if (open === calOpen) return;
+    calOpen = open; lsSet("fiala.cal.open", calOpen); if (calOpen) { calMonth = today().slice(0, 7); calAnchor = calMonth; }
+    if (view.name === "client") renderClient();
+  });
+  $("calToday").addEventListener("click", () => { calMonth = today().slice(0, 7); calAnchor = calMonth; if (view.name === "client") renderClient(); });
   {
-    const cal = $("cal"); let sx = null, sy = null, swiped = false;
-    cal.addEventListener("pointerdown", (e) => { sx = e.clientX; sy = e.clientY; swiped = false; });
-    cal.addEventListener("pointerup", (e) => { if (sx === null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = sy = null; if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) { swiped = true; shiftMonth(dx < 0 ? 1 : -1); setTimeout(() => { swiped = false; }, 0); } });
-    cal.addEventListener("pointercancel", () => { sx = sy = null; });
-    cal.addEventListener("click", (e) => { if (swiped) { swiped = false; e.stopPropagation(); e.preventDefault(); } }, true);
+    const view_ = $("calView"), track = $("calTrack");
+    const reduced = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let busy = false, sx = null, sy = null, dragging = null, dx = 0, swallow = false, finishNow = null;
+    const settle = (dir) => {                      // slide to the neighbour panel, then re-render around the new month
+      if (busy) { if (finishNow) finishNow(); else return; }
+      busy = true; calSliding = true;
+      if (dir) { calMonth = monthAdd(calMonth, dir); $("calTitle").textContent = monthTitle(calMonth); $("calToday").hidden = calMonth === today().slice(0, 7); }
+      const target = track.children[1 + (dir || 0)];
+      void view_.offsetHeight; view_.style.transition = "";
+      if (target) view_.style.height = target.offsetHeight + "px";
+      let done = false;
+      const finish = () => { if (done) return; done = true; finishNow = null; track.removeEventListener("transitionend", finish); busy = false; calSliding = false; view_.style.transition = ""; if (dir && view.name === "client") renderClient(); else view_.style.height = track.children[1].offsetHeight + "px"; };
+      finishNow = finish;
+      if (reduced()) { track.style.transition = "none"; track.style.transform = "translateX(" + (-100 - (dir || 0) * 100) + "%)"; finish(); return; }
+      track.addEventListener("transitionend", finish);
+      track.style.transition = "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)";
+      track.style.transform = "translateX(" + (-100 - (dir || 0) * 100) + "%)";
+      setTimeout(finish, 360);
+    };
+    $("calPrev").addEventListener("click", () => settle(-1));
+    $("calNext").addEventListener("click", () => settle(1));
+    view_.addEventListener("pointerdown", (e) => { if (!e.isPrimary) return; if (busy && finishNow) finishNow(); if (busy) return; sx = e.clientX; sy = e.clientY; dragging = null; dx = 0; });
+    view_.addEventListener("pointermove", (e) => {
+      if (sx === null || busy || !e.isPrimary) return;
+      dx = e.clientX - sx; const dy = e.clientY - sy;
+      if (dragging === null) { if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { dragging = true; try { view_.setPointerCapture(e.pointerId); } catch {} } else if (Math.abs(dy) > 8) dragging = false; }
+      if (dragging) {
+        track.style.transition = "none"; track.style.transform = "translateX(calc(-100% + " + dx + "px))";
+        const centre = track.children[1], side = track.children[dx < 0 ? 2 : 0];
+        if (centre && side) { const f = Math.min(1, Math.abs(dx) / Math.max(1, view_.clientWidth)); view_.style.transition = "none"; view_.style.height = Math.round(centre.offsetHeight + (side.offsetHeight - centre.offsetHeight) * f) + "px"; }
+      }
+    });
+    const release = (cancel) => {
+      if (sx === null) return; const was = dragging; const moved = dx; sx = sy = null; dragging = null; dx = 0;
+      if (!was) return;
+      swallow = true; setTimeout(() => { swallow = false; }, 0);
+      if (!cancel && Math.abs(moved) > 48) settle(moved < 0 ? 1 : -1); else settle(0);
+    };
+    view_.addEventListener("pointerup", () => release(false));
+    view_.addEventListener("pointercancel", () => release(true));
+    view_.addEventListener("click", (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
   }
 
   function renderClient() {
@@ -1831,23 +1882,35 @@
       return b;
     };
     for (let i = 0; i < 7; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); weekEl.appendChild(dayButton(d, true)); }
-    // month view: the same days, a whole month at a time
-    $("calToggle").textContent = calOpen ? "Week" : "Month";
-    $("weekHead").textContent = calOpen ? "Calendar" : "This week";
+    // month view: three months on a sliding track (previous, shown, next) so a swipe follows the finger
+    for (const b of $("calSeg").querySelectorAll("button")) { const on = (b.dataset.cal === "month") === calOpen; b.classList.toggle("on", on); b.setAttribute("aria-checked", on ? "true" : "false"); }
     weekEl.hidden = calOpen; $("calWrap").hidden = !calOpen;
     if (calOpen) {
       // a new client, or the month rolling over while "this month" is shown, re-anchors to today; a browsed month stays
       const cur = today().slice(0, 7);
       if (calFor !== c.id || (cur !== calAnchor && calMonth === calAnchor)) calMonth = cur;
       calFor = c.id; calAnchor = cur;
-      const [y, m] = calMonth.split("-").map(Number);
-      const first = new Date(y, m - 1, 1, 12, 0, 0, 0);
-      $("calTitle").textContent = first.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-      const cal = $("cal"); cal.replaceChildren();
-      const lead = (first.getDay() + 6) % 7;
-      for (let i = 0; i < lead; i++) { const b = document.createElement("button"); b.type = "button"; b.className = "out"; b.tabIndex = -1; b.setAttribute("aria-hidden", "true"); cal.appendChild(b); }
-      const days = new Date(y, m, 0).getDate();
-      for (let day = 1; day <= days; day++) cal.appendChild(dayButton(new Date(y, m - 1, day, 12, 0, 0, 0), false));
+      const panel = (ym) => {
+        const [y, m] = ym.split("-").map(Number);
+        const first = new Date(y, m - 1, 1, 12, 0, 0, 0);
+        const wrap = document.createElement("div"); wrap.className = "cal-panel"; wrap.dataset.ym = ym;
+        const cal = document.createElement("div"); cal.className = "cal";
+        const lead = (first.getDay() + 6) % 7;
+        for (let i = 0; i < lead; i++) { const b = document.createElement("button"); b.type = "button"; b.className = "out"; b.tabIndex = -1; b.setAttribute("aria-hidden", "true"); cal.appendChild(b); }
+        const days = new Date(y, m, 0).getDate();
+        for (let day = 1; day <= days; day++) cal.appendChild(dayButton(new Date(y, m - 1, day, 12, 0, 0, 0), false));
+        wrap.appendChild(cal); return wrap;
+      };
+      const track = $("calTrack");
+      if (calSliding) return;                      // a slide is in flight: finish() re-renders when it lands
+      track.style.transition = "none"; track.style.transform = "translateX(-100%)";
+      track.replaceChildren(panel(monthAdd(calMonth, -1)), panel(calMonth), panel(monthAdd(calMonth, 1)));
+      for (const p of [track.children[0], track.children[2]]) p.setAttribute("aria-hidden", "true");
+      for (const b of track.children[1].querySelectorAll("button")) { if (!b.classList.contains("out")) b.tabIndex = 0; }
+      for (const p of [track.children[0], track.children[2]]) for (const b of p.querySelectorAll("button")) b.tabIndex = -1;
+      $("calTitle").textContent = monthTitle(calMonth);
+      $("calToday").hidden = calMonth === cur;
+      $("calView").style.height = track.children[1].offsetHeight + "px";
     }
 
     const next = list.filter((t) => !t.completedAt && !t.skippedAt).sort((a, b) => effDate(a).localeCompare(effDate(b)));
