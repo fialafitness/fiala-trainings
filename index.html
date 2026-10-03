@@ -254,6 +254,7 @@
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
   .block.ss-1 { --ss: var(--group-1); }
   .block.ss-2 { --ss: var(--group-2); }
+  .block.ss-w { --ss: var(--btn-bg); }      /* warm-up: neutral, dark on light / white on dark */
   .group-cap { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; margin: 0 0 8px 2px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); }
   .group-cap b { font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--ss); }
   .group { background: var(--card); border: 1.5px solid var(--ss); border-radius: 20px; }
@@ -1865,10 +1866,11 @@
       if (!groups.length || groups[groups.length - 1].key !== k) groups.push({ key: k, rows: [] });
       groups[groups.length - 1].rows.push(r);
     });
-    groups.forEach((g, gi) => {
+    let numbered = 0;
+    groups.forEach((g) => {
       const block = document.createElement("div");
-      block.className = "block " + (gi % 2 ? "ss-2" : "ss-1");
       const warm = g.key === "w";
+      block.className = "block " + (warm ? "ss-w" : (numbered++ % 2 ? "ss-2" : "ss-1"));
       if (g.rows.length >= 2 || warm) {
         const cap = document.createElement("div"); cap.className = "group-cap";
         const kind = g.rows.length < 2 ? "" : g.rows.length === 2 ? "Superset" : g.rows.length === 3 ? "Tri-set" : "Giant set";
