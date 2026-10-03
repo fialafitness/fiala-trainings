@@ -191,7 +191,7 @@
   .btn.danger { background: transparent; color: var(--danger); padding: 0 8px; }
   .btn.quiet:hover, .btn.danger:hover { opacity: 0.7; }
   .btn:disabled { opacity: 0.5; cursor: default; }
-  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
   .stack { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
   .seg { display: inline-flex; border: 1px solid var(--card-border); border-radius: 50px; padding: 2px; background: var(--field); }
@@ -407,6 +407,27 @@
   .week .dot { width: 22px; height: 8px; border-radius: 50px; border: 1.5px solid transparent; }
   .week button.planned .dot { border-color: var(--text-tertiary); }
   .week button.finished .dot { background: var(--brand); border-color: var(--brand); }
+  .week[hidden] { display: none; }
+  /* month view: the week strip opened out to a whole month */
+  .week-bar { margin: 28px 0 8px; min-height: 36px; }
+  .week-bar h2 { margin: 0; }
+  .week-bar .btn.quiet { min-height: 36px; }
+  #calWrap[hidden] { display: none; }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 6px; }
+  .cal-title { font-size: 17px; font-weight: 500; letter-spacing: -0.01em; color: var(--text-primary); }
+  .mnav { appearance: none; border: 1px solid var(--card-border); cursor: pointer; width: 36px; height: 36px; border-radius: 50%; background: var(--field); color: var(--text-primary); font-size: 24px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; padding: 0 0 3px; transition: opacity 300ms ease; }
+  .mnav:hover { opacity: 0.85; }
+  .cal-wd { display: grid; grid-template-columns: repeat(7, 1fr); margin: 6px 0 2px; }
+  .cal-wd span { text-align: center; font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; touch-action: pan-y; }
+  .cal button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: 12px; padding: 6px 0 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .cal button:hover { background: var(--field); }
+  .cal button.out { visibility: hidden; }
+  .cal .dn { font-size: 15px; font-weight: 500; color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .cal button.today .dn { background: var(--btn-bg); color: var(--btn-fg); }
+  .cal .dot { width: 18px; height: 6px; border-radius: 50px; border: 1.5px solid transparent; }
+  .cal button.planned .dot { border-color: var(--text-tertiary); }
+  .cal button.finished .dot { background: var(--brand); border-color: var(--brand); }
   .month { margin-top: 12px; }
   .month > button { appearance: none; border: 0; background: none; width: 100%; cursor: pointer; display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 0 4px; font-size: 17px; color: var(--text-primary); }
   .month > button .sub { color: var(--text-tertiary); font-size: 13px; }
@@ -444,7 +465,7 @@
   .paused-card b { font-weight: 500; font-size: 17px; letter-spacing: -0.01em; }
   .paused-card span { font-size: 15px; color: var(--text-secondary); line-height: 1.45; }
   .paused-card[hidden] { display: none; }
-  body.client.paused #weekHead, body.client.paused #week, body.client.paused #nextHead, body.client.paused #nextList, body.client.paused #histHead, body.client.paused #histList, body.client.paused #trainingEmpty { display: none; }
+  body.client.paused #weekBar, body.client.paused #calWrap, body.client.paused #week, body.client.paused #nextHead, body.client.paused #nextList, body.client.paused #histHead, body.client.paused #histList, body.client.paused #trainingEmpty { display: none; }
   .list.inactive button > span:first-child { color: var(--text-secondary); }
   .list[hidden], .listbar[hidden] { display: none; }
   .seg.stages { display: flex; width: 100%; }
@@ -452,7 +473,7 @@
   .tpl-stage { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 14px 4px 8px; }
   .pick-note { margin: 12px 2px 0; font-size: 15px; color: var(--text-secondary); }
   .pick-note b { font-weight: 500; color: var(--text-primary); }
-  #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .contact-row, #vClient.tpl #cEmailWrap, #vClient.tpl #weekHead, #vClient.tpl #week, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
+  #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .contact-row, #vClient.tpl #cEmailWrap, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
   #vClient.tpl #notesWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot { display: none; }
   .use { margin-top: 24px; }
@@ -674,8 +695,13 @@
       </div>
     </div>
     <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
-    <h2 id="weekHead">This week</h2>
+    <div class="listbar week-bar" id="weekBar"><h2 id="weekHead">This week</h2><button class="btn quiet" id="calToggle" type="button">Month</button></div>
     <div class="week" id="week"></div>
+    <div id="calWrap" hidden>
+      <div class="cal-head"><button class="mnav" id="calPrev" type="button" aria-label="Previous month">&lsaquo;</button><span class="cal-title" id="calTitle"></span><button class="mnav" id="calNext" type="button" aria-label="Next month">&rsaquo;</button></div>
+      <div class="cal-wd" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+      <div class="cal" id="cal"></div>
+    </div>
     <button class="btn trainer-only" id="newTraining" style="width:100%;margin-top:16px">+ New workout</button>
     <div class="trainer-only" id="fromWrap"><button class="btn quiet add" id="fromTemplate" type="button">From template</button></div>
     <div class="pick-note trainer-only" id="pickNote" hidden></div>
@@ -1724,6 +1750,19 @@
   }
   $("tplCard").addEventListener("click", () => go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }));
   $("reorderBtn").addEventListener("click", () => { reordering = !reordering; renderClients(); });
+  // month calendar under the week strip: toggle, arrows, swipe
+  let calOpen = lsGet("fiala.cal.open") === true, calMonth = today().slice(0, 7), calFor = null, calAnchor = calMonth;
+  const shiftMonth = (n) => { const [y, m] = calMonth.split("-").map(Number); const d = new Date(y, m - 1 + n, 1, 12); calMonth = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); if (view.name === "client") renderClient(); };
+  $("calToggle").addEventListener("click", () => { calOpen = !calOpen; lsSet("fiala.cal.open", calOpen); if (calOpen) { calMonth = today().slice(0, 7); calAnchor = calMonth; } if (view.name === "client") renderClient(); });
+  $("calPrev").addEventListener("click", () => shiftMonth(-1));
+  $("calNext").addEventListener("click", () => shiftMonth(1));
+  {
+    const cal = $("cal"); let sx = null, sy = null, swiped = false;
+    cal.addEventListener("pointerdown", (e) => { sx = e.clientX; sy = e.clientY; swiped = false; });
+    cal.addEventListener("pointerup", (e) => { if (sx === null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = sy = null; if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) { swiped = true; shiftMonth(dx < 0 ? 1 : -1); setTimeout(() => { swiped = false; }, 0); } });
+    cal.addEventListener("pointercancel", () => { sx = sy = null; });
+    cal.addEventListener("click", (e) => { if (swiped) { swiped = false; e.stopPropagation(); e.preventDefault(); } }, true);
+  }
 
   function renderClient() {
     const c = clients.get(view.id);
@@ -1774,21 +1813,41 @@
     const iso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     const weekEl = $("week"); weekEl.replaceChildren();
     const weekStart = iso(monday);
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday); d.setDate(monday.getDate() + i); const key = iso(d);
+    const dayButton = (d, withWeekday) => {
+      const key = iso(d);
       const dayWorkouts = list.filter((t) => effDate(t) === key && !(t.skippedAt && !t.completedAt));
       const b = document.createElement("button"); b.type = "button";
-      if (key === today()) b.classList.add("today");
-      const wd = document.createElement("span"); wd.className = "wd"; wd.textContent = d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 3);
+      if (key === today()) { b.classList.add("today"); b.setAttribute("aria-current", "date"); }
+      if (withWeekday) { const wd = document.createElement("span"); wd.className = "wd"; wd.textContent = d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 3); b.appendChild(wd); }
       const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(d.getDate());
       if (dayWorkouts.length) b.classList.add(dayWorkouts.every((t) => t.completedAt) ? "finished" : "planned");
       const dot = document.createElement("span"); dot.className = "dot";
-      b.append(wd, dn, dot);
+      b.append(dn, dot);
+      b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + (dayWorkouts.length ? (dayWorkouts.every((t) => t.completedAt) ? ", finished" : ", planned") : ""));
       b.addEventListener("click", () => {
         if (dayWorkouts.length) go({ name: "training", id: dayWorkouts[0].id });
         else if (!clientMode) addTraining(c.id, null, key);
       });
-      weekEl.appendChild(b);
+      return b;
+    };
+    for (let i = 0; i < 7; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); weekEl.appendChild(dayButton(d, true)); }
+    // month view: the same days, a whole month at a time
+    $("calToggle").textContent = calOpen ? "Week" : "Month";
+    $("weekHead").textContent = calOpen ? "Calendar" : "This week";
+    weekEl.hidden = calOpen; $("calWrap").hidden = !calOpen;
+    if (calOpen) {
+      // a new client, or the month rolling over while "this month" is shown, re-anchors to today; a browsed month stays
+      const cur = today().slice(0, 7);
+      if (calFor !== c.id || (cur !== calAnchor && calMonth === calAnchor)) calMonth = cur;
+      calFor = c.id; calAnchor = cur;
+      const [y, m] = calMonth.split("-").map(Number);
+      const first = new Date(y, m - 1, 1, 12, 0, 0, 0);
+      $("calTitle").textContent = first.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+      const cal = $("cal"); cal.replaceChildren();
+      const lead = (first.getDay() + 6) % 7;
+      for (let i = 0; i < lead; i++) { const b = document.createElement("button"); b.type = "button"; b.className = "out"; b.tabIndex = -1; b.setAttribute("aria-hidden", "true"); cal.appendChild(b); }
+      const days = new Date(y, m, 0).getDate();
+      for (let day = 1; day <= days; day++) cal.appendChild(dayButton(new Date(y, m - 1, day, 12, 0, 0, 0), false));
     }
 
     const next = list.filter((t) => !t.completedAt && !t.skippedAt).sort((a, b) => effDate(a).localeCompare(effDate(b)));
