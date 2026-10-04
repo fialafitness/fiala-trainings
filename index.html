@@ -37,7 +37,6 @@
     --placeholder: #d2d2d7;
     --brand: #6f6b99;                   /* app-purple — structure / interactive, EXACT */
     --brand-deep: #494664;              /* app-purple-deep — reserved for brand moments */
-    --brand-text: #494664;              /* purple as text on white: the deep end, so it holds its own in daylight */
     --group-1: #5e8ca7;                 /* Steel blue */
     --group-2: #a2845e;                 /* Sand — Apple system brown, light */
     --group-w: #505055;                 /* Warm-up: off-black on light */
@@ -70,7 +69,6 @@
       --placeholder: rgba(255,255,255,0.35);
       --brand: #6f6b99;
       --brand-deep: #494664;
-      --brand-text: #6f6b99;
       --group-1: #5e8ca7;
       --group-2: #ac8e68;               /* Sand — Apple system brown, dark */
       --group-w: #d6d6d8;               /* Warm-up: off-white on dark */
@@ -102,7 +100,6 @@
     --placeholder: rgba(255,255,255,0.35);
     --brand: #6f6b99;
     --brand-deep: #494664;
-    --brand-text: #6f6b99;
     --group-1: #5e8ca7;
     --group-2: #ac8e68;               /* Sand — Apple system brown, dark */
     --group-w: #d6d6d8;
@@ -148,7 +145,7 @@
   .bar { max-width: 680px; margin: 0 auto; padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .back {
     appearance: none; border: 0; background: none; padding: 0;
-    color: var(--brand-text); font: inherit; font-size: 17px; letter-spacing: -0.01em; cursor: pointer;
+    color: var(--brand); font: inherit; font-size: 17px; letter-spacing: -0.01em; cursor: pointer;
     min-height: 44px; display: inline-flex; align-items: center; gap: 4px;
     max-width: 70%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
     transition: opacity 300ms ease;
@@ -176,7 +173,7 @@
   }
   input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 1; }
   input.hint::placeholder { color: var(--text-secondary); }
-  input:focus, textarea:focus { border-color: var(--brand-text); background: var(--surface); }
+  input:focus, textarea:focus { border-color: var(--brand); background: var(--surface); }
   textarea { resize: vertical; min-height: 96px; line-height: 1.55; }
   input[type="date"] { -webkit-appearance: none; appearance: none; }
   .pagetitle { width: 100%; background: transparent; padding: 0; border-radius: 12px; }
@@ -247,7 +244,7 @@
   .list .exdetail button.btn.sm { padding: 0 20px; background: var(--btn-bg); color: var(--btn-fg); }
   .list .exdetail .danger-link { color: var(--danger); }
   .list li.open > button { background: var(--surface); }
-  .list .sec .dot { color: var(--brand-text); }
+  .list .sec .dot { color: var(--brand); }
   .list .rowline .grip { color: var(--text-tertiary); font-size: 22px; line-height: 1; padding: 0 6px; }
 
   /* Training */
@@ -328,7 +325,7 @@
     padding: 12px 16px; font-size: 16px; letter-spacing: -0.01em; color: var(--text-primary);
   }
   .sugg button:hover, .sugg button:focus, .alt-menu button:hover, .alt-menu button:focus { background: var(--field); outline: none; }
-  .vid { appearance: none; border: 0; background: none; padding: 0 2px; cursor: pointer; display: inline-block; margin: 8px 0 0; font-size: 13px; letter-spacing: 0; color: var(--brand-text); min-height: 32px; line-height: 32px; transition: opacity 300ms ease; }
+  .vid { appearance: none; border: 0; background: none; padding: 0 2px; cursor: pointer; display: inline-block; margin: 8px 0 0; font-size: 13px; letter-spacing: 0; color: var(--brand); min-height: 32px; line-height: 32px; transition: opacity 300ms ease; }
   .vid:hover { opacity: 0.7; }
   .row .top .exwrap.has-alt .name { padding-right: 44px; }
   .alt-btn {
@@ -344,11 +341,11 @@
   body.client .alt-menu { right: 0; }
   .alt-menu { max-height: none; overflow: hidden; }
   .alt-menu .cur { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 16px; letter-spacing: -0.01em; color: var(--text-secondary); }
-  .alt-menu .cur .ck { color: var(--brand-text); font-weight: 600; }
+  .alt-menu .cur .ck { color: var(--brand); font-weight: 600; }
   .alt-menu .item { display: flex; align-items: stretch; }
   .alt-menu .item .pick { flex: 1; width: auto; }
   .alt-menu .item .rm { width: 44px; flex: none; text-align: center; padding: 12px 0; color: var(--text-tertiary); font-size: 18px; line-height: 1; }
-  .alt-menu .add { color: var(--brand-text); }
+  .alt-menu .add { color: var(--brand); }
   .alt-menu .alt-input { width: calc(100% - 24px); margin: 8px 12px 6px; }
   .alt-menu .alt-hits:empty { display: none; }
   .alt-menu .alt-hits { max-height: 32vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
@@ -391,14 +388,14 @@
   #kbbar button { appearance: none; border: 0; cursor: pointer; min-height: 36px; padding: 0 16px; border-radius: 50px; background: var(--btn-bg); color: var(--btn-fg); font-size: 15px; font-weight: 500; letter-spacing: 0; white-space: nowrap; }
   #kbbar .kb-mode { font-variant-numeric: tabular-nums; min-width: 60px; }
   #kbbar .kb-chips { display: flex; gap: 8px; }
-  #kbbar .kb-done { margin-left: auto; background: transparent; color: var(--brand-text); font-weight: 600; padding: 0 6px; }
+  #kbbar .kb-done { margin-left: auto; background: transparent; color: var(--brand); font-weight: 600; padding: 0 6px; }
 
   .note { margin-top: 12px; }
   .note-toggle {
     appearance: none; border: 0; background: none; padding: 0 2px; width: 100%; text-align: left; cursor: pointer;
     min-height: 32px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); transition: opacity 300ms ease;
   }
-  .note-toggle.has { color: var(--brand-text); font-weight: 500; }
+  .note-toggle.has { color: var(--brand); font-weight: 500; }
   .note-toggle:hover { opacity: 0.7; }
   .note-field { font-style: italic; min-height: 44px; resize: none; overflow: hidden; }
   .add { margin-top: 16px; }
@@ -410,18 +407,18 @@
   .week button.today .dn { background: var(--btn-bg); color: var(--btn-fg); }
   .week .dot { width: 22px; height: 8px; border-radius: 50px; border: 1.5px solid transparent; }
   .week button.planned .dot { border-color: var(--text-tertiary); }
-  .week button.finished .dot { background: var(--brand); border-color: var(--brand-text); }
+  .week button.finished .dot { background: var(--brand); border-color: var(--brand); }
   .week[hidden] { display: none; }
   /* month view: the week strip opened out to a whole month */
   .week-bar { margin: 28px 0 8px; min-height: 36px; }
   .week-bar h2 { margin: 0; }
-  .cal-disc { appearance: none; border: 0; background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 6px 0 10px; border-radius: 50px; color: var(--brand-text); font-size: 15px; font-weight: 500; letter-spacing: 0; transition: opacity 300ms ease; }
+  .cal-disc { appearance: none; border: 0; background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 6px 0 10px; border-radius: 50px; color: var(--brand); font-size: 15px; font-weight: 500; letter-spacing: 0; transition: opacity 300ms ease; }
   .cal-disc:hover { opacity: 0.8; }
   .cal-disc svg { transition: transform 220ms ease; }
   .cal-disc.open svg { transform: rotate(180deg); }
   @media (prefers-reduced-motion: reduce) { .cal-disc svg { transition: none; } }
   .cal-right { display: inline-flex; align-items: center; gap: 2px; }
-  .cal-today { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand-text); font-size: 15px; font-weight: 500; min-height: 36px; padding: 0 10px; border-radius: 50px; transition: opacity 300ms ease; }
+  .cal-today { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; font-weight: 500; min-height: 36px; padding: 0 10px; border-radius: 50px; transition: opacity 300ms ease; }
   .cal-today:hover { opacity: 0.8; }
   .cal-today[hidden] { display: none; }
   .cal-view { position: relative; overflow: hidden; touch-action: pan-y; transition: height 280ms ease; }
@@ -444,7 +441,7 @@
   .cal button.today .dn { background: var(--btn-bg); color: var(--btn-fg); }
   .cal .dot { width: 18px; height: 6px; border-radius: 50px; border: 1.5px solid transparent; }
   .cal button.planned .dot { border-color: var(--text-tertiary); }
-  .cal button.finished .dot { background: var(--brand); border-color: var(--brand-text); }
+  .cal button.finished .dot { background: var(--brand); border-color: var(--brand); }
   .month { margin-top: 12px; }
   .month > button { appearance: none; border: 0; background: none; width: 100%; cursor: pointer; display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 0 4px; font-size: 17px; color: var(--text-primary); }
   .month > button .sub { color: var(--text-tertiary); font-size: 13px; }
@@ -501,7 +498,7 @@
   .tpl-pill[hidden] { display: none; }
   .tpl-pill span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tpl-pill .chev { color: rgba(255,255,255,0.72); flex: none; font-size: 16px; line-height: 1; }
-  .list li.last-used button .pri::after { content: " \00b7  last used"; font-size: 13px; color: var(--brand-text); font-weight: 400; }
+  .list li.last-used button .pri::after { content: " \00b7  last used"; font-size: 13px; color: var(--brand); font-weight: 400; }
   .list li.flash { animation: flash 1200ms ease; }
   @keyframes flash { 0% { background: rgba(111,107,153,0.28); } 100% { background: transparent; } }
   #draftBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: center; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--card-border); box-shadow: 0 -6px 20px rgba(0,0,0,0.10); }
@@ -526,7 +523,7 @@
   .foot.foot-col { flex-direction: column; align-items: flex-start; gap: 10px; }
   .auth-split { display: flex; align-items: center; gap: 4px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--card-border); max-width: 360px; }
   .auth-split .muted { font-size: 15px; }
-  .btn.quiet.link { color: var(--brand-text); padding: 0 6px; font-weight: 500; }
+  .btn.quiet.link { color: var(--brand); padding: 0 6px; font-weight: 500; }
   .foot.foot-col .muted { font-size: 13px; }
   .foot-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin-left: -8px; }
   .foot-actions .btn { white-space: nowrap; }
