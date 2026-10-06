@@ -415,11 +415,23 @@
   .chip .suffix[hidden] { display: none; }
   .chip.filled .suffix { color: inherit; font-weight: 500; }        /* once there is a value the whole phrase reads as one: "20 sec rest" */
   body.client .specs .chip { cursor: default; }
-  /* client: the same card, without the grey fills — only the weight and reps boxes they fill in keep theirs */
-  body.client .row .top input.label, body.client .group .row .top input.label { background: none; border-color: transparent; box-shadow: none; color: var(--ss); font-weight: 600; }
-  body.client .row .top .name { background: none; border-color: transparent; }
-  body.client .specs .chip { background: none; border-color: transparent; }
-  body.client .tempo-tiles { background: none; }
+  /* client: the number is a solid badge in the exercise's colour, the name is the headline, the details line up under the name;
+     only the weight and reps boxes they fill in look like boxes */
+  .row { --numw: 64px; }                                 /* badge column + gap: where the name starts */
+  body.client .row .top input.label, body.client .group .row .top input.label { background: var(--ss); color: var(--ss-ink); border-color: transparent; box-shadow: none; font-weight: 600; }
+  body.client .row .top .name { background: none; border-color: transparent; padding-left: 0; font-size: 19px; line-height: 24px; font-weight: 600; }
+  body.client .row .specs { display: none; }
+  body.client .row .sum { display: block; margin: 0 0 0 var(--numw); font-size: 15px; color: var(--text-secondary); }
+  body.client .block.ahead .row .sum { margin-top: 2px; font-size: 13px; color: var(--text-tertiary); }
+  body.client .block.done:not(.open) .row .sum { display: none; }
+  body.client .tempo-wrap { margin: 10px 0 0 var(--numw); }
+  body.client .tempo-tiles { background: none; padding: 0; }
+  body.client .tempo-tiles .word { justify-content: flex-start; }
+  body.client .tempo-tiles span { font-size: 9px; white-space: nowrap; }
+  body.client .tempo-tiles > div { padding-left: 2px; padding-right: 2px; }
+  body.client .ex-icons .vid-btn { width: 36px; height: 36px; margin-right: 2px; border-radius: 50%; background: rgba(111, 107, 153, 0.14); color: var(--brand); opacity: 1; }   /* a soft round play, like a TV app */
+  body.client .ex-icons .vid-btn svg { width: 16px; height: 16px; }
+  body.client .ex-icons .vid-btn .i-play { margin-left: 2px; }
   .tempo-wrap { margin-top: 12px; }
   .tempo-wrap[hidden] { display: none; }
   .tempo-wrap input { width: 100%; text-align: center; padding: 10px 8px; min-height: 40px; font-size: 16px; }
@@ -448,7 +460,7 @@
   .tracker button.done::after { content: "\2713"; font-size: 11px; }
   .block { --ss-ink: #fff; }
   .block.ss-w { --ss-ink: var(--surface); }
-  .tracker button.cur { background: var(--ss); border-color: var(--ss); color: var(--ss-ink); }
+  .tracker button.cur { background: var(--done-fill); border-color: var(--done-fill); color: var(--done-ink); font-weight: 600; }
   .block.done .tracker button.cur { color: var(--done-ink); }
   .tracker button:hover { opacity: 0.85; }
   .tracker button.static { cursor: default; }                           /* a template just shows the count */
@@ -636,6 +648,7 @@
   @media (max-width: 400px) {
     .alt-menu { left: -60px; }
     .row .top { grid-template-columns: 52px 1fr; }
+    .row { --numw: 60px; }
     .row .sum { margin-left: 60px; }
     .specs { gap: 6px; }
     .specs .chip { padding: 10px 6px; }
