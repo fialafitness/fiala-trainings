@@ -124,6 +124,8 @@
   * { box-sizing: border-box; }
   html { background: var(--surface); }
   html, body { height: 100%; }
+  html, body { overflow-x: hidden; }                 /* an app never scrolls sideways */
+  main { overflow-x: clip; }
   body {
     margin: 0;
     padding-top: env(safe-area-inset-top, 0px);
@@ -379,7 +381,9 @@
   .player iframe { width: 100%; height: 100%; border: 0; display: block; }
   .block.done:not(.open) .row .vid, .block.done:not(.open) .row .player { display: none; }
   .specs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
-  .specs label { display: block; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; white-space: nowrap; }
+  .specs > div { min-width: 0; }
+  .specs label.rest-label.long { letter-spacing: 0.02em; font-size: 11px; }
+  .specs label { display: block; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0; }
   .specs label .kb { letter-spacing: 0; text-transform: none; font-weight: 400; }
   .specs input { padding: 10px 6px; min-height: 40px; text-align: center; font-size: 15px; }
   .tempo-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
@@ -415,7 +419,8 @@
   .card-foot .done-btn { display: none; }
   .card-foot .complete { width: 100%; }
   .finish-early { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--text-secondary); font-size: 15px; min-height: 40px; padding: 0 8px; }
-  .block.done:not(.open) .tracker, .block.done:not(.open) .row .setlog, .block.done:not(.open) .complete, .block.done .finish-early { display: none; }
+  .block.done:not(.open) .tracker, .block.done:not(.open) .row .setlog, .block.done:not(.open) .complete, .block.done .finish-early:not(.undo-set), .block.done:not(.open) .undo-set { display: none; }
+  .undo-set[hidden] { display: none; }
   .block.done .complete { width: auto; background: transparent; color: var(--text-secondary); border: 1px solid var(--card-border); min-height: 40px; padding: 10px 24px; font-size: 14px; }
   .weights { margin-top: 16px; }
   .weights .cap { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; display: flex; justify-content: space-between; gap: 8px; }
@@ -2272,6 +2277,12 @@
         const sel = g.sel, current = sel === doneSets && doneSets < total;
         const complete = document.createElement("button"); complete.type = "button"; complete.className = "btn complete";
         complete.textContent = current ? (sel + 1 === total ? "Complete last set \u2192" : "Complete set \u2192") : "Save set";
+        const undo = document.createElement("button"); undo.type = "button"; undo.className = "finish-early undo-set"; undo.textContent = "Mark set " + (sel + 1) + " as not done";
+        undo.hidden = !(sel < doneSets);
+        undo.addEventListener("click", () => {                // this set and anything after it go back to not done
+          for (const r of g.rows) { if (sel < setsOf(r)) { r.setsDone = Math.min(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), sel); r.done = false; } const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
+          setSel.set(selKey, sel); scheduleSave("trainings", t.id); renderedTraining = null; render();
+        });
         complete.addEventListener("click", () => {
           const prevDone = doneSets;
           for (const r of g.rows) {
@@ -2292,11 +2303,11 @@
           for (const r of g.rows) { r.done = true; const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
           setSel.delete(selKey); scheduleSave("trainings", t.id); renderedTraining = null; render();
         });
-        foot.append(complete, early);
+        foot.append(complete, early, undo);
       }
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
       const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold-btn";
-      const paintFold = () => { const done = block.classList.contains("done"); fold.hidden = !done; fold.textContent = block.classList.contains("open") ? "Hide weights" : "Show weights"; };
+      const paintFold = () => { const done = block.classList.contains("done"); fold.hidden = !done; fold.textContent = block.classList.contains("open") ? "Hide sets" : "Show sets"; };
       const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all) block.classList.remove("open"); btn.textContent = all ? "\u2713 Done" : "Done"; paintFold(); };
       fold.addEventListener("click", () => { block.classList.toggle("open"); paintFold(); });
       card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.target.closest("button")) { block.classList.add("open"); paintFold(); } });
@@ -2587,7 +2598,7 @@
       el.querySelector(".weights").hidden = n === 0;
     }
     renderWeights();
-    if (group && group.rows.length > 1 && group.rows[group.rows.length - 1] !== r) q(".rest-label").textContent = "Transition";
+    if (group && group.rows.length > 1 && group.rows[group.rows.length - 1] !== r) { q(".rest-label").textContent = "Transition"; q(".rest-label").classList.add("long"); }
     if (group && group.sel != null && group.sel >= Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20))) q(".setlog").hidden = true;   // no such set for this exercise
     else if (group && group.sel != null) {      // one set at a time: the boxes show the set the tracker points at
       const sel = group.sel; const unit = (clients.get(t.clientId) || {}).unit || "lb";
