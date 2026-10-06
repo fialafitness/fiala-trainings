@@ -28,6 +28,7 @@
     --text-tertiary: #86868b;           /* Medium Gray */
     --text-quaternary: #d2d2d7;         /* Silver — decorative only */
     --surface: #ffffff;                 /* surface-primary */
+    --sheet: #ffffff;                   /* bottom sheet (the day picker) */
     --surface-2: #f5f5f7;               /* surface-secondary — forms */
     --card: #ffffff;
     --card-border: rgba(0,0,0,0.06);    /* border-on-light-standard */
@@ -60,6 +61,7 @@
       --text-tertiary: rgba(255,255,255,0.55);
       --text-quaternary: rgba(255,255,255,0.35);
       --surface: #161617;               /* surface-black — night mode */
+      --sheet: #1e1e20;
       --surface-2: #1d1d1f;
       --card: rgba(255,255,255,0.04);   /* overlay-glass-light */
       --card-border: rgba(255,255,255,0.10);
@@ -91,6 +93,7 @@
     --text-tertiary: rgba(255,255,255,0.55);
     --text-quaternary: rgba(255,255,255,0.35);
     --surface: #161617;
+    --sheet: #1e1e20;
     --surface-2: #1d1d1f;
     --card: rgba(255,255,255,0.04);
     --card-border: rgba(255,255,255,0.10);
@@ -249,11 +252,23 @@
 
   /* Training */
   .ttl { display: grid; grid-template-columns: 1fr; gap: 8px; align-items: start; margin-top: 20px; }
-  .ttl input[type="date"] { justify-self: start; }
+  .ttl .datefield { justify-self: start; }
   .ttl .date-row { justify-self: stretch; }
   .ttl .title { font-size: 26px; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; background: transparent; padding: 0; border-radius: 12px; resize: none; overflow: hidden; min-height: 32px; }
   .ttl .title:focus { background: var(--field); padding: 8px 12px; }
-  .ttl input[type="date"] { width: auto; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); padding: 8px 12px; }
+  .datefield { appearance: none; border: 0; cursor: pointer; width: auto; min-height: 36px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); padding: 8px 12px; border-radius: 12px; background: var(--field); font-family: inherit; transition: opacity 300ms ease; }
+  .datefield:hover { opacity: 0.85; }
+  .datefield:disabled { cursor: default; opacity: 1; }
+  .sheet-bg { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; }
+  .sheet-bg[hidden] { display: none; }
+  .sheet { width: 100%; max-width: 520px; background: var(--sheet); border-top: 1px solid var(--card-border); border-radius: 20px 20px 0 0; padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -8px 30px rgba(0,0,0,0.30); animation: sheetUp 260ms cubic-bezier(0.22, 1, 0.36, 1); }
+  @keyframes sheetUp { from { transform: translateY(24px); opacity: 0.6; } to { transform: translateY(0); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin-bottom: 2px; }
+  .sheet-title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .sheet .cal button.sel .dn { box-shadow: inset 0 0 0 2px var(--brand); }
+  .sheet .cal button.today.sel .dn { box-shadow: none; }
+  .dp-hint { margin: 10px 2px 0; }
 
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
   .block.ss-1 { --ss: var(--group-1); }
@@ -740,7 +755,7 @@
   <section id="vTraining" hidden>
     <div class="ttl">
       <textarea id="tTitle" class="title" rows="1" placeholder="Focus, e.g. Bench-press and back" autocapitalize="sentences"></textarea>
-      <div class="date-row"><input id="tDate" type="date"><a class="msg-pill small client-only" id="trainerBtn2" href="#" hidden><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
+      <div class="date-row"><button class="datefield" id="tDate" type="button"></button><a class="msg-pill small client-only" id="trainerBtn2" href="#" hidden><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
       <button class="tpl-pill trainer-only" id="fromTpl" type="button" hidden><span id="fromTplText"></span><span class="chev">&rsaquo;</span></button>
     </div>
     <div class="rows" id="rows"></div>
@@ -764,6 +779,15 @@
   </section>
 </main>
 
+<div class="sheet-bg" id="datePick" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Pick a day">
+    <div class="sheet-head"><span class="sheet-title" id="dpTitle"></span><button class="btn quiet" id="dpCancel" type="button">Cancel</button></div>
+    <div class="cal-head"><button class="mnav" id="dpPrev" type="button" aria-label="Previous month">&lsaquo;</button><span class="cal-title" id="dpMonth"></span><span class="cal-right"><button class="cal-today" id="dpToday" type="button" hidden>Today</button><button class="mnav" id="dpNext" type="button" aria-label="Next month">&rsaquo;</button></span></div>
+    <div class="cal-wd" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+    <div class="cal" id="dpGrid"></div>
+    <p class="muted dp-hint">Tap a day. A bar under a day means a workout is already there.</p>
+  </div>
+</div>
 <div id="draftBar" hidden><span class="draft-text">Unsaved changes</span><button class="btn quiet" id="draftDiscard" type="button">Discard</button><button class="btn sm" id="draftSave" type="button">Save template</button></div>
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
@@ -1705,6 +1729,39 @@
   function templateMeta(t) { return t.template || { program: MY_TEMPLATES, phase: 0, stage: 0, n: 0, phaseName: "" }; }
   function templateTitle(t) { const m = templateMeta(t); return (m.n ? "Workout " + m.n : "") + (t.title ? (m.n ? " \u00b7 " : "") + t.title : "") || "Template"; }
   function templatePath(T) { const m = templateMeta(T); return [m.program, m.phase ? "Phase " + m.phase : "", m.stage ? "Stage " + m.stage : "", m.n ? "Workout " + m.n : (T.title || "")].filter(Boolean).join(" \u00b7 "); }
+  // ---- our own day picker (Monday first, the client's workouts marked), used wherever a date is chosen
+  let dp = null;                          // { clientId, title, selected, month, onPick }
+  const fmtDay = (s) => { if (!s) return ""; const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d, 12).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", ...(y !== new Date().getFullYear() ? { year: "numeric" } : {}) }); };
+  function openDatePicker(opts) {
+    const selected = opts.selected || today();
+    dp = { clientId: opts.clientId, title: opts.title || "Pick a day", selected, month: selected.slice(0, 7), onPick: opts.onPick };
+    renderDatePicker(); $("datePick").hidden = false;
+  }
+  function closeDatePicker() { $("datePick").hidden = true; dp = null; }
+  function renderDatePicker() {
+    if (!dp) return;
+    const list = clientTrainings(dp.clientId);
+    const [y, m] = dp.month.split("-").map(Number); const first = new Date(y, m - 1, 1, 12);
+    $("dpTitle").textContent = dp.title; $("dpMonth").textContent = monthTitle(dp.month); $("dpToday").hidden = dp.month === today().slice(0, 7);
+    const grid = $("dpGrid"); grid.replaceChildren();
+    const lead = (first.getDay() + 6) % 7;
+    for (let i = 0; i < lead; i++) { const b = document.createElement("button"); b.type = "button"; b.className = "out"; b.tabIndex = -1; b.setAttribute("aria-hidden", "true"); grid.appendChild(b); }
+    const days = new Date(y, m, 0).getDate();
+    for (let day = 1; day <= days; day++) {
+      const d = new Date(y, m - 1, day, 12); const key = localIso(d);
+      const dayWorkouts = list.filter((t) => effDate(t) === key && !(t.skippedAt && !t.completedAt));
+      const b = document.createElement("button"); b.type = "button";
+      if (key === today()) { b.classList.add("today"); b.setAttribute("aria-current", "date"); }
+      if (key === dp.selected) b.classList.add("sel");
+      if (dayWorkouts.length) b.classList.add(dayWorkouts.every((t) => t.completedAt) ? "finished" : "planned");
+      const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(day);
+      const dot = document.createElement("span"); dot.className = "dot";
+      b.append(dn, dot);
+      b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + (dayWorkouts.length ? ", " + dayWorkouts.length + (dayWorkouts.length === 1 ? " workout" : " workouts") : ""));
+      b.addEventListener("click", () => { const pick = dp && dp.onPick; closeDatePicker(); if (pick) pick(key); });
+      grid.appendChild(b);
+    }
+  }
   function applyTemplate(T, clientId, date) {
     lastUse.template = T.id; lastUse.client = clientId; lsSet("fiala.templates.last", lastUse);
     addTraining(clientId, { ...T, title: T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : ""), fromTemplate: T.id }, date || today());
@@ -1737,7 +1794,7 @@
     const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.textContent) left.append(sec);
     const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = pick ? "Use" : "›"; if (pick) chev.style.color = "var(--brand)";
     b.append(left, chev);
-    b.addEventListener("click", () => { if (pick) { const cid = pickFor; pickFor = null; applyTemplate(t, cid); } else go({ name: "training", id: t.id }); });
+    b.addEventListener("click", () => { if (pick) { const cid = pickFor; const who = clients.get(cid); openDatePicker({ clientId: cid, title: "Add to " + ((who && who.name) || "client"), onPick: (date) => { pickFor = null; applyTemplate(t, cid, date); } }); } else go({ name: "training", id: t.id }); });
     li.appendChild(b); return li;
   }
   function navRow(title, sub, onClick) {
@@ -1897,6 +1954,18 @@
     calOpen = !calOpen; lsSet("fiala.cal.open", calOpen); if (calOpen) { calMonth = today().slice(0, 7); calAnchor = calMonth; }
     if (view.name === "client") renderClient();
   });
+  $("dpCancel").addEventListener("click", closeDatePicker);
+  $("datePick").addEventListener("click", (e) => { if (e.target === $("datePick")) closeDatePicker(); });
+  $("dpPrev").addEventListener("click", () => { if (dp) { dp.month = monthAdd(dp.month, -1); renderDatePicker(); } });
+  $("dpNext").addEventListener("click", () => { if (dp) { dp.month = monthAdd(dp.month, 1); renderDatePicker(); } });
+  $("dpToday").addEventListener("click", () => { if (dp) { dp.month = today().slice(0, 7); renderDatePicker(); } });
+  { const g = $("dpGrid"); let sx = null, sy = null, swiped = false;
+    g.addEventListener("pointerdown", (e) => { if (!e.isPrimary) return; sx = e.clientX; sy = e.clientY; swiped = false; });
+    g.addEventListener("pointerup", (e) => { if (sx === null || !dp) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = sy = null; if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) { swiped = true; dp.month = monthAdd(dp.month, dx < 0 ? 1 : -1); renderDatePicker(); setTimeout(() => { swiped = false; }, 0); } });
+    g.addEventListener("pointercancel", () => { sx = sy = null; });
+    g.addEventListener("click", (e) => { if (swiped) { e.stopPropagation(); e.preventDefault(); } }, true);
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && dp) closeDatePicker(); });
   $("calToday").addEventListener("click", () => { calMonth = today().slice(0, 7); calAnchor = calMonth; if (view.name === "client") renderClient(); });
   {
     const view_ = $("calView"), track = $("calTrack");
@@ -2094,8 +2163,8 @@
 
   function renderTraining(t) {
     if (document.activeElement !== $("tTitle")) { $("tTitle").value = t.title || ""; requestAnimationFrame(() => { const el = $("tTitle"); el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); }
-    if (document.activeElement !== $("tDate")) $("tDate").value = t.date || "";
-    $("tTitle").readOnly = clientMode; $("tDate").readOnly = clientMode;
+    $("tDate").textContent = fmtDay(t.date || today());
+    $("tTitle").readOnly = clientMode; $("tDate").disabled = clientMode;
     const isTpl = isTemplateClient(t.clientId);
     if (isTpl) draftFor(t);
     paintTrainerMsg(clients.get(t.clientId));
@@ -2478,7 +2547,10 @@
 
   $("tTitle").addEventListener("input", (e) => { const t = trainings.get(view.id); if (!t) return; t.title = e.target.value.replace(/\n/g, " "); e.target.style.height = "auto"; e.target.style.height = Math.max(32, e.target.scrollHeight) + "px"; scheduleSave("trainings", t.id); });
   $("tTitle").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
-  $("tDate").addEventListener("change", (e) => { const t = trainings.get(view.id); if (!t) return; t.date = e.target.value || today(); scheduleSave("trainings", t.id); renderedTraining = null; render(); });
+  $("tDate").addEventListener("click", () => {
+    const t = trainings.get(view.id); if (!t || clientMode || isTemplateClient(t.clientId)) return;
+    openDatePicker({ clientId: t.clientId, title: "Move to", selected: t.date || today(), onPick: (date) => { t.date = date; scheduleSave("trainings", t.id); renderedTraining = null; render(); } });
+  });
   $("addRow").addEventListener("click", () => {
     const t = trainings.get(view.id); if (!t) return;
     const r = newRow(nextLabel(t)); t.rows.push(r); scheduleSave("trainings", t.id);
@@ -2503,7 +2575,7 @@
     const t = trainings.get(view.id); if (!t) return;
     const ul = $("usePick"); if (!ul.hidden) { ul.hidden = true; return; }
     const people = peopleList(); if (lastUse.client) { const i = people.findIndex((c) => c.id === lastUse.client); if (i > 0) people.unshift(people.splice(i, 1)[0]); }
-    ul.replaceChildren(...people.map((c) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = c.name || "Unnamed"; b.lastChild.textContent = c.id === lastUse.client ? "last used" : ""; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>'); b.addEventListener("click", () => applyTemplate(t, c.id)); li.appendChild(b); return li; }));
+    ul.replaceChildren(...people.map((c) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = c.name || "Unnamed"; b.lastChild.textContent = c.id === lastUse.client ? "last used" : ""; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>'); b.addEventListener("click", () => openDatePicker({ clientId: c.id, title: "Add to " + (c.name || "client"), onPick: (date) => applyTemplate(t, c.id, date) })); li.appendChild(b); return li; }));
     if (!people.length) { const li = document.createElement("li"); li.className = "empty"; li.style.padding = "12px 16px"; li.textContent = "Add a client first."; ul.appendChild(li); }
     ul.hidden = false;
   });
