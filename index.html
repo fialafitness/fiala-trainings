@@ -547,6 +547,9 @@
   body.client .contact-row.client-only[hidden] { display: none; }
   .date-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   #vTraining.tpl .date-row { display: none; }
+  .view-seg { margin-left: auto; }                       /* trainer: see the workout the way the client will */
+  .view-seg[hidden] { display: none; }
+  .view-seg button { padding: 0 14px; min-height: 32px; font-size: 13px; }
   .msg-pill:active { transform: scale(0.98); }
   .details[hidden] { display: none; }
   .field-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 2px; }
@@ -817,7 +820,7 @@
   <section id="vTraining" hidden>
     <div class="ttl">
       <textarea id="tTitle" class="title" rows="1" placeholder="Focus, e.g. Bench-press and back" autocapitalize="sentences"></textarea>
-      <div class="date-row"><button class="datefield" id="tDate" type="button"></button><a class="msg-pill small client-only" id="trainerBtn2" href="#" hidden><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
+      <div class="date-row"><button class="datefield" id="tDate" type="button"></button><div class="seg view-seg" id="viewSeg" role="radiogroup" aria-label="See it as" hidden><button type="button" role="radio" data-view="coach" class="on">Coach</button><button type="button" role="radio" data-view="client">Client</button></div><a class="msg-pill small client-only" id="trainerBtn2" href="#" hidden><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
       <button class="tpl-pill trainer-only" id="fromTpl" type="button" hidden><span id="fromTplText"></span><span class="chev">&rsaquo;</span></button>
     </div>
     <div class="rows" id="rows"></div>
@@ -1939,6 +1942,8 @@
     if (clientMode && clients.get(myClientId)?.paused) view = { name: "client", id: myClientId };
     if (view.name === "client" && !clients.has(view.id)) view = clientMode ? { name: "client", id: myClientId } : { name: "clients" };
     if (view.name === "training" && !trainings.has(view.id)) view = clientMode ? { name: "client", id: myClientId } : { name: "clients" };
+    if (view.name !== "training") previewClient = false;
+    if (!clientMode) document.body.classList.toggle("client", previewClient && view.name === "training" && !isTemplateClient(trainings.get(view.id).clientId));
     $("vClients").hidden = view.name !== "clients";
     $("vClient").hidden = view.name !== "client";
     $("vTraining").hidden = view.name !== "training";
@@ -2248,13 +2253,15 @@
   function renderTraining(t) {
     if (document.activeElement !== $("tTitle")) { $("tTitle").value = t.title || ""; requestAnimationFrame(() => { const el = $("tTitle"); el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); }
     $("tDate").textContent = fmtDay(t.date || today());
-    $("tTitle").readOnly = clientMode; $("tDate").disabled = clientMode;
+    const asClient = clientMode || previewClient;
+    $("tTitle").readOnly = asClient; $("tDate").disabled = asClient;
     const isTpl = isTemplateClient(t.clientId);
     if (isTpl) draftFor(t);
     paintTrainerMsg(clients.get(t.clientId));
-    const src = !clientMode && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
+    const src = !asClient && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
     $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = templatePath(src);
-    $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || clientMode; if (!isTpl) $("usePick").hidden = true;
+    $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || clientMode;
+    $("viewSeg").hidden = clientMode || isTpl; for (const b of $("viewSeg").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.view === "client") === previewClient); if (!isTpl) $("usePick").hidden = true;
     $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
     paintFinish(t);
     const rowsEl = $("rows");
@@ -2272,7 +2279,7 @@
       groups[groups.length - 1].rows.push(r);
     });
     let numbered = 0;
-    const currentKey = clientMode && !isTpl ? (groups.find((g) => !g.rows.every((r) => r.done)) || {}).key : null;   // client: the first card not yet finished is the one open
+    const currentKey = asClient && !isTpl ? (groups.find((g) => !g.rows.every((r) => r.done)) || {}).key : null;   // client: the first card not yet finished is the one open
     groups.forEach((g) => {
       const block = document.createElement("div");
       const warm = g.key === "w";
@@ -2310,7 +2317,7 @@
           }
           chips.appendChild(b);
         }
-        if (!clientMode) {                                   // the trainer changes the number of sets right here, for every exercise in the card
+        if (!asClient) {                                     // the trainer changes the number of sets right here, for every exercise in the card
           const setCount = (n) => {
             n = clamp(n, 1, 20); if (n === total) return;
             for (const r of g.rows) {
@@ -2486,6 +2493,7 @@
   const setSel = new Map();               // "<training>/<group>" -> set the client is looking at (0-based)
   const openBlocks = new Set();           // finished cards the user opened with "Show sets"
   const peekBlocks = new Set();   // client: exercises still to come that were tapped open to have a look
+  let previewClient = false;       // trainer: showing the workout as the client sees it (display only; saving stays the trainer's)
   function rowEl(t, r, group) {
     const el = document.createElement("div"); el.className = "row"; el.dataset.id = r.id;
     el.innerHTML = `
@@ -2511,14 +2519,15 @@
     const nonNum = (w) => !!w && !/^[\d.,\s]*$/.test(String(w));
     q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(46, n.scrollHeight) + "px"; };
-    const layoutIcons = () => { const n = (q(".vid-btn").hidden ? 0 : 1) + (clientMode ? 0 : 1) + (q(".alt-btn").hidden ? 0 : 1); q(".name").style.paddingRight = (n ? 10 + n * 38 : 16) + "px"; growName(); };   // the name wraps before the icons
+    const asClient = clientMode || previewClient;        // what to show; what to save still follows clientMode
+    const layoutIcons = () => { const n = (q(".vid-btn").hidden ? 0 : 1) + (asClient ? 0 : 1) + (q(".alt-btn").hidden ? 0 : 1); q(".name").style.paddingRight = (n ? 10 + n * 38 : 16) + "px"; growName(); };   // the name wraps before the icons
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
     const markNamed = () => { if (clientMode) return; if (!trainerNamed.has(t.id)) trainerNamed.set(t.id, new Set()); trainerNamed.get(t.id).add(r.id); };
     const exwrap = q(".top .exwrap"), altBtn = q(".alt-btn"), altMenu = q(".alt-menu");
     let altMode = "list";
     const altList = () => (r.alts || []).filter(Boolean);
-    const paintAltBtn = () => { const n = altList().length; const show = !clientMode || n > 0; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };
+    const paintAltBtn = () => { const n = altList().length; const show = !asClient || n > 0; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };
     const outside = (e) => { if (!exwrap.contains(e.target)) closeAlt(); };
     const closeAlt = () => { altMenu.hidden = true; altMenu.replaceChildren(); altMode = "list"; document.removeEventListener("pointerdown", outside, true); if (closeOpenAlt === closeAlt) closeOpenAlt = null; };
     function swapTo(a) {
@@ -2542,9 +2551,9 @@
       altMode = "list"; altMenu.replaceChildren();
       const alts = altList().filter((a) => a !== r.name);
       if (String(r.name || "").trim()) { const c = mk("div", "cur"); c.appendChild(mk("span", "ck", "\u2713")); c.appendChild(mk("span", null, r.name)); altMenu.appendChild(c); }
-      for (const a of alts) altMenu.appendChild(menuItem(a, "", () => { closeAlt(); swapTo(a); }, clientMode ? null : () => removeAlt(a)));
-      if (!clientMode && alts.length < 2) altMenu.appendChild(menuItem("+ Add alternative", "add", paintAltAdd));
-      if (!clientMode) { const d = menuItem("Remove exercise", "remove", () => { closeAlt(); t.rows = t.rows.filter((x) => x.id !== r.id); save(); renderedTraining = null; render(); }); d.classList.add("last"); altMenu.appendChild(d); }
+      for (const a of alts) altMenu.appendChild(menuItem(a, "", () => { closeAlt(); swapTo(a); }, asClient ? null : () => removeAlt(a)));
+      if (!asClient && alts.length < 2) altMenu.appendChild(menuItem("+ Add alternative", "add", paintAltAdd));
+      if (!asClient) { const d = menuItem("Remove exercise", "remove", () => { closeAlt(); t.rows = t.rows.filter((x) => x.id !== r.id); save(); renderedTraining = null; render(); }); d.classList.add("last"); altMenu.appendChild(d); }
       altMenu.hidden = false;
     }
     function paintAltAdd() {
@@ -2571,7 +2580,7 @@
     });
     paintAltBtn();
     const newName = q(".newname");
-    const paintNewName = () => { const n = String(r.name || "").trim(); const near = !knownName(n) && n ? nearName(n) : null; newName.hidden = clientMode || !n || knownName(n); newName.firstElementChild.textContent = near ? "Did you mean “" + near + "”? · Or" : "New exercise"; };
+    const paintNewName = () => { const n = String(r.name || "").trim(); const near = !knownName(n) && n ? nearName(n) : null; newName.hidden = asClient || !n || knownName(n); newName.firstElementChild.textContent = near ? "Did you mean “" + near + "”? · Or" : "New exercise"; };
     q(".addname").addEventListener("click", async () => {
       const b = q(".addname"); b.disabled = true; b.textContent = "Adding\u2026";
       const ok = await addCustomName(r.name); b.disabled = false; b.textContent = "Add to database";
@@ -2584,7 +2593,7 @@
     const paintVideo = () => {
       const id = videoFor(r.name); const pl = q(".player");
       if (id !== videoId) { videoId = id; pl.replaceChildren(); pl.hidden = true; vidRow.hidden = true; vidBtn.classList.remove("open"); }
-      vidBtn.hidden = clientMode && !id;                                  // the trainer always has it: with no video it opens the link box
+      vidBtn.hidden = asClient && !id;                                  // the trainer always has it: with no video it opens the link box
       vidBtn.classList.toggle("has", !!id); vidBtn.title = id ? "Watch video" : "Add video"; vidBtn.setAttribute("aria-label", vidBtn.title);
       q(".vid-remove").hidden = !customVideos.has(loose(r.name));
       layoutIcons();
@@ -2608,7 +2617,7 @@
     });
     vidBtn.addEventListener("click", () => {
       closeAlt();
-      if (!videoId) { if (!clientMode) openVidForm(); return; }
+      if (!videoId) { if (!asClient) openVidForm(); return; }
       const pl = q(".player");
       if (!pl.hidden) { pl.replaceChildren(); pl.hidden = true; vidRow.hidden = true; vidBtn.classList.remove("open"); vidBtn.title = "Watch video"; vidBtn.setAttribute("aria-pressed", "false"); return; }
       const f = document.createElement("iframe");
@@ -2626,13 +2635,13 @@
     q(".reps").value = r.reps || ""; q(".tempo").value = r.tempo || ""; q(".rest").value = r.rest || "";
 
     const save = () => scheduleSave("trainings", t.id);
-    if (clientMode) { for (const s of [".label", ".name", ".reps", ".tempo", ".rest"]) q(s).readOnly = true; for (const s of [".reps", ".tempo", ".rest"]) { const el = q(s); if (!el.value) el.value = el.placeholder; } }   // the trainer's grey defaults read as filled in for the client
-    const bind = (sel, field, transform) => { if (clientMode) return; q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); }); };
-    if (!clientMode) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
+    if (asClient) { for (const s of [".label", ".name", ".reps", ".tempo", ".rest"]) q(s).readOnly = true; for (const s of [".reps", ".tempo", ".rest"]) { const el = q(s); if (!el.value) el.value = el.placeholder; } }   // the trainer's grey defaults read as filled in for the client
+    const bind = (sel, field, transform) => { if (asClient) return; q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); }); };
+    if (!asClient) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
     bind(".reps", "reps"); bind(".tempo", "tempo", (v) => { setTimeout(paintTempo, 0); return v; });
     bind(".rest", "rest");
-    wireChip(q(".reps"), { readOnly: clientMode, suffix: repsWord }); const fitRest = wireChip(q(".rest"), { readOnly: clientMode });
-    if (!clientMode) q(".rest").addEventListener("blur", (e) => { const v = e.target.value.trim(); if (/^\d+([.,]\d+)?$/.test(v)) { r.rest = v + " sec"; e.target.value = r.rest; fitRest(); save(); } });
+    wireChip(q(".reps"), { readOnly: asClient, suffix: repsWord }); const fitRest = wireChip(q(".rest"), { readOnly: asClient });
+    if (!asClient) q(".rest").addEventListener("blur", (e) => { const v = e.target.value.trim(); if (/^\d+([.,]\d+)?$/.test(v)) { r.rest = v + " sec"; e.target.value = r.rest; fitRest(); save(); } });
     const numpick = q(".numpick");
     function showNumbers() {
       let max = 0;
@@ -2648,7 +2657,7 @@
       }));
       numpick.hidden = false;
     }
-    if (!clientMode) {
+    if (!asClient) {
       let labelAtFocus = "";
       q(".label").addEventListener("focus", (e) => { labelAtFocus = e.target.value; showNumbers(); });
       q(".label").addEventListener("blur", () => { numpick.hidden = true; if (q(".label").value !== labelAtFocus) { renderedTraining = null; render(); } });
@@ -2664,7 +2673,7 @@
       const word = !m && /[a-wyz]/i.test(raw) && !/^normal$/i.test(raw) ? raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase() : "";   // "Controlled", "Slow" … (not a half-typed code)
       tempoTiles.replaceChildren();
       const normal = !m && !word;
-      q(".tempo-wrap").hidden = clientMode && normal;                       // Normal (or blank) is nothing to show a client
+      q(".tempo-wrap").hidden = asClient && normal;                       // Normal (or blank) is nothing to show a client
       const show = document.activeElement !== tempoInp;                    // one cell: the card stands in for the box, except while the trainer is typing
       tempoTiles.hidden = !show; tempoInp.hidden = show;
       if (!show) return;
@@ -2678,7 +2687,7 @@
         tile(m[4], "Top pause"));
     };
     paintTempo();
-    if (!clientMode) {
+    if (!asClient) {
       tempoTiles.setAttribute("role", "button"); tempoTiles.tabIndex = 0; tempoTiles.setAttribute("aria-label", "Tempo, tap to change");
       const editTempo = () => { tempoTiles.hidden = true; tempoInp.hidden = false; tempoInp.focus(); try { tempoInp.setSelectionRange(tempoInp.value.length, tempoInp.value.length); } catch (_) {} };
       tempoTiles.addEventListener("click", editTempo);
@@ -2753,6 +2762,7 @@
   }
 
   // ---------- events ----------
+  $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; renderedTraining = null; render(); });
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
   $("cNameField").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.name = e.target.value; $("cName").value = c.name; scheduleSave("clients", c.id); });
   $("cNotes").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.notes = e.target.value; scheduleSave("clients", c.id); });
