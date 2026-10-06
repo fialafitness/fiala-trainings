@@ -355,8 +355,8 @@
   .sugg button:hover, .sugg button:focus, .alt-menu button:hover, .alt-menu button:focus { background: var(--field); outline: none; }
   /* the end of the name field holds the small things: video, note, alternatives */
   .ex-icons { position: absolute; right: 4px; top: 1px; height: 44px; display: flex; align-items: center; }
-  .ex-icons svg { width: 20px; height: 20px; }
-  .ex-icons button { appearance: none; border: 0; background: none; padding: 0; margin: 0; width: 36px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; transition: opacity 300ms ease; }
+  .ex-icons svg { width: 22px; height: 22px; }
+  .ex-icons button { appearance: none; border: 0; background: none; padding: 0; margin: 0; width: 38px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; transition: opacity 300ms ease; }
   .ex-icons button[hidden] { display: none; }
   .ex-icons button:hover { opacity: 0.7; }
   .ex-icons .vid-btn.has, .ex-icons .note-btn.has { color: var(--brand); }
@@ -2499,7 +2499,7 @@
     const nonNum = (w) => !!w && !/^[\d.,\s]*$/.test(String(w));
     q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(46, n.scrollHeight) + "px"; };
-    const layoutIcons = () => { const n = (q(".vid-btn").hidden ? 0 : 1) + (clientMode ? 0 : 1) + (q(".alt-btn").hidden ? 0 : 1); q(".name").style.paddingRight = (n ? 10 + n * 36 : 16) + "px"; growName(); };   // the name wraps before the icons
+    const layoutIcons = () => { const n = (q(".vid-btn").hidden ? 0 : 1) + (clientMode ? 0 : 1) + (q(".alt-btn").hidden ? 0 : 1); q(".name").style.paddingRight = (n ? 10 + n * 38 : 16) + "px"; growName(); };   // the name wraps before the icons
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
     const markNamed = () => { if (clientMode) return; if (!trainerNamed.has(t.id)) trainerNamed.set(t.id, new Set()); trainerNamed.get(t.id).add(r.id); };
