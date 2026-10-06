@@ -342,9 +342,9 @@
   .done-btn:hover { opacity: 0.85; }
   .block.done .done-btn { background: var(--done-fill); border-color: var(--done-line); color: var(--done-ink); }
   .block.done .group-cap b { color: var(--done); }
-  .row .top input.label { text-align: center; font-weight: 500; padding: 0 8px; height: 100%; min-height: 46px; }
+  .row .top input.label { text-align: center; font-weight: 500; padding: 0 8px; height: 100%; min-height: 44px; }
   .row .top .exwrap { position: relative; }
-  .row .top .name { font-weight: 500; resize: none; overflow: hidden; min-height: 46px; padding: 11px 16px; line-height: 22px; display: block; }
+  .row .top .name { font-weight: 500; resize: none; overflow: hidden; min-height: 44px; padding: 10px 16px; line-height: 22px; display: block; }
   .row .x {
     appearance: none; border: 0; background: none; color: var(--text-tertiary); cursor: pointer;
     width: 40px; height: 44px; font-size: 20px; line-height: 1; border-radius: var(--r-chip); transition: opacity 300ms ease;
@@ -361,9 +361,9 @@
   }
   .sugg button:hover, .sugg button:focus, .alt-menu button:hover, .alt-menu button:focus { background: var(--field); outline: none; }
   /* the end of the name field holds the small things: video, note, alternatives */
-  .ex-icons { position: absolute; right: 4px; top: 1px; height: 44px; display: flex; align-items: center; }
+  .ex-icons { position: absolute; right: 4px; top: 1px; height: 42px; display: flex; align-items: center; }
   .ex-icons svg { width: 22px; height: 22px; }
-  .ex-icons button { appearance: none; border: 0; background: none; padding: 0; margin: 0; width: 38px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; transition: opacity 300ms ease; }
+  .ex-icons button { appearance: none; border: 0; background: none; padding: 0; margin: 0; width: 38px; height: 42px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; transition: opacity 300ms ease; }
   .ex-icons button[hidden] { display: none; }
   .ex-icons button:hover { opacity: 0.7; }
   .ex-icons .vid-btn.has, .ex-icons .note-btn.has { color: var(--brand); }
@@ -403,7 +403,7 @@
   .block.done:not(.open) .row .player { display: none; }
   /* reps and rest: two chips under the name that read as phrases ("8–10 reps", "60 sec transition"); the trainer types inside them */
   .specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
-  .chip { position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 40px; padding: 8px 10px; overflow: hidden; background: var(--field); border: 1px solid transparent; border-radius: var(--r-field); font-size: 16px; line-height: 1.3; cursor: text; transition: border-color 150ms ease, background-color 150ms ease; }
+  .chip { position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 44px; padding: 10px 10px; overflow: hidden; background: var(--field); border: 1px solid transparent; border-radius: var(--r-field); font-size: 16px; line-height: 1.3; cursor: text; transition: border-color 150ms ease, background-color 150ms ease; }
   .chip:focus-within { border-color: var(--brand); background: var(--surface); }
   .chip .val { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* the words are real text; nothing is measured */
   .chip .val.ph { color: var(--placeholder); }
@@ -422,7 +422,7 @@
   body:not(.client) .tempo-tiles { cursor: pointer; }               /* the trainer taps the card itself to change it */
   .tempo-wrap input[hidden] { display: none; }
   .tempo-tiles[hidden] { display: none; }
-  .tempo-tiles .word { grid-column: 1 / -1; min-height: 24px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 500; }
+  .tempo-tiles .word { grid-column: 1 / -1; min-height: 28px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 500; }
   .tempo-tiles .word.normal { color: var(--text-secondary); }        /* the default, nothing set: quieter */
   .tempo-tiles > div + div { border-left: 1px solid var(--card-border); }
   body.client .tempo-wrap input { display: none; }   /* the client sees only the card */
@@ -438,7 +438,7 @@
   .tracker .tr-label { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin-left: 2px; }
   .tracker .tr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .tracker .tr-steps { display: flex; gap: 6px; }
-  .tracker button { appearance: none; cursor: pointer; width: 44px; height: 36px; padding: 0; border-radius: var(--r-chip); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-secondary); font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 2px; transition: opacity 300ms ease; }
+  .tracker button { appearance: none; cursor: pointer; width: 44px; height: 44px; padding: 0; border-radius: var(--r-chip); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-secondary); font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 2px; transition: opacity 300ms ease; }
   .tracker button.done { border-color: var(--done-line); color: var(--done); background: var(--done-tint); }
   .tracker button.done::after { content: "\2713"; font-size: 11px; }
   .block { --ss-ink: #fff; }
@@ -451,7 +451,6 @@
   .tracker .step:disabled { opacity: 0.35; cursor: default; }
   .setlog { margin-top: 14px; }
   .setlog .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .setlog .chip { min-height: 46px; }
   .setlog .chip .val.ph { color: var(--text-secondary); }                 /* last time's or the set before's numbers, until they are written down */
   .row .weights { display: none; }                  /* the per-set grid is replaced by logging one set at a time */
   .card-foot .done-btn { display: none; }
@@ -634,7 +633,7 @@
     .row .top { grid-template-columns: 52px 1fr; }
     .row .sum { margin-left: 60px; }
     .specs { gap: 6px; }
-    .specs .chip { padding: 8px 6px; }
+    .specs .chip { padding: 10px 6px; }
     .tempo-tiles span { font-size: 9px; }
     .tempo-tiles { padding: 8px 0; }
   }
@@ -2518,7 +2517,7 @@
     let wText = false;                       // a row that already holds BW / 60 sec opens on the full keyboard (the bar above the keyboard switches it)
     const nonNum = (w) => !!w && !/^[\d.,\s]*$/.test(String(w));
     q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
-    const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(46, n.scrollHeight) + "px"; };
+    const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; };
     const asClient = clientMode || previewClient;        // what to show; what to save still follows clientMode
     const layoutIcons = () => { const n = (q(".vid-btn").hidden ? 0 : 1) + (asClient ? 0 : 1) + (q(".alt-btn").hidden ? 0 : 1); q(".name").style.paddingRight = (n ? 10 + n * 38 : 16) + "px"; growName(); };   // the name wraps before the icons
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
