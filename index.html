@@ -433,6 +433,7 @@
   body.client .block:not(.ahead) .row .sum .si + .si::before { content: "\2022"; margin: 0 9px; color: var(--text-tertiary); font-size: 0.85em; }   /* reps • rest: a real bullet, room to breathe, wraps cleanly when long */
   body.client .block:not(.ahead) .row .sum .si.sum-sets + .si::before { content: none; }
   body.client .block.ahead .row .sum { margin-top: 2px; font-size: 13px; color: var(--text-tertiary); }
+  body.client .block.ahead .row .sum .sum-rest { display: none; }                          /* folded: sets and reps are enough */
   body.client .block.done:not(.open) .row .sum { display: none; }
   body.client .tempo-wrap { margin: 4px 0 0 var(--numw); }
   body.client .tempo-tiles.words { display: flex; flex-wrap: wrap; align-items: center; background: none; border-radius: 0; padding: 0; font-size: 15px; color: var(--text-secondary); }
@@ -2315,7 +2316,7 @@
     groups.forEach((g) => {
       const block = document.createElement("div");
       const warm = g.key === "w";
-      block.className = "block " + (warm ? "ss-w" : (numbered++ % 2 ? "ss-2" : "ss-1")); block.dataset.key = g.key;
+      block.className = "block " + (numbered++ % 2 ? "ss-2" : "ss-1"); block.dataset.key = g.key;   // the warm-up takes its turn in blue / gold like any card
       if (g.rows.length >= 2 || warm) {
         const cap = document.createElement("div"); cap.className = "group-cap";
         const kind = g.rows.length < 2 ? "" : g.rows.length === 2 ? "Superset" : g.rows.length === 3 ? "Tri-set" : "Giant set";
@@ -2817,7 +2818,8 @@
     }
     const chipText = (c) => c.querySelector(".val").textContent + (c.querySelector(".suffix").hidden ? "" : " " + c.querySelector(".suffix").textContent);
     const nSets = setsOf(r), sumEl = q(".sum"); sumEl.replaceChildren();   // "3 sets · 8–10 reps · 60 sec transition" (the open card hides the sets part: the chips above say it)
-    for (const [text, cls] of [[nSets + (nSets === 1 ? " set" : " sets"), "si sum-sets"], ...[...el.querySelectorAll(".specs .chip")].map(chipText).filter(Boolean).map((x) => [x, "si"])]) { const e = document.createElement("span"); e.className = cls; e.textContent = text; sumEl.appendChild(e); }
+    const chips = [...el.querySelectorAll(".specs .chip")];
+    for (const [text, cls] of [[nSets + (nSets === 1 ? " set" : " sets"), "si sum-sets"], [chipText(chips[0]), "si sum-reps"], [chipText(chips[1]), "si sum-rest"]]) { if (!text) continue; const e = document.createElement("span"); e.className = cls; e.textContent = text; sumEl.appendChild(e); }
     return el;
   }
 
