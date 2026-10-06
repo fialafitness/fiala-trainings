@@ -294,9 +294,7 @@
   .row { padding: 16px; }
   .group .row + .row { border-top: 1px solid var(--card-border); }
   .group .row .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
-  .row .top { display: grid; grid-template-columns: 56px 1fr 40px; gap: 8px; align-items: stretch; }
-  .row .top .x { align-self: center; }
-  body.client .row .top { grid-template-columns: 56px 1fr; }
+  .row .top { display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: stretch; }
   .block.done { --ss: var(--done-line); }
   .block.done .group { background: var(--done-tint); }
   .block.done:not(.open) .group { cursor: pointer; }
@@ -344,7 +342,8 @@
   .sugg button:hover, .sugg button:focus, .alt-menu button:hover, .alt-menu button:focus { background: var(--field); outline: none; }
   /* the end of the name field holds the small things: video, note, alternatives */
   .ex-icons { position: absolute; right: 4px; top: 1px; height: 44px; display: flex; align-items: center; }
-  .ex-icons button { appearance: none; border: 0; background: none; padding: 0; margin: 0; width: 28px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; transition: opacity 300ms ease; }
+  .ex-icons svg { width: 20px; height: 20px; }
+  .ex-icons button { appearance: none; border: 0; background: none; padding: 0; margin: 0; width: 36px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; transition: opacity 300ms ease; }
   .ex-icons button[hidden] { display: none; }
   .ex-icons button:hover { opacity: 0.7; }
   .ex-icons .vid-btn.has, .ex-icons .note-btn.has { color: var(--brand); }
@@ -354,8 +353,7 @@
   .alt-btn.some { color: var(--ss); }
   .block.done:not(.open) .ex-icons { display: none; }
   .block.done:not(.open) .row .top .name { padding-right: 16px !important; }
-  .alt-menu { left: -64px; right: -48px; }
-  body.client .alt-menu { right: 0; }
+  .alt-menu { left: -64px; right: 0; }
   .alt-menu { max-height: none; overflow: hidden; }
   .alt-menu .cur { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 16px; letter-spacing: -0.01em; color: var(--text-secondary); }
   .alt-menu .cur .ck { color: var(--brand); font-weight: 600; }
@@ -363,6 +361,8 @@
   .alt-menu .item .pick { flex: 1; width: auto; }
   .alt-menu .item .rm { width: 44px; flex: none; text-align: center; padding: 12px 0; color: var(--text-tertiary); font-size: 18px; line-height: 1; }
   .alt-menu .add { color: var(--brand); }
+  .alt-menu .item.last { border-top: 1px solid var(--card-border); margin-top: 4px; padding-top: 4px; }
+  .alt-menu .remove { color: var(--danger, #c0392b); }
   .alt-menu .alt-input { width: calc(100% - 24px); margin: 8px 12px 6px; }
   .alt-menu .alt-hits:empty { display: none; }
   .alt-menu .alt-hits { max-height: 32vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
@@ -605,9 +605,8 @@
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   @media (max-width: 400px) {
-    .alt-menu { left: -60px; right: -44px; }
-    .row .top { grid-template-columns: 52px 1fr 36px; }
-    body.client .row .top { grid-template-columns: 52px 1fr; }
+    .alt-menu { left: -60px; }
+    .row .top { grid-template-columns: 52px 1fr; }
     .specs { gap: 6px; }
     .specs .chip { padding: 8px 6px; }
     .tempo-tiles span { font-size: 9px; }
@@ -2450,8 +2449,7 @@
     el.innerHTML = `
       <div class="top">
         <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
-        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="alt-btn" type="button" hidden aria-label="Alternatives" title="Alternatives"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
-        <button class="x" type="button" aria-label="Remove exercise">\u00d7</button>
+        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="alt-btn" type="button" hidden aria-label="Options" title="Options"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
       </div>
       <div class="newname trainer-only" hidden><span>New exercise</span><button class="btn quiet link addname" type="button">Add to database</button></div>
       <div class="player" hidden></div>
@@ -2470,7 +2468,7 @@
     const nonNum = (w) => !!w && !/^[\d.,\s]*$/.test(String(w));
     q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(46, n.scrollHeight) + "px"; };
-    const layoutIcons = () => { const n = (q(".vid-btn").hidden ? 0 : 1) + (clientMode ? 0 : 1) + (q(".alt-btn").hidden ? 0 : 1); q(".name").style.paddingRight = (n ? 10 + n * 28 : 16) + "px"; growName(); };   // the name wraps before the icons
+    const layoutIcons = () => { const n = (q(".vid-btn").hidden ? 0 : 1) + (clientMode ? 0 : 1) + (q(".alt-btn").hidden ? 0 : 1); q(".name").style.paddingRight = (n ? 10 + n * 36 : 16) + "px"; growName(); };   // the name wraps before the icons
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
     const markNamed = () => { if (clientMode) return; if (!trainerNamed.has(t.id)) trainerNamed.set(t.id, new Set()); trainerNamed.get(t.id).add(r.id); };
@@ -2503,6 +2501,7 @@
       if (String(r.name || "").trim()) { const c = mk("div", "cur"); c.appendChild(mk("span", "ck", "\u2713")); c.appendChild(mk("span", null, r.name)); altMenu.appendChild(c); }
       for (const a of alts) altMenu.appendChild(menuItem(a, "", () => { closeAlt(); swapTo(a); }, clientMode ? null : () => removeAlt(a)));
       if (!clientMode && alts.length < 2) altMenu.appendChild(menuItem("+ Add alternative", "add", paintAltAdd));
+      if (!clientMode) { const d = menuItem("Remove exercise", "remove", () => { closeAlt(); t.rows = t.rows.filter((x) => x.id !== r.id); save(); renderedTraining = null; render(); }); d.classList.add("last"); altMenu.appendChild(d); }
       altMenu.hidden = false;
     }
     function paintAltAdd() {
@@ -2613,7 +2612,6 @@
       q(".name").addEventListener("input", (e) => { closeAlt(); r.name = e.target.value.replace(/\n/g, " "); markNamed(); dropAltNamed(); growName(); save(); suggest(e.target.value); renderWeights(); paintVideo(); paintNewName(); });
       q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
       q(".name").addEventListener("focus", (e) => { closeAlt(); suggest(e.target.value); });
-      q(".x").addEventListener("click", () => { t.rows = t.rows.filter((x) => x.id !== r.id); save(); renderedTraining = null; render(); });
     }
 
     const tempoTiles = q(".tempo-tiles"), tempoInp = q(".tempo");
