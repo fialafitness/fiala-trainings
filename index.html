@@ -306,7 +306,11 @@
   .block.done:not(.open) .card-foot { padding: 6px 16px 10px; }
   .block.done:not(.open) .done-btn { display: none; }   /* collapsed: only Show weights, centred; both return when opened */
   .card-sum { display: none; padding: 0 16px 12px; font-size: 13px; color: var(--text-tertiary); }   /* "Finished · 3 of 3 sets" */
-  .block.done:not(.open) .card-sum { display: block; }
+  .block.done:not(.open) .card-sum { display: block; padding-right: 56px; }
+  .block.done .group { position: relative; }
+  .block.done:not(.open) .card-foot { display: none; }                  /* folded: the status line is the bottom of the card */
+  .block.done:not(.open) .card-chev { bottom: 2px; }                    /* chevron down, beside "Finished · 3 of 3 sets" */
+  .block.done.open .card-chev { top: 10px; }                            /* chevron up, in the corner of the Sets line */
   /* client: the card being done is open; the ones still to come fold to a line each, a tap opens one for a look */
   .row .sum { display: none; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--text-tertiary); margin: 4px 0 0 64px; letter-spacing: 0; }
   .row .sum .si + .si::before { content: "\00b7"; margin: 0 6px; }
@@ -2408,9 +2412,16 @@
         const sets = (n) => n + " of " + total + (total === 1 ? " set" : " sets");
         sum.textContent = early && did > 0 ? "Finished early \u00b7 " + sets(did) : early ? "Finished" : "Finished \u00b7 " + sets(total);
       };
-      const paintFold = () => { const done = block.classList.contains("done"); fold.hidden = !done; fold.textContent = block.classList.contains("open") ? "Hide sets" : "Show sets"; };
+      const chev = document.createElement("button"); chev.type = "button"; chev.className = "card-chev";   // finished card: a chevron on the status line (folded) or in the corner (open)
+      const paintFold = () => {
+        const done = block.classList.contains("done"), open = block.classList.contains("open");
+        fold.hidden = true; chev.hidden = !done;
+        chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (open ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4") + '"/></svg>';
+        chev.setAttribute("aria-label", open ? "Hide sets" : "Show sets");
+      };
       const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey)) block.classList.add("open"); if (!all) openBlocks.delete(selKey); btn.textContent = all ? "\u2713 Done" : "Done"; paintSum(all); paintFold(); };
-      fold.addEventListener("click", () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey); else openBlocks.delete(selKey); paintFold(); });
+      const toggleOpen = () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey); else openBlocks.delete(selKey); paintFold(); };
+      fold.addEventListener("click", toggleOpen); chev.addEventListener("click", toggleOpen);
       card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.target.closest("button")) { block.classList.add("open"); openBlocks.add(selKey); paintFold(); } });
       btn.addEventListener("click", () => {
         const next = !g.rows.every((r) => r.done);
@@ -2419,7 +2430,7 @@
         for (const r of g.rows) { r.done = next; track.get(t.id).add(r.id); }
         scheduleSave("trainings", t.id); paint();
       });
-      paint(); foot.append(btn, fold); card.append(sum, foot);
+      paint(); foot.append(btn, fold); card.append(sum, foot, chev);
       if (currentKey != null && g.key !== currentKey && !g.rows.every((r) => r.done)) {   // client: still to come
         const peeking = peekBlocks.has(selKey);
         const chev = document.createElement("button"); chev.type = "button"; chev.className = "card-chev"; chev.setAttribute("aria-label", peeking ? "Fold" : "Open");
