@@ -27,6 +27,9 @@
     --text-secondary: #6e6e73;          /* Steel */
     --text-tertiary: #86868b;           /* Medium Gray */
     --text-quaternary: #d2d2d7;         /* Silver — decorative only */
+    --r-card: 26px;                     /* cards, grouped lists, sheets — iOS inset-grouped corner */
+    --r-field: 14px;                    /* inputs, fields, menus */
+    --r-chip: 12px;                     /* small chips and day cells */
     --surface: #ffffff;                 /* surface-primary */
     --sheet: #ffffff;                   /* bottom sheet (the day picker) */
     --surface-2: #f5f5f7;               /* surface-secondary — forms */
@@ -165,12 +168,12 @@
   h1, .pagetitle { font-size: 26px; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; margin: 20px 0 16px; text-wrap: balance; }
   h2 { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 32px 0 12px; }
   .muted { color: var(--text-tertiary); font-size: 13px; letter-spacing: 0; }
-  .notice { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px 16px; font-size: 13px; color: var(--text-secondary); margin: 12px 0 0; }
+  .notice { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--r-field); padding: 12px 16px; font-size: 13px; color: var(--text-secondary); margin: 12px 0 0; }
 
   input, textarea, button, select { font: inherit; color: inherit; letter-spacing: inherit; }
   input, textarea {
     width: 100%; min-width: 0;
-    background: var(--field); border: 1px solid transparent; border-radius: 12px;
+    background: var(--field); border: 1px solid transparent; border-radius: var(--r-field);
     padding: 12px 16px; font-size: 16px; line-height: 1.3; outline: none;
     transition: border-color 150ms ease, background-color 150ms ease;
   }
@@ -179,7 +182,7 @@
   input:focus, textarea:focus { border-color: var(--brand); background: var(--surface); }
   textarea { resize: vertical; min-height: 96px; line-height: 1.55; }
   input[type="date"] { -webkit-appearance: none; appearance: none; }
-  .pagetitle { width: 100%; background: transparent; padding: 0; border-radius: 12px; }
+  .pagetitle { width: 100%; background: transparent; padding: 0; border-radius: var(--r-field); }
   .pagetitle:focus { background: var(--field); padding: 8px 12px; }
 
   .btn {
@@ -194,7 +197,7 @@
   .btn.danger { background: transparent; color: var(--danger); padding: 0 8px; }
   .btn.quiet:hover, .btn.danger:hover { opacity: 0.7; }
   .btn:disabled { opacity: 0.5; cursor: default; }
-  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible, .datefield:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   .cal button:focus-visible { outline-offset: -2px; }
 
   .stack { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
@@ -207,7 +210,7 @@
   .addrow { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
   .addrow input { flex: 1; }
 
-  .list { background: var(--card); border: 1px solid var(--card-border); border-radius: 20px; overflow: hidden; margin: 0; padding: 0; list-style: none; }
+  .list { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--r-card); overflow: hidden; margin: 0; padding: 0; list-style: none; }
   .list li + li { border-top: 1px solid var(--card-border); }
   .list button {
     appearance: none; border: 0; background: none; width: 100%; text-align: left; cursor: pointer;
@@ -221,7 +224,7 @@
   /* Templates card: the one place the brand purple carries a surface */
   .tplcard {
     appearance: none; border: 0; cursor: pointer; width: 100%; text-align: left; margin-top: 16px;
-    display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 20px 22px; border-radius: 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 20px 22px; border-radius: var(--r-card);
     background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%); color: #fff;
     box-shadow: 0 10px 28px rgba(73, 70, 100, 0.28), inset 0 1px 0 rgba(255,255,255,0.14); transition: opacity 300ms ease, transform 300ms ease;
   }
@@ -237,7 +240,7 @@
   .listbar .btn.quiet { color: var(--text-tertiary); font-size: 15px; min-height: 44px; }
   .list .rowline { min-height: 56px; padding: 6px 12px 6px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 17px; letter-spacing: -0.01em; color: var(--text-primary); }
   .list li.drag-row { touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; transition: transform 160ms ease; background: var(--card); }
-  .list li.drag-row.dragging { transition: none; position: relative; z-index: 2; cursor: grabbing; background: var(--surface); box-shadow: 0 10px 28px rgba(0,0,0,0.28); border-radius: 14px; }
+  .list li.drag-row.dragging { transition: none; position: relative; z-index: 2; cursor: grabbing; background: var(--surface); box-shadow: 0 10px 28px rgba(0,0,0,0.28); border-radius: var(--r-field); }
   #exSearch { -webkit-appearance: none; }
   .list .exdetail { padding: 4px 20px 16px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--card-border); background: var(--surface); }
   .list .exdetail[hidden] { display: none; }
@@ -254,14 +257,15 @@
   .ttl { display: grid; grid-template-columns: 1fr; gap: 8px; align-items: start; margin-top: 20px; }
   .ttl .datefield { justify-self: start; }
   .ttl .date-row { justify-self: stretch; }
-  .ttl .title { font-size: 26px; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; background: transparent; padding: 0; border-radius: 12px; resize: none; overflow: hidden; min-height: 32px; }
+  .ttl .title { font-size: 26px; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; background: transparent; padding: 0; border-radius: var(--r-field); resize: none; overflow: hidden; min-height: 32px; }
   .ttl .title:focus { background: var(--field); padding: 8px 12px; }
-  .datefield { appearance: none; border: 0; cursor: pointer; width: auto; min-height: 36px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); padding: 8px 12px; border-radius: 12px; background: var(--field); font-family: inherit; transition: opacity 300ms ease; }
+  .datefield { appearance: none; border: 0; cursor: pointer; width: auto; min-height: 36px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); padding: 8px 12px; border-radius: var(--r-field); background: var(--field); font-family: inherit; transition: opacity 300ms ease; }
   .datefield:hover { opacity: 0.85; }
   .datefield:disabled { cursor: default; opacity: 1; }
-  .sheet-bg { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; }
+  .sheet-bg { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; touch-action: none; overscroll-behavior: contain; }
   .sheet-bg[hidden] { display: none; }
-  .sheet { width: 100%; max-width: 520px; background: var(--sheet); border-top: 1px solid var(--card-border); border-radius: 20px 20px 0 0; padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -8px 30px rgba(0,0,0,0.30); animation: sheetUp 260ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .sheet { width: 100%; max-width: 520px; background: var(--sheet); border-top: 1px solid var(--card-border); border-radius: var(--r-card) var(--r-card) 0 0; padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -8px 30px rgba(0,0,0,0.30); animation: sheetUp 260ms cubic-bezier(0.22, 1, 0.36, 1); max-height: calc(100% - env(safe-area-inset-top, 0px) - 24px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+  #dpGrid { touch-action: pan-y; }
   @keyframes sheetUp { from { transform: translateY(28px); } to { transform: translateY(0); } }
   @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
   .sheet-head { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin-bottom: 2px; }
@@ -275,17 +279,17 @@
   .block.ss-w { --ss: var(--group-w); }     /* warm-up: neutral, off-black on light / off-white on dark */
   .group-cap { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; margin: 0 0 8px 2px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); }
   .group-cap b { font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--ss); }
-  .group { background: var(--card); border: 1.5px solid var(--ss); border-radius: 20px; }
+  .group { background: var(--card); border: 1.5px solid var(--ss); border-radius: var(--r-card); }
   .labwrap { position: relative; }
   .setwrap { position: relative; }
   .numpick.sets-pick button.cur { box-shadow: inset 0 0 0 1.5px var(--brand); }
   .numpick {
     position: absolute; left: 0; top: calc(100% + 4px); z-index: 4;
     display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; width: max-content; max-width: 276px;
-    background: var(--surface); border: 1px solid var(--card-border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    background: var(--surface); border: 1px solid var(--card-border); border-radius: var(--r-chip); box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   }
   .numpick button {
-    appearance: none; border: 0; cursor: pointer; width: 44px; height: 44px; border-radius: 12px;
+    appearance: none; border: 0; cursor: pointer; width: 44px; height: 44px; border-radius: var(--r-chip);
     background: var(--field); color: var(--text-primary); font-size: 16px; font-weight: 500;
   }
   .numpick button.cur { box-shadow: inset 0 0 0 1.5px var(--ss); }
@@ -327,12 +331,12 @@
   .row .top .name { font-weight: 500; resize: none; overflow: hidden; min-height: 46px; padding: 11px 16px; line-height: 22px; display: block; }
   .row .x {
     appearance: none; border: 0; background: none; color: var(--text-tertiary); cursor: pointer;
-    width: 40px; height: 44px; font-size: 20px; line-height: 1; border-radius: 12px; transition: opacity 300ms ease;
+    width: 40px; height: 44px; font-size: 20px; line-height: 1; border-radius: var(--r-chip); transition: opacity 300ms ease;
   }
   .row .x:hover { opacity: 0.7; }
   .sugg, .alt-menu {
     position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 4;
-    background: var(--surface); border: 1px solid var(--card-border); border-radius: 12px;
+    background: var(--surface); border: 1px solid var(--card-border); border-radius: var(--r-field);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12); overflow-x: hidden; overflow-y: auto; max-height: 40vh; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 4px 0; margin: 0; list-style: none;
   }
   .sugg button, .alt-menu button {
@@ -373,7 +377,7 @@
   .vid-form { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
   .vid-actions { display: flex; gap: 8px; align-items: center; }
   .block.done:not(.open) .row .vidrow, .block.done:not(.open) .row .vid-form { display: none; }
-  .player { margin-top: 8px; aspect-ratio: 16 / 9; width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
+  .player { margin-top: 8px; aspect-ratio: 16 / 9; width: 100%; border-radius: var(--r-field); overflow: hidden; background: #000; }
   .player iframe { width: 100%; height: 100%; border: 0; display: block; }
   .block.done:not(.open) .row .vid, .block.done:not(.open) .row .player { display: none; }
   .specs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
@@ -382,7 +386,7 @@
   .specs input { padding: 12px 8px; text-align: center; }
   .tempo-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
   .tempo-tiles[hidden] { display: none; }
-  .tempo-tiles > div { background: var(--field); border-radius: 12px; min-height: 38px; padding: 5px 4px 4px; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+  .tempo-tiles > div { background: var(--field); border-radius: var(--r-chip); min-height: 38px; padding: 5px 4px 4px; text-align: center; display: flex; flex-direction: column; justify-content: center; }
   .tempo-tiles b { font-size: 15px; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
   .tempo-tiles span { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; letter-spacing: 0; line-height: 1; }
   body.client .specs.tempo-below { grid-template-columns: repeat(3, 1fr); }
@@ -415,7 +419,7 @@
   .note-field { font-style: italic; min-height: 44px; resize: none; overflow: hidden; }
   .add { margin-top: 16px; }
   .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-  .week button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: 12px; padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-secondary); transition: background-color 150ms ease; }
+  .week button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: var(--r-chip); padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-secondary); transition: background-color 150ms ease; }
   .week button:hover { background: var(--field); }
   .week .wd { font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
   .week .dn { font-size: 17px; font-weight: 500; color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
@@ -449,7 +453,7 @@
   .cal-wd { display: grid; grid-template-columns: repeat(7, 1fr); margin: 6px 0 2px; }
   .cal-wd span { text-align: center; font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
   .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; }
-  .cal button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: 12px; padding: 6px 0 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .cal button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: var(--r-chip); padding: 6px 0 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
   .cal button:hover { background: var(--field); }
   .cal button.out { visibility: hidden; }
   .cal .dn { font-size: 15px; font-weight: 500; color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
@@ -490,7 +494,7 @@
   .field-row input[type="date"] { width: auto; font-size: 15px; padding: 8px 12px; color: var(--text-primary); }
   .kicker { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 6px 1px; }
   .kicker[hidden] { display: none; }
-  .paused-card { display: flex; flex-direction: column; gap: 6px; margin-top: 24px; padding: 18px 20px; background: var(--card); border: 1px solid var(--card-border); border-radius: 20px; }
+  .paused-card { display: flex; flex-direction: column; gap: 6px; margin-top: 24px; padding: 18px 20px; background: var(--card); border: 1px solid var(--card-border); border-radius: var(--r-card); }
   .paused-card b { font-weight: 500; font-size: 17px; letter-spacing: -0.01em; }
   .paused-card span { font-size: 15px; color: var(--text-secondary); line-height: 1.45; }
   .paused-card[hidden] { display: none; }
@@ -506,7 +510,7 @@
   #vClient.tpl #notesWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot { display: none; }
   .use { margin-top: 24px; }
-  .tpl-pill { justify-self: start; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; border: 0; cursor: pointer; padding: 8px 12px; border-radius: 12px;
+  .tpl-pill { justify-self: start; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; border: 0; cursor: pointer; padding: 8px 12px; border-radius: var(--r-field);
     font-size: 13px; font-weight: 500; letter-spacing: 0; color: #fff; background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
     box-shadow: 0 4px 12px rgba(73, 70, 100, 0.22), inset 0 1px 0 rgba(255,255,255,0.12); transition: opacity 300ms ease; }
   .tpl-pill:hover { opacity: 0.92; }
@@ -559,6 +563,7 @@
   .settings-list .seg button:hover { opacity: 1; }
   .settings-list .seg button.on { background: var(--btn-bg); color: var(--btn-fg); }
   body.client .settings-list .trainer-only + li { border-top: 0; }
+  @supports (corner-shape: squircle) { .list, .group, .tplcard, .paused-card, .sheet, .btn, .pill, .msg-pill, .seg, input, textarea, .datefield, .numpick, .sugg, .alt-menu { corner-shape: squircle; } }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   @media (max-width: 400px) {
@@ -1611,6 +1616,7 @@
     if (templateDraft && templateDraft.dirty && view.name === "training" && view.id === templateDraft.id) {
       pendingGo = next; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
     }
+    if (!(next.name === "client" && isTemplateClient(next.id))) pickFor = null;
     reordering = false; view = next; lsSet("fiala.trainings.view", view); render(); window.scrollTo(0, 0); }
   $("back").addEventListener("click", () => {
     if (settingsOpen) {
@@ -1736,10 +1742,16 @@
   const fmtDay = (s) => { if (!s) return ""; const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d, 12).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", ...(y !== new Date().getFullYear() ? { year: "numeric" } : {}) }); };
   function openDatePicker(opts) {
     const selected = opts.selected || today();
-    dp = { clientId: opts.clientId, title: opts.title || "Pick a day", selected, month: selected.slice(0, 7), onPick: opts.onPick };
+    dp = { clientId: opts.clientId, title: opts.title || "Pick a day", selected, month: selected.slice(0, 7), onPick: opts.onPick, back: document.activeElement };
     renderDatePicker(); $("datePick").hidden = false;
+    for (const el of document.querySelectorAll("main, header")) el.inert = true;
+    setTimeout(() => { const f = $("dpGrid").querySelector("button.sel") || $("dpCancel"); if (f && dp) f.focus({ preventScroll: true }); }, 0);
   }
-  function closeDatePicker() { $("datePick").hidden = true; dp = null; }
+  function closeDatePicker() {
+    const back = dp && dp.back; $("datePick").hidden = true; dp = null;
+    for (const el of document.querySelectorAll("main, header")) el.inert = false;
+    if (back && typeof back.focus === "function" && document.contains(back)) back.focus({ preventScroll: true });
+  }
   function renderDatePicker() {
     if (!dp) return;
     const list = clientTrainings(dp.clientId);
@@ -1796,7 +1808,7 @@
     const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.textContent) left.append(sec);
     const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = pick ? "Use" : "›"; if (pick) chev.style.color = "var(--brand)";
     b.append(left, chev);
-    b.addEventListener("click", () => { if (pick) { const cid = pickFor; const who = clients.get(cid); openDatePicker({ clientId: cid, title: "Add to " + ((who && who.name) || "client"), onPick: (date) => { pickFor = null; applyTemplate(t, cid, date); } }); } else go({ name: "training", id: t.id }); });
+    b.addEventListener("click", () => { if (pick) { const cid = pickFor; const who = clients.get(cid); openDatePicker({ clientId: cid, title: "Add to " + ((who && who.name) || "client"), onPick: (date) => { pickFor = null; applyTemplate(trainings.get(t.id) || t, cid, date); } }); } else go({ name: "training", id: t.id }); });
     li.appendChild(b); return li;
   }
   function navRow(title, sub, onClick) {
@@ -1868,6 +1880,7 @@
     else if (view.name === "client") { renderedTraining = null; $("backLabel").textContent = isTemplateClient(view.id) && view.phase ? view.program : (isTemplateClient(view.id) && view.program ? "Templates" : "Clients"); renderClient(); }
     else { const t = trainings.get(view.id); $("backLabel").textContent = clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
     paintDraftBar();
+    if (dp) renderDatePicker();
   }
 
   // clients keep the order he sets (c.sort); unsorted ones follow alphabetically
@@ -1963,6 +1976,7 @@
   $("dpToday").addEventListener("click", () => { if (dp) { dp.month = today().slice(0, 7); renderDatePicker(); } });
   { const g = $("dpGrid"); let sx = null, sy = null, swiped = false;
     g.addEventListener("pointerdown", (e) => { if (!e.isPrimary) return; sx = e.clientX; sy = e.clientY; swiped = false; });
+    g.addEventListener("pointermove", (e) => { if (sx === null || !e.isPrimary) return; const dx = e.clientX - sx, dy = e.clientY - sy; if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { try { g.setPointerCapture(e.pointerId); } catch {} } });
     g.addEventListener("pointerup", (e) => { if (sx === null || !dp) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = sy = null; if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) { swiped = true; dp.month = monthAdd(dp.month, dx < 0 ? 1 : -1); renderDatePicker(); setTimeout(() => { swiped = false; }, 0); } });
     g.addEventListener("pointercancel", () => { sx = sy = null; });
     g.addEventListener("click", (e) => { if (swiped) { e.stopPropagation(); e.preventDefault(); } }, true);
@@ -2551,7 +2565,8 @@
   $("tTitle").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
   $("tDate").addEventListener("click", () => {
     const t = trainings.get(view.id); if (!t || clientMode || isTemplateClient(t.clientId)) return;
-    openDatePicker({ clientId: t.clientId, title: "Move to", selected: t.date || today(), onPick: (date) => { t.date = date; scheduleSave("trainings", t.id); renderedTraining = null; render(); } });
+    const id = t.id;
+    openDatePicker({ clientId: t.clientId, title: "Move to", selected: t.date || today(), onPick: (date) => { const cur = trainings.get(id); if (!cur) return; cur.date = date; scheduleSave("trainings", id); renderedTraining = null; render(); } });
   });
   $("addRow").addEventListener("click", () => {
     const t = trainings.get(view.id); if (!t) return;
@@ -2577,7 +2592,7 @@
     const t = trainings.get(view.id); if (!t) return;
     const ul = $("usePick"); if (!ul.hidden) { ul.hidden = true; return; }
     const people = peopleList(); if (lastUse.client) { const i = people.findIndex((c) => c.id === lastUse.client); if (i > 0) people.unshift(people.splice(i, 1)[0]); }
-    ul.replaceChildren(...people.map((c) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = c.name || "Unnamed"; b.lastChild.textContent = c.id === lastUse.client ? "last used" : ""; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>'); b.addEventListener("click", () => openDatePicker({ clientId: c.id, title: "Add to " + (c.name || "client"), onPick: (date) => applyTemplate(t, c.id, date) })); li.appendChild(b); return li; }));
+    ul.replaceChildren(...people.map((c) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = c.name || "Unnamed"; b.lastChild.textContent = c.id === lastUse.client ? "last used" : ""; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>'); b.addEventListener("click", () => openDatePicker({ clientId: c.id, title: "Add to " + (c.name || "client"), onPick: (date) => applyTemplate(trainings.get(t.id) || t, c.id, date) })); li.appendChild(b); return li; }));
     if (!people.length) { const li = document.createElement("li"); li.className = "empty"; li.style.padding = "12px 16px"; li.textContent = "Add a client first."; ul.appendChild(li); }
     ul.hidden = false;
   });
