@@ -429,7 +429,7 @@
   body.client .block:not(.ahead) .row .sum .si.sum-sets + .si { margin-left: 0; padding-left: 0; border-left: 0; }
   body.client .block.ahead .row .sum { margin-top: 2px; font-size: 13px; color: var(--text-tertiary); }
   body.client .block.done:not(.open) .row .sum { display: none; }
-  body.client .tempo-tiles { background: none; }                          /* centred, full width, but not a box: only the weight and reps boxes are for filling in */
+  body.client .setlog .chip { border-color: var(--card-border); }         /* a hairline, like an iOS text field: these two are for filling in */
   body.client .ex-icons .vid-btn { width: 36px; height: 36px; margin-right: 2px; border-radius: 50%; background: rgba(111, 107, 153, 0.14); color: var(--brand); opacity: 1; }   /* a soft round play, like a TV app */
   body.client .ex-icons .vid-btn svg { width: 16px; height: 16px; }
   body.client .ex-icons .vid-btn .i-play { margin-left: 2px; }
@@ -2772,8 +2772,8 @@
       rp.addEventListener("input", (e) => { while (r.repsDone.length <= sel) r.repsDone.push(""); r.repsDone[sel] = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); e.target.value = r.repsDone[sel]; mark(); });
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.focus(); } });
       rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.blur(); } });
-      wireChip(w, { empty: "Weight", suffix: (v) => weightWord(v, unit), show: showWeight });   // after the handlers above, so the words follow the tidied value
-      wireChip(rp, { empty: "Reps", suffix: repsWord });
+      wireChip(w, { empty: "Log weight", suffix: (v) => weightWord(v, unit), show: showWeight });   // after the handlers above, so the words follow the tidied value
+      wireChip(rp, { empty: "Log reps", suffix: repsWord });
     }
     const chipText = (c) => c.querySelector(".val").textContent + (c.querySelector(".suffix").hidden ? "" : " " + c.querySelector(".suffix").textContent);
     const nSets = setsOf(r), sumEl = q(".sum"); sumEl.replaceChildren();   // "3 sets · 8–10 reps · 60 sec transition" (the open card hides the sets part: the chips above say it)
