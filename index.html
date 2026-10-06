@@ -295,7 +295,7 @@
   .group .row + .row { border-top: 1px solid var(--card-border); }
   .group .row .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
   .row .top { display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: stretch; }
-  .block.done { --ss: var(--done-line); }
+  .block.done { --ss: var(--done-line); --ss-ink: var(--done-ink); }   /* finished: every badge, warm-up included, uses the done ink */
   .block.done .group { background: var(--done-tint); }
   .block.done:not(.open) .group { cursor: pointer; }
   .block.done:not(.open) .row { padding: 10px 16px 4px; }
@@ -309,8 +309,8 @@
   .block.done:not(.open) .card-sum { display: block; padding-right: 56px; }
   .block.done .group { position: relative; }
   .block.done:not(.open) .card-foot { display: none; }                  /* folded: the status line is the bottom of the card */
-  .block.done:not(.open) .card-chev { bottom: 2px; }                    /* chevron down, beside "Finished · 3 of 3 sets" */
-  .block.done.open .card-chev { bottom: 8px; }                          /* chevron up, bottom corner of the open card (the Sets line keeps − and +) */
+  .block.done:not(.open) .card-chev { bottom: -2px; }                   /* chevron down, beside "Finished · 3 of 3 sets" */
+  .block.done.open .card-chev { bottom: 6px; }                          /* chevron up, bottom corner of the open card (the Sets line keeps − and +) */
   /* client: the card being done is open; the ones still to come fold to a line each, a tap opens one for a look */
   .row .sum { display: none; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--text-tertiary); margin: 4px 0 0 64px; letter-spacing: 0; }
   .row .sum .si + .si::before { content: "\00b7"; margin: 0 6px; }
@@ -325,11 +325,13 @@
   body.client .block.peek .row .top .name, body.client .block.peek .row .top input.label { pointer-events: none; }
   /* the chevron in the corner: down on a folded card, up on one opened for a look */
   body.client .block.ahead .group, body.client .block.peek .group { position: relative; }
-  .card-chev { position: absolute; right: 10px; appearance: none; border: 0; background: none; padding: 0; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; }
+  .card-chev { position: absolute; right: 6px; z-index: 2; appearance: none; border: 0; background: none; padding: 0; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }   /* a thumb-sized target around a small glyph */
   .card-chev svg { width: 22px; height: 22px; }
-  body.client .block.ahead .card-chev { top: 14px; }
+  .card-chev .i-up, .card-chev.up .i-down { display: none; }
+  .card-chev.up .i-up { display: block; }
+  body.client .block.ahead .card-chev { top: 10px; }
   body.client .block.ahead .row .top .name { padding-right: 48px !important; }
-  body.client .block.peek .card-chev { top: 10px; }
+  body.client .block.peek .card-chev { top: 6px; }
   .card-foot { padding: 4px 16px 16px; display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
   .fold-btn {
     appearance: none; cursor: pointer; border-radius: 50px; min-height: 40px; padding: 10px 24px;
@@ -2413,16 +2415,16 @@
         sum.textContent = early && did > 0 ? "Finished early \u00b7 " + sets(did) : early ? "Finished" : "Finished \u00b7 " + sets(total);
       };
       const chev = document.createElement("button"); chev.type = "button"; chev.className = "card-chev";   // finished card: a chevron on the status line (folded) or in the corner (open)
+      chev.innerHTML = '<svg class="i-down" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg><svg class="i-up" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg>';
       const paintFold = () => {
         const done = block.classList.contains("done"), open = block.classList.contains("open");
-        fold.hidden = true; chev.hidden = !done;
-        chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (open ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4") + '"/></svg>';
+        fold.hidden = true; chev.hidden = !done; chev.classList.toggle("up", open);
         chev.setAttribute("aria-label", open ? "Hide sets" : "Show sets");
       };
       const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey)) block.classList.add("open"); if (!all) openBlocks.delete(selKey); btn.textContent = all ? "\u2713 Done" : "Done"; paintSum(all); paintFold(); };
       const toggleOpen = () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey); else openBlocks.delete(selKey); paintFold(); };
       fold.addEventListener("click", toggleOpen); chev.addEventListener("click", toggleOpen);
-      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.target.closest("button")) { block.classList.add("open"); openBlocks.add(selKey); paintFold(); } });
+      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.composedPath().some((n) => n.tagName === "BUTTON")) { block.classList.add("open"); openBlocks.add(selKey); paintFold(); } });
       btn.addEventListener("click", () => {
         const next = !g.rows.every((r) => r.done);
         const track = clientMode ? pendingDoneRows : trainerTouched;
