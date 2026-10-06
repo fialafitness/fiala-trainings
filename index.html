@@ -361,6 +361,8 @@
   .ex-icons button:hover { opacity: 0.7; }
   .ex-icons .vid-btn.has, .ex-icons .note-btn.has { color: var(--brand); }
   .ex-icons .vid-btn:not(.has) { opacity: 0.55; }
+  .ex-icons .vid-btn .i-up, .ex-icons .vid-btn.open .i-play { display: none; }   /* while the video is open the play becomes a chevron up: tap to tuck it away */
+  .ex-icons .vid-btn.open .i-up { display: block; }
   .alt-btn { color: var(--text-tertiary); }
   .alt-btn[hidden] { display: none; }
   .alt-btn.some { color: var(--ss); }
@@ -2477,7 +2479,7 @@
     el.innerHTML = `
       <div class="top">
         <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
-        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="alt-btn" type="button" hidden aria-label="Options" title="Options"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
+        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg class="i-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg><svg class="i-up" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="alt-btn" type="button" hidden aria-label="Options" title="Options"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
       </div>
       <div class="sum"></div>
       <div class="newname trainer-only" hidden><span>New exercise</span><button class="btn quiet link addname" type="button">Add to database</button></div>
@@ -2569,7 +2571,7 @@
     const vidBtn = q(".vid-btn"), vidRow = q(".vidrow");
     const paintVideo = () => {
       const id = videoFor(r.name); const pl = q(".player");
-      if (id !== videoId) { videoId = id; pl.replaceChildren(); pl.hidden = true; vidRow.hidden = true; }
+      if (id !== videoId) { videoId = id; pl.replaceChildren(); pl.hidden = true; vidRow.hidden = true; vidBtn.classList.remove("open"); }
       vidBtn.hidden = clientMode && !id;                                  // the trainer always has it: with no video it opens the link box
       vidBtn.classList.toggle("has", !!id); vidBtn.title = id ? "Watch video" : "Add video"; vidBtn.setAttribute("aria-label", vidBtn.title);
       q(".vid-remove").hidden = !customVideos.has(loose(r.name));
@@ -2596,12 +2598,12 @@
       closeAlt();
       if (!videoId) { if (!clientMode) openVidForm(); return; }
       const pl = q(".player");
-      if (!pl.hidden) { pl.replaceChildren(); pl.hidden = true; vidRow.hidden = true; vidBtn.setAttribute("aria-pressed", "false"); return; }
+      if (!pl.hidden) { pl.replaceChildren(); pl.hidden = true; vidRow.hidden = true; vidBtn.classList.remove("open"); vidBtn.title = "Watch video"; vidBtn.setAttribute("aria-pressed", "false"); return; }
       const f = document.createElement("iframe");
       f.src = "https://www.youtube-nocookie.com/embed/" + videoId + "?playsinline=1&rel=0&modestbranding=1";
       f.allow = "accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"; f.setAttribute("allowfullscreen", "");
       f.setAttribute("playsinline", ""); f.title = r.name || "Exercise video"; f.loading = "lazy";
-      pl.replaceChildren(f); pl.hidden = false; vidRow.hidden = false; vidBtn.setAttribute("aria-pressed", "true");   // "Change video" sits under the open player (trainer)
+      pl.replaceChildren(f); pl.hidden = false; vidRow.hidden = false; vidBtn.classList.add("open"); vidBtn.title = "Hide video"; vidBtn.setAttribute("aria-pressed", "true");   // "Change video" sits under the open player (trainer)
     });
     paintVideo();
     if (ALIASES[r.name]) { r.name = ALIASES[r.name]; if (!clientMode) scheduleSave("trainings", t.id); }
