@@ -415,6 +415,20 @@
   .chip .suffix[hidden] { display: none; }
   .chip.filled .suffix { color: inherit; font-weight: 500; }        /* once there is a value the whole phrase reads as one: "20 sec rest" */
   body.client .specs .chip { cursor: default; }
+  /* client: words, not boxes — only the weight and reps they fill in stay boxes */
+  body.client .row .top { grid-template-columns: auto 1fr; gap: 8px; align-items: center; }
+  body.client .row .top input.label, body.client .group .row .top input.label { width: 2em; min-height: 0; height: auto; padding: 0; background: none; border: 0; box-shadow: none; text-align: left; font-size: 17px; font-weight: 600; color: var(--ss); }
+  body.client .row .top .name { background: none; border: 0; padding-left: 0; font-size: 18px; }
+  body.client .block.done:not(.open) .row .top .name, body.client .block.ahead .row .top .name { font-size: 17px; }
+  body.client .specs { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0; margin-top: 2px; }
+  body.client .specs .chip { min-height: 0; padding: 0; background: none; border: 0; border-radius: 0; justify-content: flex-start; overflow: visible; font-size: 16px; }
+  body.client .specs .chip + .chip::before { content: "\00b7"; margin: 0 8px; color: var(--text-tertiary); }
+  body.client .tempo-wrap { margin-top: 10px; }
+  body.client .tempo-tiles { background: none; border-radius: 0; padding: 0; }
+  body.client .tempo-tiles .word { justify-content: flex-start; }
+  body.client .tempo-tiles > div { padding-top: 0; }
+  body.client .row .sum { margin-left: 0; }
+  body.client .block.ahead .row .top .name { padding-right: 48px !important; }
   .tempo-wrap { margin-top: 12px; }
   .tempo-wrap[hidden] { display: none; }
   .tempo-wrap input { width: 100%; text-align: center; padding: 10px 8px; min-height: 40px; font-size: 16px; }
