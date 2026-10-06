@@ -49,7 +49,9 @@
     --done-tint: rgba(60,122,78,0.08);  /* soft fern wash inside a finished card */
     --done-ink: #ffffff;
     --danger: #a63a46;                  /* Crimson deep — red text on light */
-    --btn-bg: #1d1d1f;                  /* Secondary tier: dark button on light */
+    --ink: #1d1d1f;                     /* the badge: black on light, white on dark */
+    --ink-on: #ffffff;
+    --btn-bg: var(--brand-fill);        /* the primary action wears the brand, as Fitness+ wears its green */
     --btn-fg: #ffffff;
     --logo-light: inline-block;
     --logo-dark: none;
@@ -80,8 +82,10 @@
       --done-tint: rgba(191,232,194,0.07);
       --done-ink: #1d1d1f;
       --danger: #e06470;                /* Crimson */
-      --btn-bg: #ffffff;                /* Primary tier: white button on dark */
-      --btn-fg: #1d1d1f;
+      --ink: #ffffff;
+      --ink-on: #1d1d1f;
+      --btn-bg: var(--brand-fill);
+      --btn-fg: #ffffff;
       --logo-light: none;
       --logo-dark: inline-block;
     }
@@ -111,8 +115,10 @@
     --done-tint: rgba(191,232,194,0.07);
     --done-ink: #1d1d1f;
     --danger: #e06470;
-    --btn-bg: #ffffff;
-    --btn-fg: #1d1d1f;
+    --ink: #ffffff;
+    --ink-on: #1d1d1f;
+    --btn-bg: var(--brand-fill);
+    --btn-fg: #ffffff;
     --logo-light: none;
     --logo-dark: inline-block;
   }
@@ -273,7 +279,7 @@
   .sheet .cal button.today.sel .dn { box-shadow: none; }
 
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
-  .block { --ss: var(--btn-bg); --ss-ink: var(--btn-fg); }   /* badges: black on light, white on dark — no card colour */
+  .block { --ss: var(--ink); --ss-ink: var(--ink-on); }   /* badges: black on light, white on dark — no card colour */
     .group-cap { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; margin: 0 0 8px 2px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); }
   .group-cap b { font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-secondary); }
   .group { background: var(--card); border: 1.5px solid var(--card-edge); border-radius: var(--r-card); }   /* a white card on the grouped page; the outline is earned only when finished */
@@ -636,7 +642,7 @@
   .foot-actions .btn { white-space: nowrap; }
   .foot-pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .pill { appearance: none; border: 0; cursor: pointer; border-radius: 50px; min-height: 36px; padding: 0 16px; font-size: 14px; font-weight: 500; letter-spacing: 0; white-space: nowrap;
-    background: var(--field); color: var(--text-primary); transition: opacity 300ms ease, transform 120ms ease; }   /* utility pills: quiet keys, not primaries */
+    background: var(--field); color: var(--brand); transition: opacity 300ms ease, transform 120ms ease; }   /* secondary: a grey pill with the brand as its text */
   .pill:hover { opacity: 0.85; }
   .pill:active { transform: scale(0.98); }
   .pill[hidden] { display: none; }
