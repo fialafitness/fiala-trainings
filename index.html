@@ -223,18 +223,16 @@
   .empty { color: var(--text-tertiary); font-size: 13px; letter-spacing: 0; padding: 16px 0 4px; }
   /* Templates card: the one place the brand purple carries a surface */
   .tplcard {
-    appearance: none; border: 0; cursor: pointer; width: 100%; text-align: left; margin-top: 16px;
-    display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 20px 22px; border-radius: var(--r-card);
-    background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%); color: #fff;
-    box-shadow: 0 10px 28px rgba(73, 70, 100, 0.28), inset 0 1px 0 rgba(255,255,255,0.14); transition: opacity 300ms ease, transform 300ms ease;
+    appearance: none; border: 0; cursor: pointer; margin-top: 16px;
+    display: inline-flex; align-items: center; gap: 6px; padding: 0 14px 0 18px; min-height: 40px; border-radius: 50px;
+    font-size: 15px; font-weight: 500; letter-spacing: 0; color: #fff;
+    background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
+    box-shadow: 0 6px 16px rgba(73, 70, 100, 0.24), inset 0 1px 0 rgba(255,255,255,0.12); transition: opacity 300ms ease, transform 300ms ease;
   }
   .tplcard:hover { opacity: 0.94; }
   .tplcard:active { transform: scale(0.99); }
   .tplcard[hidden] { display: none; }
-  .tc-text { display: flex; flex-direction: column; min-width: 0; }
-  .tc-kicker { font-size: 12px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(255,255,255,0.72); }
-  .tc-title { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; margin-top: 4px; }
-  .tc-chev { font-size: 24px; color: rgba(255,255,255,0.7); flex: none; }
+  .tc-chev { font-size: 18px; line-height: 1; color: rgba(255,255,255,0.72); flex: none; }
   .listbar { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin: 12px 0 4px; }
   .listbar .muted { font-size: 13px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); padding-left: 4px; }
   .listbar .btn.quiet { color: var(--text-tertiary); font-size: 15px; min-height: 44px; }
@@ -510,8 +508,8 @@
   #vClient.tpl #notesWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot { display: none; }
   .use { margin-top: 24px; }
-  .tpl-pill { justify-self: start; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; border: 0; cursor: pointer; padding: 8px 12px; border-radius: var(--r-field);
-    font-size: 13px; font-weight: 500; letter-spacing: 0; color: #fff; background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
+  .tpl-pill { justify-self: start; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 34px; border-radius: 50px;
+    font-size: 14px; font-weight: 500; letter-spacing: 0; color: #fff; background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
     box-shadow: 0 4px 12px rgba(73, 70, 100, 0.22), inset 0 1px 0 rgba(255,255,255,0.12); transition: opacity 300ms ease; }
   .tpl-pill:hover { opacity: 0.92; }
   .tpl-pill[hidden] { display: none; }
@@ -563,7 +561,7 @@
   .settings-list .seg button:hover { opacity: 1; }
   .settings-list .seg button.on { background: var(--btn-bg); color: var(--btn-fg); }
   body.client .settings-list .trainer-only + li { border-top: 0; }
-  @supports (corner-shape: squircle) { .list, .group, .tplcard, .paused-card, .sheet, .btn, .pill, .msg-pill, .seg, input, textarea, .datefield, .numpick, .sugg, .alt-menu { corner-shape: squircle; } }
+  @supports (corner-shape: squircle) { .list, .group, .paused-card, .sheet, .btn, .pill, .msg-pill, .seg, input, textarea, .datefield, .numpick, .sugg, .alt-menu { corner-shape: squircle; } }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   @media (max-width: 400px) {
@@ -693,10 +691,7 @@
       <input id="clientName" placeholder="New client" autocomplete="off" autocapitalize="words">
       <button class="btn sm" type="submit">Add</button>
     </form>
-    <button class="tplcard" id="tplCard" type="button" hidden>
-      <span class="tc-text"><span class="tc-kicker">Workout library</span><span class="tc-title">Templates</span></span>
-      <span class="tc-chev">&rsaquo;</span>
-    </button>
+    <div><button class="tplcard" id="tplCard" type="button" hidden><span>Templates</span><span class="tc-chev">&rsaquo;</span></button></div>
     <div class="listbar" id="clientBar"><span class="muted" id="clientCount"></span><button class="btn quiet" id="reorderBtn" type="button" hidden>Reorder</button></div>
     <ul class="list" id="clientList"></ul>
     <div class="empty" id="clientEmpty" hidden>No clients yet. Add the first one above.</div>
