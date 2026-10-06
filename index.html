@@ -308,8 +308,9 @@
   .card-sum { display: none; padding: 0 16px 12px; font-size: 13px; color: var(--text-tertiary); }   /* "Finished · 3 of 3 sets" */
   .block.done:not(.open) .card-sum { display: block; }
   /* client: the card being done is open; the ones still to come fold to a line each, a tap opens one for a look */
-  .row .sum { display: none; font-size: 13px; color: var(--text-tertiary); margin: 4px 0 0 64px; letter-spacing: 0; }
-  body.client .block.ahead .row .sum { display: block; }
+  .row .sum { display: none; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--text-tertiary); margin: 4px 0 0 64px; letter-spacing: 0; }
+  .row .sum .si + .si::before { content: "\00b7"; margin: 0 6px; }
+  body.client .block.ahead .row .sum { display: flex; }
   body.client .block.ahead .group { cursor: pointer; }
   body.client .block.ahead .row { padding: 10px 16px 6px; }
   body.client .block.ahead .tracker, body.client .block.ahead .row .specs, body.client .block.ahead .row .tempo-wrap, body.client .block.ahead .row .setlog, body.client .block.ahead .row .player, body.client .block.ahead .card-foot, body.client .block.ahead .ex-icons { display: none; }
@@ -421,7 +422,11 @@
   body.client .row .top input.label, body.client .group .row .top input.label { background: var(--ss); color: var(--ss-ink); border-color: transparent; box-shadow: none; font-weight: 600; }
   body.client .row .top .name { background: none; border-color: transparent; padding-left: 0; font-size: 19px; line-height: 24px; font-weight: 600; }
   body.client .row .specs { display: none; }
-  body.client .row .sum { display: block; margin: 0 0 0 var(--numw); font-size: 15px; color: var(--text-secondary); }
+  body.client .row .sum { display: flex; margin: 0 0 0 var(--numw); font-size: 15px; color: var(--text-secondary); }
+  body.client .block:not(.ahead) .row .sum .sum-sets { display: none; }                      /* the chips above say how many sets */
+  body.client .block:not(.ahead) .row .sum .si + .si::before { content: none; }
+  body.client .block:not(.ahead) .row .sum .si + .si { margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--card-border); }   /* reps │ rest */
+  body.client .block:not(.ahead) .row .sum .si.sum-sets + .si { margin-left: 0; padding-left: 0; border-left: 0; }
   body.client .block.ahead .row .sum { margin-top: 2px; font-size: 13px; color: var(--text-tertiary); }
   body.client .block.done:not(.open) .row .sum { display: none; }
   body.client .tempo-wrap { margin: 10px 0 0 var(--numw); }
@@ -456,11 +461,11 @@
   .tracker .tr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .tracker .tr-steps { display: flex; gap: 6px; }
   .tracker button { appearance: none; cursor: pointer; width: 44px; height: 44px; padding: 0; border-radius: var(--r-chip); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-secondary); font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 2px; transition: opacity 300ms ease; }
-  .tracker button.done { border-color: var(--done-line); color: var(--done); background: var(--done-tint); }
+  .tracker button.done { border-color: var(--ss); color: var(--ss); background: transparent; }
   .tracker button.done::after { content: "\2713"; font-size: 11px; }
   .block { --ss-ink: #fff; }
   .block.ss-w { --ss-ink: var(--surface); }
-  .tracker button.cur { background: var(--done-fill); border-color: var(--done-fill); color: var(--done-ink); font-weight: 600; }
+  .tracker button.cur { background: var(--ss); border-color: var(--ss); color: var(--ss-ink); font-weight: 600; }
   .block.done .tracker button.cur { color: var(--done-ink); }
   .tracker button:hover { opacity: 0.85; }
   .tracker button.static { cursor: default; }                           /* a template just shows the count */
@@ -2774,7 +2779,8 @@
       wireChip(rp, { empty: "Reps", suffix: repsWord });
     }
     const chipText = (c) => c.querySelector(".val").textContent + (c.querySelector(".suffix").hidden ? "" : " " + c.querySelector(".suffix").textContent);
-    const nSets = setsOf(r); q(".sum").textContent = [nSets + (nSets === 1 ? " set" : " sets"), ...[...el.querySelectorAll(".specs .chip")].map(chipText)].filter(Boolean).join(" \u00b7 ");   // the folded line: "3 sets · 8–10 reps · 60 sec transition"
+    const nSets = setsOf(r), sumEl = q(".sum"); sumEl.replaceChildren();   // "3 sets · 8–10 reps · 60 sec transition" (the open card hides the sets part: the chips above say it)
+    for (const [text, cls] of [[nSets + (nSets === 1 ? " set" : " sets"), "si sum-sets"], ...[...el.querySelectorAll(".specs .chip")].map(chipText).filter(Boolean).map((x) => [x, "si"])]) { const e = document.createElement("span"); e.className = cls; e.textContent = text; sumEl.appendChild(e); }
     return el;
   }
 
