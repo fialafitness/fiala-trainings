@@ -395,7 +395,7 @@
   .tempo-tiles > div + div { border-left: 1px solid var(--card-border); }
   body.client .tempo-wrap input, body.client .tempo-wrap > label { display: none; }   /* the client sees only the card */
   body.client .tempo-tiles { margin-top: 0; }
-  .tempo-tiles > div { background: none; border-radius: 0; min-height: 38px; padding: 5px 4px 4px; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+  .tempo-tiles > div { background: none; border-radius: 0; min-height: 38px; padding: 5px 4px 4px; text-align: center; display: flex; flex-direction: column; justify-content: flex-start; }
   .tempo-tiles b { font-size: 15px; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
   .tempo-tiles span { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; letter-spacing: 0; line-height: 1; }
   .tempo-tiles .tt-label { display: none; grid-column: 1 / -1; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 4px 0 0 2px; }
@@ -603,7 +603,9 @@
     .row .top { grid-template-columns: 52px 1fr 36px; }
     body.client .row .top { grid-template-columns: 52px 1fr; }
     .specs { gap: 4px; }
-    .specs label { letter-spacing: 0.06em; font-size: 12px; }
+    .specs label, .tempo-wrap > label, .tempo-tiles .tt-label { letter-spacing: 0.06em; font-size: 12px; }
+    .tempo-tiles span { font-size: 9px; }
+    .tempo-tiles { padding: 8px 0; }
     .specs input { padding-left: 4px; padding-right: 4px; font-size: 16px; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -2554,7 +2556,7 @@
     const paintTempo = () => {
       const raw = String(r.tempo || "").trim();
       const m = /^([0-9X])([0-9X])([0-9X])([0-9X])$/i.exec(raw);
-      const word = !m && raw && !/^normal$/i.test(raw) ? raw : "";          // "Controlled", "Slow" …
+      const word = !m && /[a-wyz]/i.test(raw) && !/^normal$/i.test(raw) ? raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase() : "";   // "Controlled", "Slow" … (not a half-typed code)
       tempoTiles.replaceChildren();
       q(".tempo-wrap").hidden = clientMode && !m && !word;                   // Normal (or blank) is nothing to show a client
       tempoTiles.hidden = !m && !word;
