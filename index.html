@@ -424,7 +424,7 @@
   body.client .row .specs { display: none; }
   body.client .row .sum { display: flex; margin: 0 0 0 var(--numw); font-size: 15px; color: var(--text-primary); }   /* reps and rest in the same ink as the name; the tempo line below is lighter */
   body.client .block:not(.ahead) .row .sum .sum-sets { display: none; }                      /* the chips above say how many sets */
-  body.client .block:not(.ahead) .row .sum .si + .si::before { margin: 0 8px; color: var(--text-tertiary); }   /* reps · rest, with room to breathe; wraps cleanly when long */
+  body.client .block:not(.ahead) .row .sum .si + .si::before { content: "\2022"; margin: 0 9px; color: var(--text-tertiary); font-size: 0.85em; }   /* reps • rest: a real bullet, room to breathe, wraps cleanly when long */
   body.client .block:not(.ahead) .row .sum .si.sum-sets + .si::before { content: none; }
   body.client .block.ahead .row .sum { margin-top: 2px; font-size: 13px; color: var(--text-tertiary); }
   body.client .block.done:not(.open) .row .sum { display: none; }
