@@ -305,6 +305,19 @@
   .block.done:not(.open) .row .top input.label { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
   .block.done:not(.open) .card-foot { padding: 6px 16px 10px; }
   .block.done:not(.open) .done-btn { display: none; }   /* collapsed: only Show weights, centred; both return when opened */
+  .card-sum { display: none; padding: 0 16px 12px; font-size: 13px; color: var(--text-tertiary); }   /* "Finished · 3 of 3 sets" */
+  .block.done:not(.open) .card-sum { display: block; }
+  /* client: the card being done is open; the ones still to come fold to a line each, a tap opens one for a look */
+  .row .sum { display: none; font-size: 13px; color: var(--text-tertiary); margin: 4px 0 0 64px; letter-spacing: 0; }
+  body.client .block.ahead .row .sum { display: block; }
+  body.client .block.ahead .group { cursor: pointer; }
+  body.client .block.ahead .row { padding: 10px 16px 6px; }
+  body.client .block.ahead .tracker, body.client .block.ahead .row .specs, body.client .block.ahead .row .tempo-wrap, body.client .block.ahead .row .setlog, body.client .block.ahead .row .player, body.client .block.ahead .card-foot, body.client .block.ahead .ex-icons { display: none; }
+  body.client .block.ahead .row .top { pointer-events: none; }
+  body.client .block.ahead .row .top .name { color: var(--text-secondary); min-height: 36px; padding-right: 16px !important; }
+  body.client .block.ahead .row .top input.label { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
+  body.client .block.peek .row .top { cursor: pointer; }
+  body.client .block.peek .row .top .name, body.client .block.peek .row .top input.label { pointer-events: none; }
   .card-foot { padding: 4px 16px 16px; display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
   .fold-btn {
     appearance: none; cursor: pointer; border-radius: 50px; min-height: 40px; padding: 10px 24px;
@@ -607,6 +620,7 @@
   @media (max-width: 400px) {
     .alt-menu { left: -60px; }
     .row .top { grid-template-columns: 52px 1fr; }
+    .row .sum { margin-left: 60px; }
     .specs { gap: 6px; }
     .specs .chip { padding: 8px 6px; }
     .tempo-tiles span { font-size: 9px; }
@@ -2249,6 +2263,7 @@
       groups[groups.length - 1].rows.push(r);
     });
     let numbered = 0;
+    const currentKey = clientMode && !isTpl ? (groups.find((g) => !g.rows.every((r) => r.done)) || {}).key : null;   // client: the first card not yet finished is the one open
     groups.forEach((g) => {
       const block = document.createElement("div");
       const warm = g.key === "w";
@@ -2345,8 +2360,16 @@
       }
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
       const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold-btn";
+      const sum = document.createElement("div"); sum.className = "card-sum";
+      const paintSum = (all) => {
+        if (!all) { sum.textContent = ""; return; }
+        const did = Math.min(...g.rows.map((r) => clamp(parseInt(r.setsDone, 10) || 0, 0, 20)));
+        const early = g.rows.some((r) => r.done && clamp(parseInt(r.setsDone, 10) || 0, 0, 20) < setsOf(r));
+        const sets = (n) => n + " of " + total + (total === 1 ? " set" : " sets");
+        sum.textContent = early && did > 0 ? "Finished early \u00b7 " + sets(did) : early ? "Finished" : "Finished \u00b7 " + sets(total);
+      };
       const paintFold = () => { const done = block.classList.contains("done"); fold.hidden = !done; fold.textContent = block.classList.contains("open") ? "Hide sets" : "Show sets"; };
-      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey)) block.classList.add("open"); if (!all) openBlocks.delete(selKey); btn.textContent = all ? "\u2713 Done" : "Done"; paintFold(); };
+      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey)) block.classList.add("open"); if (!all) openBlocks.delete(selKey); btn.textContent = all ? "\u2713 Done" : "Done"; paintSum(all); paintFold(); };
       fold.addEventListener("click", () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey); else openBlocks.delete(selKey); paintFold(); });
       card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.target.closest("button")) { block.classList.add("open"); openBlocks.add(selKey); paintFold(); } });
       btn.addEventListener("click", () => {
@@ -2356,7 +2379,11 @@
         for (const r of g.rows) { r.done = next; track.get(t.id).add(r.id); }
         scheduleSave("trainings", t.id); paint();
       });
-      paint(); foot.append(btn, fold); card.appendChild(foot);
+      paint(); foot.append(btn, fold); card.append(sum, foot);
+      if (currentKey != null && g.key !== currentKey && !g.rows.every((r) => r.done)) {   // client: still to come
+        if (peekBlocks.has(selKey)) { block.classList.add("peek"); for (const top of card.querySelectorAll(".row .top")) top.addEventListener("click", (e) => { if (e.target.closest(".ex-icons")) return; peekBlocks.delete(selKey); renderedTraining = null; render(); }); }
+        else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey); renderedTraining = null; render(); }); }
+      } else peekBlocks.delete(selKey);
       block.appendChild(card); rowsEl.appendChild(block);
     });
     $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false;
@@ -2444,6 +2471,7 @@
   const carried = (r, sel) => { const pick = (arr) => { for (let i = sel - 1; i >= 0; i--) { const v = String((arr || [])[i] || "").trim(); if (v) return v; } return ""; }; return { w: pick(r.weights), rp: pick(r.repsDone) }; };
   const setSel = new Map();               // "<training>/<group>" -> set the client is looking at (0-based)
   const openBlocks = new Set();           // finished cards the user opened with "Show sets"
+  const peekBlocks = new Set();   // client: exercises still to come that were tapped open to have a look
   function rowEl(t, r, group) {
     const el = document.createElement("div"); el.className = "row"; el.dataset.id = r.id;
     el.innerHTML = `
@@ -2451,6 +2479,7 @@
         <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
         <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="alt-btn" type="button" hidden aria-label="Options" title="Options"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
       </div>
+      <div class="sum"></div>
       <div class="newname trainer-only" hidden><span>New exercise</span><button class="btn quiet link addname" type="button">Add to database</button></div>
       <div class="player" hidden></div>
       <div class="vidrow trainer-only" hidden><button class="vid-edit" type="button">Change video</button></div>
@@ -2704,6 +2733,8 @@
       wireChip(w, { empty: "Weight", suffix: (v) => weightWord(v, unit), show: showWeight });   // after the handlers above, so the words follow the tidied value
       wireChip(rp, { empty: "Reps", suffix: repsWord });
     }
+    const chipText = (c) => c.querySelector(".val").textContent + (c.querySelector(".suffix").hidden ? "" : " " + c.querySelector(".suffix").textContent);
+    const nSets = setsOf(r); q(".sum").textContent = [nSets + (nSets === 1 ? " set" : " sets"), ...[...el.querySelectorAll(".specs .chip")].map(chipText)].filter(Boolean).join(" \u00b7 ");   // the folded line: "3 sets · 8–10 reps · 60 sec transition"
     return el;
   }
 
