@@ -232,7 +232,8 @@
     appearance: none; border: 0; cursor: pointer; margin-top: 16px; width: 100%;
     display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 32px; min-height: 44px; border-radius: 50px;
     font-size: 17px; font-weight: 400; letter-spacing: 0.01em; color: #fff;
-    background: var(--brand-fill); transition: opacity 300ms ease, transform 300ms ease;   /* flat, like every Apple filled button */
+    background: linear-gradient(135deg, var(--brand-fill) 0%, var(--brand-deep) 100%);
+    box-shadow: 0 6px 16px rgba(73, 70, 100, 0.24), inset 0 1px 0 rgba(255,255,255,0.12); transition: opacity 300ms ease, transform 300ms ease;   /* the brand gradient: his signature, kept */
   }
   .tplcard:hover { opacity: 0.94; }
   .tplcard:active { transform: scale(0.99); }
@@ -569,7 +570,7 @@
   .contact-row { display: flex; align-items: center; margin-top: 12px; }
   .contact-row[hidden] { display: none; }
   .msg-pill { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; min-height: 40px; border-radius: 50px; text-decoration: none; font-size: 15px; font-weight: 500; letter-spacing: 0; color: #fff;
-    background: var(--brand-fill); transition: opacity 300ms ease, transform 300ms ease; }
+    background: linear-gradient(135deg, var(--brand-fill) 0%, var(--brand-deep) 100%); box-shadow: 0 6px 16px rgba(73, 70, 100, 0.24), inset 0 1px 0 rgba(255,255,255,0.12); transition: opacity 300ms ease, transform 300ms ease; }
   .msg-pill:hover { opacity: 0.92; }
   .msg-pill.small { min-height: 34px; padding: 0 14px; font-size: 14px; gap: 6px; }
   .msg-pill[hidden] { display: none; }
@@ -605,7 +606,8 @@
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
   .tpl-pill { justify-self: start; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 34px; border-radius: 50px;
-    font-size: 14px; font-weight: 500; letter-spacing: 0; color: #fff; background: var(--brand-fill); transition: opacity 300ms ease; }
+    font-size: 14px; font-weight: 500; letter-spacing: 0; color: #fff; background: linear-gradient(135deg, var(--brand-fill) 0%, var(--brand-deep) 100%);
+    box-shadow: 0 4px 12px rgba(73, 70, 100, 0.22), inset 0 1px 0 rgba(255,255,255,0.12); transition: opacity 300ms ease; }
   .tpl-pill:hover { opacity: 0.92; }
   .tpl-pill[hidden] { display: none; }
   .tpl-pill span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
