@@ -390,6 +390,7 @@
   .chip.editing .val { display: none; }
   .chip input:focus { background: none; border: 0; }
   .chip .suffix { flex: 0 0 auto; white-space: nowrap; color: var(--text-secondary); }
+  .chip .suffix[hidden] { display: none; }
   .chip.filled .suffix { color: inherit; font-weight: 500; }        /* once there is a value the whole phrase reads as one: "20 sec rest" */
   body.client .specs .chip { cursor: default; }
   .tempo-wrap { margin-top: 12px; }
@@ -2418,14 +2419,26 @@
     const step = () => { const p = Math.min(1, (performance.now() - t0) / dur), e = 1 - Math.pow(1 - p, 3); sc.scrollTop = from + dy * e; if (p < 1) setTimeout(step, 16); };   // a timer, not animation frames: those pause while the page is hidden and the glide would never land
     step();
   }
-  // a chip shows its words as text ("8–10 reps", "30 lb"); the box only appears while someone types in it
-  function wireChip(inp, readOnly) {
-    const chip = inp.closest(".chip"), val = chip.querySelector(".val");
-    const fit = () => { val.textContent = inp.value || inp.placeholder || ""; val.classList.toggle("ph", !inp.value); chip.classList.toggle("filled", !!inp.value); };
+  // the word after a number: "10 reps" but "1 rep", nothing after "30 sec" or "12 each leg"
+  const repsWord = (v) => { const t = String(v || "").trim(); if (/[a-z]/i.test(t)) return ""; return t === "1" ? "rep" : "reps"; };
+  // "30 lbs", "1 lb", "20 kg"; nothing after "Bodyweight", "band" or "60 sec"
+  const weightWord = (v, unit) => { const t = String(v || "").trim(); if (t && !/^[\d.,\s]+$/.test(t)) return ""; const n = parseFloat(t.replace(",", ".")); return unit === "kg" ? "kg" : (n === 1 ? "lb" : "lbs"); };
+  const showWeight = (v) => /^bw$/i.test(String(v || "").trim()) ? "Bodyweight" : v;   // typed or picked as BW, read as a word
+  // a chip shows its words as text ("8–10 reps", "30 lbs"); the box only appears while someone types in it
+  // o.readOnly: text only (client) · o.empty: the grey label when there is nothing at all ("Weight") · o.suffix: text, or fn(shown) → text ("" hides it) · o.show: fn(shown) → what to display
+  function wireChip(inp, o = {}) {
+    const chip = inp.closest(".chip"), val = chip.querySelector(".val"), sfx = chip.querySelector(".suffix");
+    const fit = () => {
+      const raw = inp.value || inp.placeholder || "", nothing = !raw, editing = chip.classList.contains("editing");
+      val.textContent = nothing ? (o.empty || "") : (o.show ? o.show(raw) : raw);
+      val.classList.toggle("ph", !inp.value); chip.classList.toggle("filled", !!inp.value);
+      if (o.suffix !== undefined) sfx.textContent = typeof o.suffix === "function" ? o.suffix(raw) : o.suffix;
+      sfx.hidden = !sfx.textContent || (nothing && !editing);               // "Weight" alone until the box is tapped, then "lbs" waits for the number
+    };
     fit(); inp.addEventListener("input", fit);
-    if (readOnly) { inp.tabIndex = -1; return fit; }
+    if (o.readOnly) { inp.tabIndex = -1; return fit; }
     chip.addEventListener("click", (e) => { if (e.target !== inp) { inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {} } });
-    inp.addEventListener("focus", () => chip.classList.add("editing"));
+    inp.addEventListener("focus", () => { chip.classList.add("editing"); fit(); });
     inp.addEventListener("blur", () => { chip.classList.remove("editing"); fit(); });
     return fit;
   }
@@ -2576,7 +2589,7 @@
     if (!clientMode) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
     bind(".reps", "reps"); bind(".tempo", "tempo", (v) => { setTimeout(paintTempo, 0); return v; });
     bind(".rest", "rest");
-    wireChip(q(".reps"), clientMode); const fitRest = wireChip(q(".rest"), clientMode);
+    wireChip(q(".reps"), { readOnly: clientMode, suffix: repsWord }); const fitRest = wireChip(q(".rest"), { readOnly: clientMode });
     if (!clientMode) q(".rest").addEventListener("blur", (e) => { const v = e.target.value.trim(); if (/^\d+([.,]\d+)?$/.test(v)) { r.rest = v + " sec"; e.target.value = r.rest; fitRest(); save(); } });
     const numpick = q(".numpick");
     function showNumbers() {
@@ -2680,7 +2693,6 @@
       const last = lastWeights(t, r);
       r.weights = r.weights || []; r.repsDone = r.repsDone || [];
       const w = q(".setlog .w"), rp = q(".setlog .rp");
-      q(".setlog .unit").textContent = unit;
       const lw = last && last.weights[sel] ? String(last.weights[sel]) : "", lr = last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "";
       const carry = carried(r, sel);   // the set before (else last time) shows in grey: type over it, or leave it and Complete set writes it down
       w.value = r.weights[sel] || ""; w.placeholder = carry.w || lw || "";           // nothing to suggest: the chip just says "lb"
@@ -2691,7 +2703,8 @@
       rp.addEventListener("input", (e) => { while (r.repsDone.length <= sel) r.repsDone.push(""); r.repsDone[sel] = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); e.target.value = r.repsDone[sel]; mark(); });
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.focus(); } });
       rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.blur(); } });
-      wireChip(w, false); wireChip(rp, false);                            // after the handlers above, so the words follow the tidied value
+      wireChip(w, { empty: "Weight", suffix: (v) => weightWord(v, unit), show: showWeight });   // after the handlers above, so the words follow the tidied value
+      wireChip(rp, { empty: "Reps", suffix: repsWord });
     }
     return el;
   }
