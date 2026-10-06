@@ -462,6 +462,7 @@
   .tracker .tr-steps { display: flex; gap: 6px; }
   .tracker button { appearance: none; cursor: pointer; width: 44px; height: 44px; padding: 0; border-radius: var(--r-chip); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-secondary); font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 2px; transition: opacity 300ms ease; }
   .tracker button.done { border-color: var(--ss); color: var(--ss); background: transparent; }
+  @supports (background: color-mix(in srgb, red 12%, transparent)) { .tracker button.done { background: color-mix(in srgb, var(--ss) 12%, transparent); } }   /* a whisper of the card's colour behind the tick */
   .tracker button.done::after { content: "\2713"; font-size: 11px; }
   .block { --ss-ink: #fff; }
   .block.ss-w { --ss-ink: var(--surface); }
