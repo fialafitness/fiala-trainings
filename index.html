@@ -342,18 +342,18 @@
     padding: 12px 16px; font-size: 16px; letter-spacing: -0.01em; color: var(--text-primary);
   }
   .sugg button:hover, .sugg button:focus, .alt-menu button:hover, .alt-menu button:focus { background: var(--field); outline: none; }
-  .vid { appearance: none; border: 0; background: none; padding: 0 2px; cursor: pointer; display: inline-block; margin: 8px 0 0; font-size: 13px; letter-spacing: 0; color: var(--brand); min-height: 32px; line-height: 32px; transition: opacity 300ms ease; }
-  .vid:hover { opacity: 0.7; }
-  .row .top .exwrap.has-alt .name { padding-right: 44px; }
-  .alt-btn {
-    position: absolute; right: 1px; top: 1px; width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0; margin: 0;
-    background: none; color: var(--text-tertiary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity 300ms ease;
-  }
+  /* the end of the name field holds the small things: video, note, alternatives */
+  .ex-icons { position: absolute; right: 4px; top: 1px; height: 44px; display: flex; align-items: center; }
+  .ex-icons button { appearance: none; border: 0; background: none; padding: 0; margin: 0; width: 28px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; transition: opacity 300ms ease; }
+  .ex-icons button[hidden] { display: none; }
+  .ex-icons button:hover { opacity: 0.7; }
+  .ex-icons .vid-btn.has, .ex-icons .note-btn.has { color: var(--brand); }
+  .ex-icons .vid-btn:not(.has) { opacity: 0.55; }
+  .alt-btn { color: var(--text-tertiary); }
   .alt-btn[hidden] { display: none; }
   .alt-btn.some { color: var(--ss); }
-  .alt-btn:hover { opacity: 0.7; }
-  .block.done:not(.open) .alt-btn { display: none; }
-  .block.done:not(.open) .row .top .exwrap.has-alt .name { padding-right: 16px; }
+  .block.done:not(.open) .ex-icons { display: none; }
+  .block.done:not(.open) .row .top .name { padding-right: 16px !important; }
   .alt-menu { left: -64px; right: -48px; }
   body.client .alt-menu { right: 0; }
   .alt-menu { max-height: none; overflow: hidden; }
@@ -371,37 +371,38 @@
   .newname .btn.quiet.link { font-size: 14px; min-height: 36px; padding: 0 6px; }
   .block.done:not(.open) .row .newname { display: none; }
   .vidrow { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
-  .vid-edit { appearance: none; border: 0; background: none; padding: 0 2px; cursor: pointer; margin-top: 8px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); min-height: 32px; line-height: 32px; }
+  .vidrow[hidden] { display: none; }
+  .vid-edit { appearance: none; border: 0; background: none; padding: 0 2px; cursor: pointer; margin-top: 4px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); min-height: 32px; line-height: 32px; }
   .vid-form { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
   .vid-actions { display: flex; gap: 8px; align-items: center; }
   .block.done:not(.open) .row .vidrow, .block.done:not(.open) .row .vid-form { display: none; }
   .player { margin-top: 8px; aspect-ratio: 16 / 9; width: 100%; border-radius: var(--r-field); overflow: hidden; background: #000; }
   .player iframe { width: 100%; height: 100%; border: 0; display: block; }
-  .block.done:not(.open) .row .vid, .block.done:not(.open) .row .player { display: none; }
+  .block.done:not(.open) .row .player { display: none; }
   /* reps and rest: two chips under the name that read as phrases ("8–10 reps", "60 sec transition"); the trainer types inside them */
   .specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
-  .specs .chip { position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 40px; padding: 8px 10px; overflow: hidden; background: var(--field); border: 1px solid transparent; border-radius: var(--r-field); font-size: 16px; line-height: 1.3; cursor: text; transition: border-color 150ms ease, background-color 150ms ease; }
-  .specs .chip:focus-within { border-color: var(--brand); background: var(--surface); }
-  .specs .val { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* the words are real text; nothing is measured */
-  .specs .val.ph { color: var(--placeholder); }
-  .specs .chip input { position: absolute; left: 0; top: 0; width: 1px; height: 1px; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; opacity: 0; pointer-events: none; text-align: right; font-weight: 500; transition: none; }   /* parked until the trainer taps the chip */
-  .specs .chip.editing input { position: static; flex: 1 1 auto; width: 0; height: auto; min-width: 2ch; padding: 0 2px 0 0; opacity: 1; pointer-events: auto; }
-  .specs .chip.editing .val { display: none; }
-  .specs .chip input:focus { background: none; border: 0; }
-  .specs .suffix { flex: 0 0 auto; white-space: nowrap; color: var(--text-secondary); }
-  .specs .chip.filled .suffix { color: inherit; font-weight: 500; }        /* once there is a value the whole phrase reads as one: "20 sec rest" */
+  .chip { position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 40px; padding: 8px 10px; overflow: hidden; background: var(--field); border: 1px solid transparent; border-radius: var(--r-field); font-size: 16px; line-height: 1.3; cursor: text; transition: border-color 150ms ease, background-color 150ms ease; }
+  .chip:focus-within { border-color: var(--brand); background: var(--surface); }
+  .chip .val { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* the words are real text; nothing is measured */
+  .chip .val.ph { color: var(--placeholder); }
+  .chip input { position: absolute; left: 0; top: 0; width: 1px; height: 1px; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; opacity: 0; pointer-events: none; text-align: right; font-weight: 500; transition: none; }   /* parked until the trainer taps the chip */
+  .chip.editing input { position: static; flex: 1 1 auto; width: 0; height: auto; min-width: 2ch; padding: 0 2px 0 0; opacity: 1; pointer-events: auto; }
+  .chip.editing .val { display: none; }
+  .chip input:focus { background: none; border: 0; }
+  .chip .suffix { flex: 0 0 auto; white-space: nowrap; color: var(--text-secondary); }
+  .chip.filled .suffix { color: inherit; font-weight: 500; }        /* once there is a value the whole phrase reads as one: "20 sec rest" */
   body.client .specs .chip { cursor: default; }
   .tempo-wrap { margin-top: 12px; }
   .tempo-wrap[hidden] { display: none; }
-  .tempo-wrap > label { display: block; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; }
   .tempo-wrap input { width: 100%; text-align: center; padding: 10px 8px; min-height: 40px; font-size: 16px; }
   .tempo-tiles { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--field); border-radius: var(--r-field); padding: 8px 2px; }
   body:not(.client) .tempo-tiles { cursor: pointer; }               /* the trainer taps the card itself to change it */
   .tempo-wrap input[hidden] { display: none; }
   .tempo-tiles[hidden] { display: none; }
   .tempo-tiles .word { grid-column: 1 / -1; min-height: 24px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 500; }
+  .tempo-tiles .word.normal { color: var(--text-secondary); }        /* the default, nothing set: quieter */
   .tempo-tiles > div + div { border-left: 1px solid var(--card-border); }
-  body.client .tempo-wrap input, body.client .tempo-wrap > label { display: none; }   /* the client sees only the card */
+  body.client .tempo-wrap input { display: none; }   /* the client sees only the card */
   .tempo-tiles > div { background: none; border-radius: 0; min-height: 38px; padding: 5px 4px 4px; text-align: center; display: flex; flex-direction: column; justify-content: flex-start; }
   .tempo-tiles b { font-size: 15px; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
   .tempo-tiles span { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; letter-spacing: 0; line-height: 1; }
@@ -426,11 +427,9 @@
   .tracker .step { width: 36px; height: 30px; background: transparent; color: var(--text-secondary); font-size: 18px; font-weight: 400; }
   .tracker .step:disabled { opacity: 0.35; cursor: default; }
   .setlog { margin-top: 14px; }
-  .setlog .cap { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; display: flex; justify-content: space-between; gap: 8px; }
-  .setlog .cap .lastline { font-weight: 400; letter-spacing: 0; text-transform: none; }
   .setlog .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .setlog input { text-align: center; padding: 12px 8px; font-weight: 500; }
-  .setlog input.hint::placeholder { color: var(--text-secondary); }
+  .setlog .chip { min-height: 46px; }
+  .setlog .chip .val.ph { color: var(--text-secondary); }                 /* last time's or the set before's numbers, until they are written down */
   .row .weights { display: none; }                  /* the per-set grid is replaced by logging one set at a time */
   .card-foot .done-btn { display: none; }
   .card-foot .complete { width: 100%; }
@@ -453,12 +452,7 @@
   #kbbar .kb-done { margin-left: auto; background: transparent; color: var(--brand); font-weight: 600; padding: 0 6px; }
 
   .note { margin-top: 12px; }
-  .note-toggle {
-    appearance: none; border: 0; background: none; padding: 0 2px; width: 100%; text-align: left; cursor: pointer;
-    min-height: 32px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); transition: opacity 300ms ease;
-  }
-  .note-toggle.has { color: var(--brand); font-weight: 500; }
-  .note-toggle:hover { opacity: 0.7; }
+  .note[hidden] { display: none; }
   .note-field { font-style: italic; min-height: 44px; resize: none; overflow: hidden; }
   .add { margin-top: 16px; }
   .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
@@ -615,7 +609,6 @@
     body.client .row .top { grid-template-columns: 52px 1fr; }
     .specs { gap: 6px; }
     .specs .chip { padding: 8px 6px; }
-    .tempo-wrap > label { letter-spacing: 0.06em; font-size: 12px; }
     .tempo-tiles span { font-size: 9px; }
     .tempo-tiles { padding: 8px 0; }
   }
@@ -1698,7 +1691,8 @@
     else { kbbar.style.top = "auto"; kbbar.style.bottom = "0"; }
   }
   const kbFire = (t) => t.dispatchEvent(new Event("input", { bubbles: true }));
-  function kbNext() { const t = kbTarget; if (!t) return; const nx = t.closest(".boxes, .setlog .pair") ? t.nextElementSibling : null; if (nx) nx.focus(); else t.blur(); }
+  const kbSibling = (t) => { const pair = t.closest(".setlog .pair"); if (pair) { const ins = [...pair.querySelectorAll("input")]; return ins[ins.indexOf(t) + 1] || null; } return t.closest(".boxes") ? t.nextElementSibling : null; };
+  function kbNext() { const t = kbTarget; if (!t) return; const nx = kbSibling(t); if (nx) nx.focus(); else t.blur(); }
   const kbSet = (v, stay) => { const t = kbTarget; if (!t) return; t.value = v; kbFire(t); if (!stay) kbNext(); };
   const kbInsert = (s) => { const t = kbTarget; if (!t) return; const a = t.selectionStart == null ? t.value.length : t.selectionStart, b = t.selectionEnd == null ? a : t.selectionEnd; t.value = t.value.slice(0, a) + s + t.value.slice(b); try { t.setSelectionRange(a + s.length, a + s.length); } catch (_) {} kbFire(t); };
   function paintKb() {
@@ -1712,7 +1706,7 @@
     if (kind === "reps") { chip("\u2013", () => kbInsert("\u2013")); unitChip("sec"); }
     if (kind === "tempo") { chip("X", () => kbInsert("X")); for (const w of ["Normal", "Controlled", "Slow"]) chip(w, () => kbSet(w, true)); for (const c of ["3010", "4010", "10X0", "41X0"]) chip(c, () => kbSet(c, true)); }
     if (kind === "rest") { unitChip("sec"); unitChip("min"); }
-    kbDone.textContent = (kind === "weights" && t.nextElementSibling) ? "Next" : "Done";
+    kbDone.textContent = (kind === "weights" && kbSibling(t)) ? "Next" : "Done";
   }
   function showKb(el) {
     kbTarget = el; paintKb(); kbbar.hidden = false; placeKb(); $("draftBar").classList.add("kb");
@@ -2424,6 +2418,17 @@
     const step = () => { const p = Math.min(1, (performance.now() - t0) / dur), e = 1 - Math.pow(1 - p, 3); sc.scrollTop = from + dy * e; if (p < 1) setTimeout(step, 16); };   // a timer, not animation frames: those pause while the page is hidden and the glide would never land
     step();
   }
+  // a chip shows its words as text ("8–10 reps", "30 lb"); the box only appears while someone types in it
+  function wireChip(inp, readOnly) {
+    const chip = inp.closest(".chip"), val = chip.querySelector(".val");
+    const fit = () => { val.textContent = inp.value || inp.placeholder || ""; val.classList.toggle("ph", !inp.value); chip.classList.toggle("filled", !!inp.value); };
+    fit(); inp.addEventListener("input", fit);
+    if (readOnly) { inp.tabIndex = -1; return fit; }
+    chip.addEventListener("click", (e) => { if (e.target !== inp) { inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {} } });
+    inp.addEventListener("focus", () => chip.classList.add("editing"));
+    inp.addEventListener("blur", () => { chip.classList.remove("editing"); fit(); });
+    return fit;
+  }
   const carried = (r, sel) => { const pick = (arr) => { for (let i = sel - 1; i >= 0; i--) { const v = String((arr || [])[i] || "").trim(); if (v) return v; } return ""; }; return { w: pick(r.weights), rp: pick(r.repsDone) }; };
   const setSel = new Map();               // "<training>/<group>" -> set the client is looking at (0-based)
   const openBlocks = new Set();           // finished cards the user opened with "Show sets"
@@ -2432,33 +2437,34 @@
     el.innerHTML = `
       <div class="top">
         <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
-        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><button class="alt-btn" type="button" hidden aria-label="Alternatives" title="Alternatives"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
+        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="alt-btn" type="button" hidden aria-label="Alternatives" title="Alternatives"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
         <button class="x" type="button" aria-label="Remove exercise">\u00d7</button>
       </div>
       <div class="newname trainer-only" hidden><span>New exercise</span><button class="btn quiet link addname" type="button">Add to database</button></div>
-      <div class="vidrow"><button class="vid" type="button" hidden>&#9654; Watch video</button><button class="vid-edit trainer-only" type="button">Add video</button></div>
-      <div class="vid-form" hidden><input class="vid-url" type="url" placeholder="Paste a YouTube link" autocomplete="off" autocapitalize="none" inputmode="url"><div class="vid-actions"><button class="btn sm vid-save" type="button">Save</button><button class="btn quiet vid-remove" type="button" hidden>Remove</button><button class="btn quiet vid-cancel" type="button">Cancel</button></div></div>
       <div class="player" hidden></div>
+      <div class="vidrow trainer-only" hidden><button class="vid-edit" type="button">Change video</button></div>
+      <div class="vid-form" hidden><input class="vid-url" type="url" placeholder="Paste a YouTube link" autocomplete="off" autocapitalize="none" inputmode="url"><div class="vid-actions"><button class="btn sm vid-save" type="button">Save</button><button class="btn quiet vid-remove" type="button" hidden>Remove</button><button class="btn quiet vid-cancel" type="button">Cancel</button></div></div>
       <div class="specs">
         <div class="chip"><span class="val"></span><input class="reps tab" inputmode="decimal" placeholder="10" aria-label="Reps"><span class="suffix">reps</span></div>
         <div class="chip"><span class="val"></span><input class="rest tab" inputmode="decimal" placeholder="60 sec" aria-label="Rest"><span class="suffix rest-suffix">rest</span></div>
       </div>
-      <div class="tempo-wrap"><label>Tempo</label><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"><div class="tempo-tiles" hidden></div></div>
+      <div class="tempo-wrap"><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"><div class="tempo-tiles" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
-      <div class="setlog"><div class="cap"><span class="unit">lb &middot; reps</span><span class="lastline"></span></div><div class="pair"><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"></div></div>
-      <div class="note"><button type="button" class="note-toggle"></button><textarea class="note-field" rows="1" placeholder="Note" hidden></textarea></div>`;
+      <div class="setlog"><div class="pair"><div class="chip"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></div><div class="chip"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></div></div></div>
+      <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Note"></textarea></div>`;
     const q = (s) => el.querySelector(s);
     let wText = false;                       // a row that already holds BW / 60 sec opens on the full keyboard (the bar above the keyboard switches it)
     const nonNum = (w) => !!w && !/^[\d.,\s]*$/.test(String(w));
     q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(46, n.scrollHeight) + "px"; };
+    const layoutIcons = () => { const n = (q(".vid-btn").hidden ? 0 : 1) + (clientMode ? 0 : 1) + (q(".alt-btn").hidden ? 0 : 1); q(".name").style.paddingRight = (n ? 10 + n * 28 : 16) + "px"; growName(); };   // the name wraps before the icons
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
     const markNamed = () => { if (clientMode) return; if (!trainerNamed.has(t.id)) trainerNamed.set(t.id, new Set()); trainerNamed.get(t.id).add(r.id); };
     const exwrap = q(".top .exwrap"), altBtn = q(".alt-btn"), altMenu = q(".alt-menu");
     let altMode = "list";
     const altList = () => (r.alts || []).filter(Boolean);
-    const paintAltBtn = () => { const n = altList().length; const show = !clientMode || n > 0; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); };
+    const paintAltBtn = () => { const n = altList().length; const show = !clientMode || n > 0; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };
     const outside = (e) => { if (!exwrap.contains(e.target)) closeAlt(); };
     const closeAlt = () => { altMenu.hidden = true; altMenu.replaceChildren(); altMode = "list"; document.removeEventListener("pointerdown", outside, true); if (closeOpenAlt === closeAlt) closeOpenAlt = null; };
     function swapTo(a) {
@@ -2519,14 +2525,17 @@
     });
     paintNewName();
     let videoId = null;
+    const vidBtn = q(".vid-btn"), vidRow = q(".vidrow");
     const paintVideo = () => {
-      const id = videoFor(r.name); const b = q(".vid"), pl = q(".player");
-      if (id !== videoId) { videoId = id; pl.replaceChildren(); pl.hidden = true; b.textContent = "\u25b6 Watch video"; }
-      b.hidden = !id;
-      q(".vid-edit").textContent = id ? "Change video" : "Add video";
+      const id = videoFor(r.name); const pl = q(".player");
+      if (id !== videoId) { videoId = id; pl.replaceChildren(); pl.hidden = true; vidRow.hidden = true; }
+      vidBtn.hidden = clientMode && !id;                                  // the trainer always has it: with no video it opens the link box
+      vidBtn.classList.toggle("has", !!id); vidBtn.title = id ? "Watch video" : "Add video"; vidBtn.setAttribute("aria-label", vidBtn.title);
       q(".vid-remove").hidden = !customVideos.has(loose(r.name));
+      layoutIcons();
     };
-    q(".vid-edit").addEventListener("click", () => { const f = q(".vid-form"); f.hidden = !f.hidden; if (!f.hidden) { q(".vid-url").value = ""; q(".vid-url").focus(); } });
+    const openVidForm = () => { const f = q(".vid-form"); f.hidden = !f.hidden; if (!f.hidden) { q(".vid-url").value = ""; q(".vid-url").focus(); } };
+    q(".vid-edit").addEventListener("click", openVidForm);
     q(".vid-cancel").addEventListener("click", () => { q(".vid-form").hidden = true; });
     q(".vid-save").addEventListener("click", async () => {
       const url = q(".vid-url").value.trim(), id = youtubeId(url), keyName = loose(r.name);
@@ -2542,14 +2551,16 @@
       if (error) { $("status").textContent = "Couldn\u2019t remove the video"; return; }
       q(".vid-form").hidden = true; paintVideo(); setStatus();
     });
-    q(".vid").addEventListener("click", () => {
-      const pl = q(".player"), b = q(".vid");
-      if (!pl.hidden) { pl.replaceChildren(); pl.hidden = true; b.textContent = "\u25b6 Watch video"; return; }
+    vidBtn.addEventListener("click", () => {
+      closeAlt();
+      if (!videoId) { if (!clientMode) openVidForm(); return; }
+      const pl = q(".player");
+      if (!pl.hidden) { pl.replaceChildren(); pl.hidden = true; vidRow.hidden = true; vidBtn.setAttribute("aria-pressed", "false"); return; }
       const f = document.createElement("iframe");
       f.src = "https://www.youtube-nocookie.com/embed/" + videoId + "?playsinline=1&rel=0&modestbranding=1";
       f.allow = "accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"; f.setAttribute("allowfullscreen", "");
       f.setAttribute("playsinline", ""); f.title = r.name || "Exercise video"; f.loading = "lazy";
-      pl.replaceChildren(f); pl.hidden = false; b.textContent = "Hide video";
+      pl.replaceChildren(f); pl.hidden = false; vidRow.hidden = false; vidBtn.setAttribute("aria-pressed", "true");   // "Change video" sits under the open player (trainer)
     });
     paintVideo();
     if (ALIASES[r.name]) { r.name = ALIASES[r.name]; if (!clientMode) scheduleSave("trainings", t.id); }
@@ -2565,15 +2576,8 @@
     if (!clientMode) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
     bind(".reps", "reps"); bind(".tempo", "tempo", (v) => { setTimeout(paintTempo, 0); return v; });
     bind(".rest", "rest");
-    const fit = (inp) => { const chip = inp.closest(".chip"), val = chip.querySelector(".val"); val.textContent = inp.value || inp.placeholder || ""; val.classList.toggle("ph", !inp.value); chip.classList.toggle("filled", !!inp.value); };   // the chip shows the words as text; the box only appears while the trainer types in it
-    for (const sel of [".reps", ".rest"]) {
-      const inp = q(sel), chip = inp.closest(".chip"); fit(inp); inp.addEventListener("input", () => fit(inp));
-      if (clientMode) { inp.tabIndex = -1; continue; }
-      chip.addEventListener("click", (e) => { if (e.target !== inp) { inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {} } });
-      inp.addEventListener("focus", () => chip.classList.add("editing"));
-      inp.addEventListener("blur", () => { chip.classList.remove("editing"); fit(inp); });
-    }
-    if (!clientMode) q(".rest").addEventListener("blur", (e) => { const v = e.target.value.trim(); if (/^\d+([.,]\d+)?$/.test(v)) { r.rest = v + " sec"; e.target.value = r.rest; fit(e.target); save(); } });
+    wireChip(q(".reps"), clientMode); const fitRest = wireChip(q(".rest"), clientMode);
+    if (!clientMode) q(".rest").addEventListener("blur", (e) => { const v = e.target.value.trim(); if (/^\d+([.,]\d+)?$/.test(v)) { r.rest = v + " sec"; e.target.value = r.rest; fitRest(); save(); } });
     const numpick = q(".numpick");
     function showNumbers() {
       let max = 0;
@@ -2605,11 +2609,12 @@
       const m = /^([0-9X])([0-9X])([0-9X])([0-9X])$/i.exec(raw);
       const word = !m && /[a-wyz]/i.test(raw) && !/^normal$/i.test(raw) ? raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase() : "";   // "Controlled", "Slow" … (not a half-typed code)
       tempoTiles.replaceChildren();
-      q(".tempo-wrap").hidden = clientMode && !m && !word;                   // Normal (or blank) is nothing to show a client
-      const show = !!(m || word) && document.activeElement !== tempoInp;   // one cell: the card stands in for the box, except while the trainer is typing
+      const normal = !m && !word;
+      q(".tempo-wrap").hidden = clientMode && normal;                       // Normal (or blank) is nothing to show a client
+      const show = document.activeElement !== tempoInp;                    // one cell: the card stands in for the box, except while the trainer is typing
       tempoTiles.hidden = !show; tempoInp.hidden = show;
       if (!show) return;
-      if (!m) { const w = document.createElement("div"); w.className = "word"; w.textContent = word.charAt(0).toUpperCase() + word.slice(1) + (/tempo/i.test(word) ? "" : " tempo"); tempoTiles.append(w); return; }
+      if (!m) { const w = document.createElement("div"); w.className = "word"; if (normal) { w.classList.add("normal"); w.textContent = "Normal tempo"; } else w.textContent = word.charAt(0).toUpperCase() + word.slice(1) + (/tempo/i.test(word) ? "" : " tempo"); tempoTiles.append(w); return; }
       const v = (x) => /x/i.test(x) ? "X" : x + "s";
       const tile = (d, text) => { const e = document.createElement("div"); const b = document.createElement("b"); b.textContent = v(d); const s = document.createElement("span"); s.textContent = text; e.append(b, s); return e; };
       tempoTiles.append(
@@ -2626,12 +2631,12 @@
       tempoTiles.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editTempo(); } });
       tempoInp.addEventListener("blur", () => setTimeout(paintTempo, 100));   // after the keyboard bar's ABC/123 switch (blur, refocus at 50 ms) so the box is not swapped out mid-switch
     }
-    const noteToggle = q(".note-toggle"), noteField = q(".note-field");
+    const noteBtn = q(".note-btn"), noteBox = q(".note"), noteField = q(".note-field");
     const growNote = () => { noteField.style.height = "auto"; noteField.style.height = noteField.scrollHeight + "px"; };
-    const showNote = () => { const v = (r.note || "").trim(); noteToggle.textContent = v ? "Read note" : "Add note"; noteToggle.classList.toggle("has", !!v); };
-    noteToggle.addEventListener("click", () => { noteToggle.hidden = true; noteField.hidden = false; noteField.value = r.note || ""; growNote(); noteField.focus(); });
+    const showNote = () => { const v = (r.note || "").trim(); noteBtn.classList.toggle("has", !!v); noteBtn.title = v ? "Note" : "Add note"; noteBtn.setAttribute("aria-label", noteBtn.title); };
+    noteBtn.addEventListener("click", () => { closeAlt(); noteBox.hidden = false; noteField.value = r.note || ""; growNote(); noteField.focus(); });
     noteField.addEventListener("input", (e) => { r.note = e.target.value; growNote(); save(); });
-    noteField.addEventListener("blur", () => { noteField.hidden = true; noteToggle.hidden = false; showNote(); });
+    noteField.addEventListener("blur", () => { noteBox.hidden = true; showNote(); });
     showNote();
 
     function suggest(v) {
@@ -2675,18 +2680,18 @@
       const last = lastWeights(t, r);
       r.weights = r.weights || []; r.repsDone = r.repsDone || [];
       const w = q(".setlog .w"), rp = q(".setlog .rp");
-      q(".setlog .unit").textContent = unit + " \u00b7 reps";
+      q(".setlog .unit").textContent = unit;
       const lw = last && last.weights[sel] ? String(last.weights[sel]) : "", lr = last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "";
-      q(".setlog .lastline").textContent = lw ? "last time " + lw + " " + unit + (lr ? " \u00d7 " + lr : "") : "";
-      const carry = carried(r, sel);   // the set before shows in grey: type over it, or leave it and Complete set writes it down
-      w.value = r.weights[sel] || ""; w.placeholder = carry.w || lw || "\u2013"; w.classList.toggle("hint", !!(carry.w || lw));
-      rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || (r.reps ? String(r.reps) : "\u2013"); rp.classList.toggle("hint", !!(carry.rp || lr));
+      const carry = carried(r, sel);   // the set before (else last time) shows in grey: type over it, or leave it and Complete set writes it down
+      w.value = r.weights[sel] || ""; w.placeholder = carry.w || lw || "";           // nothing to suggest: the chip just says "lb"
+      rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || (r.reps ? String(r.reps) : "");
       w.inputMode = (wText || nonNum(r.weights[sel] || carry.w || "")) ? "text" : "decimal";
       const mark = () => { const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
       w.addEventListener("input", (e) => { while (r.weights.length <= sel) r.weights.push(""); r.weights[sel] = e.target.value; mark(); });
       rp.addEventListener("input", (e) => { while (r.repsDone.length <= sel) r.repsDone.push(""); r.repsDone[sel] = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); e.target.value = r.repsDone[sel]; mark(); });
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.focus(); } });
       rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.blur(); } });
+      wireChip(w, false); wireChip(rp, false);                            // after the handlers above, so the words follow the tidied value
     }
     return el;
   }
