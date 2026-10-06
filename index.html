@@ -262,13 +262,12 @@
   .sheet-bg { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; }
   .sheet-bg[hidden] { display: none; }
   .sheet { width: 100%; max-width: 520px; background: var(--sheet); border-top: 1px solid var(--card-border); border-radius: 20px 20px 0 0; padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -8px 30px rgba(0,0,0,0.30); animation: sheetUp 260ms cubic-bezier(0.22, 1, 0.36, 1); }
-  @keyframes sheetUp { from { transform: translateY(24px); opacity: 0.6; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes sheetUp { from { transform: translateY(28px); } to { transform: translateY(0); } }
   @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
   .sheet-head { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin-bottom: 2px; }
   .sheet-title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
   .sheet .cal button.sel .dn { box-shadow: inset 0 0 0 2px var(--brand); }
   .sheet .cal button.today.sel .dn { box-shadow: none; }
-  .dp-hint { margin: 10px 2px 0; }
 
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
   .block.ss-1 { --ss: var(--group-1); }
@@ -785,7 +784,6 @@
     <div class="cal-head"><button class="mnav" id="dpPrev" type="button" aria-label="Previous month">&lsaquo;</button><span class="cal-title" id="dpMonth"></span><span class="cal-right"><button class="cal-today" id="dpToday" type="button" hidden>Today</button><button class="mnav" id="dpNext" type="button" aria-label="Next month">&rsaquo;</button></span></div>
     <div class="cal-wd" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
     <div class="cal" id="dpGrid"></div>
-    <p class="muted dp-hint">Tap a day. A bar under a day means a workout is already there.</p>
   </div>
 </div>
 <div id="draftBar" hidden><span class="draft-text">Unsaved changes</span><button class="btn quiet" id="draftDiscard" type="button">Discard</button><button class="btn sm" id="draftSave" type="button">Save template</button></div>
@@ -890,7 +888,8 @@
     lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]),
       finish: [...pendingFinish], skip: [...pendingSkip], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]),
       touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]),
-      stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), owner: sessionEmail || "" });
+      stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), owner: sessionEmail || pendingOwner || "" });
+    if (sessionEmail) pendingOwner = sessionEmail;
   }
   function restorePending() {
     const p = lsGet("fiala.pending.v1"); if (!p || typeof p !== "object") return;
@@ -922,13 +921,13 @@
     timers.delete(k);
     localBackend.save();
     const map = kind === "clients" ? clients : trainings;
-    const doc = map.get(id);
-    const version = dirty.get(k) || 0;
-    const data = doc ? JSON.parse(JSON.stringify(doc)) : null;
     const prev = chains.get(k) || Promise.resolve();
     inflight++; setStatus();
     const run = prev.then(async () => {
-      if (!backend) return;
+      if (!backend || !dirty.has(k)) return;                    // already confirmed by an earlier run in this chain
+      const doc = map.get(id);
+      const version = dirty.get(k) || 0;
+      const data = doc ? JSON.parse(JSON.stringify(doc)) : null;   // taken now, after any merge the previous run did
       let attempt = 0;
       if (backend !== localBackend && sb) {
         const sess = await sb.auth.getSession().catch(() => null);
@@ -963,7 +962,7 @@
     el.className = "";
     el.textContent = pending > 0 ? "Saving\u2026" : (backend ? "Saved" : "");
   }
-  $("status").addEventListener("click", () => { if (failed) { failed = false; for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } } });
+  $("status").addEventListener("click", () => { if (failed) { failed = false; for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } setStatus(); } });
 
   const localBackend = {
     load() { const d = lsGet("fiala.trainings.v1") || { clients: {}, trainings: {} }; for (const c of Object.values(d.clients)) clients.set(c.id, c); for (const t of Object.values(d.trainings)) trainings.set(t.id, t); },
@@ -1005,18 +1004,30 @@
       const k = key(kind, id);
       const row = { id, data };
       if (kind === "trainings") row.client_id = data.clientId;
-      for (let attempt = 0; attempt < 3; attempt++) {
+      const mergeServerRows = (serverData) => {                 // take the client's weights/done/swaps for rows the trainer did not touch
+        const touched = trainerTouched.get(id) || new Set(), named = trainerNamed.get(id) || new Set();
+        const live = trainings.get(id);
+        for (const sr of (serverData && serverData.rows) || []) {
+          for (const target of [data, live]) {
+            const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (!lr) continue;
+            if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; }
+            if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
+          }
+        }
+      };
+      for (let attempt = 0; attempt < 4; attempt++) {
         let seen = seenAt.get(k);
-        if (!seen && kind === "trainings" && attempt === 0) {      // no stamp (edited offline, app relaunched): look before writing over a client's weights
-          const existing = await sb.from(TABLE[kind]).select("updated_at").eq("id", id).maybeSingle();
+        if (!seen && kind === "trainings" && attempt === 0) {      // no stamp (edited offline, app relaunched): read first, never write over a client's weights blind
+          const existing = await sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle();
           if (existing.error) throw existing.error;
-          if (existing.data) { seen = "0000"; seenAt.set(k, seen); }   // force the conflict path below, which merges then retries
+          if (existing.data) { mergeServerRows(existing.data.data); seen = existing.data.updated_at; seenAt.set(k, seen); }
         }
         let res;
         if (seen) res = await sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at");
         else res = await sb.from(TABLE[kind]).upsert(row).select("updated_at");
         if (res.error) {
           if (res.error.code === "23505") { res.error.fatal = true; $("status").textContent = "That email is already on another client"; }
+          if (/^22/.test(String(res.error.code || ""))) seenAt.delete(k);   // a bad stamp must not poison every retry
           throw res.error;
         }
         if (res.data && res.data.length) { seenAt.set(k, res.data[0].updated_at); localBackend.save(); return; }
@@ -1025,17 +1036,7 @@
         if (fresh.error) throw fresh.error;
         if (!fresh.data) { seenAt.delete(k); continue; }
         seenAt.set(k, fresh.data.updated_at);
-        if (kind === "trainings") {
-          const touched = trainerTouched.get(id) || new Set(), named = trainerNamed.get(id) || new Set();
-          const live = trainings.get(id);
-          for (const sr of fresh.data.data.rows || []) {
-            for (const target of [data, live]) {
-              const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (!lr) continue;
-              if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; }
-              if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
-            }
-          }
-        }
+        if (kind === "trainings") mergeServerRows(fresh.data.data);
       }
       throw new Error("save conflict");
     },
@@ -1173,7 +1174,7 @@
     if (!(view.name === "training" && trainings.has(view.id))) view = { name: "client", id: myClientId };
     render(); setStatus(); return true;
   }
-  let offlineEntry = null, resuming = false;   // "remembered": we came in without a session and must re-enter properly once there is one
+  let offlineEntry = null, resuming = false, signingOut = null;   // "remembered": we came in without a session and must re-enter properly once there is one
   function enterOffline(remembered) {     // no session could be read (token expired, no signal): use what the device knows
     offlineEntry = "remembered"; settingsOpen = false; signedIn = true; sessionEmail = remembered.email || ""; clientMode = remembered.role !== "trainer";
     document.body.classList.toggle("client", clientMode); backend = clientMode ? clientBackend : cloudBackend; hideAllViews();
@@ -1189,8 +1190,7 @@
         if (!(data && data.session) || offlineEntry !== "remembered" || entering) return;
         await enterCloud(data.session); return;
       }
-      if (!(await syncDown())) return;                      // a quiet retry: the screen stays as it is
-      for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); }
+      await syncDown();                                      // a quiet retry: the screen stays as it is; a success flushes the queue itself
     } finally { resuming = false; }
   }
 
@@ -1395,8 +1395,9 @@
     } else lsSet("fiala.trainings.role", { email: sessionEmail, role: trainer ? "trainer" : "client" });
     offlineEntry = null;
     if (pendingOwner && pendingOwner !== sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
-      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear(); persistPending();
+      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear();
     }
+    pendingOwner = sessionEmail; persistPending();
     clientMode = trainer !== true;
     document.body.classList.toggle("client", clientMode);
     backend = clientMode ? clientBackend : cloudBackend;
@@ -1406,15 +1407,14 @@
       const mineIds = new Set(clients.keys()); for (const id of [...trainings.keys()]) if (!mineIds.has(trainings.get(id).clientId)) trainings.delete(id);
       $("clientFoot").hidden = false;
       if (!quiet) $("status").textContent = "Loading\u2026";
-      if (await syncDown()) for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); }
+      await syncDown();                                       // a success flushes the queue itself
       setStatus();
       return;
     }
     $("dataNote").textContent = "Synced to the cloud";
     $("myExercises").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false; $("clientFoot").hidden = true;
     render(); setStatus();
-    await syncDown();
-    for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); }
+    await syncDown();                                         // a success flushes the queue itself
     seedTemplates().catch(() => {});
   }
 
@@ -1517,12 +1517,13 @@
       timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingSwap.clear(); failed = false;
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
-      offline = false; offlineEntry = null;
+      offline = false; offlineEntry = null; pendingOwner = "";
       view = { name: "clients" }; showLogin("");
     };
-    const p = sb.auth.signOut().catch((e) => ({ error: e }));
-    const out = await withTimeout(p, 8000);
-    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; p.then((r) => { if (!(r && r.error)) finish(); }); return; }
+    const who = sessionEmail;
+    if (!signingOut) signingOut = sb.auth.signOut().catch((e) => ({ error: e })).finally(() => { signingOut = null; });
+    const out = await withTimeout(signingOut, 8000);
+    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && signedIn && sessionEmail === who) finish(); }); return; }
     finish();
   };
   $("signout3").addEventListener("click", signOutClient);
@@ -1544,12 +1545,13 @@
       timers.clear(); chains.clear(); dirty.clear(); trainerTouched.clear(); trainerNamed.clear(); failed = false;
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
-      offline = false; offlineEntry = null;
+      offline = false; offlineEntry = null; pendingOwner = "";
       view = { name: "clients" }; showLogin("");
     };
-    const p = sb.auth.signOut().catch((e) => ({ error: e }));
-    const out = await withTimeout(p, 8000);
-    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; p.then((r) => { if (!(r && r.error)) finish(); }); return; }
+    const who = sessionEmail;
+    if (!signingOut) signingOut = sb.auth.signOut().catch((e) => ({ error: e })).finally(() => { signingOut = null; });
+    const out = await withTimeout(signingOut, 8000);
+    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && signedIn && sessionEmail === who) finish(); }); return; }
     finish();
   };
   $("signout").addEventListener("click", () => (clientMode ? signOutClient() : signOutTrainer()));
@@ -2616,7 +2618,7 @@
       const fromRecoveryLink = /type=recovery/.test(location.hash);
       sb.auth.onAuthStateChange((event) => {
         if (event === "PASSWORD_RECOVERY") { recovering = true; showRecovery(); }
-        if (event === "SIGNED_OUT" && signedIn) { backend = null; offline = false; offlineEntry = null; try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); }
+        if (event === "SIGNED_OUT" && signedIn) { backend = null; offline = false; offlineEntry = null; pendingOwner = ""; try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); }
       });
       // no signal: the library retries the token refresh for up to 30 s before answering. Don't make anyone wait for that:
       // after 4 s show what the device knows, and switch to live data if the session comes through later.
