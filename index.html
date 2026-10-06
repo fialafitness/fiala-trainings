@@ -314,10 +314,17 @@
   body.client .block.ahead .row { padding: 10px 16px 6px; }
   body.client .block.ahead .tracker, body.client .block.ahead .row .specs, body.client .block.ahead .row .tempo-wrap, body.client .block.ahead .row .setlog, body.client .block.ahead .row .player, body.client .block.ahead .card-foot, body.client .block.ahead .ex-icons { display: none; }
   body.client .block.ahead .row .top { pointer-events: none; }
-  body.client .block.ahead .row .top .name { color: var(--text-secondary); min-height: 36px; padding-right: 16px !important; }
+  body.client .block.ahead .row .top .name { color: var(--text-secondary); min-height: 36px; }
   body.client .block.ahead .row .top input.label { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
   body.client .block.peek .row .top { cursor: pointer; }
   body.client .block.peek .row .top .name, body.client .block.peek .row .top input.label { pointer-events: none; }
+  /* the chevron in the corner: down on a folded card, up on one opened for a look */
+  body.client .block.ahead .group, body.client .block.peek .group { position: relative; }
+  .card-chev { position: absolute; right: 10px; appearance: none; border: 0; background: none; padding: 0; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; }
+  .card-chev svg { width: 22px; height: 22px; }
+  body.client .block.ahead .card-chev { top: 14px; }
+  body.client .block.ahead .row .top .name { padding-right: 48px !important; }
+  body.client .block.peek .card-chev { top: 10px; }
   .card-foot { padding: 4px 16px 16px; display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
   .fold-btn {
     appearance: none; cursor: pointer; border-radius: 50px; min-height: 40px; padding: 10px 24px;
@@ -2383,7 +2390,12 @@
       });
       paint(); foot.append(btn, fold); card.append(sum, foot);
       if (currentKey != null && g.key !== currentKey && !g.rows.every((r) => r.done)) {   // client: still to come
-        if (peekBlocks.has(selKey)) { block.classList.add("peek"); for (const top of card.querySelectorAll(".row .top")) top.addEventListener("click", (e) => { if (e.target.closest(".ex-icons")) return; peekBlocks.delete(selKey); renderedTraining = null; render(); }); }
+        const peeking = peekBlocks.has(selKey);
+        const chev = document.createElement("button"); chev.type = "button"; chev.className = "card-chev"; chev.setAttribute("aria-label", peeking ? "Fold" : "Open");
+        chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (peeking ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4") + '"/></svg>';
+        card.appendChild(chev);
+        const unpeek = () => { peekBlocks.delete(selKey); renderedTraining = null; render(); };
+        if (peeking) { block.classList.add("peek"); chev.addEventListener("click", unpeek); for (const top of card.querySelectorAll(".row .top")) top.addEventListener("click", (e) => { if (e.target.closest(".ex-icons")) return; unpeek(); }); }
         else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey); renderedTraining = null; render(); }); }
       } else peekBlocks.delete(selKey);
       block.appendChild(card); rowsEl.appendChild(block);
