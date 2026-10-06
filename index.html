@@ -45,8 +45,6 @@
     --brand: #6f6b99;                   /* app-purple — structure / interactive, EXACT */
     --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
     --brand-deep: #494664;              /* app-purple-deep — reserved for brand moments */
-    --group-1: #44728e;                 /* Steel blue, deepened for white ink */
-    --group-2: #846843;                 /* Sand, deepened for white ink */
     --done: #3c7a4e;                    /* fern: a true, calm green; inked for white */
     --done-tint: rgba(60,122,78,0.08);  /* soft fern wash inside a finished card */
     --done-ink: #ffffff;
@@ -78,8 +76,6 @@
       --brand: #6f6b99;                 /* app-purple — the brand, exact in both modes */
       --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
       --brand-deep: #494664;
-      --group-1: #5e8ca7;
-      --group-2: #ac8e68;               /* Sand — Apple system brown, dark */
       --done: #bfe8c2;                  /* fern glow: pale sage on dark */
       --done-tint: rgba(191,232,194,0.07);
       --done-ink: #1d1d1f;
@@ -111,8 +107,6 @@
     --brand: #6f6b99;                 /* app-purple — the brand, exact in both modes */
     --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
     --brand-deep: #494664;
-    --group-1: #5e8ca7;
-    --group-2: #ac8e68;               /* Sand — Apple system brown, dark */
     --done: #bfe8c2;
     --done-tint: rgba(191,232,194,0.07);
     --done-ink: #1d1d1f;
@@ -279,11 +273,11 @@
   .sheet .cal button.today.sel .dn { box-shadow: none; }
 
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
-  .block.ss-1 { --ss: var(--group-1); }
-  .block.ss-2 { --ss: var(--group-2); }
+  .block { --ss: var(--btn-bg); --ss-ink: var(--btn-fg); }   /* badges: black on light, white on dark — no card colour */
     .group-cap { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; margin: 0 0 8px 2px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); }
-  .group-cap b { font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--ss); }
-  .group { background: var(--card); border: 1.5px solid var(--ss); border-radius: var(--r-card); }
+  .group-cap b { font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-secondary); }
+  .group { background: var(--card); border: 1.5px solid var(--card-edge); border-radius: var(--r-card); }   /* a white card on the grouped page; the outline is earned only when finished */
+  .block.done .group { border-color: var(--done); }
   .labwrap { position: relative; }
   .numpick {
     position: absolute; left: 0; top: calc(100% + 4px); z-index: 4;
@@ -377,12 +371,12 @@
   .ex-icons button { appearance: none; border: 0; background: none; padding: 0; margin: 0; width: 38px; height: 42px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; transition: opacity 300ms ease; }
   .ex-icons button[hidden] { display: none; }
   .ex-icons button:hover { opacity: 0.7; }
-  .ex-icons .vid-btn.has, .ex-icons .note-btn.has { color: var(--brand); }
+  .ex-icons .vid-btn.has, .ex-icons .note-btn.has { color: var(--text-primary); }   /* holds something: ink; empty: quiet grey */
   .ex-icons .vid-btn .i-up, .ex-icons .vid-btn.open .i-play { display: none; }   /* while the video is open the play becomes a chevron up: tap to tuck it away */
   .ex-icons .vid-btn.open .i-up { display: block; }
   .alt-btn { color: var(--text-tertiary); }
   .alt-btn[hidden] { display: none; }
-  .alt-btn.some { color: var(--brand); }                /* "there is something here", same as video and note */
+  .alt-btn.some { color: var(--text-primary); }
   .block.done:not(.open) .ex-icons { display: none; }
   .block.done:not(.open) .row .top .name { padding-right: 16px !important; }
   .alt-menu { left: -64px; right: 0; }
@@ -444,7 +438,7 @@
   body.client .tempo-tiles.words .si + .si::before { content: "\00b7"; margin: 0 6px; }   /* dots, so a long tempo can wrap cleanly */
   body.client .tempo-tiles .word { align-items: flex-start; text-align: left; padding: 0; min-height: 0; font-size: 15px; font-weight: 400; color: var(--text-secondary); }
   body.client .tempo-tiles:not(.words) { background: none; padding: 0; }
-  body.client .ex-icons .vid-btn { width: 36px; height: 36px; margin-right: 2px; border-radius: 50%; background: rgba(111, 107, 153, 0.14); background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); opacity: 1; }   /* a soft round play, like a TV app */
+  body.client .ex-icons .vid-btn { width: 36px; height: 36px; margin-right: 2px; border-radius: 50%; background: var(--field-in); color: var(--text-primary); opacity: 1; }   /* a soft round play, like a TV app */
   body.client .ex-icons .vid-btn svg { width: 16px; height: 16px; }
   body.client .ex-icons .vid-btn .i-play { margin-left: 2px; }
   .tempo-wrap { margin-top: 12px; }
@@ -471,12 +465,11 @@
   .tracker .tr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .tracker .tr-steps { display: flex; gap: 6px; }
   .tracker button { appearance: none; cursor: pointer; width: 44px; height: 44px; padding: 0; border-radius: var(--r-chip); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-secondary); font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 2px; transition: opacity 300ms ease; }
-  .tracker button.done { border-color: var(--ss); color: var(--ss); background: transparent; }
-  @supports (background: color-mix(in srgb, red 12%, transparent)) { .tracker button.done { background: color-mix(in srgb, var(--ss) 12%, transparent); } }   /* a whisper of the card's colour behind the tick */
+  .tracker button.done { border-color: var(--text-secondary); color: var(--text-secondary); background: transparent; }   /* done: a quiet outlined tick */
+  .block.done .tracker button.done { border-color: var(--done); color: var(--done); }
   .tracker button.done::after { content: "\2713"; font-size: 11px; }
-  .block { --ss-ink: #fff; }
-  .tracker button.cur { background: var(--ss); border-color: var(--ss); color: var(--ss-ink); font-weight: 600; }
-  .block.done .tracker button.cur { color: var(--done-ink); }
+  .tracker button.cur { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; font-weight: 600; }   /* the set you are on: the one purple thing on the card */
+  .block.done .tracker button.cur { background: var(--done); border-color: var(--done); color: var(--done-ink); }
   .tracker button:hover { opacity: 0.85; }
   .tracker button.static { cursor: default; }                           /* a template just shows the count */
   .tracker .step { width: 36px; height: 30px; background: transparent; color: var(--text-secondary); font-size: 18px; font-weight: 400; }
@@ -2318,7 +2311,7 @@
     groups.forEach((g) => {
       const block = document.createElement("div");
       const warm = g.key === "w";
-      block.className = "block " + (g.rows.length >= 2 ? "ss-2" : "ss-1"); block.dataset.key = g.key;   // colour means something: gold = exercises done back to back, blue = one on its own
+      block.className = "block"; block.dataset.key = g.key;
       if (g.rows.length >= 2 || warm) {
         const cap = document.createElement("div"); cap.className = "group-cap";
         const kind = g.rows.length < 2 ? "" : g.rows.length === 2 ? "Superset" : g.rows.length === 3 ? "Tri-set" : "Giant set";
