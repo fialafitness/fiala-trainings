@@ -124,7 +124,7 @@
   * { box-sizing: border-box; }
   html { background: var(--surface); }
   html, body { height: 100%; }
-  html, body { overflow-x: hidden; }                 /* an app never scrolls sideways */
+  html { overflow-x: hidden; }                       /* an app never scrolls sideways (on html only: on body too it would make body the scroller, and window.scrollTo / tap-the-status-bar stop working) */
   main { overflow-x: clip; }
   body {
     margin: 0;
@@ -2258,7 +2258,7 @@
     groups.forEach((g) => {
       const block = document.createElement("div");
       const warm = g.key === "w";
-      block.className = "block " + (warm ? "ss-w" : (numbered++ % 2 ? "ss-2" : "ss-1"));
+      block.className = "block " + (warm ? "ss-w" : (numbered++ % 2 ? "ss-2" : "ss-1")); block.dataset.key = g.key;
       if (g.rows.length >= 2 || warm) {
         const cap = document.createElement("div"); cap.className = "group-cap";
         const kind = g.rows.length < 2 ? "" : g.rows.length === 2 ? "Superset" : g.rows.length === 3 ? "Tri-set" : "Giant set";
@@ -2340,6 +2340,7 @@
           }
           if (g.rows.every((r) => r.done)) openBlocks.delete(selKey);
           setSel.delete(selKey); scheduleSave("trainings", t.id); renderedTraining = null; render();
+          scrollToCard(g.key);
         });
         const early = document.createElement("button"); early.type = "button"; early.className = "finish-early"; early.textContent = "Finish early";
         early.addEventListener("click", () => {
@@ -2405,6 +2406,24 @@
 
   const setsOf = (r) => Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20));   // blank = the default 4; 0 still counts as one
   // what the set before (in this workout) was logged at: the next set starts from it, so nothing is retyped unless something changed
+  // after Complete set: bring the card's Sets line back under the header (or on to the next card once this one is finished)
+  function scrollToCard(key) {
+    let el = document.querySelector('.block[data-key="' + CSS.escape(String(key)) + '"]'); if (!el) return;
+    if (el.classList.contains("done")) { let n = el.nextElementSibling; while (n && !(n.classList.contains("block") && !n.classList.contains("done"))) n = n.nextElementSibling; if (n) el = n; }
+    const head = document.querySelector("header"); const off = (head ? head.getBoundingClientRect().bottom : 0) + 12;
+    let sc = null; for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) { const o = getComputedStyle(n).overflowY; if ((o === "auto" || o === "scroll") && n.scrollHeight > n.clientHeight) { sc = n; break; } }   // a scrolling box, if the page ever gets one
+    sc = sc || document.scrollingElement || document.documentElement;
+    glide(sc, Math.max(0, sc.scrollTop + el.getBoundingClientRect().top - off));
+  }
+  // our own short glide: the browser's smooth scroll gets cancelled by the re-render's layout work, this one does not
+  function glide(sc, to) {
+    const from = sc.scrollTop, dy = to - from;
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || Math.abs(dy) < 2) { sc.scrollTop = to; return; }
+    const t0 = performance.now(), dur = 320;
+    const step = () => { const p = Math.min(1, (performance.now() - t0) / dur), e = 1 - Math.pow(1 - p, 3); sc.scrollTop = from + dy * e; if (p < 1) setTimeout(step, 16); };   // a timer, not animation frames: those pause while the page is hidden and the glide would never land
+    step();
+  }
   const carried = (r, sel) => { const pick = (arr) => { for (let i = sel - 1; i >= 0; i--) { const v = String((arr || [])[i] || "").trim(); if (v) return v; } return ""; }; return { w: pick(r.weights), rp: pick(r.repsDone) }; };
   const setSel = new Map();               // "<training>/<group>" -> set the client is looking at (0-based)
   const openBlocks = new Set();           // finished cards the user opened with "Show sets"
