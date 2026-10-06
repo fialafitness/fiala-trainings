@@ -483,7 +483,8 @@
   .setlog .chip .val.ph { color: var(--text-secondary); }                 /* last time's or the set before's numbers, until they are written down */
   .row .weights { display: none; }                  /* the per-set grid is replaced by logging one set at a time */
   .card-foot .done-btn { display: none; }
-  .card-foot .complete { width: 100%; }
+  .card-foot .complete { width: 100%; display: inline-flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
+  .vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .finish-early { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--text-secondary); font-size: 15px; min-height: 40px; padding: 0 8px; }
   .block.done:not(.open) .tracker, .block.done:not(.open) .row .setlog, .block.done:not(.open) .complete, .block.done .finish-early:not(.undo-set), .block.done:not(.open) .undo-set { display: none; }
   .undo-set[hidden] { display: none; }
@@ -852,6 +853,7 @@
       <div class="date-row"><button class="datefield" id="tDate" type="button"></button><div class="seg view-seg" id="viewSeg" role="radiogroup" aria-label="See it as" hidden><button type="button" role="radio" data-view="coach" class="on">Coach</button><button type="button" role="radio" data-view="client">Client</button></div><a class="msg-pill small client-only" id="trainerBtn2" href="#" hidden><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
       <button class="tpl-pill trainer-only" id="fromTpl" type="button" hidden><span id="fromTplText"></span><span class="chev">&rsaquo;</span></button>
     </div>
+    <input type="checkbox" switch id="hapticSwitch" class="vh" tabindex="-1" aria-hidden="true">
     <div class="rows" id="rows"></div>
     <button class="btn quiet add trainer-only" id="addRow">+ Add exercise</button>
     <div class="finish" id="finishWrap" hidden>
@@ -2370,7 +2372,8 @@
       const foot = document.createElement("div"); foot.className = "card-foot";
       if (total > 0 && !isTpl) {
         const sel = g.sel, current = sel === doneSets && doneSets < total;
-        const complete = document.createElement("button"); complete.type = "button"; complete.className = "btn complete";
+        const complete = document.createElement("label"); complete.htmlFor = "hapticSwitch"; complete.className = "btn complete"; complete.setAttribute("role", "button"); complete.tabIndex = 0;   // a label for the hidden switch: the tap itself gives the haptic on iPhone
+        complete.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); complete.click(); } });
         complete.textContent = current ? (sel + 1 === total ? "Complete last set \u2192" : "Complete set \u2192") : "Back to set " + (Math.min(doneSets, total - 1) + 1);
         if (!current) { complete.classList.add("quiet-back"); if (doneSets >= total) complete.hidden = true; }
         const undo = document.createElement("button"); undo.type = "button"; undo.className = "finish-early undo-set"; undo.textContent = "Mark set " + (sel + 1) + " as not done";
@@ -2380,7 +2383,8 @@
           setSel.set(selKey, sel); scheduleSave("trainings", t.id); renderedTraining = null; render();
         });
         complete.addEventListener("click", () => {
-          if (!current) { setSel.delete(selKey); renderedTraining = null; render(); return; }   // just go back to the current set
+          haptic();
+          if (!current) { setSel.delete(selKey); setTimeout(() => { renderedTraining = null; render(); }, 0); return; }   // just go back to the current set
           const prevDone = doneSets;
           for (const r of g.rows) {
             if (sel >= setsOf(r)) continue;                                               // this exercise has fewer sets than the card
@@ -2394,8 +2398,8 @@
             const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id);
           }
           if (g.rows.every((r) => r.done)) openBlocks.delete(selKey);
-          setSel.delete(selKey); scheduleSave("trainings", t.id); renderedTraining = null; render();
-          scrollToCard(g.key);
+          setSel.delete(selKey); scheduleSave("trainings", t.id);
+          setTimeout(() => { renderedTraining = null; render(); scrollToCard(g.key); }, 0);   // after the tap has flipped the switch (the iPhone tick), then redraw and glide
         });
         const early = document.createElement("button"); early.type = "button"; early.className = "finish-early"; early.textContent = "Finish early";
         early.addEventListener("click", () => {
@@ -2486,22 +2490,32 @@
   const setsOf = (r) => Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20));   // blank = the default 4; 0 still counts as one
   // what the set before (in this workout) was logged at: the next set starts from it, so nothing is retyped unless something changed
   // after Complete set: bring the card's Sets line back under the header (or on to the next card once this one is finished)
+  const haptic = () => { try { if (navigator.vibrate) navigator.vibrate(10); } catch (_) {} };   // Android; iPhone ticks on its own through the switch the button is a label for
   function scrollToCard(key) {
-    let el = document.querySelector('.block[data-key="' + CSS.escape(String(key)) + '"]'); if (!el) return;
-    if (el.classList.contains("done")) { let n = el.nextElementSibling; while (n && !(n.classList.contains("block") && !n.classList.contains("done"))) n = n.nextElementSibling; if (n) el = n; }
-    const head = document.querySelector("header"); const off = (head ? head.getBoundingClientRect().bottom : 0) + 12;
-    let sc = null; for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) { const o = getComputedStyle(n).overflowY; if ((o === "auto" || o === "scroll") && n.scrollHeight > n.clientHeight) { sc = n; break; } }   // a scrolling box, if the page ever gets one
-    sc = sc || document.scrollingElement || document.documentElement;
-    glide(sc, Math.max(0, sc.scrollTop + el.getBoundingClientRect().top - off));
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();   // the keyboard leaves first; the glide follows the page as it settles
+    const target = () => {
+      let el = document.querySelector('.block[data-key="' + CSS.escape(String(key)) + '"]'); if (!el) return null;
+      if (el.classList.contains("done")) { let n = el.nextElementSibling; while (n && !(n.classList.contains("block") && !n.classList.contains("done"))) n = n.nextElementSibling; if (n) el = n; }
+      const head = document.querySelector("header"); const off = (head ? head.getBoundingClientRect().bottom : 0) + 12;
+      const sc = document.scrollingElement || document.documentElement;
+      return Math.max(0, Math.min(sc.scrollTop + el.getBoundingClientRect().top - off, sc.scrollHeight - sc.clientHeight));
+    };
+    glide(target);
   }
-  // our own short glide: the browser's smooth scroll gets cancelled by the re-render's layout work, this one does not
-  function glide(sc, to) {
-    const from = sc.scrollTop, dy = to - from;
+  // our own glide: it re-reads where the card is on every step (names settling, the keyboard closing), eases towards it, and lands exactly
+  function glide(target) {
+    const sc = document.scrollingElement || document.documentElement;
     const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || Math.abs(dy) < 2) { sc.scrollTop = to; return; }
-    const t0 = performance.now(), dur = 320;
-    const step = () => { const p = Math.min(1, (performance.now() - t0) / dur), e = 1 - Math.pow(1 - p, 3); sc.scrollTop = from + dy * e; if (p < 1) setTimeout(step, 16); };   // a timer, not animation frames: those pause while the page is hidden and the glide would never land
-    step();
+    if (reduce) { const to = target(); if (to != null) sc.scrollTop = to; return; }
+    const t0 = performance.now(), dur = 380, cap = 1100;
+    const step = () => {
+      const to = target(); if (to == null) return;
+      const t = performance.now() - t0, p = Math.min(1, t / dur), gap = to - sc.scrollTop;
+      if ((p >= 1 && Math.abs(gap) <= 1) || t > cap) { sc.scrollTop = to; return; }
+      sc.scrollTop = sc.scrollTop + gap * (p >= 1 ? 0.5 : 0.22);
+      setTimeout(step, 16);
+    };
+    setTimeout(step, 40);
   }
   // the word after a number: "10 reps" but "1 rep", nothing after "30 sec" or "12 each leg"
   const repsWord = (v) => { const t = String(v || "").trim(); if (/[a-z]/i.test(t)) return ""; return t === "1" ? "rep" : "reps"; };
