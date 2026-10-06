@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Fiala">
-<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#161617" media="(prefers-color-scheme: dark)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,22 +29,24 @@
     --r-card: 26px;                     /* cards, grouped lists, sheets — iOS inset-grouped corner */
     --r-field: 14px;                    /* inputs, fields, menus */
     --r-chip: 12px;                     /* small chips and day cells */
-    --surface: #ffffff;                 /* surface-primary */
+    --surface: #f5f5f7;                 /* the page: iOS grouped background */
     --sheet: #ffffff;                   /* bottom sheet (the day picker) */
     --elevated: #ffffff;                /* anything that floats: menus, keyboard bar, sheet */
     --seg-on: #ffffff;                  /* the chosen segment: a raised white key */
     --seg-shadow: rgba(0,0,0,0.12);
     --card: #ffffff;
-    --card-border: rgba(0,0,0,0.06);    /* border-on-light-standard */
-    --header: rgba(255,255,255,0.85);   /* surface-primary-a85 */
+    --card-border: rgba(0,0,0,0.06);    /* hairlines inside cards */
+    --card-edge: transparent;           /* around a card: none in light, a faint line in dark */
+    --header: rgba(245,245,247,0.85);
     --header-border: rgba(0,0,0,0.04);  /* border-on-light-subtle */
-    --field: #f5f5f7;
+    --field: #ffffff;                   /* a field on the grouped page is a white cell */
+    --field-in: #f5f5f7;                /* a field inside a white card is grey */
     --placeholder: #d2d2d7;
     --brand: #6f6b99;                   /* app-purple — structure / interactive, EXACT */
     --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
     --brand-deep: #494664;              /* app-purple-deep — reserved for brand moments */
-    --group-1: #5e8ca7;                 /* Steel blue */
-    --group-2: #a2845e;                 /* Sand — Apple system brown, light */
+    --group-1: #44728e;                 /* Steel blue, deepened for white ink */
+    --group-2: #846843;                 /* Sand, deepened for white ink */
     --done: #3c7a4e;                    /* fern: a true, calm green; inked for white */
     --done-tint: rgba(60,122,78,0.08);  /* soft fern wash inside a finished card */
     --done-ink: #ffffff;
@@ -65,11 +67,13 @@
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
       --seg-on: rgba(255,255,255,0.16);
       --seg-shadow: transparent;
-      --card: rgba(255,255,255,0.04);   /* overlay-glass-light */
+      --card: #232325;                  /* one step up from the page */
       --card-border: rgba(255,255,255,0.10);
+      --card-edge: rgba(255,255,255,0.10);
       --header: rgba(22,22,23,0.85);
       --header-border: rgba(255,255,255,0.06);
-      --field: rgba(255,255,255,0.06);
+      --field: rgba(255,255,255,0.08);
+      --field-in: rgba(255,255,255,0.08);
       --placeholder: rgba(255,255,255,0.35);
       --brand: #6f6b99;                 /* app-purple — the brand, exact in both modes */
       --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
@@ -96,11 +100,13 @@
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
       --seg-on: rgba(255,255,255,0.16);
       --seg-shadow: transparent;
-    --card: rgba(255,255,255,0.04);
+    --card: #232325;                  /* one step up from the page */
     --card-border: rgba(255,255,255,0.10);
+    --card-edge: rgba(255,255,255,0.10);
     --header: rgba(22,22,23,0.85);
     --header-border: rgba(255,255,255,0.06);
-    --field: rgba(255,255,255,0.06);
+    --field: rgba(255,255,255,0.08);
+    --field-in: rgba(255,255,255,0.08);
     --placeholder: rgba(255,255,255,0.35);
     --brand: #6f6b99;                 /* app-purple — the brand, exact in both modes */
     --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
@@ -166,7 +172,7 @@
   h1, .pagetitle { font-size: 26px; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; margin: 20px 0 16px; text-wrap: balance; }
   h2 { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 32px 0 12px; }
   .muted { color: var(--text-tertiary); font-size: 13px; letter-spacing: 0; }
-  .notice { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--r-field); padding: 12px 16px; font-size: 13px; color: var(--text-secondary); margin: 12px 0 0; }
+  .notice { background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r-field); padding: 12px 16px; font-size: 13px; color: var(--text-secondary); margin: 12px 0 0; }
 
   input, textarea, button, select { font: inherit; color: inherit; letter-spacing: inherit; }
   input, textarea {
@@ -208,7 +214,9 @@
   .addrow { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
   .addrow input { flex: 1; }
 
-  .list { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--r-card); overflow: hidden; margin: 0; padding: 0; list-style: none; }
+  /* inside a card, a field is grey; on the page it is white (iOS grouped) */
+  .group, .list, .notice, .paused-card, .sheet, .alt-menu, .numpick, .sugg, #kbbar, #draftBar, .seg, .week, .cal { --field: var(--field-in); }
+  .list { background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r-card); overflow: hidden; margin: 0; padding: 0; list-style: none; }
   .list li + li { border-top: 1px solid var(--card-border); }
   .list button {
     appearance: none; border: 0; background: none; width: 100%; text-align: left; cursor: pointer;
@@ -580,7 +588,7 @@
   .field-row input[type="date"] { width: auto; font-size: 16px; padding: 8px 12px; color: var(--text-primary); }
   .kicker { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 6px 1px; }
   .kicker[hidden] { display: none; }
-  .paused-card { display: flex; flex-direction: column; gap: 6px; margin-top: 24px; padding: 18px 20px; background: var(--card); border: 1px solid var(--card-border); border-radius: var(--r-card); }
+  .paused-card { display: flex; flex-direction: column; gap: 6px; margin-top: 24px; padding: 18px 20px; background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r-card); }
   .paused-card b { font-weight: 500; font-size: 17px; letter-spacing: -0.01em; }
   .paused-card span { font-size: 15px; color: var(--text-secondary); line-height: 1.45; }
   .paused-card[hidden] { display: none; }
@@ -1326,7 +1334,7 @@
   let fromSettings = false;              // number/password opened from the Settings list: Back returns there
   // ---- appearance: auto (follow the phone) | light | dark. Saved on this device only.
   const THEME_KEY = "fiala.theme";
-  const themeColours = { light: "#ffffff", dark: "#161617" };
+  const themeColours = { light: "#f5f5f7", dark: "#161617" };
   function applyTheme(v) {
     v = v === "light" || v === "dark" ? v : "auto";
     if (v === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", v);
