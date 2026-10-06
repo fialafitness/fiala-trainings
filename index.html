@@ -2331,9 +2331,9 @@
             if (sel >= setsOf(r)) continue;                                               // this exercise has fewer sets than the card
             r.weights = r.weights || []; r.repsDone = r.repsDone || [];
             while (r.weights.length <= sel) r.weights.push(""); while (r.repsDone.length <= sel) r.repsDone.push("");
-            const last = lastWeights(t, r);
-            if (!String(r.weights[sel] || "").trim() && last && last.weights[sel]) r.weights[sel] = String(last.weights[sel]);   // empty box = same as last time
-            if (!String(r.repsDone[sel] || "").trim() && last && last.reps && last.reps[sel]) r.repsDone[sel] = String(last.reps[sel]);
+            const last = lastWeights(t, r), carry = carried(r, sel);
+            if (!String(r.weights[sel] || "").trim()) r.weights[sel] = carry.w || (last && last.weights[sel] ? String(last.weights[sel]) : "");   // untouched box = same as the set before, else same as last time
+            if (!String(r.repsDone[sel] || "").trim()) r.repsDone[sel] = carry.rp || (last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "");
             if (current) r.setsDone = Math.max(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), Math.min(prevDone + 1, setsOf(r)));
             if ((r.setsDone || 0) >= setsOf(r)) r.done = true;
             const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id);
@@ -2404,6 +2404,8 @@
   }
 
   const setsOf = (r) => Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20));   // blank = the default 4; 0 still counts as one
+  // what the set before (in this workout) was logged at: the next set starts from it, so nothing is retyped unless something changed
+  const carried = (r, sel) => { const pick = (arr) => { for (let i = sel - 1; i >= 0; i--) { const v = String((arr || [])[i] || "").trim(); if (v) return v; } return ""; }; return { w: pick(r.weights), rp: pick(r.repsDone) }; };
   const setSel = new Map();               // "<training>/<group>" -> set the client is looking at (0-based)
   const openBlocks = new Set();           // finished cards the user opened with "Show sets"
   function rowEl(t, r, group) {
@@ -2657,9 +2659,10 @@
       q(".setlog .unit").textContent = unit + " \u00b7 reps";
       const lw = last && last.weights[sel] ? String(last.weights[sel]) : "", lr = last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "";
       q(".setlog .lastline").textContent = lw ? "last time " + lw + " " + unit + (lr ? " \u00d7 " + lr : "") : "";
-      w.value = r.weights[sel] || ""; w.placeholder = lw || "\u2013"; w.classList.toggle("hint", !!lw);
-      rp.value = r.repsDone[sel] || ""; rp.placeholder = lr || (r.reps ? String(r.reps) : "\u2013"); rp.classList.toggle("hint", !!lr);
-      w.inputMode = (wText || nonNum(r.weights[sel] || "")) ? "text" : "decimal";
+      const carry = carried(r, sel), shownW = r.weights[sel] || carry.w, shownR = r.repsDone[sel] || carry.rp;   // the set before pre-fills this one; it is written down when the set is completed
+      w.value = shownW || ""; w.placeholder = lw || "\u2013"; w.classList.toggle("hint", !!lw);
+      rp.value = shownR || ""; rp.placeholder = lr || (r.reps ? String(r.reps) : "\u2013"); rp.classList.toggle("hint", !!lr);
+      w.inputMode = (wText || nonNum(shownW || "")) ? "text" : "decimal";
       const mark = () => { const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
       w.addEventListener("input", (e) => { while (r.weights.length <= sel) r.weights.push(""); r.weights[sel] = e.target.value; mark(); });
       rp.addEventListener("input", (e) => { while (r.repsDone.length <= sel) r.repsDone.push(""); r.repsDone[sel] = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); e.target.value = r.repsDone[sel]; mark(); });
