@@ -823,6 +823,7 @@
   const timers = new Map();
   const chains = new Map();
   let inflight = 0, failed = false, failReason = "";
+  let offline = false;                    // the last sync could not reach the server: the device copy is on screen
   const reasonOf = (e) => {
     const m = String((e && e.message) || "");
     if ((e && e.code === "PGRST202") || /Could not find the function/i.test(m)) return "database rule missing";
@@ -860,9 +861,30 @@
   }
   $("draftSave").addEventListener("click", saveDraft);
   $("draftDiscard").addEventListener("click", discardDraft);
+  // what still has to reach the server is written to the device too, so closing the app with no signal loses nothing
+  function persistPending() {
+    lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]),
+      finish: [...pendingFinish], skip: [...pendingSkip], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]),
+      touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]),
+      stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), owner: sessionEmail || "" });
+  }
+  function restorePending() {
+    const p = lsGet("fiala.pending.v1"); if (!p || typeof p !== "object") return;
+    for (const k of p.dirty || []) if (!dirty.has(k)) dirty.set(k, 1);
+    for (const [id, rows] of p.weights || []) pendingWeightRows.set(id, new Set([...(pendingWeightRows.get(id) || []), ...rows]));
+    for (const [id, rows] of p.done || []) pendingDoneRows.set(id, new Set([...(pendingDoneRows.get(id) || []), ...rows]));
+    for (const id of p.finish || []) pendingFinish.add(id);
+    for (const id of p.skip || []) pendingSkip.add(id);
+    for (const [id, picks] of p.swap || []) pendingSwap.set(id, new Map([...(pendingSwap.get(id) || []), ...picks]));
+    for (const [id, rows] of p.touched || []) trainerTouched.set(id, new Set([...(trainerTouched.get(id) || []), ...rows]));
+    for (const [id, rows] of p.named || []) trainerNamed.set(id, new Set([...(trainerNamed.get(id) || []), ...rows]));
+    for (const [k, stamp] of p.stamps || []) if (stamp && !seenAt.has(k)) seenAt.set(k, stamp);
+    pendingOwner = p.owner || "";
+  }
+  let pendingOwner = "";
   function scheduleSave(kind, id, delay = 500) {
     if (kind === "trainings" && templateDraft && templateDraft.id === id && !templateDraft.saving) { templateDraft.dirty = true; paintDraftBar(); return; }
-    markDirty(kind, id);
+    markDirty(kind, id); persistPending();
     const k = key(kind, id);
     clearTimeout(timers.get(k));
     timers.set(k, setTimeout(() => flushOne(kind, id), delay));
@@ -884,21 +906,27 @@
     const run = prev.then(async () => {
       if (!backend) return;
       let attempt = 0;
+      if (backend !== localBackend && sb) {
+        const sess = await sb.auth.getSession().catch(() => null);
+        if (!(sess && sess.data && sess.data.session)) { offline = true; return; }   // token not usable right now: keep it queued
+      }
       for (;;) {
         try {
           if (data) await backend.set(kind, id, data); else await backend.del(kind, id);
           failed = false;
           if (dirty.get(k) === version) dirty.delete(k);
+          confirmedAt.set(k, Date.now());
           return;
         } catch (e) {
           attempt++;
           failReason = reasonOf(e);
-          if (e && e.fatal) { failed = true; return; }
+          if (isOffline(e)) { offline = true; return; }           // no signal: keep it queued, no red status
+          if (e && e.fatal) { failed = true; if (dirty.get(k) === version) dirty.delete(k); return; }   // the server said no for good: don't carry it forever
           if (attempt > 3) { failed = true; return; }
           await new Promise((r) => setTimeout(r, 700 * attempt + Math.random() * 400));
         }
       }
-    }).finally(() => { inflight--; setStatus(); });
+    }).finally(() => { inflight--; persistPending(); setStatus(); });
     chains.set(k, run.catch(() => {}));
     return run;
   }
@@ -906,9 +934,9 @@
   function setStatus() {
     const el = $("status");
     const pending = timers.size + inflight;
-    if (failed && pending === 0 && dirty.size > 0) { el.textContent = "Couldn't save \u00b7 " + (failReason ? failReason + " \u00b7 " : "") + "tap to retry"; el.className = "err"; return; }
+    if (backend && backend !== localBackend && (offline || !navigator.onLine)) { el.className = ""; el.textContent = (dirty.size || pending) ? "Offline \u00b7 will sync" : "Offline \u00b7 showing your last sync"; return; }
+    if (failed && pending === 0) { el.textContent = "Couldn't save" + (failReason ? " \u00b7 " + failReason : "") + (dirty.size ? " \u00b7 tap to retry" : ""); el.className = "err"; return; }
     el.className = "";
-    if (backend && backend !== localBackend && !navigator.onLine) { el.textContent = "Offline \u00b7 will sync"; return; }
     el.textContent = pending > 0 ? "Saving\u2026" : (backend ? "Saved" : "");
   }
   $("status").addEventListener("click", () => { if (failed) { failed = false; for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } } });
@@ -954,7 +982,12 @@
       const row = { id, data };
       if (kind === "trainings") row.client_id = data.clientId;
       for (let attempt = 0; attempt < 3; attempt++) {
-        const seen = seenAt.get(k);
+        let seen = seenAt.get(k);
+        if (!seen && kind === "trainings" && attempt === 0) {      // no stamp (edited offline, app relaunched): look before writing over a client's weights
+          const existing = await sb.from(TABLE[kind]).select("updated_at").eq("id", id).maybeSingle();
+          if (existing.error) throw existing.error;
+          if (existing.data) { seen = "0000"; seenAt.set(k, seen); }   // force the conflict path below, which merges then retries
+        }
         let res;
         if (seen) res = await sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at");
         else res = await sb.from(TABLE[kind]).upsert(row).select("updated_at");
@@ -998,7 +1031,7 @@
         for (let i = 0; i < ids.length; i++) {
           const r = (data.rows || []).find((x) => x.id === ids[i]); if (!r) continue;
           const { error } = await sb.rpc("client_set_weights", { p_training: id, p_row: ids[i], p_weights: (r.weights || []).map((w) => String(w == null ? "" : w).slice(0, 16)) });
-          if (error) { for (const rest of ids.slice(i)) rows.add(rest); throw error; }
+          if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of ids.slice(i)) rows.add(rest); throw error; }   // P0001: the server refused for good (row or training gone)
         }
       }
       const swaps = pendingSwap.get(id);
@@ -1014,12 +1047,12 @@
       }
       if (pendingSkip.has(id)) {
         const { error } = await sb.rpc("client_skip_training", { p_training: id, p_skipped: !!data.skippedAt });
-        if (error) throw error;
+        if (error && error.code !== "P0001") throw error;
         pendingSkip.delete(id);
       }
       if (pendingFinish.has(id)) {
         const { error } = await sb.rpc("client_finish_training", { p_training: id, p_finished: !!data.completedAt });
-        if (error) throw error;
+        if (error && error.code !== "P0001") throw error;
         pendingFinish.delete(id);
       }
       const dones = pendingDoneRows.get(id);
@@ -1028,7 +1061,7 @@
         for (let i = 0; i < dids.length; i++) {
           const r = (data.rows || []).find((x) => x.id === dids[i]); if (!r) continue;
           const { error } = await sb.rpc("client_set_done", { p_training: id, p_row: dids[i], p_done: !!r.done });
-          if (error) { for (const rest of dids.slice(i)) dones.add(rest); throw error; }
+          if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of dids.slice(i)) dones.add(rest); throw error; }
         }
       }
       localBackend.save();
@@ -1036,27 +1069,47 @@
     async del() {},
   };
 
-  async function syncDown() {
-    if (!sb || !signedIn || seeding) return;
+  const confirmedAt = new Map();          // "trainings/<id>" -> when the server last confirmed our write
+  let syncing = null;
+  function syncDown() { if (syncing) return syncing; syncing = syncDownNow().finally(() => { syncing = null; }); return syncing; }
+  async function syncDownNow() {
+    if (!sb || !signedIn || !backend || seeding) return false;
+    const startedAt = Date.now();
+    const sess = await sb.auth.getSession().catch(() => null);           // no usable token (refresh failed, cooldown): don't sync as a stranger
+    if (!(sess && sess.data && sess.data.session)) { offline = true; setStatus(); return false; }
     loadCustomVideos().catch(() => {}); loadCustomNames().catch(() => {});
     let c, t;
     if (clientMode) {
-      const res = await sb.rpc("client_my_data");
-      if (res.error) { showProblem("Couldn\u2019t load your workouts \u00b7 check your signal and tap Try again"); return; }
+      const res = await withTimeout(sb.rpc("client_my_data"), 8000);
+      if (res.error) {
+        if (isOffline(res.error)) {
+          if (offlineFromMirror()) return false;               // no signal: the last synced copy stands in
+          showProblem("Couldn\u2019t load your workouts \u00b7 check your signal and tap Try again"); return false;
+        }
+        showProblem("Couldn\u2019t load your workouts \u00b7 " + (res.error.message || "server error") + " \u00b7 tap Try again"); return false;
+      }
       c = { data: res.data.clients || [] }; t = { data: res.data.trainings || [] };
+      const me = c.data[0], authoritative = !!me && !(me.data && me.data.paused);
+      if (authoritative) {                                                   // a training the trainer deleted: nothing queued for it can land
+        const serverIds = new Set(t.data.map((r) => r.id));
+        for (const k of [...dirty.keys()]) { const [kind, id] = k.split("/"); if (kind === "trainings" && !serverIds.has(id)) { dirty.delete(k); pendingWeightRows.delete(id); pendingDoneRows.delete(id); pendingFinish.delete(id); pendingSkip.delete(id); pendingSwap.delete(id); } }
+        persistPending();
+      }
     } else {
       [c, t] = await Promise.all([
-        sb.from("ft_clients").select("id,data,updated_at"),
-        sb.from("ft_trainings").select("id,data,updated_at"),
+        withTimeout(sb.from("ft_clients").select("id,data,updated_at"), 12000),
+        withTimeout(sb.from("ft_trainings").select("id,data,updated_at"), 12000),
       ]);
       if (c.error || t.error) {
         const err = c.error || t.error;
-        if (/ft_clients|ft_trainings|relation/i.test(err.message)) $("status").textContent = "Run supabase/cloud.sql first";
-        return;
+        if (/ft_clients|ft_trainings|relation/i.test(err.message)) { $("status").textContent = "Run supabase/cloud.sql first"; return false; }
+        if (isOffline(err)) { offline = true; setStatus(); } else { $("status").textContent = "Couldn\u2019t sync \u00b7 " + (err.message || "server error"); }
+        return false;                                           // the device copy stays on screen
       }
-      for (const r of c.data) seenAt.set(key("clients", r.id), r.updated_at);
-      for (const r of t.data) seenAt.set(key("trainings", r.id), r.updated_at);
-      trainerTouched.clear(); trainerNamed.clear();
+      for (const r of c.data) if (!dirty.has(key("clients", r.id))) seenAt.set(key("clients", r.id), r.updated_at);
+      for (const r of t.data) if (!dirty.has(key("trainings", r.id))) seenAt.set(key("trainings", r.id), r.updated_at);   // queued edits keep their old stamp so the save merges the client's weights
+      for (const id of [...trainerTouched.keys()]) if (!dirty.has(key("trainings", id))) trainerTouched.delete(id);
+      for (const id of [...trainerNamed.keys()]) if (!dirty.has(key("trainings", id))) trainerNamed.delete(id);
     }
     const migrated = lsGet("fiala.trainings.migrated");
     if (!clientMode && !migrated && c.data.length === 0 && t.data.length === 0 && (clients.size || trainings.size)) {
@@ -1067,6 +1120,7 @@
         const seen = new Set();
         for (const r of rows) {
           seen.add(r.id); if (dirty.has(key(kind, r.id))) continue;
+          if ((confirmedAt.get(key(kind, r.id)) || 0) > startedAt) continue;   // written after this read began: keep ours
           if (kind === "trainings" && templateDraft && templateDraft.dirty && templateDraft.id === r.id) continue;   // unsaved template edits
           if (kind === "trainings" && renderedTraining === r.id && $("rows").contains(document.activeElement)) continue; // being edited right now: next sync
           map.set(r.id, { ...r.data, id: r.id });
@@ -1082,18 +1136,51 @@
       if (!myClientId) { showWaiting(); return; }
       if (view.name === "clients" || (view.name === "client" && view.id !== myClientId)) view = { name: "client", id: myClientId };
     }
+    offline = false;
     render(); setStatus();
+    for (const k of dirty.keys()) if (!timers.has(k)) { const [kind, id] = k.split("/"); flushOne(kind, id); }
+    return true;
+  }
+  // ---- no signal: the device copy (saved after every successful sync) stands in until the server answers again
+  function offlineFromMirror() {
+    const me = [...clients.values()].find((c) => !isTemplateClient(c.id) && norm(c.email) === norm(sessionEmail));
+    if (!me) return false;
+    myClientId = me.id; offline = true;
+    if (!(view.name === "training" && trainings.has(view.id))) view = { name: "client", id: myClientId };
+    render(); setStatus(); return true;
+  }
+  let offlineEntry = null, resuming = false;   // "remembered": we came in without a session and must re-enter properly once there is one
+  function enterOffline(remembered) {     // no session could be read (token expired, no signal): use what the device knows
+    offlineEntry = "remembered"; settingsOpen = false; signedIn = true; sessionEmail = remembered.email || ""; clientMode = remembered.role !== "trainer";
+    document.body.classList.toggle("client", clientMode); backend = clientMode ? clientBackend : cloudBackend; hideAllViews();
+    if (clientMode) { $("clientFoot").hidden = false; if (!offlineFromMirror()) showLogin("You\u2019re offline. Connect once to sign in."); return; }
+    $("dataNote").textContent = "Synced to the cloud"; $("myExercises").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false;
+    offline = true; render(); setStatus();
+  }
+  async function resumeOnline() {
+    if (!sb || !signedIn || resuming) return; resuming = true;
+    try {
+      if (offlineEntry === "remembered") {                  // no session yet: get one, then enter normally (enterCloud flushes what is queued)
+        const { data } = await sb.auth.getSession().catch(() => ({ data: null }));
+        if (!(data && data.session) || offlineEntry !== "remembered" || entering) return;
+        await enterCloud(data.session); return;
+      }
+      if (!(await syncDown())) return;                      // a quiet retry: the screen stays as it is
+      for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); }
+    } finally { resuming = false; }
   }
 
-  function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(() => { syncDown().catch(() => {}); }, 300); }
+  function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(() => { (offline ? resumeOnline() : syncDown()).catch(() => {}); }, 300); }
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") scheduleSync(); });
   window.addEventListener("focus", scheduleSync);
-  window.addEventListener("online", () => { failed = false; for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } scheduleSync(); });
+  window.addEventListener("online", () => { failed = false; if (offline && signedIn) { resumeOnline().catch(() => {}); return; } for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } scheduleSync(); });
   setInterval(() => { if (document.visibilityState === "visible") scheduleSync(); }, 60000);
 
+  // a request that gets no answer within `ms` counts as a network failure (a phone with one bar can hang for a long time)
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r({ data: null, error: { message: "network timeout" } }), ms))]);
   async function isTrainerAccount() {
     try {
-      const { data, error } = await sb.from("trainers").select("email").limit(1);
+      const { data, error } = await withTimeout(sb.from("trainers").select("email").limit(1), 4000);
       if (error) return null;              // unknown (offline, hiccup): let RLS decide
       return data.length > 0;
     } catch { return null; }
@@ -1267,27 +1354,40 @@
     showProblem("Your account is ready, but " + (sessionEmail || "your email") + " is not linked to a client profile yet. Ask Michal to add this email to your profile, then tap Try again.");
   }
 
+  let entering = false;
   async function enterCloud(session) {
-    settingsOpen = false;
+    if (entering) return; entering = true;
+    try { await enterCloudNow(session); } finally { entering = false; }
+  }
+  async function enterCloudNow(session) {
+    const quiet = clientMode && offline && !!myClientId;    // the device copy is already on screen: swap in live data without a blank "Loading…"
+    settingsOpen = quiet ? settingsOpen : false;
     signedIn = true; sessionEmail = session.user.email || "";
     let trainer = await isTrainerAccount();
     const remembered = lsGet("fiala.trainings.role");
-    if (trainer === null) trainer = remembered && remembered.email === sessionEmail && remembered.role === "trainer";
-    else lsSet("fiala.trainings.role", { email: sessionEmail, role: trainer ? "trainer" : "client" });
+    if (trainer === null) {
+      if (remembered && remembered.email === sessionEmail) trainer = remembered.role === "trainer";
+      else { offline = true; offlineEntry = "remembered"; showProblem("Couldn\u2019t reach the server \u00b7 check your signal and tap Try again"); return; }   // resumeOnline retries the entry
+    } else lsSet("fiala.trainings.role", { email: sessionEmail, role: trainer ? "trainer" : "client" });
+    offlineEntry = null;
+    if (pendingOwner && pendingOwner !== sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
+      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear(); persistPending();
+    }
     clientMode = trainer !== true;
     document.body.classList.toggle("client", clientMode);
     backend = clientMode ? clientBackend : cloudBackend;
-    hideAllViews();
+    if (!quiet) hideAllViews();
     if (clientMode) {
-      clients.clear(); trainings.clear();
+      for (const id of [...clients.keys()]) if (isTemplateClient(id) || norm(clients.get(id).email) !== norm(sessionEmail)) clients.delete(id);   // the device copy may belong to someone else
+      const mineIds = new Set(clients.keys()); for (const id of [...trainings.keys()]) if (!mineIds.has(trainings.get(id).clientId)) trainings.delete(id);
       $("clientFoot").hidden = false;
-      $("status").textContent = "Loading\u2026";
-      await syncDown();
+      if (!quiet) $("status").textContent = "Loading\u2026";
+      if (await syncDown()) for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); }
       setStatus();
       return;
     }
     $("dataNote").textContent = "Synced to the cloud";
-    $("myExercises").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false;
+    $("myExercises").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false; $("clientFoot").hidden = true;
     render(); setStatus();
     await syncDown();
     for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); }
@@ -1295,6 +1395,8 @@
   }
 
   const isNetwork = (error) => /load failed|failed to fetch|network|fetch/i.test((error && error.message) || "");
+  const isOffline = (error) => !navigator.onLine || isNetwork(error);
+  const hasAuthToken = () => { try { return !!localStorage.getItem("sb-umurkxqswcjmubeucrzw-auth-token"); } catch { return false; } };
   // flaky phone connections: retry a request that never reached the server (up to 3 tries)
   async function withRetry(task) {
     let last;
@@ -1386,23 +1488,45 @@
   const signOutClient = async () => {
     await flushNow();
     if (dirty.size) { $("status").textContent = "Some weights are not saved yet \u00b7 try again when online"; return; }
-    await sb.auth.signOut();
-    for (const tm of timers.values()) clearTimeout(tm);
-    timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingSwap.clear(); failed = false;
-    clients.clear(); trainings.clear(); localBackend.save();
-    view = { name: "clients" }; showLogin("");
+    const finish = () => {
+      for (const tm of timers.values()) clearTimeout(tm);
+      timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingSwap.clear(); failed = false;
+      clients.clear(); trainings.clear(); localBackend.save();
+      try { localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
+      offline = false; offlineEntry = null;
+      view = { name: "clients" }; showLogin("");
+    };
+    const p = sb.auth.signOut().catch((e) => ({ error: e }));
+    const out = await withTimeout(p, 8000);
+    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; p.then((r) => { if (!(r && r.error)) finish(); }); return; }
+    finish();
   };
   $("signout3").addEventListener("click", signOutClient);
-  $("retryBtn").addEventListener("click", async () => { const { data } = await sb.auth.getSession(); if (data && data.session) await enterCloud(data.session); else showLogin(""); });
+  $("retryBtn").addEventListener("click", async () => {
+    $("retryBtn").disabled = true;
+    try {
+      const { data, error } = await sb.auth.getSession().catch((e) => ({ data: null, error: e }));
+      const remembered = lsGet("fiala.trainings.role");
+      if (data && data.session) await enterCloud(data.session);
+      else if (remembered && remembered.email && (!navigator.onLine || isNetwork(error))) enterOffline(remembered);
+      else showLogin("");
+    } finally { $("retryBtn").disabled = false; }
+  });
   const signOutTrainer = async () => {
     await flushNow();
     if (dirty.size) { $("status").textContent = "Some changes are not saved yet \u00b7 try again when online"; return; }
-    await sb.auth.signOut();
-    for (const tm of timers.values()) clearTimeout(tm);
-    timers.clear(); chains.clear(); dirty.clear(); failed = false;
-    clients.clear(); trainings.clear(); localBackend.save();
-    try { localStorage.removeItem("fiala.trainings.migrated"); } catch {}
-    view = { name: "clients" }; showLogin("");
+    const finish = () => {
+      for (const tm of timers.values()) clearTimeout(tm);
+      timers.clear(); chains.clear(); dirty.clear(); trainerTouched.clear(); trainerNamed.clear(); failed = false;
+      clients.clear(); trainings.clear(); localBackend.save();
+      try { localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
+      offline = false; offlineEntry = null;
+      view = { name: "clients" }; showLogin("");
+    };
+    const p = sb.auth.signOut().catch((e) => ({ error: e }));
+    const out = await withTimeout(p, 8000);
+    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; p.then((r) => { if (!(r && r.error)) finish(); }); return; }
+    finish();
   };
   $("signout").addEventListener("click", () => (clientMode ? signOutClient() : signOutTrainer()));
   async function flushNow() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); await flushOne(kind, id).catch(() => {}); } }
@@ -2413,19 +2537,31 @@
   async function boot() {
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) view = saved;
     localBackend.load();                       // instant start from the device copy
+    restorePending();                          // and whatever was still waiting to reach the server
     if (window.supabase && window.supabase.createClient) {
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" } });
       $("status").textContent = "Loading\u2026";
       const fromRecoveryLink = /type=recovery/.test(location.hash);
       sb.auth.onAuthStateChange((event) => {
         if (event === "PASSWORD_RECOVERY") { recovering = true; showRecovery(); }
-        if (event === "SIGNED_OUT" && signedIn) showLogin("Signed out. Sign in again to keep syncing.");
+        if (event === "SIGNED_OUT" && signedIn) { backend = null; offline = false; offlineEntry = null; try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); }
       });
-      const { data } = await sb.auth.getSession();
+      // no signal: the library retries the token refresh for up to 30 s before answering. Don't make anyone wait for that:
+      // after 4 s show what the device knows, and switch to live data if the session comes through later.
+      const remembered = lsGet("fiala.trainings.role");
+      const sessionP = sb.auth.getSession();
+      const first = await Promise.race([sessionP, new Promise((r) => setTimeout(() => r("slow"), 4000))]);
+      if (first === "slow") {
+        if (remembered && remembered.email && !fromRecoveryLink) enterOffline(remembered); else showLogin("");
+        sessionP.then(({ data }) => { if (data && data.session) { if (fromRecoveryLink) { recovering = true; showRecovery(); return; } if (entering || resuming || (signedIn && offlineEntry !== "remembered")) return; enterCloud(data.session); } else if (!signedIn) showLogin($("loginMsg").textContent); }).catch(() => {});
+        return;
+      }
+      const { data, error: sessionError } = first;
       if (location.hash && /access_token|error/.test(location.hash)) history.replaceState(null, "", location.pathname);
       if (fromRecoveryLink && data && data.session) { recovering = true; showRecovery(); return; }
       if (data && data.session) { await enterCloud(data.session); }
-      else { showLogin(""); }
+      else if ((!navigator.onLine || isNetwork(sessionError)) && remembered && remembered.email) enterOffline(remembered);
+      else showLogin("");
       return;
     }
     // no library (blocked network): work from the device copy
@@ -2434,6 +2570,8 @@
   }
   if (!(window.supabase && window.supabase.createClient)) render();
   boot();
+  // offline shell: the service worker keeps the app page, fonts, icons, templates and the Supabase library on the device
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
 </script>
 
