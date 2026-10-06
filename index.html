@@ -309,9 +309,8 @@
   .block.done:not(.open) .card-sum { display: block; padding-right: 56px; }
   .block.done .group { position: relative; }
   .block.done:not(.open) .card-foot { display: none; }                  /* folded: the status line is the bottom of the card */
-  .block.done:not(.open) .card-chev { bottom: 8px; }                    /* chevron down, beside "Finished · 3 of 3 sets" */
-  .block.done.open .card-chev { top: 11px; }                            /* chevron up, in the corner of the Sets line */
-  .block.done .tracker .tr-steps { display: none; }                     /* a finished card keeps its count; the corner is the chevron's */
+  .block.done:not(.open) .card-chev { bottom: 2px; }                    /* chevron down, beside "Finished · 3 of 3 sets" */
+  .block.done.open .card-chev { bottom: 8px; }                          /* chevron up, bottom corner of the open card (the Sets line keeps − and +) */
   /* client: the card being done is open; the ones still to come fold to a line each, a tap opens one for a look */
   .row .sum { display: none; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--text-tertiary); margin: 4px 0 0 64px; letter-spacing: 0; }
   .row .sum .si + .si::before { content: "\00b7"; margin: 0 6px; }
@@ -326,9 +325,8 @@
   body.client .block.peek .row .top .name, body.client .block.peek .row .top input.label { pointer-events: none; }
   /* the chevron in the corner: down on a folded card, up on one opened for a look */
   body.client .block.ahead .group, body.client .block.peek .group { position: relative; }
-  .card-chev { position: absolute; right: 12px; appearance: none; border: 0; padding: 0; width: 36px; height: 36px; border-radius: 50%; background: var(--btn-bg); color: var(--btn-fg); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: opacity 300ms ease; }   /* the same circle as Details on a client */
-  .card-chev:hover { opacity: 0.85; }
-  .card-chev svg { width: 18px; height: 18px; }
+  .card-chev { position: absolute; right: 10px; appearance: none; border: 0; background: none; padding: 0; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; }
+  .card-chev svg { width: 22px; height: 22px; }
   body.client .block.ahead .card-chev { top: 14px; }
   body.client .block.ahead .row .top .name { padding-right: 48px !important; }
   body.client .block.peek .card-chev { top: 10px; }
