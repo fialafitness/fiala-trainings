@@ -424,9 +424,8 @@
   body.client .row .specs { display: none; }
   body.client .row .sum { display: flex; margin: 0 0 0 var(--numw); font-size: 15px; color: var(--text-primary); }   /* reps and rest in the same ink as the name; the tempo line below is lighter */
   body.client .block:not(.ahead) .row .sum .sum-sets { display: none; }                      /* the chips above say how many sets */
-  body.client .block:not(.ahead) .row .sum .si + .si::before { content: none; }
-  body.client .block:not(.ahead) .row .sum .si + .si { margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--card-border); }   /* reps │ rest */
-  body.client .block:not(.ahead) .row .sum .si.sum-sets + .si { margin-left: 0; padding-left: 0; border-left: 0; }
+  body.client .block:not(.ahead) .row .sum .si + .si::before { margin: 0 8px; color: var(--text-tertiary); }   /* reps · rest, with room to breathe; wraps cleanly when long */
+  body.client .block:not(.ahead) .row .sum .si.sum-sets + .si::before { content: none; }
   body.client .block.ahead .row .sum { margin-top: 2px; font-size: 13px; color: var(--text-tertiary); }
   body.client .block.done:not(.open) .row .sum { display: none; }
   body.client .tempo-wrap { margin: 4px 0 0 var(--numw); }
@@ -1754,7 +1753,7 @@
     const unitChip = (u) => chip(u, () => { const v = kbTarget.value.trim().replace(/\s*(sec|s|min)$/i, ""); if (v) kbSet(v + " " + u, true); }); // 60 → 60 sec, 4 min → 4 sec
     if (kind === "weights") { chip("BW", () => kbSet("BW")); unitChip("sec"); }
     const sideChip = (w) => chip(w, () => { const v = kbTarget.value.trim().replace(/\s*each (side|leg|arm)$/i, ""); if (v) kbSet(v + " " + w, true); });   // 7 → "7 each side"
-    if (kind === "reps") { chip("\u2013", () => kbInsert("\u2013")); sideChip("each side"); sideChip("each leg"); unitChip("sec"); }
+    if (kind === "reps") { chip("\u2013", () => kbInsert("\u2013")); sideChip("each side"); unitChip("sec"); }
     if (kind === "tempo") { chip("X", () => kbInsert("X")); for (const w of ["Normal", "Controlled", "Slow"]) chip(w, () => kbSet(w, true)); for (const c of ["3010", "4010", "10X0", "41X0"]) chip(c, () => kbSet(c, true)); }
     if (kind === "rest") { unitChip("sec"); unitChip("min"); }
     kbDone.textContent = (kind === "weights" && kbSibling(t)) ? "Next" : "Done";
@@ -2496,6 +2495,7 @@
   // "30 lbs", "1 lb", "20 kg"; nothing after "Bodyweight", "band" or "60 sec"
   const weightWord = (v, unit) => { const t = String(v || "").trim(); if (t && !/^[\d.,\s]+$/.test(t)) return ""; const n = parseFloat(t.replace(",", ".")); return unit === "kg" ? "kg" : (n === 1 ? "lb" : "lbs"); };
   const showWeight = (v) => /^bw$/i.test(String(v || "").trim()) ? "Bodyweight" : v;   // typed or picked as BW, read as a word
+  const showReps = (v) => String(v || "").replace(/^(\d+(?:\s*[\u2013-]\s*\d+)?)\s+(each|per)\s+(side|leg|arm)$/i, (m, n, e, w) => n + (n === "1" ? " rep " : " reps ") + e + " " + w);   // "7 each side" reads "7 reps each side"
   // a chip shows its words as text ("8–10 reps", "30 lbs"); the box only appears while someone types in it
   // o.readOnly: text only (client) · o.empty: the grey label when there is nothing at all ("Weight") · o.suffix: text, or fn(shown) → text ("" hides it) · o.show: fn(shown) → what to display
   function wireChip(inp, o = {}) {
@@ -2665,7 +2665,7 @@
     if (!asClient) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
     bind(".reps", "reps"); bind(".tempo", "tempo", (v) => { setTimeout(paintTempo, 0); return v; });
     bind(".rest", "rest");
-    wireChip(q(".reps"), { readOnly: asClient, suffix: repsWord }); const fitRest = wireChip(q(".rest"), { readOnly: asClient });
+    wireChip(q(".reps"), { readOnly: asClient, suffix: repsWord, show: showReps }); const fitRest = wireChip(q(".rest"), { readOnly: asClient });
     if (!asClient) q(".rest").addEventListener("blur", (e) => { const v = e.target.value.trim(); if (/^\d+([.,]\d+)?$/.test(v)) { r.rest = v + " sec"; e.target.value = r.rest; fitRest(); save(); } });
     const numpick = q(".numpick");
     function showNumbers() {
@@ -2786,7 +2786,7 @@
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.focus(); } });
       rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.blur(); } });
       wireChip(w, { empty: "Weight", suffix: (v) => weightWord(v, unit), show: showWeight });   // after the handlers above, so the words follow the tidied value
-      wireChip(rp, { empty: "Reps", suffix: repsWord });
+      wireChip(rp, { empty: "Reps", suffix: repsWord, show: showReps });
     }
     const chipText = (c) => c.querySelector(".val").textContent + (c.querySelector(".suffix").hidden ? "" : " " + c.querySelector(".suffix").textContent);
     const nSets = setsOf(r), sumEl = q(".sum"); sumEl.replaceChildren();   // "3 sets · 8–10 reps · 60 sec transition" (the open card hides the sets part: the chips above say it)
