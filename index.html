@@ -427,7 +427,14 @@
   body.client .specs .chip { cursor: default; }
   /* client: the number is a solid badge in the exercise's colour, the name is the headline, the details line up under the name;
      only the weight and reps boxes they fill in look like boxes */
-  .row { --numw: 64px; }                                 /* badge column + gap: where the name starts */
+  .row { --numw: 64px; --letw: 0px; }                   /* badge column + gap: where the name starts; letter width on an open client card */
+  /* client, open card: the number lives in the caption above; the name is the headline; superset rows carry a letter */
+  body.client .block.ahead .group-cap, body.client .block.done .group-cap { display: none; }
+  body.client .block:not(.ahead):not(.done) .row .top { grid-template-columns: 1fr; }
+  body.client .block:not(.ahead):not(.done) .row .top .labwrap { display: none; }
+  body.client .block:not(.ahead):not(.done) .row .top .name { font-size: 22px; line-height: 26px; font-weight: 700; padding-left: var(--letw); }
+  body.client .block:not(.ahead):not(.done) .row .exwrap::before { content: attr(data-letter); position: absolute; left: 0; top: 10px; font-size: 15px; font-weight: 600; line-height: 26px; color: var(--text-tertiary); }
+  body.client .block:not(.ahead):not(.done) .row .sum, body.client .block:not(.ahead):not(.done) .row .tempo-wrap { margin-left: var(--letw); }
   body.client .row .top input.label, body.client .group .row .top input.label { background: var(--ss); color: var(--ss-ink); border-color: transparent; box-shadow: none; font-weight: 600; }
   body.client .row .top .name { background: none; border-color: transparent; padding-left: 0; font-size: 19px; line-height: 24px; font-weight: 600; }
   body.client .row .specs { display: none; }
@@ -2318,10 +2325,11 @@
       const block = document.createElement("div");
       const warm = g.key === "w";
       block.className = "block"; block.dataset.key = g.key;
-      if (g.rows.length >= 2 || warm) {
+      if (g.rows.length >= 2 || warm || asClient) {
         const cap = document.createElement("div"); cap.className = "group-cap";
         const kind = g.rows.length < 2 ? "" : g.rows.length === 2 ? "Superset" : g.rows.length === 3 ? "Tri-set" : "Giant set";
-        const b = document.createElement("b"); b.textContent = warm ? (kind ? "Warmup \u00b7 " + kind : "Warmup") : kind;
+        const num = asClient && /^\d+$/.test(String(g.key)) ? String(g.key) : "";   // client: the number lives up here, not in the card
+        const b = document.createElement("b"); b.textContent = warm ? (kind ? "Warmup \u00b7 " + kind : "Warmup") : [num, kind].filter(Boolean).join(" \u00b7 ");
         cap.appendChild(b);
         if (kind) {
           const after = g.rows.length === 2 ? "rest after both" : "rest after all " + g.rows.length;
@@ -2579,6 +2587,8 @@
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
     const markNamed = () => { if (clientMode) return; if (!trainerNamed.has(t.id)) trainerNamed.set(t.id, new Set()); trainerNamed.get(t.id).add(r.id); };
     const exwrap = q(".top .exwrap"), altBtn = q(".alt-btn"), altMenu = q(".alt-menu");
+    const letter = (String(r.label || "").match(/^\d+([a-z])$/i) || [])[1] || "";   // superset rows read "A  Bench press"
+    exwrap.dataset.letter = letter.toUpperCase(); el.style.setProperty("--letw", letter ? "28px" : "0px");
     let altMode = "list";
     const altList = () => (r.alts || []).filter(Boolean);
     const paintAltBtn = () => { const n = altList().length; const show = !asClient || n > 0; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };
