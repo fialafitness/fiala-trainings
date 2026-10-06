@@ -380,12 +380,14 @@
   .block.done:not(.open) .row .vid, .block.done:not(.open) .row .player { display: none; }
   /* reps and rest: two chips under the name that read as phrases ("8–10 reps", "60 sec transition"); the trainer types inside them */
   .specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
-  .specs .chip { display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 40px; padding: 8px 10px; overflow: hidden; background: var(--field); border: 1px solid transparent; border-radius: var(--r-field); font-size: 16px; line-height: 1.3; cursor: text; transition: border-color 150ms ease, background-color 150ms ease; }
+  .specs .chip { position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 40px; padding: 8px 10px; overflow: hidden; background: var(--field); border: 1px solid transparent; border-radius: var(--r-field); font-size: 16px; line-height: 1.3; cursor: text; transition: border-color 150ms ease, background-color 150ms ease; }
   .specs .chip:focus-within { border-color: var(--brand); background: var(--surface); }
-  .specs .grow { display: inline-grid; min-width: 0; max-width: 100%; font-weight: 500; }
-  .specs .grow::after { content: attr(data-v); padding: 0 2px 0 8px; grid-area: 1 / 1; visibility: hidden; white-space: pre; }   /* sizes the box: the words plus slack on the LEFT, so a phone that draws the text a little wider never eats the gap before "rest" */
-  .specs .grow input { grid-area: 1 / 1; width: auto; min-width: 1em; min-height: 0; padding: 0 2px 0 0; border: 0; border-radius: 0; background: none; text-align: right; font-weight: 500; transition: none; }
-  .specs .grow input:focus { background: none; border: 0; }
+  .specs .val { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* the words are real text; nothing is measured */
+  .specs .val.ph { color: var(--placeholder); }
+  .specs .chip input { position: absolute; left: 0; top: 0; width: 1px; height: 1px; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; opacity: 0; pointer-events: none; text-align: right; font-weight: 500; transition: none; }   /* parked until the trainer taps the chip */
+  .specs .chip.editing input { position: static; flex: 1 1 auto; width: 0; height: auto; min-width: 2ch; padding: 0 2px 0 0; opacity: 1; pointer-events: auto; }
+  .specs .chip.editing .val { display: none; }
+  .specs .chip input:focus { background: none; border: 0; }
   .specs .suffix { flex: 0 0 auto; white-space: nowrap; color: var(--text-secondary); }
   .specs .chip.filled .suffix { color: inherit; font-weight: 500; }        /* once there is a value the whole phrase reads as one: "20 sec rest" */
   body.client .specs .chip { cursor: default; }
@@ -612,7 +614,7 @@
     .row .top { grid-template-columns: 52px 1fr 36px; }
     body.client .row .top { grid-template-columns: 52px 1fr; }
     .specs { gap: 6px; }
-    .specs .chip { padding: 8px 6px; gap: 2px; }
+    .specs .chip { padding: 8px 6px; }
     .tempo-wrap > label { letter-spacing: 0.06em; font-size: 12px; }
     .tempo-tiles span { font-size: 9px; }
     .tempo-tiles { padding: 8px 0; }
@@ -2417,8 +2419,8 @@
       <div class="vid-form" hidden><input class="vid-url" type="url" placeholder="Paste a YouTube link" autocomplete="off" autocapitalize="none" inputmode="url"><div class="vid-actions"><button class="btn sm vid-save" type="button">Save</button><button class="btn quiet vid-remove" type="button" hidden>Remove</button><button class="btn quiet vid-cancel" type="button">Cancel</button></div></div>
       <div class="player" hidden></div>
       <div class="specs">
-        <div class="chip"><span class="grow" data-v="10"><input class="reps tab" size="1" inputmode="decimal" placeholder="10" aria-label="Reps"></span><span class="suffix">reps</span></div>
-        <div class="chip"><span class="grow" data-v="60 sec"><input class="rest tab" size="1" inputmode="decimal" placeholder="60 sec" aria-label="Rest"></span><span class="suffix rest-suffix">rest</span></div>
+        <div class="chip"><span class="val"></span><input class="reps tab" inputmode="decimal" placeholder="10" aria-label="Reps"><span class="suffix">reps</span></div>
+        <div class="chip"><span class="val"></span><input class="rest tab" inputmode="decimal" placeholder="60 sec" aria-label="Rest"><span class="suffix rest-suffix">rest</span></div>
       </div>
       <div class="tempo-wrap"><label>Tempo</label><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"><div class="tempo-tiles" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
@@ -2542,10 +2544,13 @@
     if (!clientMode) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
     bind(".reps", "reps"); bind(".tempo", "tempo", (v) => { setTimeout(paintTempo, 0); return v; });
     bind(".rest", "rest");
-    const fit = (inp) => { inp.parentElement.dataset.v = inp.value || inp.placeholder || ""; inp.closest(".chip").classList.toggle("filled", !!inp.value); };   // the chip hugs its words
+    const fit = (inp) => { const chip = inp.closest(".chip"), val = chip.querySelector(".val"); val.textContent = inp.value || inp.placeholder || ""; val.classList.toggle("ph", !inp.value); chip.classList.toggle("filled", !!inp.value); };   // the chip shows the words as text; the box only appears while the trainer types in it
     for (const sel of [".reps", ".rest"]) {
-      const inp = q(sel); fit(inp); inp.addEventListener("input", () => fit(inp));
-      inp.closest(".chip").addEventListener("click", (e) => { if (e.target !== inp && !clientMode) { inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {} } });
+      const inp = q(sel), chip = inp.closest(".chip"); fit(inp); inp.addEventListener("input", () => fit(inp));
+      if (clientMode) { inp.tabIndex = -1; continue; }
+      chip.addEventListener("click", (e) => { if (e.target !== inp) { inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {} } });
+      inp.addEventListener("focus", () => chip.classList.add("editing"));
+      inp.addEventListener("blur", () => { chip.classList.remove("editing"); fit(inp); });
     }
     if (!clientMode) q(".rest").addEventListener("blur", (e) => { const v = e.target.value.trim(); if (/^\d+([.,]\d+)?$/.test(v)) { r.rest = v + " sec"; e.target.value = r.rest; fit(e.target); save(); } });
     const numpick = q(".numpick");
