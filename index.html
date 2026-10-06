@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -385,7 +385,7 @@
   .specs label.rest-label.long { letter-spacing: 0.02em; font-size: 11px; }
   .specs label { display: block; font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0; }
   .specs label .kb { letter-spacing: 0; text-transform: none; font-weight: 400; }
-  .specs input { padding: 10px 6px; min-height: 40px; text-align: center; font-size: 15px; }
+  .specs input { padding: 10px 4px; min-height: 40px; text-align: center; font-size: 16px; }
   .tempo-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
   .tempo-tiles[hidden] { display: none; }
   .tempo-tiles > div { background: var(--field); border-radius: var(--r-chip); min-height: 38px; padding: 5px 4px 4px; text-align: center; display: flex; flex-direction: column; justify-content: center; }
@@ -421,7 +421,8 @@
   .finish-early { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--text-secondary); font-size: 15px; min-height: 40px; padding: 0 8px; }
   .block.done:not(.open) .tracker, .block.done:not(.open) .row .setlog, .block.done:not(.open) .complete, .block.done .finish-early:not(.undo-set), .block.done:not(.open) .undo-set { display: none; }
   .undo-set[hidden] { display: none; }
-  .block.done .complete { width: auto; background: transparent; color: var(--text-secondary); border: 1px solid var(--card-border); min-height: 40px; padding: 10px 24px; font-size: 14px; }
+  .complete.quiet-back { width: auto; background: transparent; color: var(--text-secondary); border: 1px solid var(--card-border); min-height: 40px; padding: 10px 24px; font-size: 14px; }
+  .complete[hidden] { display: none; }
   .weights { margin-top: 16px; }
   .weights .cap { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; display: flex; justify-content: space-between; gap: 8px; }
   .weights .cap span:last-child { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-tertiary); }
@@ -517,7 +518,7 @@
   .details[hidden] { display: none; }
   .field-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 2px; }
   .field-row .muted { font-size: 15px; }
-  .field-row input[type="date"] { width: auto; font-size: 15px; padding: 8px 12px; color: var(--text-primary); }
+  .field-row input[type="date"] { width: auto; font-size: 16px; padding: 8px 12px; color: var(--text-primary); }
   .kicker { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 6px 1px; }
   .kicker[hidden] { display: none; }
   .paused-card { display: flex; flex-direction: column; gap: 6px; margin-top: 24px; padding: 18px 20px; background: var(--card); border: 1px solid var(--card-border); border-radius: var(--r-card); }
@@ -2276,7 +2277,8 @@
       if (total > 0) {
         const sel = g.sel, current = sel === doneSets && doneSets < total;
         const complete = document.createElement("button"); complete.type = "button"; complete.className = "btn complete";
-        complete.textContent = current ? (sel + 1 === total ? "Complete last set \u2192" : "Complete set \u2192") : "Save set";
+        complete.textContent = current ? (sel + 1 === total ? "Complete last set \u2192" : "Complete set \u2192") : "Back to set " + (Math.min(doneSets, total - 1) + 1);
+        if (!current) { complete.classList.add("quiet-back"); if (doneSets >= total) complete.hidden = true; }
         const undo = document.createElement("button"); undo.type = "button"; undo.className = "finish-early undo-set"; undo.textContent = "Mark set " + (sel + 1) + " as not done";
         undo.hidden = !(sel < doneSets);
         undo.addEventListener("click", () => {                // this set and anything after it go back to not done
@@ -2284,6 +2286,7 @@
           setSel.set(selKey, sel); scheduleSave("trainings", t.id); renderedTraining = null; render();
         });
         complete.addEventListener("click", () => {
+          if (!current) { setSel.delete(selKey); renderedTraining = null; render(); return; }   // just go back to the current set
           const prevDone = doneSets;
           for (const r of g.rows) {
             if (sel >= setsOf(r)) continue;                                               // this exercise has fewer sets than the card
@@ -2296,21 +2299,22 @@
             if ((r.setsDone || 0) >= setsOf(r)) r.done = true;
             const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id);
           }
+          if (g.rows.every((r) => r.done)) openBlocks.delete(selKey);
           setSel.delete(selKey); scheduleSave("trainings", t.id); renderedTraining = null; render();
         });
         const early = document.createElement("button"); early.type = "button"; early.className = "finish-early"; early.textContent = "Finish early";
         early.addEventListener("click", () => {
           for (const r of g.rows) { r.done = true; const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
-          setSel.delete(selKey); scheduleSave("trainings", t.id); renderedTraining = null; render();
+          openBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id); renderedTraining = null; render();
         });
         foot.append(complete, early, undo);
       }
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
       const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold-btn";
       const paintFold = () => { const done = block.classList.contains("done"); fold.hidden = !done; fold.textContent = block.classList.contains("open") ? "Hide sets" : "Show sets"; };
-      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all) block.classList.remove("open"); btn.textContent = all ? "\u2713 Done" : "Done"; paintFold(); };
-      fold.addEventListener("click", () => { block.classList.toggle("open"); paintFold(); });
-      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.target.closest("button")) { block.classList.add("open"); paintFold(); } });
+      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey)) block.classList.add("open"); if (!all) openBlocks.delete(selKey); btn.textContent = all ? "\u2713 Done" : "Done"; paintFold(); };
+      fold.addEventListener("click", () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey); else openBlocks.delete(selKey); paintFold(); });
+      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.target.closest("button")) { block.classList.add("open"); openBlocks.add(selKey); paintFold(); } });
       btn.addEventListener("click", () => {
         const next = !g.rows.every((r) => r.done);
         const track = clientMode ? pendingDoneRows : trainerTouched;
@@ -2361,6 +2365,7 @@
   }
 
   const setSel = new Map();               // "<training>/<group>" -> set the client is looking at (0-based)
+  const openBlocks = new Set();           // finished cards the user opened with "Show sets"
   function rowEl(t, r, group) {
     const el = document.createElement("div"); el.className = "row"; el.dataset.id = r.id;
     el.innerHTML = `
