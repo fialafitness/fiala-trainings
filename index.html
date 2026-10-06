@@ -535,7 +535,7 @@
   .pick-note b { font-weight: 500; color: var(--text-primary); }
   #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .contact-row, #vClient.tpl #cEmailWrap, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
   #vClient.tpl #notesWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
-  #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot { display: none; }
+  #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .tracker, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
   .tpl-pill { justify-self: start; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 34px; border-radius: 50px;
     font-size: 14px; font-weight: 500; letter-spacing: 0; color: #fff; background: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
@@ -2254,11 +2254,10 @@
         block.appendChild(cap);
       }
       const card = document.createElement("div"); card.className = "group";
-      const setsOf = (r) => Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20));          // blank = the default 4; 0 still counts as one
       const total = Math.max(...g.rows.map(setsOf));
       const doneSets = Math.min(...g.rows.map((r) => { const n = clamp(parseInt(r.setsDone, 10) || 0, 0, 20); return n >= setsOf(r) ? total : n; }));   // a shorter row that is finished does not hold the others back
       const selKey = t.id + "/" + g.key;
-      if (total > 0) {
+      if (total > 0 && !isTpl) {
         let sel = setSel.has(selKey) ? setSel.get(selKey) : doneSets; sel = clamp(sel, 0, total - 1); g.sel = sel;
         const tr = document.createElement("div"); tr.className = "tracker"; tr.setAttribute("aria-label", "Sets");
         const lab = document.createElement("span"); lab.className = "tr-label"; lab.textContent = "Sets"; tr.appendChild(lab);
@@ -2272,9 +2271,9 @@
         }
         card.appendChild(tr);
       }
-      g.rows.forEach((r) => card.appendChild(rowEl(t, r, g)));
+      g.rows.forEach((r) => card.appendChild(rowEl(t, r, isTpl ? null : g)));
       const foot = document.createElement("div"); foot.className = "card-foot";
-      if (total > 0) {
+      if (total > 0 && !isTpl) {
         const sel = g.sel, current = sel === doneSets && doneSets < total;
         const complete = document.createElement("button"); complete.type = "button"; complete.className = "btn complete";
         complete.textContent = current ? (sel + 1 === total ? "Complete last set \u2192" : "Complete set \u2192") : "Back to set " + (Math.min(doneSets, total - 1) + 1);
@@ -2295,7 +2294,7 @@
             const last = lastWeights(t, r);
             if (!String(r.weights[sel] || "").trim() && last && last.weights[sel]) r.weights[sel] = String(last.weights[sel]);   // empty box = same as last time
             if (!String(r.repsDone[sel] || "").trim() && last && last.reps && last.reps[sel]) r.repsDone[sel] = String(last.reps[sel]);
-            if (current) r.setsDone = Math.min(prevDone + 1, setsOf(r));
+            if (current) r.setsDone = Math.max(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), Math.min(prevDone + 1, setsOf(r)));
             if ((r.setsDone || 0) >= setsOf(r)) r.done = true;
             const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id);
           }
@@ -2364,6 +2363,7 @@
     return changed;
   }
 
+  const setsOf = (r) => Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20));   // blank = the default 4; 0 still counts as one
   const setSel = new Map();               // "<training>/<group>" -> set the client is looking at (0-based)
   const openBlocks = new Set();           // finished cards the user opened with "Show sets"
   function rowEl(t, r, group) {
@@ -2581,7 +2581,7 @@
     }
 
     function renderWeights() {
-      const n = clamp(parseInt(r.sets, 10) || 0, 0, 20);
+      const n = setsOf(r);
       const boxes = q(".boxes"); const last = lastWeights(t, r);
       q(".last").textContent = last ? "last time \u00b7 " + fmtDate(last.date) : "";
       r.weights = (r.weights || []).slice(0, n); while (r.weights.length < n) r.weights.push("");
@@ -2604,7 +2604,7 @@
     }
     renderWeights();
     if (group && group.rows.length > 1 && group.rows[group.rows.length - 1] !== r) { q(".rest-label").textContent = "Transition"; q(".rest-label").classList.add("long"); }
-    if (group && group.sel != null && group.sel >= Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20))) q(".setlog").hidden = true;   // no such set for this exercise
+    if (group && group.sel != null && group.sel >= setsOf(r)) q(".setlog").hidden = true;   // no such set for this exercise
     else if (group && group.sel != null) {      // one set at a time: the boxes show the set the tracker points at
       const sel = group.sel; const unit = (clients.get(t.clientId) || {}).unit || "lb";
       const last = lastWeights(t, r);
