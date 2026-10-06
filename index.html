@@ -2316,7 +2316,7 @@
     groups.forEach((g) => {
       const block = document.createElement("div");
       const warm = g.key === "w";
-      block.className = "block " + (numbered++ % 2 ? "ss-2" : "ss-1"); block.dataset.key = g.key;   // the warm-up takes its turn in blue / gold like any card
+      block.className = "block " + (g.rows.length >= 2 ? "ss-2" : "ss-1"); block.dataset.key = g.key;   // colour means something: gold = exercises done back to back, blue = one on its own
       if (g.rows.length >= 2 || warm) {
         const cap = document.createElement("div"); cap.className = "group-cap";
         const kind = g.rows.length < 2 ? "" : g.rows.length === 2 ? "Superset" : g.rows.length === 3 ? "Tri-set" : "Giant set";
