@@ -380,11 +380,11 @@
   .block.done:not(.open) .row .vid, .block.done:not(.open) .row .player { display: none; }
   /* reps and rest: two chips under the name that read as phrases ("8–10 reps", "60 sec transition"); the trainer types inside them */
   .specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
-  .specs .chip { display: flex; align-items: center; justify-content: center; gap: 2px; min-width: 0; min-height: 40px; padding: 8px 10px; overflow: hidden; background: var(--field); border: 1px solid transparent; border-radius: var(--r-field); font-size: 16px; line-height: 1.3; cursor: text; transition: border-color 150ms ease, background-color 150ms ease; }
+  .specs .chip { display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 40px; padding: 8px 10px; overflow: hidden; background: var(--field); border: 1px solid transparent; border-radius: var(--r-field); font-size: 16px; line-height: 1.3; cursor: text; transition: border-color 150ms ease, background-color 150ms ease; }
   .specs .chip:focus-within { border-color: var(--brand); background: var(--surface); }
   .specs .grow { display: inline-grid; min-width: 0; max-width: 100%; font-weight: 500; }
-  .specs .grow::after { content: attr(data-v); padding-right: 3px; grid-area: 1 / 1; visibility: hidden; white-space: pre; }   /* the box is exactly as wide as what it says */
-  .specs .grow input { grid-area: 1 / 1; width: auto; min-width: 1em; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; text-align: left; font-weight: 500; transition: none; }
+  .specs .grow::after { content: attr(data-v); padding: 0 2px 0 8px; grid-area: 1 / 1; visibility: hidden; white-space: pre; }   /* sizes the box: the words plus slack on the LEFT, so a phone that draws the text a little wider never eats the gap before "rest" */
+  .specs .grow input { grid-area: 1 / 1; width: auto; min-width: 1em; min-height: 0; padding: 0 2px 0 0; border: 0; border-radius: 0; background: none; text-align: right; font-weight: 500; transition: none; }
   .specs .grow input:focus { background: none; border: 0; }
   .specs .suffix { flex: 0 0 auto; white-space: nowrap; color: var(--text-secondary); }
   .specs .chip.filled .suffix { color: inherit; font-weight: 500; }        /* once there is a value the whole phrase reads as one: "20 sec rest" */
@@ -612,7 +612,7 @@
     .row .top { grid-template-columns: 52px 1fr 36px; }
     body.client .row .top { grid-template-columns: 52px 1fr; }
     .specs { gap: 6px; }
-    .specs .chip { padding: 8px 6px; gap: 1px; }
+    .specs .chip { padding: 8px 6px; gap: 2px; }
     .tempo-wrap > label { letter-spacing: 0.06em; font-size: 12px; }
     .tempo-tiles span { font-size: 9px; }
     .tempo-tiles { padding: 8px 0; }
