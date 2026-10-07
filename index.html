@@ -482,8 +482,7 @@
   .tracker .tr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .tracker .tr-steps { display: flex; gap: 6px; }
   .tracker button { appearance: none; cursor: pointer; width: 44px; height: 44px; padding: 0; border-radius: var(--r-chip); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-secondary); font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 2px; transition: opacity 300ms ease; }
-  .tracker button.done { border-color: var(--text-secondary); color: var(--text-secondary); background: transparent; }   /* done: a quiet outlined tick */
-  .block.done .tracker button.done { border-color: var(--done); color: var(--done); }
+  .tracker button.done { border-color: var(--done); color: var(--done); background: var(--done-tint); }   /* a done set is a small "finished": fern outline, fern tick, faint fern wash */
   .tracker button.done::after { content: "\2713"; font-size: 11px; }
   .tracker button.cur { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; font-weight: 600; }   /* the set you are on: the one purple thing on the card */
   .block.done .tracker button.cur { background: var(--done); border-color: var(--done); color: var(--done-ink); }
