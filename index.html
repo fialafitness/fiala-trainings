@@ -515,6 +515,9 @@
   .vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .finish-early { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 8px; }
   .block.done:not(.open) .tracker, .block.done:not(.open) .row .setlog, .block.done:not(.open) .complete, .block.done .finish-early:not(.undo-set), .block.done:not(.open) .undo-set { display: none; }
+  .block.done .card-foot .complete { display: none; }                   /* a finished card logs nothing more until it is resumed */
+  .resume { display: none; appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 8px; }
+  .block.done.open .resume:not([hidden]) { display: inline-block; }     /* the undo for "Finish early": only on an opened, finished-early card */
   .undo-set[hidden] { display: none; }
   .complete.quiet-back { width: auto; background: transparent; color: var(--brand); border: 0; min-height: 40px; padding: 10px 24px; font-size: 15px; }
   .complete[hidden] { display: none; }
@@ -1907,13 +1910,13 @@
     if (reason) r.earlyReason = reason; else delete r.earlyReason;
     if (clientMode) { if (!pendingEarlyRows.has(t.id)) pendingEarlyRows.set(t.id, new Set()); pendingEarlyRows.get(t.id).add(r.id); }
   }
+  const groupWord = (g) => g.key === "w" ? "warmup" : g.rows.length === 2 ? "superset" : g.rows.length === 3 ? "tri-set" : g.rows.length > 3 ? "giant set" : "exercise";
   function openFinishEarly(t, g, selKey) {
     const total = Math.max(...g.rows.map(setsOf));
     const did = Math.min(...g.rows.map((r) => clamp(parseInt(r.setsDone, 10) || 0, 0, 20)));
     const left = total - did, word = (n) => n + (n === 1 ? " set" : " sets");
-    const what = g.key === "w" ? "warmup" : g.rows.length === 2 ? "superset" : g.rows.length === 3 ? "tri-set" : g.rows.length > 3 ? "giant set" : "exercise";
     es = { t, g, selKey, reason: "" };
-    $("esTitle").textContent = "Finish this " + what + "?";
+    $("esTitle").textContent = "Finish this " + groupWord(g) + "?";
     $("esLead").textContent = did > 0 ? did + " of " + word(total) + " completed." : "No sets completed yet.";
     $("esFine").textContent = (did > 0 ? "What you logged stays saved. " : "") + "The remaining " + word(left) + " will stay incomplete.";
     for (const b of $("esReasons").querySelectorAll("button")) { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); }
@@ -2495,6 +2498,7 @@
       }
       g.rows.forEach((r) => card.appendChild(rowEl(t, r, isTpl ? null : g)));
       const foot = document.createElement("div"); foot.className = "card-foot";
+      let resume = null;                                   // undo for "Finish early": shown on the opened card while it is finished early
       if (total > 0 && !isTpl) {
         const sel = g.sel, current = sel === doneSets && doneSets < total;
         const complete = document.createElement("label"); complete.htmlFor = "hapticSwitch"; complete.className = "btn complete"; complete.setAttribute("role", "button"); complete.tabIndex = 0;   // a label for the hidden switch: the tap itself gives the haptic on iPhone
@@ -2528,15 +2532,21 @@
         });
         const early = document.createElement("button"); early.type = "button"; early.className = "finish-early"; early.textContent = "Finish early";
         early.addEventListener("click", () => openFinishEarly(t, g, selKey));
-        foot.append(complete, early, undo);
+        resume = document.createElement("button"); resume.type = "button"; resume.className = "resume"; resume.hidden = true; resume.textContent = "Resume this " + groupWord(g);
+        resume.addEventListener("click", () => {              // the remaining sets open again; what was logged stays, the reason goes
+          for (const r of g.rows) { r.done = clamp(parseInt(r.setsDone, 10) || 0, 0, 20) >= setsOf(r); markEarly(t, r, ""); const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
+          openBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id); renderedTraining = null; render(); scrollToCard(g.key);
+        });
+        foot.append(complete, early, undo, resume);
       }
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
       const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold-btn";
       const sum = document.createElement("div"); sum.className = "card-sum";
       const paintSum = (all) => {
-        sum.replaceChildren(); if (!all) return;
+        sum.replaceChildren(); if (resume) resume.hidden = true; if (!all) return;
         const did = Math.min(...g.rows.map((r) => clamp(parseInt(r.setsDone, 10) || 0, 0, 20)));
         const early = g.rows.some((r) => r.done && clamp(parseInt(r.setsDone, 10) || 0, 0, 20) < setsOf(r));
+        if (resume) resume.hidden = !early;
         const sets = (n) => n + " of " + total + (total === 1 ? " set" : " sets");
         const line = (text) => { const d = document.createElement("div"); d.textContent = text; sum.appendChild(d); };
         if (!early) { line("Finished \u00b7 " + sets(total)); return; }
