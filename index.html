@@ -431,13 +431,13 @@
   /* client, open card: the number lives in the caption above; the name is the headline; superset rows carry a letter */
   body.client .block.ahead .group-cap, body.client .block.done .group-cap { display: none; }
   body.client .group-cap { align-items: baseline; gap: 2px 10px; margin: 0 0 10px 2px; }
-  body.client .group-cap .num { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; text-transform: none; color: var(--text-primary); }
+  body.client .group-cap .num { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; text-transform: none; color: var(--text-primary); }
   body.client .group-cap .num .kind { font-style: normal; color: var(--text-tertiary); }   /* "· Superset" in the description's grey */
   body.client .group-cap > span { flex-basis: 100%; }
   body.client .block:not(.ahead):not(.done) .row .top { grid-template-columns: 1fr; }
   body.client .block:not(.ahead):not(.done) .row .top .labwrap { display: none; }
-  body.client .block:not(.ahead):not(.done) .row .top .name { font-size: 22px; line-height: 26px; font-weight: 700; padding-left: var(--letw); }
-  body.client .block:not(.ahead):not(.done) .row .exwrap::before { content: attr(data-letter); position: absolute; left: 0; top: 10px; font-size: 22px; font-weight: 700; line-height: 26px; color: var(--text-tertiary); }
+  body.client .block:not(.ahead):not(.done) .row .top .name { font-size: 26px; line-height: 30px; font-weight: 700; padding-left: var(--letw); }   /* the exercise is the biggest thing on the card */
+  body.client .block:not(.ahead):not(.done) .row .exwrap::before { content: attr(data-letter); position: absolute; left: 0; top: 10px; font-size: 26px; font-weight: 700; line-height: 30px; color: var(--text-tertiary); }
   body.client .block:not(.ahead):not(.done) .row .sum, body.client .block:not(.ahead):not(.done) .row .tempo-wrap { margin-left: var(--letw); }
   body.client .row .top input.label, body.client .group .row .top input.label { background: var(--ss); color: var(--ss-ink); border-color: transparent; box-shadow: none; font-weight: 600; }
   body.client .row .top .name { background: none; border-color: transparent; padding-left: 0; font-size: 19px; line-height: 24px; font-weight: 600; }
@@ -2599,7 +2599,7 @@
     const markNamed = () => { if (clientMode) return; if (!trainerNamed.has(t.id)) trainerNamed.set(t.id, new Set()); trainerNamed.get(t.id).add(r.id); };
     const exwrap = q(".top .exwrap"), altBtn = q(".alt-btn"), altMenu = q(".alt-menu");
     const letter = (String(r.label || "").match(/^(?:\d+|w)([a-z])$/i) || [])[1] || "";   // superset rows read "A  Bench press" (warm-up Wa / Wb too)
-    exwrap.dataset.letter = letter.toUpperCase(); el.style.setProperty("--letw", letter ? "36px" : "0px");
+    exwrap.dataset.letter = letter.toUpperCase(); el.style.setProperty("--letw", letter ? "42px" : "0px");
     let altMode = "list";
     const altList = () => (r.alts || []).filter(Boolean);
     const paintAltBtn = () => { const n = altList().length; const show = !asClient || n > 0; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };
