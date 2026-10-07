@@ -431,8 +431,7 @@
   /* client, open card: the number lives in the caption above; the name is the headline; superset rows carry a letter */
   body.client .block.ahead .group-cap, body.client .block.done .group-cap { display: none; }
   body.client .group-cap { align-items: baseline; gap: 2px 10px; margin: 0 0 10px 2px; }
-  body.client .group-cap .num { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; line-height: 1; text-transform: none; color: var(--text-primary); }
-  body.client .group-cap .kind { font-style: normal; font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
+  body.client .group-cap .num { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; text-transform: none; color: var(--text-primary); }
   body.client .group-cap > span { flex-basis: 100%; }
   body.client .block:not(.ahead):not(.done) .row .top { grid-template-columns: 1fr; }
   body.client .block:not(.ahead):not(.done) .row .top .labwrap { display: none; }
@@ -2334,8 +2333,7 @@
         const kind = g.rows.length < 2 ? "" : g.rows.length === 2 ? "Superset" : g.rows.length === 3 ? "Tri-set" : "Giant set";
         if (asClient) {                                        // client: a big numeral up here does the work the badge used to do
           const num = /^\d+$/.test(String(g.key)) ? String(g.key) : "";
-          const big = document.createElement("b"); big.className = "num"; big.textContent = warm ? "Warmup" : num; cap.appendChild(big);
-          if (kind) { const k = document.createElement("i"); k.className = "kind"; k.textContent = kind; cap.appendChild(k); }
+          const big = document.createElement("b"); big.className = "num"; big.textContent = warm ? "Warmup" : [kind || "Exercise", num].filter(Boolean).join(" "); cap.appendChild(big);   // "Exercise 1", "Superset 2", "Warmup"
         } else {
           const b = document.createElement("b"); b.textContent = warm ? (kind ? "Warmup \u00b7 " + kind : "Warmup") : kind;
           cap.appendChild(b);
