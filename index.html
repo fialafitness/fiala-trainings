@@ -2333,7 +2333,7 @@
         const kind = g.rows.length < 2 ? "" : g.rows.length === 2 ? "Superset" : g.rows.length === 3 ? "Tri-set" : "Giant set";
         if (asClient) {                                        // client: a big numeral up here does the work the badge used to do
           const num = /^\d+$/.test(String(g.key)) ? String(g.key) : "";
-          const big = document.createElement("b"); big.className = "num"; big.textContent = warm ? "Warmup" : [kind || "Exercise", num].filter(Boolean).join(" "); cap.appendChild(big);   // "Exercise 1", "Superset 2", "Warmup"
+          const big = document.createElement("b"); big.className = "num"; big.textContent = warm ? (kind ? "Warmup \u00b7 " + kind : "Warmup") : ["Exercise " + num, kind].filter(Boolean).join(" \u00b7 "); cap.appendChild(big);   // "Exercise 1", "Exercise 2 · Superset", "Warmup · Superset": always "Exercise N" first, so the numbers run in order
         } else {
           const b = document.createElement("b"); b.textContent = warm ? (kind ? "Warmup \u00b7 " + kind : "Warmup") : kind;
           cap.appendChild(b);
