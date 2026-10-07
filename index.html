@@ -280,6 +280,19 @@
   .sheet .cal button.today .dn { background: none; color: var(--brand); font-weight: 600; }   /* in the picker: today is purple text, the chosen day is the filled one */
   .sheet .cal button.sel .dn { background: var(--brand-fill); color: #fff; box-shadow: none; }
   .sheet .cal button.today.sel .dn { box-shadow: none; }
+  /* "Finish early" asks first: what's done stays, the rest stays open, and they can say why */
+  .sheet.ask { padding-top: 18px; }
+  .sheet.ask h3 { margin: 6px 0 6px; font-size: 26px; line-height: 30px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
+  .sheet.ask .lead { margin: 0 0 10px; font-size: 17px; color: var(--text-primary); }
+  .sheet.ask .fine { margin: 0; font-size: 15px; line-height: 1.4; color: var(--text-secondary); }
+  .sheet.ask hr { border: 0; border-top: 1px solid var(--card-border); margin: 16px 0 14px; }
+  .sheet.ask .cap { margin: 0 0 10px; font-size: 15px; color: var(--text-secondary); }
+  .sheet.ask .reasons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .sheet.ask .reasons button { appearance: none; cursor: pointer; min-height: 44px; padding: 0 12px; border-radius: var(--r-field); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-primary); font-size: 15px; transition: opacity 300ms ease; }
+  .sheet.ask .reasons button.on { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; font-weight: 600; }   /* the chosen one, like the current set */
+  .sheet.ask .btn { width: 100%; margin-top: 18px; }
+  .sheet.ask .btn.quiet { margin-top: 4px; }
+  .card-sum div + div { margin-top: 2px; }
 
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
   .block { --ss: var(--ink); --ss-ink: var(--ink-on); }   /* badges: black on light, white on dark — no card colour */
@@ -898,6 +911,23 @@
     <div class="cal" id="dpGrid"></div>
   </div>
 </div>
+<div class="sheet-bg" id="earlySheet" hidden>
+  <div class="sheet ask" role="dialog" aria-modal="true" aria-labelledby="esTitle">
+    <h3 id="esTitle">Finish this exercise?</h3>
+    <p class="lead" id="esLead"></p>
+    <p class="fine" id="esFine"></p>
+    <hr>
+    <p class="cap">Reason (optional)</p>
+    <div class="reasons" id="esReasons" role="group" aria-label="Reason">
+      <button type="button" data-reason="Short on time" aria-pressed="false">Short on time</button>
+      <button type="button" data-reason="Fatigue" aria-pressed="false">Fatigue</button>
+      <button type="button" data-reason="Discomfort" aria-pressed="false">Discomfort</button>
+      <button type="button" data-reason="Other" aria-pressed="false">Other</button>
+    </div>
+    <button class="btn" id="esGo" type="button">Finish &amp; move on</button>
+    <button class="btn quiet" id="esKeep" type="button">Keep training</button>
+  </div>
+</div>
 <div id="draftBar" hidden><span class="draft-text">Unsaved changes</span><button class="btn quiet" id="draftDiscard" type="button">Discard</button><button class="btn sm" id="draftSave" type="button">Save template</button></div>
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
@@ -997,7 +1027,7 @@
   $("draftDiscard").addEventListener("click", discardDraft);
   // what still has to reach the server is written to the device too, so closing the app with no signal loses nothing
   function persistPending() {
-    lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]),
+    lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].map(([id, r]) => [id, [...r]]),
       finish: [...pendingFinish], skip: [...pendingSkip], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]),
       touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]),
       stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), owner: sessionEmail || pendingOwner || "" });
@@ -1008,6 +1038,7 @@
     for (const k of p.dirty || []) if (!dirty.has(k)) dirty.set(k, 1);
     for (const [id, rows] of p.weights || []) pendingWeightRows.set(id, new Set([...(pendingWeightRows.get(id) || []), ...rows]));
     for (const [id, rows] of p.done || []) pendingDoneRows.set(id, new Set([...(pendingDoneRows.get(id) || []), ...rows]));
+    for (const [id, rows] of p.early || []) pendingEarlyRows.set(id, new Set([...(pendingEarlyRows.get(id) || []), ...rows]));
     for (const id of p.finish || []) pendingFinish.add(id);
     for (const id of p.skip || []) pendingSkip.add(id);
     for (const [id, picks] of p.swap || []) pendingSwap.set(id, new Map([...(pendingSwap.get(id) || []), ...picks]));
@@ -1088,8 +1119,10 @@
   const SUPABASE_KEY = "sb_publishable__OG8G0RdJkERDqwV8xKN2Q_uwL1zY4p";
   let sb = null, signedIn = false, syncTimer = null, clientMode = false, myClientId = null, recovering = false;
   let logSetMissing = false;             // client_log_set not installed yet (run supabase/client-log-set.sql)
+  let earlyMissing = false;              // client_finish_early not installed yet (run supabase/client-finish-early.sql)
   const pendingWeightRows = new Map();   // trainingId -> Set(rowId), client mode only
   const pendingDoneRows = new Map();     // trainingId -> Set(rowId), client mode only
+  const pendingEarlyRows = new Map();    // trainingId -> Set(rowId): the "finished early" reason still to reach the server, client mode only
   const pendingFinish = new Set();       // trainingId, client mode only
   const pendingSkip = new Set();         // trainingId, client mode only
   const pendingSwap = new Map();         // trainingId -> Map(rowId -> name tapped), client mode only
@@ -1123,7 +1156,7 @@
         for (const sr of (serverData && serverData.rows) || []) {
           for (const target of [data, live]) {
             const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (!lr) continue;
-            if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; lr.setsDone = sr.setsDone || 0; }
+            if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; lr.setsDone = sr.setsDone || 0; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; }
             if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
           }
         }
@@ -1209,6 +1242,16 @@
           if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of dids.slice(i)) dones.add(rest); throw error; }
         }
       }
+      const earlies = pendingEarlyRows.get(id);
+      if (earlies && !earlyMissing) {
+        const eids = [...earlies]; earlies.clear();
+        for (let i = 0; i < eids.length; i++) {
+          const r = (data.rows || []).find((x) => x.id === eids[i]); if (!r) continue;
+          const { error } = await sb.rpc("client_finish_early", { p_training: id, p_row: eids[i], p_reason: String(r.earlyReason || "").slice(0, 40) || null });
+          if (error && (error.code === "PGRST202" || /client_finish_early/.test(error.message || ""))) { earlyMissing = true; break; }   // rule not installed yet: the reason stays on the device, everything else still syncs
+          if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of eids.slice(i)) earlies.add(rest); throw error; }
+        }
+      }
       localBackend.save();
     },
     async del() {},
@@ -1237,7 +1280,7 @@
       const me = c.data[0], authoritative = !!me && !(me.data && me.data.paused);
       if (authoritative) {                                                   // a training the trainer deleted: nothing queued for it can land
         const serverIds = new Set(t.data.map((r) => r.id));
-        for (const k of [...dirty.keys()]) { const [kind, id] = k.split("/"); if (kind === "trainings" && !serverIds.has(id)) { dirty.delete(k); pendingWeightRows.delete(id); pendingDoneRows.delete(id); pendingFinish.delete(id); pendingSkip.delete(id); pendingSwap.delete(id); } }
+        for (const k of [...dirty.keys()]) { const [kind, id] = k.split("/"); if (kind === "trainings" && !serverIds.has(id)) { dirty.delete(k); pendingWeightRows.delete(id); pendingDoneRows.delete(id); pendingEarlyRows.delete(id); pendingFinish.delete(id); pendingSkip.delete(id); pendingSwap.delete(id); } }
         persistPending();
       }
     } else {
@@ -1515,7 +1558,7 @@
     } else lsSet("fiala.trainings.role", { email: sessionEmail, role: trainer ? "trainer" : "client" });
     offlineEntry = null;
     if (pendingOwner && pendingOwner !== sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
-      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear();
+      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear();
     }
     pendingOwner = sessionEmail; persistPending();
     clientMode = trainer !== true;
@@ -1634,7 +1677,7 @@
     if (dirty.size) { $("status").textContent = "Some weights are not saved yet \u00b7 try again when online"; return; }
     const finish = () => {
       for (const tm of timers.values()) clearTimeout(tm);
-      timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingSwap.clear(); failed = false;
+      timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingSwap.clear(); failed = false;
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
       offline = false; offlineEntry = null; pendingOwner = "";
@@ -1858,6 +1901,33 @@
   // ---- our own day picker (Monday first, the client's workouts marked), used wherever a date is chosen
   let dp = null;                          // { clientId, title, selected, month, onPick }
   const fmtDay = (s) => { if (!s) return ""; const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d, 12).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", ...(y !== new Date().getFullYear() ? { year: "numeric" } : {}) }); };
+  // "Finish early" asks first. What's logged stays, the remaining sets stay open, and the reason (if any) lands on the card.
+  let es = null;                                                   // { t, g, selKey, reason } while the sheet is up
+  function markEarly(t, r, reason) {                               // the note on why; "" clears it
+    if (reason) r.earlyReason = reason; else delete r.earlyReason;
+    if (clientMode) { if (!pendingEarlyRows.has(t.id)) pendingEarlyRows.set(t.id, new Set()); pendingEarlyRows.get(t.id).add(r.id); }
+  }
+  function openFinishEarly(t, g, selKey) {
+    const total = Math.max(...g.rows.map(setsOf));
+    const did = Math.min(...g.rows.map((r) => clamp(parseInt(r.setsDone, 10) || 0, 0, 20)));
+    const left = total - did, word = (n) => n + (n === 1 ? " set" : " sets");
+    const what = g.key === "w" ? "warmup" : g.rows.length === 2 ? "superset" : g.rows.length === 3 ? "tri-set" : g.rows.length > 3 ? "giant set" : "exercise";
+    es = { t, g, selKey, reason: "" };
+    $("esTitle").textContent = "Finish this " + what + "?";
+    $("esLead").textContent = did > 0 ? did + " of " + word(total) + " completed." : "No sets completed yet.";
+    $("esFine").textContent = (did > 0 ? "What you logged stays saved. " : "") + "The remaining " + word(left) + " will stay incomplete.";
+    for (const b of $("esReasons").querySelectorAll("button")) { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); }
+    $("earlySheet").hidden = false;
+    setTimeout(() => { if (es) $("esGo").focus({ preventScroll: true }); }, 0);
+  }
+  function closeFinishEarly() { $("earlySheet").hidden = true; es = null; }
+  function finishEarlyNow() {
+    if (!es) return;
+    const { t, g, selKey, reason } = es; closeFinishEarly();
+    for (const r of g.rows) { r.done = true; markEarly(t, r, reason); const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
+    openBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id);
+    haptic(); renderedTraining = null; render(); scrollToCard(g.key);
+  }
   function openDatePicker(opts) {
     const selected = opts.selected || today();
     dp = { clientId: opts.clientId, title: opts.title || "Pick a day", selected, month: selected.slice(0, 7), onPick: opts.onPick, back: document.activeElement };
@@ -2092,6 +2162,15 @@
     if (view.name === "client") renderClient();
   });
   $("dpCancel").addEventListener("click", closeDatePicker);
+  $("esKeep").addEventListener("click", closeFinishEarly);
+  $("esGo").addEventListener("click", finishEarlyNow);
+  $("earlySheet").addEventListener("click", (e) => { if (e.target === $("earlySheet")) closeFinishEarly(); });
+  $("esReasons").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b || !es) return;
+    const on = !b.classList.contains("on");                          // tap again to clear
+    for (const x of $("esReasons").querySelectorAll("button")) { x.classList.toggle("on", on && x === b); x.setAttribute("aria-pressed", String(on && x === b)); }
+    es.reason = on ? b.dataset.reason : "";
+  });
   $("datePick").addEventListener("click", (e) => { if (e.target === $("datePick")) closeDatePicker(); });
   $("dpPrev").addEventListener("click", () => { if (dp) { dp.month = monthAdd(dp.month, -1); renderDatePicker(); } });
   $("dpNext").addEventListener("click", () => { if (dp) { dp.month = monthAdd(dp.month, 1); renderDatePicker(); } });
@@ -2103,7 +2182,7 @@
     g.addEventListener("pointercancel", () => { sx = sy = null; });
     g.addEventListener("click", (e) => { if (swiped) { e.stopPropagation(); e.preventDefault(); } }, true);
   }
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && dp) closeDatePicker(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && dp) closeDatePicker(); if (e.key === "Escape" && es) closeFinishEarly(); });
   $("calToday").addEventListener("click", () => { calMonth = today().slice(0, 7); calAnchor = calMonth; if (view.name === "client") renderClient(); });
   {
     const view_ = $("calView"), track = $("calTrack");
@@ -2402,7 +2481,7 @@
               const was = setsOf(r), sd = clamp(parseInt(r.setsDone, 10) || 0, 0, 20), wasDone = !!r.done;
               r.sets = n;
               if (sd > n) r.setsDone = n;
-              if (sd >= n) r.done = true; else if (r.done && sd >= was) r.done = false;   // a set added to a finished exercise reopens it; "finished early" stays finished
+              if (sd >= n) r.done = true; else if (r.done && sd >= was) { r.done = false; markEarly(t, r, ""); }   // a set added to a finished exercise reopens it; "finished early" stays finished
               if (!isTpl && (r.done !== wasDone || sd > n)) { if (!trainerTouched.has(t.id)) trainerTouched.set(t.id, new Set()); trainerTouched.get(t.id).add(r.id); }
             }
             setSel.delete(selKey); scheduleSave("trainings", t.id); renderedTraining = null; render();
@@ -2425,7 +2504,7 @@
         const undo = document.createElement("button"); undo.type = "button"; undo.className = "finish-early undo-set"; undo.textContent = "Mark set " + (sel + 1) + " as not done";
         undo.hidden = !(sel < doneSets);
         undo.addEventListener("click", () => {                // this set and anything after it go back to not done
-          for (const r of g.rows) { if (sel < setsOf(r)) { r.setsDone = Math.min(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), sel); r.done = false; } const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
+          for (const r of g.rows) { if (sel < setsOf(r)) { r.setsDone = Math.min(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), sel); r.done = false; markEarly(t, r, ""); } const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
           setSel.set(selKey, sel); scheduleSave("trainings", t.id); renderedTraining = null; render();
         });
         complete.addEventListener("click", () => {
@@ -2448,21 +2527,22 @@
           setTimeout(() => { renderedTraining = null; render(); scrollToCard(g.key); }, 0);   // after the tap has flipped the switch (the iPhone tick), then redraw and glide
         });
         const early = document.createElement("button"); early.type = "button"; early.className = "finish-early"; early.textContent = "Finish early";
-        early.addEventListener("click", () => {
-          for (const r of g.rows) { r.done = true; const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
-          openBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id); renderedTraining = null; render();
-        });
+        early.addEventListener("click", () => openFinishEarly(t, g, selKey));
         foot.append(complete, early, undo);
       }
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
       const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold-btn";
       const sum = document.createElement("div"); sum.className = "card-sum";
       const paintSum = (all) => {
-        if (!all) { sum.textContent = ""; return; }
+        sum.replaceChildren(); if (!all) return;
         const did = Math.min(...g.rows.map((r) => clamp(parseInt(r.setsDone, 10) || 0, 0, 20)));
         const early = g.rows.some((r) => r.done && clamp(parseInt(r.setsDone, 10) || 0, 0, 20) < setsOf(r));
         const sets = (n) => n + " of " + total + (total === 1 ? " set" : " sets");
-        sum.textContent = early && did > 0 ? "Finished early \u00b7 " + sets(did) : early ? "Finished" : "Finished \u00b7 " + sets(total);
+        const line = (text) => { const d = document.createElement("div"); d.textContent = text; sum.appendChild(d); };
+        if (!early) { line("Finished \u00b7 " + sets(total)); return; }
+        line("Finished early \u00b7 " + sets(did));
+        const left = total - did, why = (g.rows.find((r) => r.earlyReason) || {}).earlyReason || "";
+        line(left + (left === 1 ? " set" : " sets") + " not completed" + (why ? " \u00b7 " + why : ""));
       };
       const chev = document.createElement("button"); chev.type = "button"; chev.className = "card-chev";   // finished card: a chevron on the status line (folded) or in the corner (open)
       chev.innerHTML = '<svg class="i-down" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg><svg class="i-up" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg>';
@@ -2479,7 +2559,7 @@
         const next = !g.rows.every((r) => r.done);
         const track = clientMode ? pendingDoneRows : trainerTouched;
         if (!track.has(t.id)) track.set(t.id, new Set());
-        for (const r of g.rows) { r.done = next; track.get(t.id).add(r.id); }
+        for (const r of g.rows) { r.done = next; if (!next) markEarly(t, r, ""); track.get(t.id).add(r.id); }
         scheduleSave("trainings", t.id); paint();
       });
       paint(); foot.append(btn, fold); card.append(sum, foot, chev);
