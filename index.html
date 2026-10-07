@@ -524,7 +524,7 @@
   .week button:hover { background: var(--field); }
   .week .wd { font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
   .week .dn { font-size: 17px; font-weight: 500; color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-  .week button.today .dn { background: var(--brand-fill); color: #fff; }   /* today wears the brand, as Calendar's today wears the tint */
+  .week button.today .dn { background: var(--ink); color: var(--ink-on); }   /* today: a fact, not an action — black on light, white on dark, as in Apple's Fitness strip */
   .week .dot { width: 22px; height: 8px; border-radius: 50px; border: 1.5px solid transparent; }
   .week button.planned .dot { border-color: var(--text-tertiary); }
   .week button.finished .dot { background: var(--done); border-color: var(--done); }   /* finished is always the fern */
@@ -558,7 +558,7 @@
   .cal button:hover { background: var(--field); }
   .cal button.out { visibility: hidden; }
   .cal .dn { font-size: 15px; font-weight: 500; color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-  .cal button.today .dn { background: var(--brand-fill); color: #fff; }
+  .cal button.today .dn { background: var(--ink); color: var(--ink-on); }
   .cal .dot { width: 18px; height: 6px; border-radius: 50px; border: 1.5px solid transparent; }
   .cal button.planned .dot { border-color: var(--text-tertiary); }
   .cal button.finished .dot { background: var(--done); border-color: var(--done); }
