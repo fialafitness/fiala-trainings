@@ -2278,7 +2278,6 @@
     for (const t of rest) { const k = effDate(t).slice(0, 7); if (!months.has(k)) months.set(k, []); months.get(k).push(t); }
     const hist = $("histList"); hist.replaceChildren();
     $("histHead").hidden = rest.length === 0;
-    const thisMonth = today().slice(0, 7);
     for (const [k, items] of months) {
       const wrap = document.createElement("div"); wrap.className = "month";
       const head = document.createElement("button"); head.type = "button";
@@ -2286,7 +2285,7 @@
       head.innerHTML = "<span></span><span class=\"sub\"></span>";
       head.firstChild.textContent = md.toLocaleDateString(undefined, { month: "long", year: "numeric" });
       head.lastChild.textContent = items.length + (items.length === 1 ? " workout" : " workouts") + " \u203a";
-      const ul = document.createElement("ul"); ul.className = "list"; ul.hidden = k !== thisMonth;
+      const ul = document.createElement("ul"); ul.className = "list"; ul.hidden = true;       // every month starts folded; a tap opens it
       ul.replaceChildren(...items.map(rowOf));
       head.addEventListener("click", () => { ul.hidden = !ul.hidden; });
       wrap.append(head, ul); hist.appendChild(wrap);
