@@ -226,6 +226,7 @@
   .list button:hover { opacity: 0.85; }
   .list .sub { color: var(--text-tertiary); font-size: 13px; letter-spacing: 0; white-space: nowrap; }
   .list .chev { color: var(--text-tertiary); margin-left: 8px; }
+  .list li.more button { color: var(--brand); }                   /* "Show more": a tertiary action inside the group */
   .empty { color: var(--text-tertiary); font-size: 13px; letter-spacing: 0; padding: 16px 0 4px; }
   /* Templates card: the one place the brand purple carries a surface */
   .tplcard {
@@ -2080,6 +2081,8 @@
   $("reorderBtn").addEventListener("click", () => { reordering = !reordering; renderClients(); });
   // month calendar under the week strip: Week | Month switch, arrows, Today, finger-follow swipe
   let calOpen = lsGet("fiala.cal.open") === true, calMonth = today().slice(0, 7), calFor = null, calAnchor = calMonth, calSliding = false;
+  const NEXT_DAYS = 5;                     // "Up next" shows this many days ahead; the rest waits behind "Show more"
+  let nextOpen = false, nextFor = null;
   const monthAdd = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1, 12); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
   const monthTitle = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1, 12).toLocaleDateString(undefined, { month: "long", year: "numeric" }); };
   $("calToggle").addEventListener("click", () => {
@@ -2243,8 +2246,21 @@
     }
 
     const next = list.filter((t) => !t.completedAt && !t.skippedAt).sort((a, b) => effDate(a).localeCompare(effDate(b)));
+    // keep it short: anything due within the next few days (the very next workout always shows); "Show more" opens the full list
+    if (nextFor !== c.id) { nextFor = c.id; nextOpen = false; }
+    const edge = new Date(base); edge.setDate(base.getDate() + NEXT_DAYS); const horizon = iso(edge);
+    const soon = next.filter((t, i) => i === 0 || effDate(t) <= horizon);
+    const shown = nextOpen ? next : soon;
     $("nextHead").hidden = next.length === 0; $("nextList").hidden = next.length === 0;
-    $("nextList").replaceChildren(...next.map(rowOf));
+    $("nextList").replaceChildren(...shown.map(rowOf));
+    if (next.length > soon.length) {
+      const li = document.createElement("li"); li.className = "more";
+      const b = document.createElement("button"); b.type = "button"; b.setAttribute("aria-expanded", String(nextOpen));
+      const lab = document.createElement("span"); lab.textContent = nextOpen ? "Show less" : "Show more";
+      const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = nextOpen ? "" : (next.length - soon.length) + " more";
+      b.append(lab, sub); b.addEventListener("click", () => { nextOpen = !nextOpen; renderClient(); });
+      li.appendChild(b); $("nextList").appendChild(li);
+    }
 
     const rest = list.filter((t) => !next.includes(t));
     const months = new Map();
