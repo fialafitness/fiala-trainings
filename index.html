@@ -709,6 +709,8 @@
   .foot-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin-left: -8px; }
   .foot-actions .btn { white-space: nowrap; }
   .foot-pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .foot-pills.reports { margin-top: 10px; }
+  .rep-cap { font-size: 13px; color: var(--text-tertiary); margin-right: 2px; }   /* "Report PDF": every client's sessions and your notes, to mail yourself */
   .pill { appearance: none; border: 0; cursor: pointer; border-radius: 50px; min-height: 36px; padding: 0 16px; font-size: 14px; font-weight: 500; letter-spacing: 0; white-space: nowrap;
     background: var(--field); color: var(--brand); transition: opacity 300ms ease, transform 120ms ease; }   /* secondary: a grey pill with the brand as its text */
   .pill:hover { opacity: 0.85; }
@@ -866,6 +868,7 @@
     <div class="foot foot-col" id="localFoot" hidden>
       <span class="muted" id="dataNote">Saved on this device</span>
       <div class="foot-pills"><button class="pill" id="backup" type="button">Back up</button><button class="pill" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="pill" id="myExercises" type="button" hidden>Exercises</button><button class="pill" id="settingsBtn" type="button" hidden>Settings</button></div>
+      <div class="foot-pills reports"><span class="rep-cap">Report PDF</span><button class="pill" type="button" data-report="week">This week</button><button class="pill" type="button" data-report="lastweek">Last week</button><button class="pill" type="button" data-report="month">This month</button><button class="pill" type="button" data-report="lastmonth">Last month</button></div>
     </div>
   </section>
 
@@ -3302,6 +3305,103 @@
   window.addEventListener("pagehide", flushAll);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushAll(); });
 
+  // ---------- report PDF: every client's sessions and your notes for a week or a month, to mail yourself ----------
+  function pdfDoc() {
+    const W = 612, H = 792, M = 54, BOTTOM = 60;                     // US Letter, 3/4 inch margins
+    const pages = []; let cur = null, y = 0;
+    const enc = (str) => Array.from(String(str)).map((ch) => ch.charCodeAt(0) <= 0xff ? ch : ch.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))   // é, á, ü stay; r-caron becomes r
+      .join("").replace(/[^\x20-\x7e\xa0-\xff]/g, "?").replace(/[\\()]/g, (m) => "\\" + m);
+    const widthOf = (str, size) => str.length * size * 0.5;         // Helvetica's average: enough to wrap sensibly
+    const wrap = (str, size, maxW) => { const lines = []; let line = ""; for (const w of String(str).split(/\s+/)) { const t = line ? line + " " + w : w; if (widthOf(t, size) > maxW && line) { lines.push(line); line = w; } else line = t; } lines.push(line); return lines; };
+    const newPage = () => { cur = []; pages.push(cur); y = H - M; };
+    const need = (h) => { if (!cur || y - h < BOTTOM) newPage(); };
+    const text = (str, { size = 11, bold = false, indent = 0, color = "0 0 0", gap = 3 } = {}) => {
+      for (const para of String(str).split("\n")) for (const line of wrap(para, size, W - 2 * M - indent)) {
+        need(size + gap); y -= size;
+        cur.push(color + " rg BT /" + (bold ? "F2" : "F1") + " " + size + " Tf " + (M + indent) + " " + y.toFixed(1) + " Td (" + enc(line) + ") Tj ET");
+        y -= gap;
+      }
+    };
+    const space = (h) => { y -= h; };
+    const rule = () => { need(12); y -= 4; cur.push("0.85 0.85 0.87 RG 0.5 w " + M + " " + y.toFixed(1) + " m " + (W - M) + " " + y.toFixed(1) + " l S"); y -= 8; };
+    const bytes = () => {
+      const objs = []; const add = (o) => { objs.push(o); return objs.length; };
+      add("<< /Type /Catalog /Pages 2 0 R >>"); add("");
+      const res = add("<< /Font << /F1 4 0 R /F2 5 0 R >> >>");
+      add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+      add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+      const kids = [];
+      for (const pg of pages) {
+        const stream = pg.join("\n");
+        const c = add("<< /Length " + stream.length + " >>\nstream\n" + stream + "\nendstream");
+        kids.push(add("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + W + " " + H + "] /Resources " + res + " 0 R /Contents " + c + " 0 R >>") + " 0 R");
+      }
+      objs[1] = "<< /Type /Pages /Kids [" + kids.join(" ") + "] /Count " + kids.length + " >>";
+      let out = "%PDF-1.4\n"; const offs = [];
+      objs.forEach((o, i) => { offs.push(out.length); out += (i + 1) + " 0 obj\n" + o + "\nendobj\n"; });
+      const xref = out.length;
+      out += "xref\n0 " + (objs.length + 1) + "\n0000000000 65535 f \n" + offs.map((o) => String(o).padStart(10, "0") + " 00000 n \n").join("");
+      out += "trailer\n<< /Size " + (objs.length + 1) + " /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF";
+      return Uint8Array.from(out, (ch) => ch.charCodeAt(0) & 0xff);   // everything is single-byte Latin-1 by now
+    };
+    newPage();
+    return { text, space, rule, bytes };
+  }
+  function reportRange(kind) {
+    const base = new Date(today() + "T12:00:00");
+    if (kind === "week" || kind === "lastweek") {
+      const monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7)); if (kind === "lastweek") monday.setDate(monday.getDate() - 7);
+      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+      return { from: localIso(monday), to: localIso(sunday), title: (kind === "lastweek" ? "Last week" : "This week") + " \u00b7 " + fmtDay(localIso(monday)) + " - " + fmtDay(localIso(sunday)) };
+    }
+    const first = kind === "lastmonth" ? new Date(base.getFullYear(), base.getMonth() - 1, 1, 12) : new Date(base.getFullYear(), base.getMonth(), 1, 12);
+    const last = new Date(first.getFullYear(), first.getMonth() + 1, 0, 12);
+    return { from: localIso(first), to: localIso(last), title: first.toLocaleDateString(undefined, { month: "long", year: "numeric" }) };
+  }
+  function buildReport(kind) {
+    const r = reportRange(kind), doc = pdfDoc(), t = today(), made = new Date();
+    doc.text("Fiala Trainings", { size: 11, bold: true, color: "0.435 0.42 0.6" });
+    doc.text(r.title, { size: 20, bold: true, gap: 6 });
+    doc.text("Made " + made.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" }) + ", " + made.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }), { size: 10, color: "0.45 0.45 0.47" });
+    const totals = { finished: 0, missed: 0, skipped: 0, planned: 0 };
+    const status = (x) => x.completedAt ? "Finished" : x.skippedAt ? (x.missed === true ? "Missed" : "Skipped") : effDate(x) < t ? "Not done" : "Planned";
+    const inRange = (day) => day >= r.from && day <= r.to;
+    for (const c of peopleList()) {
+      const sessions = clientTrainings(c.id).filter((x) => inRange(effDate(x))).sort((a, b) => effDate(a).localeCompare(effDate(b)));
+      const notes = noteEntries(c).filter((n) => n.at && inRange(localIso(new Date(n.at)))).sort((a, b) => a.at.localeCompare(b.at));
+      if (!sessions.length && !notes.length) continue;
+      doc.space(14); doc.rule();
+      doc.text(c.name || "Client", { size: 15, bold: true, gap: 5 });
+      for (const x of sessions) {
+        const st = status(x); totals[st === "Finished" ? "finished" : st === "Skipped" ? "skipped" : st === "Planned" ? "planned" : "missed"]++;
+        doc.text(fmtDay(effDate(x)) + "  \u00b7  " + (x.title || "Workout") + "  \u00b7  " + st, { size: 11, bold: true, gap: 2 });
+        if (x.completedAt) for (const row of x.rows || []) {
+          const unit = c.unit || "lb", done = clamp(parseInt(row.setsDone, 10) || 0, 0, 20), sets = [];
+          for (let i = 0; i < done; i++) { const w = String((row.weights || [])[i] || "").trim(), rp = String((row.repsDone || [])[i] || "").trim(); sets.push((w ? w + " " + unit : "bodyweight") + (rp ? " x " + rp : "")); }
+          doc.text((row.name || "Exercise") + ": " + (done ? done + (done === 1 ? " set" : " sets") + (sets.length ? " : " + sets.join(", ") : "") : "not started") + (row.earlyReason ? " (finished early: " + row.earlyReason + ")" : ""), { size: 10, indent: 14, gap: 2, color: "0.25 0.25 0.27" });
+        }
+        doc.space(3);
+      }
+      if (notes.length) {
+        doc.text("Notes", { size: 11, bold: true, gap: 3 });
+        for (const n of notes) {
+          const d = new Date(n.at);
+          doc.text(d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) + (n.workout ? "  \u00b7  " + (n.workout.title || "Workout") : ""), { size: 10, bold: true, indent: 14, gap: 1, color: "0.45 0.45 0.47" });
+          doc.text(n.text, { size: 10.5, indent: 14, gap: 6 });
+        }
+      }
+    }
+    doc.space(14); doc.rule();
+    doc.text("Finished " + totals.finished + "  \u00b7  Missed " + totals.missed + "  \u00b7  Skipped " + totals.skipped + "  \u00b7  Planned " + totals.planned, { size: 11, bold: true });
+    return { bytes: doc.bytes(), name: ("Fiala " + r.title.replace(/[^\w\- ]+/g, " ").replace(/\s+/g, " ").trim() + ".pdf") };
+  }
+  async function shareReport(kind) {                               // the phone's share sheet (Mail is one tap away); elsewhere a download
+    const { bytes, name } = buildReport(kind);
+    const file = new File([bytes], name, { type: "application/pdf" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  for (const b of document.querySelectorAll("[data-report]")) b.addEventListener("click", () => shareReport(b.dataset.report));
   $("backup").addEventListener("click", () => {
     const data = { app: "fiala-trainings", exported: now(), clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
