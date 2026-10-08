@@ -661,6 +661,10 @@
   body.draft main { padding-bottom: 96px; }
   .list .pri { display: block; }
   .list .sec { display: block; font-size: 13px; color: var(--text-tertiary); letter-spacing: 0; margin-top: 2px; }
+  .list li.next button { padding: 16px 20px; }                                   /* the very next workout stands out: when, then the day, bigger */
+  .list li.next .when { display: block; margin-bottom: 3px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand); }
+  .list li.next .pri { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
+  .list li.next .sec { font-size: 15px; color: var(--text-secondary); margin-top: 3px; }
   .finish { margin-top: 32px; }
   .cele { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 24px; padding: 40px 0; }
   .cele h1 { margin: 0; }
@@ -2168,7 +2172,7 @@
   $("reorderBtn").addEventListener("click", () => { reordering = !reordering; renderClients(); });
   // month calendar under the week strip: Week | Month switch, arrows, Today, finger-follow swipe
   let calOpen = lsGet("fiala.cal.open") === true, calMonth = today().slice(0, 7), calFor = null, calAnchor = calMonth, calSliding = false;
-  const NEXT_DAYS = 5, NEXT_STEP = 5;      // "Up next" shows this many days ahead; each "Show more" adds this many workouts
+  const NEXT_DAYS = 3, NEXT_STEP = 5;      // "Up next" shows this many days ahead (the very next workout always); each "Show more" adds this many workouts
   let nextExtra = 0, nextFor = null;
   const monthAdd = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1, 12); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
   const monthTitle = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1, 12).toLocaleDateString(undefined, { month: "long", year: "numeric" }); };
@@ -2268,8 +2272,16 @@
     document.body.classList.toggle("paused", !!(c.paused && clientMode));
     if (document.activeElement !== $("cNotes")) $("cNotes").value = c.notes || "";
     const list = clientTrainings(c.id);
-    const rowOf = (t) => {
+    const relDay = (iso) => {                                            // "Today", "Tomorrow", "In 4 days", "Yesterday", "3 days ago"
+      const n = Math.round((new Date(iso + "T12:00:00") - new Date(today() + "T12:00:00")) / 86400000);
+      if (!Number.isFinite(n)) return "";                                  // no date on the record: no caption
+      if (n === 0) return "Today"; if (n === 1) return "Tomorrow"; if (n === -1) return "Yesterday";
+      if (n > 1) return n < 14 ? "In " + n + " days" : "In " + Math.round(n / 7) + " weeks";
+      return n > -14 ? (-n) + " days ago" : Math.round(-n / 7) + " weeks ago";
+    };
+    const rowOf = (t, next) => {
       const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
+      if (next) li.className = "next";
       const cards = new Map();
       t.rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!cards.has(k)) cards.set(k, true); if (!r.done) cards.set(k, false); });
       const total = cards.size, done = [...cards.values()].filter(Boolean).length;
@@ -2280,7 +2292,10 @@
       if (skipped) pri.style.color = "var(--text-tertiary)";
       const sec = document.createElement("span"); sec.className = "sec";
       sec.textContent = [t.title, !t.completedAt && done ? done + " of " + total + " done" : ""].filter(Boolean).join(" \u00b7 ");
-      const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.textContent) left.append(sec);
+      const left = document.createElement("span"); left.style.minWidth = "0";
+      const whenText = next ? relDay(effDate(t)) : "";
+      if (whenText) { const when = document.createElement("span"); when.className = "when"; when.textContent = whenText; left.append(when); }
+      left.append(pri); if (sec.textContent) left.append(sec);
       const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a";
       b.append(left, chev);
       b.addEventListener("click", () => go({ name: "training", id: t.id }));
@@ -2350,7 +2365,7 @@
     nextExtra = Math.max(0, Math.min(nextExtra, next.length - soon.length));
     const shown = next.slice(0, soon.length + nextExtra), left = next.length - shown.length;
     $("nextHead").hidden = next.length === 0; $("nextList").hidden = next.length === 0;
-    $("nextList").replaceChildren(...shown.map(rowOf));
+    $("nextList").replaceChildren(...shown.map((t, i) => rowOf(t, i === 0)));
     if (left > 0 || nextExtra > 0) {
       const li = document.createElement("li"); li.className = "more"; const bar = document.createElement("div");
       if (left > 0) {
@@ -2380,7 +2395,7 @@
       head.firstChild.textContent = md.toLocaleDateString(undefined, { month: "long", year: "numeric" });
       head.lastChild.textContent = items.length + (items.length === 1 ? " workout" : " workouts") + " \u203a";
       const ul = document.createElement("ul"); ul.className = "list"; ul.hidden = true;       // every month starts folded; a tap opens it
-      ul.replaceChildren(...items.map(rowOf));
+      ul.replaceChildren(...items.map((t) => rowOf(t)));
       head.addEventListener("click", () => { ul.hidden = !ul.hidden; });
       wrap.append(head, ul); hist.appendChild(wrap);
     }
