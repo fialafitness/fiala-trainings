@@ -598,6 +598,18 @@
   .month > button .sub { color: var(--text-tertiary); font-size: 13px; }
   .month .list { margin-top: 8px; }
   .month .month { margin-left: 16px; }
+  /* client notes: a composer, then the saved notes by week, month and year */
+  .note-actions { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  .note-actions[hidden] { display: none; }
+  #noteList .list.notes { padding: 2px 0; }
+  #noteList .entry { padding: 12px 20px; }
+  #noteList .entry + .entry { border-top: 1px solid var(--card-border); }
+  #noteList .entry .when { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; color: var(--text-tertiary); }
+  #noteList .entry .when .ask { display: flex; gap: 10px; align-items: center; white-space: nowrap; }
+  #noteList .entry .when button { appearance: none; border: 0; background: none; width: auto; display: inline-block; padding: 0; min-height: 28px; font-size: 13px; letter-spacing: 0; text-align: center; color: var(--text-tertiary); cursor: pointer; }
+  #noteList .entry .when button.go { color: var(--danger); }
+  #noteList .entry .when button.keep { color: var(--brand); }
+  #noteList .entry .text { margin-top: 4px; font-size: 15px; line-height: 1.45; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
   .name-row { display: flex; align-items: center; gap: 12px; }
   .name-row .pagetitle { flex: 1; min-width: 0; }
   .disc { position: relative; flex: none; width: 36px; height: 36px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
@@ -888,6 +900,8 @@
     <div class="trainer-only" id="notesWrap">
       <h2>Notes</h2>
       <textarea id="cNotes" placeholder="Injuries, preferences, anything to remember"></textarea>
+      <div class="note-actions" id="noteActions" hidden><button class="btn sm" id="noteSave" type="button">Save note</button><button class="btn quiet" id="noteDiscard" type="button">Discard</button></div>
+      <div id="noteList"></div>
     </div>
     <div class="foot foot-col" id="clientFoot" hidden><div class="foot-pills"><button class="pill" id="settingsBtn2" type="button">Settings</button></div></div>
     <div class="foot trainer-only" id="delWrap">
@@ -1191,10 +1205,14 @@
       };
       for (let attempt = 0; attempt < 4; attempt++) {
         let seen = seenAt.get(k);
-        if (!seen && kind === "trainings" && attempt === 0) {      // no stamp (edited offline, app relaunched): read first, never write over a client's weights blind
+        const takeNotes = (serverData) => {                      // another device may have written notes: keep both
+          if (kind !== "clients" || !serverData) return;
+          const merged = mergeNotes(data.notes, serverData.notes); data.notes = merged; const live = clients.get(id); if (live) live.notes = merged;
+        };
+        if (!seen && attempt === 0) {                               // no stamp (edited offline, app relaunched): read first, never write over the other side blind
           const existing = await sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle();
           if (existing.error) throw existing.error;
-          if (existing.data) { mergeServerRows(existing.data.data); seen = existing.data.updated_at; seenAt.set(k, seen); }
+          if (existing.data) { if (kind === "trainings") mergeServerRows(existing.data.data); takeNotes(existing.data.data); seen = existing.data.updated_at; seenAt.set(k, seen); }
         }
         let res;
         if (seen) res = await sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at");
@@ -1211,6 +1229,7 @@
         if (!fresh.data) { seenAt.delete(k); continue; }
         seenAt.set(k, fresh.data.updated_at);
         if (kind === "trainings") mergeServerRows(fresh.data.data);
+        takeNotes(fresh.data.data);
       }
       throw new Error("save conflict");
     },
@@ -1952,6 +1971,79 @@
     if (clientMode) { if (!pendingEarlyRows.has(t.id)) pendingEarlyRows.set(t.id, new Set()); pendingEarlyRows.get(t.id).add(r.id); }
   }
   const openNotes = new Set();                                   // exercise rows whose note the client opened (this session)
+  const noteDraft = new Map();                                   // clientId -> what is typed in the notes box and not saved yet
+  const openNoteGroups = new Set(), weekSeeded = new Set(), armedNotes = new Set(), deletedNotes = new Set();
+  // notes stay inside c.notes, the one key the server strips before a client's phone gets the record:
+  // a string is the old single note (shown as "Earlier"), an object { log: [{ id, at, text }] } is the dated list
+  const noteEntries = (c) => {
+    const n = c && c.notes;
+    const raw = n && typeof n === "object" && Array.isArray(n.log) ? n.log : [];
+    const list = raw.filter((x) => x && typeof x === "object" && typeof x.text === "string")
+      .map((x) => ({ id: String(x.id || uid()), at: x.at && !isNaN(new Date(x.at)) ? String(x.at) : null, text: x.text }));
+    if (typeof n === "string" && n.trim()) list.push({ id: "legacy", at: null, text: n });
+    return list;
+  };
+  const packNotes = (list) => ({ log: list.map((x) => ({ id: x.id === "legacy" ? uid() : x.id, at: x.at, text: x.text })) });
+  const writeNotes = (c, list) => { c.notes = packNotes(list); scheduleSave("clients", c.id); };   // only ever from Save / Delete: a redraw never writes
+  const mergeNotes = (mine, theirs) => {                          // another device saved first: keep both sets; what this device deleted stays deleted
+    const a = noteEntries({ notes: mine }), b = noteEntries({ notes: theirs }), ids = new Set(a.map((x) => x.id));
+    const extra = b.filter((x) => x.id !== "legacy" && !ids.has(x.id) && !deletedNotes.has(x.id));
+    return extra.length ? packNotes([...a, ...extra]) : mine;
+  };
+  function renderNotes(c) {
+    const wrap = $("noteList"); wrap.replaceChildren(); if (clientMode) return;
+    const entries = noteEntries(c).sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
+    const t = today(), base = new Date(t + "T12:00:00"), monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
+    const mondayIso = localIso(monday), yIso = localIso(new Date(base.getTime() - 86400000));
+    const groups = new Map();                                                    // "This week", then this year's months, then years, then "Earlier"
+    for (const n of entries) {
+      const day = n.at ? localIso(new Date(n.at)) : "";
+      let key, title;
+      if (!day) { key = "earlier"; title = "Earlier"; }
+      else if (day >= mondayIso) { key = "week"; title = "This week"; }
+      else if (day.slice(0, 4) === t.slice(0, 4)) { key = day.slice(0, 7); title = new Date(day + "T12:00:00").toLocaleDateString(undefined, { month: "long" }); }
+      else { key = day.slice(0, 4); title = day.slice(0, 4); }
+      if (!groups.has(key)) groups.set(key, { title, items: [] }); groups.get(key).items.push(n);
+    }
+    if (!weekSeeded.has(c.id)) { weekSeeded.add(c.id); openNoteGroups.add(c.id + "/week"); }   // this week starts open; a fold is remembered
+    const when = (n) => {
+      if (!n.at) return "Earlier";
+      const d = new Date(n.at), day = localIso(d);
+      const dd = day === t ? "Today" : day === yIso ? "Yesterday" : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      return dd + " \u00b7 " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    };
+    for (const [key, g] of groups) {
+      const sec = document.createElement("div"); sec.className = "month";
+      const head = document.createElement("button"); head.type = "button";
+      head.innerHTML = "<span></span><span class=\"sub\"></span>";
+      head.firstChild.textContent = g.title; head.lastChild.textContent = g.items.length + (g.items.length === 1 ? " note" : " notes") + " \u203a";
+      const gk = c.id + "/" + key;
+      const card = document.createElement("div"); card.className = "list notes"; card.hidden = !openNoteGroups.has(gk);
+      for (const n of g.items) {
+        const row = document.createElement("div"); row.className = "entry";
+        const top = document.createElement("div"); top.className = "when";
+        const stamp = document.createElement("span"); stamp.textContent = when(n);
+        const ask = document.createElement("span"); ask.className = "ask";
+        if (armedNotes.has(n.id)) {
+          const q = document.createElement("span"); q.textContent = "Delete this note?";
+          const go = document.createElement("button"); go.type = "button"; go.className = "go"; go.textContent = "Delete";
+          go.addEventListener("click", () => { deletedNotes.add(n.id); armedNotes.delete(n.id); writeNotes(c, noteEntries(c).filter((x) => x.id !== n.id)); renderNotes(c); });
+          const keep = document.createElement("button"); keep.type = "button"; keep.className = "keep"; keep.textContent = "Keep";
+          keep.addEventListener("click", () => { armedNotes.delete(n.id); renderNotes(c); });
+          ask.append(q, go, keep);
+        } else {
+          const del = document.createElement("button"); del.type = "button"; del.textContent = "Delete";
+          del.addEventListener("click", () => { armedNotes.clear(); armedNotes.add(n.id); renderNotes(c); const k = wrap.querySelector(".entry .keep"); if (k) k.focus({ preventScroll: true }); });
+          ask.appendChild(del);
+        }
+        top.append(stamp, ask);
+        const text = document.createElement("div"); text.className = "text"; text.textContent = n.text;
+        row.append(top, text); card.appendChild(row);
+      }
+      head.addEventListener("click", () => { if (card.hidden) openNoteGroups.add(gk); else openNoteGroups.delete(gk); card.hidden = !card.hidden; });
+      sec.append(head, card); wrap.appendChild(sec);
+    }
+  }
   const groupWord = (g) => g.key === "w" ? "warmup" : g.rows.length === 2 ? "superset" : g.rows.length === 3 ? "tri-set" : g.rows.length > 3 ? "giant set" : "exercise";
   function openFinishEarly(t, g, selKey) {
     const total = Math.max(...g.rows.map(setsOf));
@@ -2306,7 +2398,9 @@
     $("pausedCard").hidden = !(c.paused && clientMode);
     $("pausedText").textContent = phoneDigits(c.trainerPhone) ? "Your workouts are on hold for now. Message Michal when you’re ready to pick up again." : "Your workouts are on hold for now. Michal will switch them back on when you’re ready to pick up again.";
     document.body.classList.toggle("paused", !!(c.paused && clientMode));
-    if (document.activeElement !== $("cNotes")) $("cNotes").value = c.notes || "";
+    if (document.activeElement !== $("cNotes")) $("cNotes").value = noteDraft.get(c.id) || "";
+    $("noteActions").hidden = !String($("cNotes").value).trim();
+    renderNotes(c);
     if (!clientMode) for (const t of clientTrainings(c.id)) if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }   // empty workouts left behind (an accidental tap on a day) go away
     const list = clientTrainings(c.id);
     const relDay = (iso) => {                                            // "Today", "Tomorrow", "In 4 days", "Yesterday", "3 days ago"
@@ -3064,7 +3158,14 @@
   $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; renderedTraining = null; render(); });
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
   $("cNameField").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.name = e.target.value; $("cName").value = c.name; scheduleSave("clients", c.id); });
-  $("cNotes").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.notes = e.target.value; scheduleSave("clients", c.id); });
+  $("cNotes").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; noteDraft.set(c.id, e.target.value); $("noteActions").hidden = !e.target.value.trim(); });
+  $("noteSave").addEventListener("click", () => {
+    const c = clients.get(view.id); if (!c) return;
+    const text = String($("cNotes").value || "").trim(); if (!text) return;
+    noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true;
+    writeNotes(c, [...noteEntries(c), { id: uid(), at: now(), text }]); renderNotes(c);
+  });
+  $("noteDiscard").addEventListener("click", () => { const c = clients.get(view.id); if (c) noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; });
   $("unitSeg").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-unit]"); const c = clients.get(view.id); if (!b || !c) return;
     c.unit = b.dataset.unit; scheduleSave("clients", c.id);
