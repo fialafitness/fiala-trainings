@@ -657,7 +657,7 @@
   .pick-note { margin: 12px 2px 0; font-size: 15px; color: var(--text-secondary); }
   .pick-note b { font-weight: 500; color: var(--text-primary); }
   #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .contact-row, #vClient.tpl #cEmailWrap, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
-  #vClient.tpl #notesWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
+  #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
   .tpl-pill { justify-self: start; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 34px; border-radius: 50px;
@@ -709,8 +709,9 @@
   .foot-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin-left: -8px; }
   .foot-actions .btn { white-space: nowrap; }
   .foot-pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .foot-pills.reports { margin-top: 10px; }
-  .rep-cap { font-size: 13px; color: var(--text-tertiary); margin-right: 2px; }   /* "Report PDF": every client's sessions and your notes, to mail yourself */
+  .foot-pills.reports { margin-top: 28px; }
+  .rep-cap { font-size: 13px; color: var(--text-tertiary); margin-right: 2px; }   /* "Report PDF": this client's month, to mail yourself */
+  select.pill { -webkit-appearance: none; appearance: none; padding-right: 30px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%236f6b99' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
   .pill { appearance: none; border: 0; cursor: pointer; border-radius: 50px; min-height: 36px; padding: 0 16px; font-size: 14px; font-weight: 500; letter-spacing: 0; white-space: nowrap;
     background: var(--field); color: var(--brand); transition: opacity 300ms ease, transform 120ms ease; }   /* secondary: a grey pill with the brand as its text */
   .pill:hover { opacity: 0.85; }
@@ -868,7 +869,6 @@
     <div class="foot foot-col" id="localFoot" hidden>
       <span class="muted" id="dataNote">Saved on this device</span>
       <div class="foot-pills"><button class="pill" id="backup" type="button">Back up</button><button class="pill" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="pill" id="myExercises" type="button" hidden>Exercises</button><button class="pill" id="settingsBtn" type="button" hidden>Settings</button></div>
-      <div class="foot-pills reports"><span class="rep-cap">Report PDF</span><button class="pill" type="button" data-report="week">This week</button><button class="pill" type="button" data-report="lastweek">Last week</button><button class="pill" type="button" data-report="month">This month</button><button class="pill" type="button" data-report="lastmonth">Last month</button></div>
     </div>
   </section>
 
@@ -909,6 +909,7 @@
     <h2 id="histHead" hidden>History</h2>
     <div id="histList"></div>
     <div class="empty" id="trainingEmpty" hidden>No workouts yet.</div>
+    <div class="foot-pills reports trainer-only" id="reportWrap"><span class="rep-cap">Report PDF</span><button class="pill" type="button" id="reportNow">This month</button><select class="pill" id="reportMonth" aria-label="Pick a month"><option value="">Pick a month</option></select></div>
     <div class="trainer-only" id="notesWrap">
       <h2>Notes</h2>
       <textarea id="cNotes" placeholder="Injuries, preferences, anything to remember"></textarea>
@@ -2440,6 +2441,11 @@
     if (document.activeElement !== $("cNotes")) $("cNotes").value = noteDraft.get(c.id) || "";
     $("noteActions").hidden = !String($("cNotes").value).trim(); growNotesBox();
     renderNotes(c);
+    if (!clientMode) {                                                        // the report row: the last two years of months to pick from
+      const sel = $("reportMonth"), base = new Date(today() + "T12:00:00"); sel.replaceChildren(new Option("Pick a month", ""));
+      for (let i = 1; i <= 24; i++) { const d = new Date(base.getFullYear(), base.getMonth() - i, 1, 12); sel.appendChild(new Option(d.toLocaleDateString(undefined, { month: "long", year: "numeric" }), localIso(d).slice(0, 7))); }
+      loadReportFonts();
+    }
     if (!clientMode) for (const t of clientTrainings(c.id)) if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }   // empty workouts left behind (an accidental tap on a day) go away
     const list = clientTrainings(c.id);
     const relDay = (iso) => {                                            // "Today", "Tomorrow", "In 4 days", "Yesterday", "3 days ago"
@@ -3305,103 +3311,164 @@
   window.addEventListener("pagehide", flushAll);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushAll(); });
 
-  // ---------- report PDF: every client's sessions and your notes for a week or a month, to mail yourself ----------
-  function pdfDoc() {
+  // ---------- report PDF: one client's month (sessions, logged sets, your notes), set in Inter, to mail yourself ----------
+  function parseTtf(buf) {                                          // the little we need from a TrueType file: char -> glyph, widths, metrics
+    const dv = new DataView(buf), tables = {}, n = dv.getUint16(4);
+    for (let i = 0; i < n; i++) { const o = 12 + i * 16; tables[String.fromCharCode(dv.getUint8(o), dv.getUint8(o + 1), dv.getUint8(o + 2), dv.getUint8(o + 3))] = { off: dv.getUint32(o + 8), len: dv.getUint32(o + 12) }; }
+    const head = tables.head.off, hhea = tables.hhea.off, upem = dv.getUint16(head + 18), k = 1000 / upem;
+    const bbox = [dv.getInt16(head + 36), dv.getInt16(head + 38), dv.getInt16(head + 40), dv.getInt16(head + 42)].map((v) => Math.round(v * k));
+    const ascent = Math.round(dv.getInt16(hhea + 4) * k), descent = Math.round(dv.getInt16(hhea + 6) * k), numH = dv.getUint16(hhea + 34);
+    const hmtx = tables.hmtx.off, width = (g) => Math.round(dv.getUint16(hmtx + Math.min(g, numH - 1) * 4) * k);
+    const cmap = tables.cmap.off, subs = dv.getUint16(cmap + 2); let best = null;
+    for (let i = 0; i < subs; i++) {
+      const pid = dv.getUint16(cmap + 4 + i * 8), eid = dv.getUint16(cmap + 6 + i * 8), off = dv.getUint32(cmap + 8 + i * 8);
+      if (dv.getUint16(cmap + off) === 4 && ((pid === 3 && (eid === 1 || eid === 0)) || pid === 0)) { best = cmap + off; if (pid === 3 && eid === 1) break; }
+    }
+    const map = new Map();
+    if (best != null) {
+      const segX2 = dv.getUint16(best + 6), ends = best + 14, starts = ends + segX2 + 2, deltas = starts + segX2, ranges = deltas + segX2;
+      for (let sgi = 0; sgi < segX2 / 2; sgi++) {
+        const endC = dv.getUint16(ends + sgi * 2), startC = dv.getUint16(starts + sgi * 2), delta = dv.getInt16(deltas + sgi * 2), ro = dv.getUint16(ranges + sgi * 2);
+        if (startC === 0xffff) continue;
+        for (let c = startC; c <= endC; c++) {
+          let g;
+          if (ro === 0) g = (c + delta) & 0xffff;
+          else { const gi = ranges + sgi * 2 + ro + (c - startC) * 2; if (gi + 1 >= buf.byteLength) continue; g = dv.getUint16(gi); if (g) g = (g + delta) & 0xffff; }
+          if (g) map.set(c, g);
+        }
+      }
+    }
+    return { bytes: new Uint8Array(buf), bbox, ascent, descent, gid: (ch) => map.get(ch.codePointAt(0)) || 0, width };
+  }
+  let reportFonts = null, reportFontsP = null;
+  function loadReportFonts() {                                      // Inter Regular + Bold from the app's own folder (the offline shell keeps them)
+    if (reportFonts) return Promise.resolve(reportFonts);
+    if (!reportFontsP) reportFontsP = Promise.all(["fonts/Inter-Regular.ttf", "fonts/Inter-Bold.ttf"].map((u) => fetch(u).then((r) => { if (!r.ok) throw new Error(u); return r.arrayBuffer(); })))
+      .then(([a, b]) => (reportFonts = { regular: parseTtf(a), bold: parseTtf(b) }))
+      .catch(() => { reportFontsP = null; return null; });
+    return reportFontsP;
+  }
+  function pdfDoc(fonts) {
     const W = 612, H = 792, M = 54, BOTTOM = 60;                     // US Letter, 3/4 inch margins
     const pages = []; let cur = null, y = 0;
-    const enc = (str) => Array.from(String(str)).map((ch) => ch.charCodeAt(0) <= 0xff ? ch : ch.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))   // é, á, ü stay; r-caron becomes r
-      .join("").replace(/[^\x20-\x7e\xa0-\xff]/g, "?").replace(/[\\()]/g, (m) => "\\" + m);
-    const widthOf = (str, size) => str.length * size * 0.5;         // Helvetica's average: enough to wrap sensibly
-    const wrap = (str, size, maxW) => { const lines = []; let line = ""; for (const w of String(str).split(/\s+/)) { const t = line ? line + " " + w : w; if (widthOf(t, size) > maxW && line) { lines.push(line); line = w; } else line = t; } lines.push(line); return lines; };
+    const used = { regular: new Map(), bold: new Map() };            // glyph -> character, for the widths table and copy-paste text
+    const latin = (str) => Array.from(String(str)).map((ch) => ch.charCodeAt(0) <= 0xff ? ch : ch.normalize("NFD").replace(/[̀-ͯ]/g, "")).join("").replace(/[^\x20-\x7e\xa0-\xff]/g, "?");
+    const measure = (str, size, bold) => {
+      if (!fonts) return str.length * size * 0.5;
+      const f = bold ? fonts.bold : fonts.regular; let w = 0;
+      for (const ch of str) w += f.width(f.gid(ch) || f.gid("?"));
+      return w * size / 1000;
+    };
+    const show = (str, bold) => {                                   // the text operand: glyph ids with Inter, Latin-1 with Helvetica
+      if (!fonts) return "(" + latin(str).replace(/[\\()]/g, (m) => "\\" + m) + ")";
+      const f = bold ? fonts.bold : fonts.regular, u = bold ? used.bold : used.regular; let hex = "";
+      for (const ch of str) { let g = f.gid(ch), cp = ch.codePointAt(0); if (!g) { g = f.gid("?"); cp = 63; } u.set(g, cp); hex += g.toString(16).padStart(4, "0"); }
+      return "<" + hex + ">";
+    };
+    const wrap = (str, size, bold, maxW) => { const lines = []; let line = ""; for (const w of String(str).split(/\s+/)) { const t = line ? line + " " + w : w; if (measure(t, size, bold) > maxW && line) { lines.push(line); line = w; } else line = t; } lines.push(line); return lines; };
     const newPage = () => { cur = []; pages.push(cur); y = H - M; };
     const need = (h) => { if (!cur || y - h < BOTTOM) newPage(); };
     const text = (str, { size = 11, bold = false, indent = 0, color = "0 0 0", gap = 3 } = {}) => {
-      for (const para of String(str).split("\n")) for (const line of wrap(para, size, W - 2 * M - indent)) {
+      for (const para of String(str).split("\n")) for (const line of wrap(para, size, bold, W - 2 * M - indent)) {
         need(size + gap); y -= size;
-        cur.push(color + " rg BT /" + (bold ? "F2" : "F1") + " " + size + " Tf " + (M + indent) + " " + y.toFixed(1) + " Td (" + enc(line) + ") Tj ET");
+        cur.push(color + " rg BT /" + (bold ? "F2" : "F1") + " " + size + " Tf " + (M + indent) + " " + y.toFixed(1) + " Td " + show(line, bold) + " Tj ET");
         y -= gap;
       }
     };
     const space = (h) => { y -= h; };
     const rule = () => { need(12); y -= 4; cur.push("0.85 0.85 0.87 RG 0.5 w " + M + " " + y.toFixed(1) + " m " + (W - M) + " " + y.toFixed(1) + " l S"); y -= 8; };
     const bytes = () => {
+      const parts = []; let len = 0; const offs = [];
+      const put = (x) => { const u = typeof x === "string" ? Uint8Array.from(x, (ch) => ch.charCodeAt(0) & 0xff) : x; parts.push(u); len += u.length; };
       const objs = []; const add = (o) => { objs.push(o); return objs.length; };
-      add("<< /Type /Catalog /Pages 2 0 R >>"); add("");
-      const res = add("<< /Font << /F1 4 0 R /F2 5 0 R >> >>");
-      add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
-      add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+      add("<< /Type /Catalog /Pages 2 0 R >>"); add(""); add("");    // 2: pages, 3: resources, filled below
+      let f1, f2;
+      if (fonts) {
+        const embed = (f, u, name) => {
+          const ff = add({ pre: "<< /Length " + f.bytes.length + " /Length1 " + f.bytes.length + " >>\nstream\n", bin: f.bytes, post: "\nendstream" });
+          const fd = add("<< /Type /FontDescriptor /FontName /" + name + " /Flags 32 /FontBBox [" + f.bbox.join(" ") + "] /ItalicAngle 0 /Ascent " + f.ascent + " /Descent " + f.descent + " /CapHeight 700 /StemV 80 /FontFile2 " + ff + " 0 R >>");
+          const gids = [...u.keys()].sort((a, b) => a - b);
+          const cid = add("<< /Type /Font /Subtype /CIDFontType2 /BaseFont /" + name + " /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor " + fd + " 0 R /DW 1000 /W [" + gids.map((g) => g + " [" + f.width(g) + "]").join(" ") + "] /CIDToGIDMap /Identity >>");
+          let cm = "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n";
+          for (let i = 0; i < gids.length; i += 100) { const chunk = gids.slice(i, i + 100); cm += chunk.length + " beginbfchar\n" + chunk.map((g) => "<" + g.toString(16).padStart(4, "0") + "> <" + u.get(g).toString(16).padStart(4, "0") + ">").join("\n") + "\nendbfchar\n"; }
+          cm += "endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend";
+          const tu = add("<< /Length " + cm.length + " >>\nstream\n" + cm + "\nendstream");
+          return add("<< /Type /Font /Subtype /Type0 /BaseFont /" + name + " /Encoding /Identity-H /DescendantFonts [" + cid + " 0 R] /ToUnicode " + tu + " 0 R >>");
+        };
+        f1 = embed(fonts.regular, used.regular, "Inter-Regular"); f2 = embed(fonts.bold, used.bold, "Inter-Bold");
+      } else {
+        f1 = add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"); f2 = add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+      }
+      objs[2] = "<< /Font << /F1 " + f1 + " 0 R /F2 " + f2 + " 0 R >> >>";
       const kids = [];
       for (const pg of pages) {
         const stream = pg.join("\n");
         const c = add("<< /Length " + stream.length + " >>\nstream\n" + stream + "\nendstream");
-        kids.push(add("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + W + " " + H + "] /Resources " + res + " 0 R /Contents " + c + " 0 R >>") + " 0 R");
+        kids.push(add("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + W + " " + H + "] /Resources 3 0 R /Contents " + c + " 0 R >>") + " 0 R");
       }
       objs[1] = "<< /Type /Pages /Kids [" + kids.join(" ") + "] /Count " + kids.length + " >>";
-      let out = "%PDF-1.4\n"; const offs = [];
-      objs.forEach((o, i) => { offs.push(out.length); out += (i + 1) + " 0 obj\n" + o + "\nendobj\n"; });
-      const xref = out.length;
-      out += "xref\n0 " + (objs.length + 1) + "\n0000000000 65535 f \n" + offs.map((o) => String(o).padStart(10, "0") + " 00000 n \n").join("");
-      out += "trailer\n<< /Size " + (objs.length + 1) + " /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF";
-      return Uint8Array.from(out, (ch) => ch.charCodeAt(0) & 0xff);   // everything is single-byte Latin-1 by now
+      put("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n");
+      objs.forEach((o, i) => { offs.push(len); put((i + 1) + " 0 obj\n"); if (typeof o === "string") put(o); else { put(o.pre); put(o.bin); put(o.post); } put("\nendobj\n"); });
+      const xref = len;
+      put("xref\n0 " + (objs.length + 1) + "\n0000000000 65535 f \n" + offs.map((o) => String(o).padStart(10, "0") + " 00000 n \n").join(""));
+      put("trailer\n<< /Size " + (objs.length + 1) + " /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF");
+      const out = new Uint8Array(len); let at = 0; for (const u of parts) { out.set(u, at); at += u.length; }
+      return out;
     };
     newPage();
     return { text, space, rule, bytes };
   }
-  function reportRange(kind) {
+  function reportRange(kind) {                                      // "month" = this month; "2026-09" = that month
     const base = new Date(today() + "T12:00:00");
-    if (kind === "week" || kind === "lastweek") {
-      const monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7)); if (kind === "lastweek") monday.setDate(monday.getDate() - 7);
-      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
-      return { from: localIso(monday), to: localIso(sunday), title: (kind === "lastweek" ? "Last week" : "This week") + " \u00b7 " + fmtDay(localIso(monday)) + " - " + fmtDay(localIso(sunday)) };
-    }
-    const first = kind === "lastmonth" ? new Date(base.getFullYear(), base.getMonth() - 1, 1, 12) : new Date(base.getFullYear(), base.getMonth(), 1, 12);
+    const first = /^\d{4}-\d{2}$/.test(kind) ? new Date(Number(kind.slice(0, 4)), Number(kind.slice(5, 7)) - 1, 1, 12) : new Date(base.getFullYear(), base.getMonth(), 1, 12);
     const last = new Date(first.getFullYear(), first.getMonth() + 1, 0, 12);
     return { from: localIso(first), to: localIso(last), title: first.toLocaleDateString(undefined, { month: "long", year: "numeric" }) };
   }
-  function buildReport(kind) {
-    const r = reportRange(kind), doc = pdfDoc(), t = today(), made = new Date();
+  function buildReport(kind, fonts, c) {
+    const r = reportRange(kind), doc = pdfDoc(fonts), t = today(), made = new Date();
+    const inRange = (day) => day >= r.from && day <= r.to;
     doc.text("Fiala Trainings", { size: 11, bold: true, color: "0.435 0.42 0.6" });
-    doc.text(r.title, { size: 20, bold: true, gap: 6 });
-    doc.text("Made " + made.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" }) + ", " + made.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }), { size: 10, color: "0.45 0.45 0.47" });
+    doc.text(c.name || "Client", { size: 22, bold: true, gap: 4 });
+    doc.text(r.title + "  ·  made " + made.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" }) + ", " + made.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }), { size: 10, color: "0.45 0.45 0.47" });
+    const sessions = clientTrainings(c.id).filter((x) => inRange(effDate(x))).sort((a, b) => effDate(a).localeCompare(effDate(b)));
+    const notes = noteEntries(c).filter((n) => n.at && inRange(localIso(new Date(n.at)))).sort((a, b) => a.at.localeCompare(b.at));
     const totals = { finished: 0, missed: 0, skipped: 0, planned: 0 };
     const status = (x) => x.completedAt ? "Finished" : x.skippedAt ? (x.missed === true ? "Missed" : "Skipped") : effDate(x) < t ? "Not done" : "Planned";
-    const inRange = (day) => day >= r.from && day <= r.to;
-    for (const c of peopleList()) {
-      const sessions = clientTrainings(c.id).filter((x) => inRange(effDate(x))).sort((a, b) => effDate(a).localeCompare(effDate(b)));
-      const notes = noteEntries(c).filter((n) => n.at && inRange(localIso(new Date(n.at)))).sort((a, b) => a.at.localeCompare(b.at));
-      if (!sessions.length && !notes.length) continue;
-      doc.space(14); doc.rule();
-      doc.text(c.name || "Client", { size: 15, bold: true, gap: 5 });
-      for (const x of sessions) {
-        const st = status(x); totals[st === "Finished" ? "finished" : st === "Skipped" ? "skipped" : st === "Planned" ? "planned" : "missed"]++;
-        doc.text(fmtDay(effDate(x)) + "  \u00b7  " + (x.title || "Workout") + "  \u00b7  " + st, { size: 11, bold: true, gap: 2 });
-        if (x.completedAt) for (const row of x.rows || []) {
-          const unit = c.unit || "lb", done = clamp(parseInt(row.setsDone, 10) || 0, 0, 20), sets = [];
-          for (let i = 0; i < done; i++) { const w = String((row.weights || [])[i] || "").trim(), rp = String((row.repsDone || [])[i] || "").trim(); sets.push((w ? w + " " + unit : "bodyweight") + (rp ? " x " + rp : "")); }
-          doc.text((row.name || "Exercise") + ": " + (done ? done + (done === 1 ? " set" : " sets") + (sets.length ? " : " + sets.join(", ") : "") : "not started") + (row.earlyReason ? " (finished early: " + row.earlyReason + ")" : ""), { size: 10, indent: 14, gap: 2, color: "0.25 0.25 0.27" });
-        }
-        doc.space(3);
+    doc.space(12); doc.rule();
+    doc.text("Sessions", { size: 14, bold: true, gap: 6 });
+    if (!sessions.length) doc.text("No sessions this month.", { size: 11, color: "0.45 0.45 0.47", gap: 6 });
+    for (const x of sessions) {
+      const st = status(x); totals[st === "Finished" ? "finished" : st === "Skipped" ? "skipped" : st === "Planned" ? "planned" : "missed"]++;
+      doc.text(fmtDay(effDate(x)) + "  ·  " + (x.title || "Workout") + "  ·  " + st, { size: 11, bold: true, gap: 2 });
+      if (x.completedAt) for (const row of x.rows || []) {
+        const unit = c.unit || "lb", done = clamp(parseInt(row.setsDone, 10) || 0, 0, 20), sets = [];
+        for (let i = 0; i < done; i++) { const w = String((row.weights || [])[i] || "").trim(), rp = String((row.repsDone || [])[i] || "").trim(); sets.push((w ? w + " " + unit : "bodyweight") + (rp ? " × " + rp : "")); }
+        doc.text((row.name || "Exercise") + ": " + (done ? done + (done === 1 ? " set" : " sets") + (sets.length ? " — " + sets.join(", ") : "") : "not started") + (row.earlyReason ? " (finished early: " + row.earlyReason + ")" : ""), { size: 10, indent: 14, gap: 2, color: "0.25 0.25 0.27" });
       }
-      if (notes.length) {
-        doc.text("Notes", { size: 11, bold: true, gap: 3 });
-        for (const n of notes) {
-          const d = new Date(n.at);
-          doc.text(d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) + (n.workout ? "  \u00b7  " + (n.workout.title || "Workout") : ""), { size: 10, bold: true, indent: 14, gap: 1, color: "0.45 0.45 0.47" });
-          doc.text(n.text, { size: 10.5, indent: 14, gap: 6 });
-        }
-      }
+      doc.space(3);
     }
-    doc.space(14); doc.rule();
-    doc.text("Finished " + totals.finished + "  \u00b7  Missed " + totals.missed + "  \u00b7  Skipped " + totals.skipped + "  \u00b7  Planned " + totals.planned, { size: 11, bold: true });
-    return { bytes: doc.bytes(), name: ("Fiala " + r.title.replace(/[^\w\- ]+/g, " ").replace(/\s+/g, " ").trim() + ".pdf") };
+    doc.space(8); doc.rule();
+    doc.text("Notes", { size: 14, bold: true, gap: 6 });
+    if (!notes.length) doc.text("No notes this month.", { size: 11, color: "0.45 0.45 0.47", gap: 6 });
+    for (const n of notes) {
+      const d = new Date(n.at);
+      doc.text(d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) + (n.workout ? "  ·  " + (n.workout.title || "Workout") : ""), { size: 10, bold: true, gap: 1, color: "0.45 0.45 0.47" });
+      doc.text(n.text, { size: 10.5, gap: 7 });
+    }
+    doc.space(8); doc.rule();
+    doc.text("Finished " + totals.finished + "  ·  Missed " + totals.missed + "  ·  Skipped " + totals.skipped + "  ·  Planned " + totals.planned, { size: 11, bold: true });
+    return { bytes: doc.bytes(), name: ((c.name || "Client") + " " + r.title).replace(/[^\p{L}\p{N}\- ]+/gu, " ").replace(/\s+/g, " ").trim() + ".pdf" };
   }
-  async function shareReport(kind) {                               // the phone's share sheet (Mail is one tap away); elsewhere a download
-    const { bytes, name } = buildReport(kind);
+  async function shareReport(kind, clientId) {                     // the phone's share sheet (Mail is one tap away); elsewhere a download
+    const c = clients.get(clientId); if (!c) return;
+    const fonts = await loadReportFonts();
+    const { bytes, name } = buildReport(kind, fonts, c);
     const file = new File([bytes], name, { type: "application/pdf" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
     const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
-  for (const b of document.querySelectorAll("[data-report]")) b.addEventListener("click", () => shareReport(b.dataset.report));
+  $("reportNow").addEventListener("click", () => shareReport("month", view.id));
+  $("reportMonth").addEventListener("change", (e) => { const v = e.target.value; e.target.value = ""; if (v) shareReport(v, view.id); });
   $("backup").addEventListener("click", () => {
     const data = { app: "fiala-trainings", exported: now(), clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
