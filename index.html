@@ -548,6 +548,8 @@
   .note[hidden] { display: none; }
   .note-field { font-style: italic; min-height: 44px; resize: none; overflow: hidden; }
   .add { margin-top: 16px; }
+  .pill.big { min-height: 44px; padding: 0 22px; font-size: 16px; }   /* the one pill that starts a workout: a size up */
+  #tplFill { display: block; margin-top: 10px; }                     /* on its own line under the pill; gone once the first exercise is in */
   .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
   .week button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: var(--r-chip); padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-secondary); transition: background-color 150ms ease; }
   .week button:hover { background: var(--field); }
@@ -902,7 +904,8 @@
     </div>
     <input type="checkbox" switch id="hapticSwitch" class="vh" tabindex="-1" aria-hidden="true">
     <div class="rows" id="rows"></div>
-    <button class="btn quiet add trainer-only" id="addRow">+ Add exercise</button>
+    <button class="pill big add trainer-only" id="addRow" type="button">+ Add exercise</button>
+    <button class="btn quiet add trainer-only" id="tplFill" type="button" hidden>From template</button>
     <div class="finish" id="finishWrap" hidden>
       <button class="btn" id="finishBtn" style="width:100%">Finish workout</button>
       <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn quiet" id="unfinishBtn" type="button">Undo</button></div>
@@ -1811,8 +1814,8 @@
     if (templateDraft && templateDraft.dirty && view.name === "training" && view.id === templateDraft.id) {
       pendingGo = next; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
     }
-    if (!(next.name === "client" && isTemplateClient(next.id))) pickFor = null;
-    if (!clientMode && view.name === "training" && !(next.name === "training" && next.id === view.id)) {   // leaving an empty workout behind discards it, like an empty note
+    if (!(next.name === "client" && isTemplateClient(next.id))) { pickFor = null; fillFor = null; }
+    if (!clientMode && view.name === "training" && !(next.name === "training" && next.id === view.id) && fillFor !== view.id) {   // leaving an empty workout behind discards it, like an empty note (not while it waits for a template)
       const t = trainings.get(view.id); if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
     }
     reordering = false; view = next; lsSet("fiala.trainings.view", view); render(); window.scrollTo(0, 0); }
@@ -1893,6 +1896,7 @@
   const MY_TEMPLATES = "My templates";
   const isTemplateClient = (id) => id === TEMPLATES_ID;
   let pickFor = null;                      // client id while choosing a template for them
+  let fillFor = null;                      // training id: an empty workout waiting to be filled from a template
   const lastUse = lsGet("fiala.templates.last") || { template: null, client: null };   // where he was when he last used a template
   let flashTemplate = null;                // template id to scroll to and flash on the Templates page
   let seeding = false;                     // a sync must not run while the templates are being written
@@ -2009,6 +2013,15 @@
     lastUse.template = T.id; lastUse.client = clientId; lsSet("fiala.templates.last", lastUse);
     addTraining(clientId, { ...T, title: T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : ""), fromTemplate: T.id }, date || today());
   }
+  function fillFromTemplate(T) {                                        // an empty workout takes the template's exercises and name, and stays on its day
+    const id = fillFor, target = trainings.get(id); fillFor = null; pickFor = null;
+    if (!target) { render(); return; }
+    lastUse.template = T.id; lastUse.client = target.clientId; lsSet("fiala.templates.last", lastUse);
+    if (!String(target.title || "").trim()) target.title = T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : "");
+    target.rows = (T.rows || []).map((r) => ({ ...r, id: uid(), weights: [], repsDone: [], setsDone: 0, done: false, alts: [...(r.alts || [])] }));
+    target.fromTemplate = T.id;
+    scheduleSave("trainings", target.id, 0); renderedTraining = null; go({ name: "training", id });
+  }
   function backToTemplates(tid) {
     const T = trainings.get(tid);
     flashTemplate = tid; pickFor = null;
@@ -2037,7 +2050,7 @@
     const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.textContent) left.append(sec);
     const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = pick ? "Use" : "›"; if (pick) chev.style.color = "var(--brand)";
     b.append(left, chev);
-    b.addEventListener("click", () => { if (pick) { const cid = pickFor; const who = clients.get(cid); openDatePicker({ clientId: cid, title: "Add to " + ((who && who.name) || "client"), onPick: (date) => { pickFor = null; applyTemplate(trainings.get(t.id) || t, cid, date); } }); } else go({ name: "training", id: t.id }); });
+    b.addEventListener("click", () => { if (pick) { if (fillFor) { fillFromTemplate(trainings.get(t.id) || t); return; } const cid = pickFor; const who = clients.get(cid); openDatePicker({ clientId: cid, title: "Add to " + ((who && who.name) || "client"), onPick: (date) => { pickFor = null; applyTemplate(trainings.get(t.id) || t, cid, date); } }); } else go({ name: "training", id: t.id }); });
     li.appendChild(b); return li;
   }
   function navRow(title, sub, onClick) {
@@ -2051,7 +2064,7 @@
     const wrap = $("tplList"); wrap.replaceChildren(); wrap.hidden = false;
     const prog = view.program || null, ph = view.phase || null;
     $("pickNote").hidden = !pickFor;
-    if (pickFor) { const pc = clients.get(pickFor); $("pickNote").innerHTML = "Choose a workout for <b></b> · <button class=\"btn quiet\" type=\"button\" id=\"pickCancel\">Cancel</button>"; $("pickNote").querySelector("b").textContent = pc ? pc.name : "the client"; $("pickCancel").addEventListener("click", () => { pickFor = null; render(); }); }
+    if (pickFor) { const pc = clients.get(pickFor); $("pickNote").innerHTML = "Choose a workout for <b></b> · <button class=\"btn quiet\" type=\"button\" id=\"pickCancel\">Cancel</button>"; $("pickNote").querySelector("b").textContent = pc ? pc.name : "the client"; $("pickCancel").addEventListener("click", () => { pickFor = null; fillFor = null; render(); }); }
     $("newTraining").hidden = !!prog;
     const byProg = new Map();
     for (const t of all) { const m = templateMeta(t); if (!byProg.has(m.program)) byProg.set(m.program, []); byProg.get(m.program).push(t); }
@@ -2489,6 +2502,7 @@
     paintTrainerMsg(clients.get(t.clientId));
     const src = !asClient && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
     $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = templatePath(src);
+    $("tplFill").hidden = asClient || isTpl || (t.rows || []).length > 0 || !!t.completedAt;   // only an empty workout offers a template
     $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || clientMode;
     $("viewSeg").hidden = clientMode || isTpl; for (const b of $("viewSeg").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.view === "client") === previewClient); if (!isTpl) $("usePick").hidden = true;
     $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
@@ -3119,6 +3133,7 @@
   $("unfinishBtn").addEventListener("click", () => setFinished(false));
   $("copyTraining").addEventListener("click", () => { const t = trainings.get(view.id); if (t) addTraining(t.clientId, t); });
   $("saveTemplate").addEventListener("click", () => { const t = trainings.get(view.id); if (t) saveAsTemplate(t); });
+  $("tplFill").addEventListener("click", () => { const t = trainings.get(view.id); if (!t) return; fillFor = t.id; pickFor = t.clientId; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });
   $("fromTemplate").addEventListener("click", () => { pickFor = view.id; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });
   $("useBtn").addEventListener("click", () => {
     const t = trainings.get(view.id); if (!t) return;
