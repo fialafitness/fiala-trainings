@@ -1994,7 +1994,7 @@
   const noteDraft = new Map();                                   // clientId -> what is typed in the notes box and not saved yet
   const tNoteDraft = new Map(); let tNoteOpenFor = null;          // the same for the note box on a workout page
   const growBox = (ta) => { ta.style.height = "auto"; ta.style.height = Math.max(96, ta.scrollHeight) + "px"; };
-  const openNoteGroups = new Set(), weekSeeded = new Set(), armedNotes = new Set(), deletedNotes = new Set();
+  const openNoteGroups = new Set(), armedNotes = new Set(), deletedNotes = new Set();
   const openNoteIds = new Set();                                 // long notes opened in full (this session)
   // notes stay inside c.notes, the one key the server strips before a client's phone gets the record:
   // a string is the old single note (shown as "Earlier"), an object { log: [{ id, at, text }] } is the dated list
@@ -2029,7 +2029,7 @@
       else { key = day.slice(0, 4); title = day.slice(0, 4); }
       if (!groups.has(key)) groups.set(key, { title, items: [] }); groups.get(key).items.push(n);
     }
-    if (!weekSeeded.has(c.id)) { weekSeeded.add(c.id); openNoteGroups.add(c.id + "/week"); }   // this week starts open; a fold is remembered
+    // every group starts folded; what he opens stays open for the session
     const when = (n) => {
       if (!n.at) return "Earlier";
       const d = new Date(n.at), day = localIso(d);
