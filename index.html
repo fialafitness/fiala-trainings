@@ -610,6 +610,9 @@
   #noteList .entry .when button.go { color: var(--danger); }
   #noteList .entry .when button.keep { color: var(--brand); }
   #noteList .entry .text { margin-top: 4px; font-size: 15px; line-height: 1.45; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
+  #noteList .entry .text.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }   /* a long note shows three lines until opened */
+  #noteList .entry .more { appearance: none; border: 0; background: none; width: auto; display: inline-block; padding: 0; margin-top: 2px; min-height: 28px; font-size: 14px; letter-spacing: 0; color: var(--brand); cursor: pointer; }
+  #noteList .entry .more[hidden] { display: none; }
   .name-row { display: flex; align-items: center; gap: 12px; }
   .name-row .pagetitle { flex: 1; min-width: 0; }
   .disc { position: relative; flex: none; width: 36px; height: 36px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
@@ -1973,6 +1976,7 @@
   const openNotes = new Set();                                   // exercise rows whose note the client opened (this session)
   const noteDraft = new Map();                                   // clientId -> what is typed in the notes box and not saved yet
   const openNoteGroups = new Set(), weekSeeded = new Set(), armedNotes = new Set(), deletedNotes = new Set();
+  const openNoteIds = new Set();                                 // long notes opened in full (this session)
   // notes stay inside c.notes, the one key the server strips before a client's phone gets the record:
   // a string is the old single note (shown as "Earlier"), an object { log: [{ id, at, text }] } is the dated list
   const noteEntries = (c) => {
@@ -2038,11 +2042,20 @@
         }
         top.append(stamp, ask);
         const text = document.createElement("div"); text.className = "text"; text.textContent = n.text;
-        row.append(top, text); card.appendChild(row);
+        const opened = openNoteIds.has(n.id); text.classList.toggle("clamp", !opened);
+        const more = document.createElement("button"); more.type = "button"; more.className = "more"; more.textContent = opened ? "Less" : "More"; more.hidden = !opened;   // "More" appears once we know the note overflows
+        const toggle = () => { if (openNoteIds.has(n.id)) openNoteIds.delete(n.id); else openNoteIds.add(n.id); renderNotes(c); };
+        more.addEventListener("click", toggle);
+        text.addEventListener("click", () => { if (!more.hidden) toggle(); });
+        row.append(top, text, more); card.appendChild(row);
       }
-      head.addEventListener("click", () => { if (card.hidden) openNoteGroups.add(gk); else openNoteGroups.delete(gk); card.hidden = !card.hidden; });
+      head.addEventListener("click", () => { if (card.hidden) openNoteGroups.add(gk); else openNoteGroups.delete(gk); card.hidden = !card.hidden; fitNotes(card); });
       sec.append(head, card); wrap.appendChild(sec);
     }
+    setTimeout(() => fitNotes(wrap), 0);
+  }
+  function fitNotes(root) {                                      // show "More" only under notes that really run past three lines
+    for (const el of root.querySelectorAll(".entry .text.clamp")) { const more = el.nextElementSibling; if (more && more.classList.contains("more")) more.hidden = !(el.scrollHeight > el.clientHeight + 1); }
   }
   const groupWord = (g) => g.key === "w" ? "warmup" : g.rows.length === 2 ? "superset" : g.rows.length === 3 ? "tri-set" : g.rows.length > 3 ? "giant set" : "exercise";
   function openFinishEarly(t, g, selKey) {
@@ -2399,7 +2412,7 @@
     $("pausedText").textContent = phoneDigits(c.trainerPhone) ? "Your workouts are on hold for now. Message Michal when you’re ready to pick up again." : "Your workouts are on hold for now. Michal will switch them back on when you’re ready to pick up again.";
     document.body.classList.toggle("paused", !!(c.paused && clientMode));
     if (document.activeElement !== $("cNotes")) $("cNotes").value = noteDraft.get(c.id) || "";
-    $("noteActions").hidden = !String($("cNotes").value).trim();
+    $("noteActions").hidden = !String($("cNotes").value).trim(); growNotesBox();
     renderNotes(c);
     if (!clientMode) for (const t of clientTrainings(c.id)) if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }   // empty workouts left behind (an accidental tap on a day) go away
     const list = clientTrainings(c.id);
@@ -3158,14 +3171,15 @@
   $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; renderedTraining = null; render(); });
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
   $("cNameField").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.name = e.target.value; $("cName").value = c.name; scheduleSave("clients", c.id); });
-  $("cNotes").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; noteDraft.set(c.id, e.target.value); $("noteActions").hidden = !e.target.value.trim(); });
+  const growNotesBox = () => { const ta = $("cNotes"); ta.style.height = "auto"; ta.style.height = Math.max(96, ta.scrollHeight) + "px"; };
+  $("cNotes").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; noteDraft.set(c.id, e.target.value); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
   $("noteSave").addEventListener("click", () => {
     const c = clients.get(view.id); if (!c) return;
     const text = String($("cNotes").value || "").trim(); if (!text) return;
-    noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true;
+    noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox();
     writeNotes(c, [...noteEntries(c), { id: uid(), at: now(), text }]); renderNotes(c);
   });
-  $("noteDiscard").addEventListener("click", () => { const c = clients.get(view.id); if (c) noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; });
+  $("noteDiscard").addEventListener("click", () => { const c = clients.get(view.id); if (c) noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox(); });
   $("unitSeg").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-unit]"); const c = clients.get(view.id); if (!b || !c) return;
     c.unit = b.dataset.unit; scheduleSave("clients", c.id);
