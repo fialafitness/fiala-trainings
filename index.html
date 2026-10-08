@@ -665,6 +665,8 @@
   .list li.next .when { display: block; margin-bottom: 3px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand); }
   .list li.next .pri { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
   .list li.next .sec { font-size: 15px; color: var(--text-secondary); margin-top: 3px; }
+  .list li.next .missed-actions { display: flex; gap: 4px 22px; padding: 0 20px 10px; margin-top: -8px; }   /* a missed workout: decide right here */
+  .list li.next .missed-actions button { width: auto; min-height: 40px; padding: 0; font-size: 15px; color: var(--brand); }
   .finish { margin-top: 32px; }
   .cele { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 24px; padding: 40px 0; }
   .cele h1 { margin: 0; }
@@ -1045,7 +1047,7 @@
   // what still has to reach the server is written to the device too, so closing the app with no signal loses nothing
   function persistPending() {
     lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].map(([id, r]) => [id, [...r]]),
-      finish: [...pendingFinish], skip: [...pendingSkip], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]),
+      finish: [...pendingFinish], skip: [...pendingSkip], move: [...pendingMove], miss: [...pendingMiss], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]),
       touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]),
       stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), owner: sessionEmail || pendingOwner || "" });
     if (sessionEmail) pendingOwner = sessionEmail;
@@ -1058,6 +1060,9 @@
     for (const [id, rows] of p.early || []) pendingEarlyRows.set(id, new Set([...(pendingEarlyRows.get(id) || []), ...rows]));
     for (const id of p.finish || []) pendingFinish.add(id);
     for (const id of p.skip || []) pendingSkip.add(id);
+    for (const id of p.move || []) pendingMove.add(id);
+    for (const id of p.miss || []) pendingMiss.add(id);
+    for (const id of new Set([...pendingMove, ...pendingMiss])) markDirty("trainings", id);   // sent again on this launch (the rule may have been missing last time)
     for (const [id, picks] of p.swap || []) pendingSwap.set(id, new Map([...(pendingSwap.get(id) || []), ...picks]));
     for (const [id, rows] of p.touched || []) trainerTouched.set(id, new Set([...(trainerTouched.get(id) || []), ...rows]));
     for (const [id, rows] of p.named || []) trainerNamed.set(id, new Set([...(trainerNamed.get(id) || []), ...rows]));
@@ -1137,11 +1142,14 @@
   let sb = null, signedIn = false, syncTimer = null, clientMode = false, myClientId = null, recovering = false;
   let logSetMissing = false;             // client_log_set not installed yet (run supabase/client-log-set.sql)
   let earlyMissing = false;              // client_finish_early not installed yet (run supabase/client-finish-early.sql)
+  let moveMissing = false, missMissing = false;   // client_move_training / client_miss_training not installed yet (run supabase/client-missed.sql)
   const pendingWeightRows = new Map();   // trainingId -> Set(rowId), client mode only
   const pendingDoneRows = new Map();     // trainingId -> Set(rowId), client mode only
   const pendingEarlyRows = new Map();    // trainingId -> Set(rowId): the "finished early" reason still to reach the server, client mode only
   const pendingFinish = new Set();       // trainingId, client mode only
   const pendingSkip = new Set();         // trainingId, client mode only
+  const pendingMove = new Set();         // trainingId: "Do it today" still to reach the server, client mode only
+  const pendingMiss = new Set();         // trainingId: filed as missed, still to reach the server, client mode only
   const pendingSwap = new Map();         // trainingId -> Map(rowId -> name tapped), client mode only
   const customVideos = new Map();        // loose exercise name -> YouTube id (trainer's own links)
   const videoRawKeys = new Map();        // loose key -> Set of name_key values actually stored (old spellings included)
@@ -1245,6 +1253,16 @@
         if (error && error.code !== "P0001") throw error;
         pendingSkip.delete(id);
       }
+      if (pendingMove.has(id) && !moveMissing) {
+        const { error } = await sb.rpc("client_move_training", { p_training: id, p_date: String(data.date || "").slice(0, 10) });
+        if (error && (error.code === "PGRST202" || /client_move_training/.test(error.message || ""))) moveMissing = true;   // rule not installed yet: stays on the device until it is
+        else { if (error && error.code !== "P0001") throw error; pendingMove.delete(id); }
+      }
+      if (pendingMiss.has(id) && !missMissing) {
+        const { error } = await sb.rpc("client_miss_training", { p_training: id, p_missed: data.missed === true });
+        if (error && (error.code === "PGRST202" || /client_miss_training/.test(error.message || ""))) missMissing = true;
+        else { if (error && error.code !== "P0001") throw error; pendingMiss.delete(id); }
+      }
       if (pendingFinish.has(id)) {
         const { error } = await sb.rpc("client_finish_training", { p_training: id, p_finished: !!data.completedAt });
         if (error && error.code !== "P0001") throw error;
@@ -1297,7 +1315,7 @@
       const me = c.data[0], authoritative = !!me && !(me.data && me.data.paused);
       if (authoritative) {                                                   // a training the trainer deleted: nothing queued for it can land
         const serverIds = new Set(t.data.map((r) => r.id));
-        for (const k of [...dirty.keys()]) { const [kind, id] = k.split("/"); if (kind === "trainings" && !serverIds.has(id)) { dirty.delete(k); pendingWeightRows.delete(id); pendingDoneRows.delete(id); pendingEarlyRows.delete(id); pendingFinish.delete(id); pendingSkip.delete(id); pendingSwap.delete(id); } }
+        for (const k of [...dirty.keys()]) { const [kind, id] = k.split("/"); if (kind === "trainings" && !serverIds.has(id)) { dirty.delete(k); pendingWeightRows.delete(id); pendingDoneRows.delete(id); pendingEarlyRows.delete(id); pendingFinish.delete(id); pendingSkip.delete(id); pendingMove.delete(id); pendingMiss.delete(id); pendingSwap.delete(id); } }
         persistPending();
       }
     } else {
@@ -1325,6 +1343,7 @@
         const seen = new Set();
         for (const r of rows) {
           seen.add(r.id); if (dirty.has(key(kind, r.id))) continue;
+          if (kind === "trainings" && (pendingMove.has(r.id) || pendingMiss.has(r.id))) continue;   // the client's decision still has to reach the server: keep ours
           if ((confirmedAt.get(key(kind, r.id)) || 0) > startedAt) continue;   // written after this read began: keep ours
           if (kind === "trainings" && templateDraft && templateDraft.dirty && templateDraft.id === r.id) continue;   // unsaved template edits
           if (kind === "trainings" && renderedTraining === r.id && $("rows").contains(document.activeElement)) continue; // being edited right now: next sync
@@ -1575,7 +1594,7 @@
     } else lsSet("fiala.trainings.role", { email: sessionEmail, role: trainer ? "trainer" : "client" });
     offlineEntry = null;
     if (pendingOwner && pendingOwner !== sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
-      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear();
+      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear();
     }
     pendingOwner = sessionEmail; persistPending();
     clientMode = trainer !== true;
@@ -1694,7 +1713,7 @@
     if (dirty.size) { $("status").textContent = "Some weights are not saved yet \u00b7 try again when online"; return; }
     const finish = () => {
       for (const tm of timers.values()) clearTimeout(tm);
-      timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingSwap.clear(); failed = false;
+      timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); failed = false;
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
       offline = false; offlineEntry = null; pendingOwner = "";
@@ -1761,6 +1780,7 @@
     trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
     go({ name: "training", id: t.id });
   }
+  const isEmptyWorkout = (t) => !!t && !t.completedAt && !t.skippedAt && !(t.rows || []).length && !String(t.title || "").trim() && !isTemplateClient(t.clientId);
   function deleteTraining(id) {
     const t = trainings.get(id); if (!t) return;
     if (templateDraft && templateDraft.id === id) { templateDraft = null; pendingGo = null; paintDraftBar(); }
@@ -1792,6 +1812,9 @@
       pendingGo = next; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
     }
     if (!(next.name === "client" && isTemplateClient(next.id))) pickFor = null;
+    if (!clientMode && view.name === "training" && !(next.name === "training" && next.id === view.id)) {   // leaving an empty workout behind discards it, like an empty note
+      const t = trainings.get(view.id); if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
+    }
     reordering = false; view = next; lsSet("fiala.trainings.view", view); render(); window.scrollTo(0, 0); }
   $("back").addEventListener("click", () => {
     if (settingsOpen) {
@@ -2271,6 +2294,7 @@
     $("pausedText").textContent = phoneDigits(c.trainerPhone) ? "Your workouts are on hold for now. Message Michal when you’re ready to pick up again." : "Your workouts are on hold for now. Michal will switch them back on when you’re ready to pick up again.";
     document.body.classList.toggle("paused", !!(c.paused && clientMode));
     if (document.activeElement !== $("cNotes")) $("cNotes").value = c.notes || "";
+    if (!clientMode) for (const t of clientTrainings(c.id)) if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }   // empty workouts left behind (an accidental tap on a day) go away
     const list = clientTrainings(c.id);
     const relDay = (iso) => {                                            // "Today", "Tomorrow", "In 4 days", "Yesterday", "3 days ago"
       const n = Math.round((new Date(iso + "T12:00:00") - new Date(today() + "T12:00:00")) / 86400000);
@@ -2288,18 +2312,28 @@
       const d = new Date(effDate(t) + "T12:00:00");
       const pri = document.createElement("span"); pri.className = "pri";
       const skipped = !t.completedAt && !!t.skippedAt;
-      pri.textContent = (t.completedAt ? "\u2713 " : skipped ? "Skipped \u00b7 " : "") + d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      pri.textContent = (t.completedAt ? "\u2713 " : skipped ? (t.missed === true ? "Missed \u00b7 " : "Skipped \u00b7 ") : "") + d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
       if (skipped) pri.style.color = "var(--text-tertiary)";
       const sec = document.createElement("span"); sec.className = "sec";
       sec.textContent = [t.title, !t.completedAt && done ? done + " of " + total + " done" : ""].filter(Boolean).join(" \u00b7 ");
       const left = document.createElement("span"); left.style.minWidth = "0";
-      const whenText = next ? relDay(effDate(t)) : "";
+      const overdue = next && !skipped && !t.completedAt && !!effDate(t) && effDate(t) < today();
+      const whenText = next ? (overdue ? "Missed \u00b7 " : "") + relDay(effDate(t)) : "";
       if (whenText) { const when = document.createElement("span"); when.className = "when"; when.textContent = whenText; left.append(when); }
+      let acts = null;
+      if (overdue) {                                                       // the missed workout is the first thing to decide
+        acts = document.createElement("div"); acts.className = "missed-actions";
+        const doToday = document.createElement("button"); doToday.type = "button"; doToday.textContent = "Do it today";
+        doToday.addEventListener("click", () => { t.date = today(); t.missed = false; if (clientMode) { pendingMove.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
+        const skip = document.createElement("button"); skip.type = "button"; skip.textContent = "Skip";
+        skip.addEventListener("click", () => { t.skippedAt = now(); t.missed = false; if (clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
+        acts.append(doToday, skip);
+      }
       left.append(pri); if (sec.textContent) left.append(sec);
       const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a";
       b.append(left, chev);
       b.addEventListener("click", () => go({ name: "training", id: t.id }));
-      li.appendChild(b); return li;
+      li.appendChild(b); if (acts) li.appendChild(acts); return li;       // the choices sit under the row
     };
 
     const base = new Date(); base.setHours(12, 0, 0, 0);
@@ -2356,6 +2390,13 @@
       $("calView").style.height = track.children[1].offsetHeight + "px";
     }
 
+    // missed by more than a week with nothing logged: it files itself under History as "Missed"
+    const stale = (() => { const d = new Date(base); d.setDate(base.getDate() - 7); return iso(d); })();
+    const nothingLogged = (t) => (t.rows || []).every((r) => !r.done && !(parseInt(r.setsDone, 10) > 0) && !(r.weights || []).some((w) => String(w == null ? "" : w).trim()) && !(r.repsDone || []).some((x) => String(x == null ? "" : x).trim()));
+    for (const t of list) {
+      if (t.completedAt || t.skippedAt || t.missed !== undefined || !effDate(t) || effDate(t) >= stale || !nothingLogged(t)) continue;   // missed: true = filed before, false = a person decided
+      t.skippedAt = now(); t.missed = true; if (clientMode) pendingMiss.add(t.id); scheduleSave("trainings", t.id);
+    }
     const next = list.filter((t) => !t.completedAt && !t.skippedAt).sort((a, b) => effDate(a).localeCompare(effDate(b)));
     // keep it short: anything due within the next few days (the very next workout always shows);
     // "Show more" adds the next few workouts each tap, "Show less" folds back to the short list
@@ -2408,13 +2449,22 @@
     const done = !!t.completedAt, skipped = !done && !!t.skippedAt;
     $("finishBtn").hidden = done || skipped; $("finishedLine").hidden = !done;
     $("skipLine").hidden = done || skipped; $("skippedLine").hidden = !skipped;
-    if (skipped) $("skippedText").textContent = "Skipped";
+    if (skipped) $("skippedText").textContent = t.missed === true ? "Missed" : "Skipped";
     if (done) { const d = new Date(t.completedAt); $("finishedText").textContent = "\u2713 Finished \u00b7 " + d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); }
   }
   const ordinal = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
   function setFinished(finished) {
     const t = trainings.get(view.id); if (!t) return;
+    if (!finished && t.completedAt) {                                     // undo keeps it on the day it was done, and no sweep files it by itself
+      const day = localIso(new Date(t.completedAt));
+      if (/^\d{4}-\d{2}-\d{2}$/.test(day) && day !== t.date) { t.date = day; if (clientMode) pendingMove.add(t.id); }
+      t.missed = false; if (clientMode) pendingMiss.add(t.id);
+    }
     t.completedAt = finished ? now() : null;
+    if (finished && !clientMode && /^\d{4}-\d{2}-\d{2}$/.test(t.date || "") && t.date < today()) {   // the coach logging a past session: it was done on that day
+      const d = new Date(); const [y, m, dd] = t.date.split("-").map(Number); d.setFullYear(y, m - 1, dd);
+      if (!isNaN(d)) t.completedAt = d.toISOString();
+    }
     if (clientMode) pendingFinish.add(t.id);
     scheduleSave("trainings", t.id); paintFinish(t);
     if (finished) {
@@ -3058,8 +3108,8 @@
   });
   function setSkipped(skipped) {
     const t = trainings.get(view.id); if (!t) return;
-    t.skippedAt = skipped ? now() : null;
-    if (clientMode) pendingSkip.add(t.id);
+    t.skippedAt = skipped ? now() : null; t.missed = false;        // a person decided: never filed by itself again
+    if (clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); }
     scheduleSave("trainings", t.id); paintFinish(t);
     if (skipped) go({ name: "client", id: t.clientId });
   }
