@@ -494,9 +494,10 @@
   body.client .row .cnote { display: block; margin: 6px 0 0 var(--numw); }
   body.client .block:not(.ahead):not(.done) .row .cnote { margin-left: var(--letw); }
   body.client .block.ahead .row .cnote, body.client .block.done:not(.open) .row .cnote, .cnote[hidden] { display: none; }
-  .cnote-btn { appearance: none; border: 0; background: none; padding: 0; min-height: 32px; font-size: 15px; color: var(--brand); cursor: pointer; }
-  .cnote-btn[hidden] { display: none; }
-  .cnote-text { font-size: 15px; line-height: 1.4; color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .cnote-btn { appearance: none; border: 0; background: none; padding: 0; min-height: 32px; display: inline-flex; align-items: center; gap: 4px; font-size: 15px; color: var(--brand); cursor: pointer; }
+  .cnote-btn svg { transition: transform 200ms ease; }
+  .cnote-btn.open svg { transform: rotate(180deg); }                 /* chevron turns up while the note is showing */
+  .cnote-text { margin: 4px 0 2px; padding: 2px 0 2px 12px; border-left: 2px solid var(--brand); font-size: 15px; line-height: 1.45; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }   /* the coach's words: ink, with a brand rule, so they read apart from the tempo line */
   .cnote-text[hidden] { display: none; }
   #kbbar .kb-chips { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   #kbbar .kb-chips::-webkit-scrollbar { display: none; }
@@ -2710,7 +2711,7 @@
         <div class="chip"><span class="val"></span><input class="rest tab" inputmode="decimal" placeholder="60 sec" aria-label="Rest"><span class="suffix rest-suffix">rest</span></div>
       </div>
       <div class="tempo-wrap"><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"><div class="tempo-tiles" hidden></div></div>
-      <div class="cnote" hidden><button class="cnote-btn" type="button">See note</button><div class="cnote-text" hidden></div></div>
+      <div class="cnote" hidden><button class="cnote-btn" type="button" aria-expanded="false"><span class="cnote-lab">See note</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="cnote-text" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="setlog"><div class="pair"><div class="chip"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></div><div class="chip"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></div></div></div>
       <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Note"></textarea></div>`;
@@ -2903,12 +2904,13 @@
       tempoTiles.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editTempo(); } });
       tempoInp.addEventListener("blur", () => setTimeout(paintTempo, 100));   // after the keyboard bar's ABC/123 switch (blur, refocus at 50 ms) so the box is not swapped out mid-switch
     }
-    const cnote = q(".cnote"), cnoteBtn = q(".cnote-btn"), cnoteText = q(".cnote-text");
+    const cnote = q(".cnote"), cnoteBtn = q(".cnote-btn"), cnoteLab = q(".cnote-lab"), cnoteText = q(".cnote-text");
     const paintClientNote = () => {
       const v = String(r.note || "").trim(), open = openNotes.has(r.id);
-      cnote.hidden = !asClient || !v; cnoteText.textContent = v; cnoteBtn.hidden = open; cnoteText.hidden = !open;
+      cnote.hidden = !asClient || !v; cnoteText.textContent = v; cnoteText.hidden = !open;
+      cnoteLab.textContent = open ? "Hide note" : "See note"; cnoteBtn.classList.toggle("open", open); cnoteBtn.setAttribute("aria-expanded", String(open));
     };
-    cnoteBtn.addEventListener("click", () => { openNotes.add(r.id); paintClientNote(); });
+    cnoteBtn.addEventListener("click", () => { if (openNotes.has(r.id)) openNotes.delete(r.id); else openNotes.add(r.id); paintClientNote(); });
     paintClientNote();
     const noteBtn = q(".note-btn"), noteBox = q(".note"), noteField = q(".note-field");
     const growNote = () => { noteField.style.height = "auto"; noteField.style.height = noteField.scrollHeight + "px"; };
