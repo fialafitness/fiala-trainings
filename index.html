@@ -693,6 +693,12 @@
   @media (prefers-reduced-motion: reduce) { .cele-check { animation: none; } .cal-view, .cal-track { transition: none !important; } }
   .finished { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 17px; }
   .finished span { color: var(--done); font-weight: 500; }
+  .tnote { margin-top: 8px; display: flex; flex-direction: column; align-items: center; }   /* the coach's note on this session */
+  .tnote[hidden] { display: none; }
+  #tNoteBox { width: 100%; margin-top: 4px; }
+  #tNoteBox[hidden] { display: none; }
+  #tNoteBox textarea { width: 100%; box-sizing: border-box; }
+  #noteList .entry .ref { appearance: none; border: 0; background: none; width: auto; display: inline-flex; align-items: center; gap: 4px; padding: 0; margin-top: 2px; min-height: 24px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); cursor: pointer; }   /* "Back · Wed, Oct 7 ›": the session the note came with */
   .foot { margin-top: 40px; border-top: 1px solid var(--card-border); padding-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .confirm { color: var(--text-secondary); font-size: 17px; }
   .foot.foot-col { flex-direction: column; align-items: flex-start; gap: 10px; }
@@ -928,6 +934,13 @@
       <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn quiet" id="unfinishBtn" type="button">Undo</button></div>
       <div class="finished" id="skipLine"><button class="btn quiet" id="skipBtn" type="button">Skip workout</button></div>
       <div class="finished" id="skippedLine" hidden><span class="muted" id="skippedText" style="font-size:17px"></span><button class="btn quiet" id="unskipBtn" type="button">Undo</button></div>
+    </div>
+    <div class="tnote" id="tNoteWrap" hidden>
+      <button class="btn quiet" id="tNoteOpen" type="button">Add a note</button>
+      <div id="tNoteBox" hidden>
+        <textarea id="tNote" placeholder="A note about this session, for you only"></textarea>
+        <div class="note-actions"><button class="btn sm" id="tNoteSave" type="button">Save note</button><button class="btn quiet" id="tNoteDiscard" type="button">Discard</button></div>
+      </div>
     </div>
     <div class="use trainer-only" id="useWrap" hidden>
       <button class="btn" id="useBtn" type="button" style="width:100%">Use for a client</button>
@@ -1975,6 +1988,8 @@
   }
   const openNotes = new Set();                                   // exercise rows whose note the client opened (this session)
   const noteDraft = new Map();                                   // clientId -> what is typed in the notes box and not saved yet
+  const tNoteDraft = new Map(); let tNoteOpenFor = null;          // the same for the note box on a workout page
+  const growBox = (ta) => { ta.style.height = "auto"; ta.style.height = Math.max(96, ta.scrollHeight) + "px"; };
   const openNoteGroups = new Set(), weekSeeded = new Set(), armedNotes = new Set(), deletedNotes = new Set();
   const openNoteIds = new Set();                                 // long notes opened in full (this session)
   // notes stay inside c.notes, the one key the server strips before a client's phone gets the record:
@@ -1983,11 +1998,12 @@
     const n = c && c.notes;
     const raw = n && typeof n === "object" && Array.isArray(n.log) ? n.log : [];
     const list = raw.filter((x) => x && typeof x === "object" && typeof x.text === "string")
-      .map((x) => ({ id: String(x.id || uid()), at: x.at && !isNaN(new Date(x.at)) ? String(x.at) : null, text: x.text }));
+      .map((x) => ({ id: String(x.id || uid()), at: x.at && !isNaN(new Date(x.at)) ? String(x.at) : null, text: x.text,
+        workout: x.workout && typeof x.workout === "object" && x.workout.id ? { id: String(x.workout.id), title: String(x.workout.title || ""), date: String(x.workout.date || "") } : null }));
     if (typeof n === "string" && n.trim()) list.push({ id: "legacy", at: null, text: n });
     return list;
   };
-  const packNotes = (list) => ({ log: list.map((x) => ({ id: x.id === "legacy" ? uid() : x.id, at: x.at, text: x.text })) });
+  const packNotes = (list) => ({ log: list.map((x) => ({ id: x.id === "legacy" ? uid() : x.id, at: x.at, text: x.text, ...(x.workout ? { workout: x.workout } : {}) })) });
   const writeNotes = (c, list) => { c.notes = packNotes(list); scheduleSave("clients", c.id); };   // only ever from Save / Delete: a redraw never writes
   const mergeNotes = (mine, theirs) => {                          // another device saved first: keep both sets; what this device deleted stays deleted
     const a = noteEntries({ notes: mine }), b = noteEntries({ notes: theirs }), ids = new Set(a.map((x) => x.id));
@@ -2041,13 +2057,20 @@
           ask.appendChild(del);
         }
         top.append(stamp, ask);
+        let ref = null;
+        if (n.workout) {                                                       // written with a session: say which, and open it on a tap
+          ref = document.createElement("button"); ref.type = "button"; ref.className = "ref";
+          const d = /^\d{4}-\d{2}-\d{2}$/.test(n.workout.date) ? new Date(n.workout.date + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "";
+          ref.textContent = [n.workout.title || "Workout", d].filter(Boolean).join(" \u00b7 ") + " \u203a";
+          ref.addEventListener("click", () => { if (trainings.has(n.workout.id)) go({ name: "training", id: n.workout.id }); });
+        }
         const text = document.createElement("div"); text.className = "text"; text.textContent = n.text;
         const opened = openNoteIds.has(n.id); text.classList.toggle("clamp", !opened);
         const more = document.createElement("button"); more.type = "button"; more.className = "more"; more.textContent = opened ? "Less" : "More"; more.hidden = !opened;   // "More" appears once we know the note overflows
         const toggle = () => { if (openNoteIds.has(n.id)) openNoteIds.delete(n.id); else openNoteIds.add(n.id); renderNotes(c); };
         more.addEventListener("click", toggle);
         text.addEventListener("click", () => { if (!more.hidden) toggle(); });
-        row.append(top, text, more); card.appendChild(row);
+        row.append(top); if (ref) row.append(ref); row.append(text, more); card.appendChild(row);
       }
       head.addEventListener("click", () => { if (card.hidden) openNoteGroups.add(gk); else openNoteGroups.delete(gk); card.hidden = !card.hidden; fitNotes(card); });
       sec.append(head, card); wrap.appendChild(sec);
@@ -2610,6 +2633,10 @@
     const src = !asClient && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
     $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = templatePath(src);
     $("tplFill").hidden = asClient || isTpl || (t.rows || []).length > 0 || !!t.completedAt;   // only an empty workout offers a template
+    $("tNoteWrap").hidden = clientMode || isTpl;                                                // the coach's session note, in either view, never for a client
+    const open = tNoteOpenFor === t.id;
+    $("tNoteBox").hidden = !open; $("tNoteOpen").hidden = open;
+    if (document.activeElement !== $("tNote")) { $("tNote").value = tNoteDraft.get(t.id) || ""; growBox($("tNote")); }
     $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || clientMode;
     $("viewSeg").hidden = clientMode || isTpl; for (const b of $("viewSeg").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.view === "client") === previewClient); if (!isTpl) $("usePick").hidden = true;
     $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
@@ -3171,7 +3198,17 @@
   $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; renderedTraining = null; render(); });
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
   $("cNameField").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.name = e.target.value; $("cName").value = c.name; scheduleSave("clients", c.id); });
-  const growNotesBox = () => { const ta = $("cNotes"); ta.style.height = "auto"; ta.style.height = Math.max(96, ta.scrollHeight) + "px"; };
+  const growNotesBox = () => growBox($("cNotes"));
+  $("tNoteOpen").addEventListener("click", () => { const t = trainings.get(view.id); if (!t) return; tNoteOpenFor = t.id; $("tNoteBox").hidden = false; $("tNoteOpen").hidden = true; $("tNote").focus(); });
+  $("tNote").addEventListener("input", (e) => { tNoteDraft.set(view.id, e.target.value); growBox(e.target); });
+  $("tNoteDiscard").addEventListener("click", () => { tNoteDraft.delete(view.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false; });
+  $("tNoteSave").addEventListener("click", () => {
+    const t = trainings.get(view.id), c = t && clients.get(t.clientId); if (!t || !c) return;
+    const text = String($("tNote").value || "").trim(); if (!text) return;
+    tNoteDraft.delete(t.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false;
+    writeNotes(c, [...noteEntries(c), { id: uid(), at: now(), text, workout: { id: t.id, title: String(t.title || ""), date: effDate(t) || String(t.date || "") } }]);
+    $("status").textContent = "Note saved";
+  });
   $("cNotes").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; noteDraft.set(c.id, e.target.value); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
   $("noteSave").addEventListener("click", () => {
     const c = clients.get(view.id); if (!c) return;
