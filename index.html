@@ -2057,6 +2057,7 @@
     if (settingsOpen) { if (signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : "vPassword").hidden = false; $("back").hidden = false; $("brand").hidden = true; } return; }
     if (sb && !signedIn) { showLogin($("loginMsg").textContent); return; }
     if (clientMode && !myClientId) { showWaiting(); return; }
+    if (celebrating) { hideAllViews(); $("vCelebrate").hidden = false; $("back").hidden = true; $("brand").hidden = false; return; }   // "Nice work" stays up until it hands over to the client page, whatever refreshes meanwhile
     $("vLogin").hidden = true; $("vRecovery").hidden = true; $("vWaiting").hidden = true; $("vCelebrate").hidden = true;
     if (clientMode && (view.name === "clients" || (view.name === "client" && view.id !== myClientId))) view = { name: "client", id: myClientId };
     if (clientMode && clients.get(myClientId)?.paused) view = { name: "client", id: myClientId };
@@ -2393,14 +2394,14 @@
     if (finished) {
       const count = clientTrainings(t.clientId).filter((x) => x.completedAt).length;
       $("celeText").textContent = "That\u2019s your " + ordinal(count) + " workout. Nice work.";
-      hideAllViews(); $("vCelebrate").hidden = false; $("back").hidden = true; $("brand").hidden = false;
+      celebrating = true; render();
       window.scrollTo(0, 0);
       clearTimeout(celeTimer);
-      celeTimer = setTimeout(() => { if (!$("vCelebrate").hidden) $("celeBack").click(); }, 4000);
+      celeTimer = setTimeout(() => { if (celebrating) $("celeBack").click(); }, 4000);
     }
   }
-  let celeTimer = null;
-  $("celeBack").addEventListener("click", () => { clearTimeout(celeTimer); const t = trainings.get(view.id); go({ name: "client", id: t ? t.clientId : myClientId }); });
+  let celeTimer = null, celebrating = false;   // the "Nice work" screen is a state, not just a visible panel: a sync's redraw can't knock it off
+  $("celeBack").addEventListener("click", () => { clearTimeout(celeTimer); celebrating = false; const t = trainings.get(view.id); go({ name: "client", id: t ? t.clientId : myClientId }); });
 
   function renderTraining(t) {
     if (document.activeElement !== $("tTitle")) { $("tTitle").value = t.title || ""; requestAnimationFrame(() => { const el = $("tTitle"); el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); }
