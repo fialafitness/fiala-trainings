@@ -489,6 +489,15 @@
   .tempo-tiles b { font-size: 15px; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
   .tempo-tiles span { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; letter-spacing: 0; line-height: 1; }
   .block.done:not(.open) .row .tempo-wrap { display: none; }
+  /* client: the trainer's note on an exercise sits under the tempo line as "See note"; a tap shows the words */
+  .cnote { display: none; }
+  body.client .row .cnote { display: block; margin: 6px 0 0 var(--numw); }
+  body.client .block:not(.ahead):not(.done) .row .cnote { margin-left: var(--letw); }
+  body.client .block.ahead .row .cnote, body.client .block.done:not(.open) .row .cnote, .cnote[hidden] { display: none; }
+  .cnote-btn { appearance: none; border: 0; background: none; padding: 0; min-height: 32px; font-size: 15px; color: var(--brand); cursor: pointer; }
+  .cnote-btn[hidden] { display: none; }
+  .cnote-text { font-size: 15px; line-height: 1.4; color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .cnote-text[hidden] { display: none; }
   #kbbar .kb-chips { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   #kbbar .kb-chips::-webkit-scrollbar { display: none; }
   /* client view: one set at a time */
@@ -1910,6 +1919,7 @@
     if (reason) r.earlyReason = reason; else delete r.earlyReason;
     if (clientMode) { if (!pendingEarlyRows.has(t.id)) pendingEarlyRows.set(t.id, new Set()); pendingEarlyRows.get(t.id).add(r.id); }
   }
+  const openNotes = new Set();                                   // exercise rows whose note the client opened (this session)
   const groupWord = (g) => g.key === "w" ? "warmup" : g.rows.length === 2 ? "superset" : g.rows.length === 3 ? "tri-set" : g.rows.length > 3 ? "giant set" : "exercise";
   function openFinishEarly(t, g, selKey) {
     const total = Math.max(...g.rows.map(setsOf));
@@ -2700,6 +2710,7 @@
         <div class="chip"><span class="val"></span><input class="rest tab" inputmode="decimal" placeholder="60 sec" aria-label="Rest"><span class="suffix rest-suffix">rest</span></div>
       </div>
       <div class="tempo-wrap"><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"><div class="tempo-tiles" hidden></div></div>
+      <div class="cnote" hidden><button class="cnote-btn" type="button">See note</button><div class="cnote-text" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="setlog"><div class="pair"><div class="chip"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></div><div class="chip"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></div></div></div>
       <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Note"></textarea></div>`;
@@ -2892,6 +2903,13 @@
       tempoTiles.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editTempo(); } });
       tempoInp.addEventListener("blur", () => setTimeout(paintTempo, 100));   // after the keyboard bar's ABC/123 switch (blur, refocus at 50 ms) so the box is not swapped out mid-switch
     }
+    const cnote = q(".cnote"), cnoteBtn = q(".cnote-btn"), cnoteText = q(".cnote-text");
+    const paintClientNote = () => {
+      const v = String(r.note || "").trim(), open = openNotes.has(r.id);
+      cnote.hidden = !asClient || !v; cnoteText.textContent = v; cnoteBtn.hidden = open; cnoteText.hidden = !open;
+    };
+    cnoteBtn.addEventListener("click", () => { openNotes.add(r.id); paintClientNote(); });
+    paintClientNote();
     const noteBtn = q(".note-btn"), noteBox = q(".note"), noteField = q(".note-field");
     const growNote = () => { noteField.style.height = "auto"; noteField.style.height = noteField.scrollHeight + "px"; };
     const showNote = () => { const v = (r.note || "").trim(); noteBtn.classList.toggle("has", !!v); noteBtn.title = v ? "Note" : "Add note"; noteBtn.setAttribute("aria-label", noteBtn.title); };
