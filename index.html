@@ -601,18 +601,22 @@
   /* client notes: a composer, then the saved notes by week, month and year */
   .note-actions { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
   .note-actions[hidden] { display: none; }
-  #noteList .list.notes { padding: 2px 0; }
-  #noteList .entry { padding: 12px 20px; }
-  #noteList .entry + .entry { border-top: 1px solid var(--card-border); }
-  #noteList .entry .when { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; color: var(--text-tertiary); }
-  #noteList .entry .when .ask { display: flex; gap: 10px; align-items: center; white-space: nowrap; }
-  #noteList .entry .when button { appearance: none; border: 0; background: none; width: auto; display: inline-block; padding: 0; min-height: 28px; font-size: 13px; letter-spacing: 0; text-align: center; color: var(--text-tertiary); cursor: pointer; }
-  #noteList .entry .when button.go { color: var(--danger); }
-  #noteList .entry .when button.keep { color: var(--brand); }
-  #noteList .entry .text { margin-top: 4px; font-size: 15px; line-height: 1.45; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
-  #noteList .entry .text.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }   /* a long note shows three lines until opened */
-  #noteList .entry .more { appearance: none; border: 0; background: none; width: auto; display: inline-block; padding: 0; margin-top: 2px; min-height: 28px; font-size: 14px; letter-spacing: 0; color: var(--brand); cursor: pointer; }
-  #noteList .entry .more[hidden] { display: none; }
+  .list.notes { padding: 2px 0; }
+  .wnote { margin-top: 6px; }                                        /* the coach's notes on this very workout: "Read note" under the date or the template pill */
+  .wnote[hidden] { display: none; }
+  #wNoteList { margin-top: 6px; }
+  #wNoteList[hidden] { display: none; }
+  .notes .entry { padding: 12px 20px; }
+  .notes .entry + .entry { border-top: 1px solid var(--card-border); }
+  .notes .entry .when { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; color: var(--text-tertiary); }
+  .notes .entry .when .ask { display: flex; gap: 10px; align-items: center; white-space: nowrap; }
+  .notes .entry .when button { appearance: none; border: 0; background: none; width: auto; display: inline-block; padding: 0; min-height: 28px; font-size: 13px; letter-spacing: 0; text-align: center; color: var(--text-tertiary); cursor: pointer; }
+  .notes .entry .when button.go { color: var(--danger); }
+  .notes .entry .when button.keep { color: var(--brand); }
+  .notes .entry .text { margin-top: 4px; font-size: 15px; line-height: 1.45; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .notes .entry .text.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }   /* a long note shows three lines until opened */
+  .notes .entry .more { appearance: none; border: 0; background: none; width: auto; display: inline-block; padding: 0; margin-top: 2px; min-height: 28px; font-size: 14px; letter-spacing: 0; color: var(--brand); cursor: pointer; }
+  .notes .entry .more[hidden] { display: none; }
   .name-row { display: flex; align-items: center; gap: 12px; }
   .name-row .pagetitle { flex: 1; min-width: 0; }
   .disc { position: relative; flex: none; width: 36px; height: 36px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
@@ -698,7 +702,7 @@
   #tNoteBox { width: 100%; margin-top: 4px; }
   #tNoteBox[hidden] { display: none; }
   #tNoteBox textarea { width: 100%; box-sizing: border-box; }
-  #noteList .entry .ref { appearance: none; border: 0; background: none; width: auto; display: inline-flex; align-items: center; gap: 4px; padding: 0; margin-top: 2px; min-height: 24px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); cursor: pointer; }   /* "Back · Wed, Oct 7 ›": the session the note came with */
+  .notes .entry .ref { appearance: none; border: 0; background: none; width: auto; display: inline-flex; align-items: center; gap: 4px; padding: 0; margin-top: 2px; min-height: 24px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); cursor: pointer; }   /* "Back · Wed, Oct 7 ›": the session the note came with */
   .foot { margin-top: 40px; border-top: 1px solid var(--card-border); padding-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .confirm { color: var(--text-secondary); font-size: 17px; }
   .foot.foot-col { flex-direction: column; align-items: flex-start; gap: 10px; }
@@ -928,6 +932,7 @@
       <textarea id="tTitle" class="title" rows="1" placeholder="Focus, e.g. Bench-press and back" autocapitalize="sentences"></textarea>
       <div class="date-row"><button class="datefield" id="tDate" type="button"></button><div class="seg view-seg" id="viewSeg" role="radiogroup" aria-label="See it as" hidden><button type="button" role="radio" data-view="coach" class="on">Coach</button><button type="button" role="radio" data-view="client">Client</button></div><a class="msg-pill small client-only" id="trainerBtn2" href="#" hidden><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
       <button class="tpl-pill trainer-only" id="fromTpl" type="button" hidden><span id="fromTplText"></span><span class="chev">&rsaquo;</span></button>
+      <div class="wnote" id="wNote" hidden><button class="cnote-btn" id="wNoteBtn" type="button" aria-expanded="false"><span id="wNoteLab">Read note</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="list notes" id="wNoteList" hidden></div></div>
     </div>
     <input type="checkbox" switch id="hapticSwitch" class="vh" tabindex="-1" aria-hidden="true">
     <div class="rows" id="rows"></div>
@@ -2643,6 +2648,7 @@
     $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = templatePath(src);
     $("tplFill").hidden = asClient || isTpl || (t.rows || []).length > 0 || !!t.completedAt;   // only an empty workout offers a template
     $("tNoteWrap").hidden = clientMode || isTpl;                                                // the coach's session note, in either view, never for a client
+    paintWorkoutNotes(t);
     const open = tNoteOpenFor === t.id;
     $("tNoteBox").hidden = !open; $("tNoteOpen").hidden = open;
     if (document.activeElement !== $("tNote")) { $("tNote").value = tNoteDraft.get(t.id) || ""; growBox($("tNote")); }
@@ -3208,6 +3214,24 @@
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
   $("cNameField").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.name = e.target.value; $("cName").value = c.name; scheduleSave("clients", c.id); });
   const growNotesBox = () => growBox($("cNotes"));
+  const wNoteOpen = new Set();                                   // workouts whose notes are unfolded (this session)
+  function paintWorkoutNotes(t) {
+    const c = clients.get(t.clientId), wrap = $("wNote");
+    const mine = c && !clientMode && !isTemplateClient(t.clientId) ? noteEntries(c).filter((n) => n.workout && n.workout.id === t.id).sort((a, b) => String(a.at || "").localeCompare(String(b.at || ""))) : [];
+    wrap.hidden = !mine.length; if (!mine.length) return;
+    const open = wNoteOpen.has(t.id), word = mine.length === 1 ? "note" : "notes";
+    $("wNoteLab").textContent = open ? "Hide " + word : "Read " + (mine.length === 1 ? "note" : mine.length + " notes");
+    $("wNoteBtn").classList.toggle("open", open); $("wNoteBtn").setAttribute("aria-expanded", String(open));
+    const list = $("wNoteList"); list.hidden = !open; list.replaceChildren();
+    for (const n of mine) {
+      const row = document.createElement("div"); row.className = "entry";
+      const when = document.createElement("div"); when.className = "when"; const d = new Date(n.at);
+      when.textContent = n.at ? d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "Earlier";
+      const text = document.createElement("div"); text.className = "text"; text.textContent = n.text;
+      row.append(when, text); list.appendChild(row);
+    }
+  }
+  $("wNoteBtn").addEventListener("click", () => { const t = trainings.get(view.id); if (!t) return; if (wNoteOpen.has(t.id)) wNoteOpen.delete(t.id); else wNoteOpen.add(t.id); paintWorkoutNotes(t); });
   $("tNoteOpen").addEventListener("click", () => { const t = trainings.get(view.id); if (!t) return; tNoteOpenFor = t.id; $("tNoteBox").hidden = false; $("tNoteOpen").hidden = true; $("tNote").focus(); });
   $("tNote").addEventListener("input", (e) => { tNoteDraft.set(view.id, e.target.value); growBox(e.target); });
   $("tNoteDiscard").addEventListener("click", () => { tNoteDraft.delete(view.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false; });
@@ -3216,7 +3240,7 @@
     const text = String($("tNote").value || "").trim(); if (!text) return;
     tNoteDraft.delete(t.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false;
     writeNotes(c, [...noteEntries(c), { id: uid(), at: now(), text, workout: { id: t.id, title: String(t.title || ""), date: effDate(t) || String(t.date || "") } }]);
-    $("status").textContent = "Note saved";
+    wNoteOpen.add(t.id); paintWorkoutNotes(t);
   });
   $("cNotes").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; noteDraft.set(c.id, e.target.value); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
   $("noteSave").addEventListener("click", () => {
