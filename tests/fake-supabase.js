@@ -1,5 +1,4 @@
 // An in-memory stand-in for the parts of supabase-js the app uses: from().select/update/upsert/delete chains, rpc(), auth.getSession().
-"use strict";
 function makeSupabase() {
   const tables = { ft_clients: new Map(), ft_trainings: new Map() };
   let stamp = 0; const nextStamp = () => "2026-10-13T00:00:" + String(++stamp).padStart(2, "0") + "Z";
@@ -44,4 +43,4 @@ function makeSupabase() {
   };
   return sb;
 }
-module.exports = { makeSupabase };
+export { makeSupabase };

@@ -1,6 +1,6 @@
-"use strict";
-const { test, assert } = require("./assert");
-const app = require("./load")();
+import { test, assert } from "./assert.js";
+import { load } from "./load.js";
+const app = await load();
 const { fns, maps } = app;
 const day = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return fns.localIso(d); };
 

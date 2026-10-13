@@ -1,0 +1,2672 @@
+// Fiala Trainings — the app. Loaded by index.html as an ES module; boot() starts it.
+  const NAMES = ["(Tucked) front lever","1.5 pull-up","1.5-rep close-grip underhand pull-up","45° incline dumbbell curl (arms away from body)","45° incline dumbbell curl, arms in front of body (straddling bench)","Ab wheel iso","Ab wheel rollout","Active hang","Active hang on rings","Adductor mobilization","Advanced active hang","Air bike","Alternating barbell split jump","Alternating bodyweight split jump","Alternating dumbbell bench press","Alternating dumbbell bent-over row","Alternating dumbbell curl","Alternating dumbbell overhead press","Alternating dumbbell split jump","Alternating lateral lunge walk","Alternating seated dumbbell curl","Alternating single-leg V-up","American kettlebell swing","Anchored reverse crunch","Anchored sit-up","Anderson front squat","Anderson squat","Ankles to bar (non-dynamic)","Anti-rotation core activation","Archer squat","Arms across stretch","Arnold press","Arnold shoulder press","Around the world (weight optional)","Around the world squat","Assisted bodyweight squat to box","Assisted chin-up","Assisted lateral squat","Assisted Nordic curl","Assisted pull-up","Assisted reverse lunge with blocked knee","ATG squat","ATG squat (bodyweight)","ATG squat on Smith machine against band","ATG squat with bands","ATG squat – DEM","Back deadlift","Back extension","Back extension to y's","Back extension with dumbbell on chest","Back extension with EZ bar behind head","Back lunge into kickback","Back pullover machine","Back squat","Back-supported pullover","Backward walking","Ball slam to jump","Ball squat to press","Band chest pull + hold in contraction","Band curl","Band deadlift","Band face pull","Band face pull overhead","Band glute ham raise","Band leg press (wide stance)","Band pressdown","Band pull apart","Band pullover + hold at bottom","Band Smith machine press","Band up and over","Band-assisted chin-up","Band-assisted inverted row","Band-assisted neutral-grip pull-up","Band-assisted pull-up","Band-assisted push-up","Band-resisted ab wheel iso","Band-resisted goblet squat","Band-resisted pull-up","Band-resisted push-up","Band-resisted ring push-up","Band-resisted squat","Band/cable pushdown, elbows away from body","Banded curtsy lunge into abduction","Banded eccentric pause squat","Banded frog thrust","Banded glute walk","Banded hip extension","Banded hip thrust to abduction","Banded kickback","Banded no money","Banded pulldown","Banded reverse lunge to kick back","Banded Romanian deadlift","Banded rotator cuff internal/external rotation","Banded row","Banded scapular protraction","Banded side plank abduction","Banded sumo kettlebell deadlift","Banded tube walk","Banded walk","Barbell ab rollout","Barbell bent-over row","Barbell Bulgarian split squat","Barbell chest-supported T-bar row","Barbell close-grip 2-pause bench press","Barbell close-grip bench press (shoulder width)","Barbell close-grip bench press – partial reps","Barbell close-grip biceps curl","Barbell concentration biceps curl","Barbell curl","Barbell deadlift from blocks","Barbell deadlift from deficit","Barbell decline bench triceps extension","Barbell deficit reverse lunge","Barbell flat bench triceps extension","Barbell French press","Barbell front raise","Barbell front squat iso","Barbell front squat to box","Barbell glute bridge","Barbell good morning","Barbell hip thrust","Barbell incline bench row","Barbell incline bench triceps extension","Barbell JM press","Barbell jump squat","Barbell low decline French press","Barbell lunge","Barbell overhead press","Barbell overhead shrug","Barbell overhead triceps extension","Barbell pause bench press","Barbell pause Larsen bench press","Barbell pause squat","Barbell plate ab twist","Barbell power shrug","Barbell preacher biceps curl","Barbell regular-grip biceps curl","Barbell reverse curl (pronated grip)","Barbell reverse lunge","Barbell reverse lunge with a front squat grip","Barbell reverse-grip bent-over","Barbell reverse-grip biceps curl","Barbell reverse-grip curl","Barbell Romanian deadlift","Barbell Romanian deadlift from deficit","Barbell Romanian deadlift – no touch/shora","Barbell seal row","Barbell seated shoulder press","Barbell shrug (isometric)","Barbell single-arm linear jammer","Barbell single-arm row","Barbell skull crusher","Barbell slideboard reverse lunge","Barbell snatch shrug","Barbell split squat","Barbell Spoto bench press","Barbell standing lunge","Barbell standing overhead press","Barbell standing shoulder press","Barbell step-up","Barbell stiff leg deadlift","Barbell sumo deadlift","Barbell tempo bench press","Barbell touch n go bench press","Barbell wide-grip biceps curl","Barbell Z press","Basic position for pelvic stretch","Basic support hold on rings","Battle rope","Bear crawl (forward/backward)","Bear knee tap","Bear plank 360's","Bear plank hip abduction","Bear walk","Behind-the-neck cambered bar press","Behind-the-neck press","Behind-the-neck push press","Belt squat","Bench hop","Bench jump over with hand support","Bench lateral stretch","Bench press","Bench press from pins","Bench press narrow","Bench press with chains","Bench press – DEM","Bench push-up","Bench stretch","Bent knee air crunch","Bent knee hamstring dynamic","Bent knee jackknife","Bent knee single-leg lift","Bent knee sit-up","Bent knee V-up with arms","Bent-over alternating row","Bent-over dumbbell/kettlebell row (unilateral)","Bent-over lateral raise (head supported on bench)","Bent-over Olympic barbell row","Bent-over palm up row to curl","Bent-over plate row","Bent-over pronated grip (overhand) row","Bent-over rear delt row","Bent-over reverse fly","Bent-over row overhand grip","Bent-over row to biceps curl","Bent-over row to overhead press","Bent-over row underhand grip","Bent-over tempo row","Bent-over underhand cable row to waist","Biceps curl (band/dumbbell)","Bicycle crunch","Bird dog","Bodybuilding squat","Bodyweight ab crunch","Bodyweight back extension","Bodyweight bench dip","Bodyweight Bulgarian split squat","Bodyweight cross-over step-up","Bodyweight donkey calf raise","Bodyweight get-up","Bodyweight lateral lunge with assistance","Bodyweight lateral squat","Bodyweight pike push-up","Bodyweight pistol squat","Bodyweight plank","Bodyweight pull-up","Bodyweight reverse lunge with blocked knee","Bodyweight side step","Bodyweight split squat","Bodyweight squat","Bodyweight squat thrust","Bodyweight squat to box","Bodyweight standing lunge","Bodyweight step-up","Bodyweight tibialis raise","Bodyweight walking lunge","Bowler squat","Box breathing","Box jump","Box squat","Box step-up","Box/tuck jump","Breath of fire","Broad jump","Broad jump reset","Broad jump, hustle back","Bulgarian lunge","Bulgarian split squat","Bulgarian split squat with dumbbell/kettlebell in goblet position","Bulgarian squat","Bulgarian squat with tempo","Burpee","Burpee plank jack to jump jack","Burpee push-up","Burpee push-up to break dancer","Burpee to jump lunge","Burpee without push-up","Butt kick","Butterfly and spinal twist","Butterfly crunch","Butterfly kick","Butterfly sit-up","Butterfly stretch","Cable abduction","Cable bar biceps curl","Cable behind-the-neck lat pulldown","Cable bent-over raise","Cable biceps curl","Cable chest fly","Cable crossover","Cable curl","Cable deadlift","Cable decline bench triceps extension","Cable external rotation at 30 degrees abduction","Cable external rotation at 90 degrees abduction","Cable external rotation on knee","Cable face pull","Cable face pull with rotation, to forehead","Cable flat bench fly","Cable flat bench triceps extension","Cable front raise","Cable hammer curl","Cable incline bench biceps curl","Cable incline bench fly","Cable incline bench press","Cable incline bench triceps extension","Cable kickback","Cable lat pulldown","Cable lat pulldown to knees","Cable lat pullover","Cable lateral kick","Cable lateral raise","Cable machine shoulder press (straddling, reversed)","Cable narrow-grip lat pulldown","Cable one-legged kickback","Cable overhead curl","Cable overhead triceps extension","Cable overhead triceps extension on high pulley","Cable overhead triceps extension with rope","Cable pectoral fly – seated","Cable pectoral press – seated","Cable pectoral press – standing","Cable pull through","Cable pulldown","Cable rear delt fly","Cable reverse-grip lat pulldown","Cable reverse-grip triceps pushdown","Cable rope biceps curl","Cable rope seated high row","Cable rope triceps pushdown","Cable sawing, 180 degrees","Cable shoulder press (seated)","Cable single-arm lat pulldown","Cable single-arm overhead triceps extension","Cable squat","Cable standing shoulder press","Cable straight bar triceps pushdown","Cable straight-arm pulldown","Cable upright row","Cable V-bar triceps pushdown","Cable wide-grip lat pulldown","Calf raise on leg press/standing","Calf stretch","Calming breathing (cross-legged sit)","Captain's chair knee raise","Cardio 45-60 min (shuffle run/hike/bike/rowing machine)","Cat cow","Cat crawl","Charlie's angels abs","Chest dip","Chest fly dead bug","Chest fly machine","Chest medicine ball throw","Chest opener knee raise","Chest press + hollow hold","Chest press machine","Chest press machine/push-up","Chest press with dead bug legs","Chest supported dumbbell row","Chest to wall handstand with walk-up","Chest-supported dumbbell row, neutral grip, to waist","Chest-supported dumbbell row, overhand grip, elbows out","Chest-supported dumbbell row, underhand grip, to waist","Chest-supported machine row","CHI breathing (kneeling/seated)","Chin-up","Chop with ball","Clamshell","Classic pull-up (elliptical path)","Clean","Clean deadlift","Clean power shrug","Clean pull (dynamic extension)","Close-grip band bench press","Close-grip barbell preacher curl","Close-grip bench dip (behind body)","Close-grip bench press","Close-grip bench press from dead start","Close-grip chin-up","Close-grip chin-up with band","Close-grip chin-up – mixed-grip","Close-grip decline bench press (fat bar) with band/chains","Close-grip dip","Close-grip incline bench press","Close-grip neutral pull-up","Close-grip press from pins","Close-grip pull-up","Close-grip pull-up (neutral/overhand grip)","Close-grip pulldown","Close-grip reverse EZ bar curl, back against rack","Close-grip underhand pull-up","Close-grip upright row","Cobra lat pulldown","Cobra push-up","Comerford curl","Contralateral clean to press","Contralateral overhead reverse lunge","Contralateral single-leg deadlift","Contralateral snatch","Cossack squat","Couch stretch","Criss cross jumping jack","Cross body cable triceps extension","Cross body sit-up","Cross jump touch down","Cross-body lat mobilization","Crossbody knee drive","Crossbody mountain climber","Crunch","Crunch over bench","Crunch over bench/V-crunch","Cuban rotation + press","Cuban rotation with stick/barbell","Curl to press to triceps extension","Curtsy lunge","Curtsy lunge with pause","Cyclist squat","Dead bug","Deadlift","Deadlift to clean to squat","Deadlift with chains","Deadmill sprint","Decline bench press","Decline close-grip bench press with band","Decline close-grip bench press with chains","Decline EZ bar bench press, medium grip","Decline EZ bar French press, medium grip, behind head","Decline EZ bar French press, neutral-grip, to forehead","Decline neutral-grip dumbbell triceps extension to shoulders","Decline pronated dumbbell triceps extension behind head","Decline push-up","Deep dip with press out to support","Deep neck flexor activation and suboccipital stretch","Deep squat to hamstring stretch","Deep squat wall stretch","Deep squat with reach","Deficit deadlift","Deficit push-up","Deprese lopatek","Depth drop","Depth drop to vertical jump","Diamond push-up","Dip","Dip on rings","Dolphin push-up","Double bounce high knees","Double dumbbell swing","Double kettlebell clean and push press","Double kettlebell standing overhead press","Double under","Downward dog to world's greatest stretch","Drag curl","Dragon push-up","Dragon walk","Drop squat","Duck walk forward and back","Dumbbell 1 1/4 full squat","Dumbbell 75 degree incline press, semi-neutral","Dumbbell ab twist","Dumbbell alternate biceps curl","Dumbbell Arnold press","Dumbbell bench press","Dumbbell bench press – DEM","Dumbbell bent-over lateral raise","Dumbbell bent-over row","Dumbbell bent-over row with band","Dumbbell bent-over shrug","Dumbbell Bulgarian split squat","Dumbbell calf raise","Dumbbell chest press","Dumbbell clean and jerk overhead","Dumbbell clean and press","Dumbbell Cossack squat","Dumbbell deficit split squat","Dumbbell external rotation on preacher bench","Dumbbell external rotation over knee","Dumbbell farmer's walk","Dumbbell fitball press","Dumbbell flat chest fly","Dumbbell flat chest press","Dumbbell floor French press","Dumbbell floor press","Dumbbell forward lunge","Dumbbell French press","Dumbbell French press (held proximally)","Dumbbell French press to shoulders with rotation","Dumbbell frog pump","Dumbbell front foot elevated squat","Dumbbell front raise","Dumbbell glute bridge","Dumbbell goblet Bulgarian split squat","Dumbbell goblet squat","Dumbbell hammer curl (hands turned in)","Dumbbell hammer Scott curl","Dumbbell hip thrust","Dumbbell hyperextension","Dumbbell incline bench reverse fly","Dumbbell incline bench row","Dumbbell incline chest press","Dumbbell incline hammer curl","Dumbbell incline skull crusher","Dumbbell lateral lunge","Dumbbell lateral raise","Dumbbell lateral raise – partial reps with cheating","Dumbbell leg raise","Dumbbell low decline French press","Dumbbell lunge (stationary/walking)","Dumbbell neutral overhead press","Dumbbell overhead press","Dumbbell overhead press seated on floor","Dumbbell pectoral fly","Dumbbell Pendlay row","Dumbbell power fly","Dumbbell power shrug","Dumbbell pullover","Dumbbell pullover across bench","Dumbbell reverse curl, hands shoulder width","Dumbbell reverse fly","Dumbbell reverse lunge","Dumbbell Romanian deadlift","Dumbbell Romanian deadlift (starting from the top)","Dumbbell Romanian deadlift (starting from top)","Dumbbell Romanian deadlift 2/3","Dumbbell Romanian deadlift with band","Dumbbell row straddling bench","Dumbbell Scott curl","Dumbbell seated bent-over raise","Dumbbell seated bent-over shrug","Dumbbell seated bent-over shrug – iso","Dumbbell seated front raise","Dumbbell seated partial lat raise","Dumbbell seated semi lateral raise","Dumbbell shrug","Dumbbell side bend","Dumbbell single-leg Romanian deadlift","Dumbbell snatch","Dumbbell snatch to press","Dumbbell Spiderman curl","Dumbbell squat","Dumbbell step-up","Dumbbell vertical jump","Dumbbell waiter march/walk","Dumbbell walking lunge","Dumbbell walking lunge drop set","Dumbbell windmill","Dumbbell/kettlebell lunge with rotation to the side","Dumbbell/kettlebell windmill","Dynamic leg extension","Dynamic leg extension in front of body (hanging)","Eccentric chin-up","Eccentric pull-up","Eccentric push-up","Elbow plank bodysaw","Elbow plank jack","Elevace lopatek","Elevated plank row","Elevated Romanian deadlift","Elevated toes stiff leg deadlift","Elite active hang","End range cable lateral raise","Explosive push-up","External hip rotation to lateral lunge","Extra-close-grip bench press with band/chains","EZ bar biceps curl (top range)","EZ bar biceps curl – overgrip","EZ bar biceps curl, back against rack","EZ bar biceps curl, elbows in front of body, back against rack","EZ bar French press behind head","EZ bar preacher curl (top range of motion)","EZ bar preacher curl – close-grip","EZ bar preacher curl – medium grip","EZ bar reverse curl against rack","EZ bar reverse-grip curl – close-grip","EZ bar reverse-grip curl – medium grip","EZ curl","EZ curl neutral-grip – drop set","EZ French press","EZ neutral-grip skull crusher","EZ Scott curl","EZ skull crusher","EZ Spiderman curl","Face pull","False grip hang on rings","False grip pull-up","Farmer's carry","Fat bar bench press","Feet elevated sit-up","Feet-elevated band-resisted push-up","Feet-elevated push-up","FHL calf raise","Figure 4 cross body bike crunch","Figure 4 crunch","Figure 4 hip up","Figure 4 stretch","Fire hydrant","Fire hydrant leg extension","Fire hydrant to kick back","Floor chest press hollow hold","Floor dumbbell hip thrust","Floor press","Floor slide","Floor triceps dip","FM flow I (base position – mountain climber – kick through)","Foam roll","Forearm plank","Forearm wall slide at 135 degrees","Forward lunge","Forward lunge with biceps curl","Forward lunge with reach","Forward lunge with rotation","Forward lunge with twist","Frankenstein walk","Free headstand","Frog pose","Frog walk","Frogger","Front and back lunge","Front foot elevated dumbbell heretic split squat","Front foot elevated dumbbell split squat","Front foot elevated lunge","Front foot elevated lunge + step-up","Front foot elevated split squat","Front lever protraction (drill)","Front lunge to overhead triceps","Front rack reverse lunge","Front rack shrug","Front raise straddling incline bench","Front squat","Front squat drop to pins","Gentleman row","Get-up sit-up","GHD hip extension","GHD Russian twist","GHD sit-up","Glute biased leg press","Glute bridge chest press","Glute bridge to sit-up","Glute bridge with calf raise","Glute focused hip extension","Glute focused hyper extension","Glute focused Romanian deadlift","Glute focused split squat","Glute ham raise","Glute ham raise (machine or assisted on bench)","Glute iso step-up","Goblet 1 1/4 squat","Goblet lateral lunge","Goblet lateral lunge walk","Goblet lateral squat","Goblet lunge","Goblet pulse squat","Goblet reverse lunge","Goblet reverse lunge with blocked knee","Goblet split squat","Goblet split squat with blocked knee","Goblet squat","Goblet squat iso","Goblet squat to box","Goblet step-up","Goblet sumo squat","Gorilla squat","Ground to overhead press","Hack squat","Hacken squat","Half burpee","Half dead bug","Half get-up","Half kneeling face pull","Half kneeling lift and chop","Half kneeling overhead press","Half kneeling row","Half kneeling shoulder press","Half kneeling single-arm Arnold press","Half kneeling single-arm press","Half Turkish get-up","Half-kneeling band chop","Half-kneeling band lift","Half-kneeling band overhead shrug","Half-kneeling cable chop","Half-kneeling cable lift","Half-kneeling Pallof press","Half-kneeling Pallof press iso","Half-kneeling Pallof press iso with band","Hammer curl","Hammer curl held by one end","Hammer curl to eccentric suppination","Hammer curl with rope attachment","Hamstring curl","Hamstring mobilization with lacrosse ball","Hamstring scoop","Hamstring slide","Hamstring slide curl","Hamstring strap stretch","Hamstring switch","Hamstring walk out","Hand-supported V-up","Hands-elevated push-up","Handstand alignment and hold","Handstand push-up","Handstand push-up facing wall","Handstand weight shift hand to hand, facing wall","Hang clean","Hanging anti-lateral flexion","Hanging around the world leg raise","Hanging band ATG squat","Hanging band military press","Hanging bent knee raise to 90 degrees","Hanging knee raise","Hanging knee raise on bar","Hanging knee raise on rings","Hanging leg raise","Hanging leg raise on bar","Hanging leg raise with dumbbell, to chest","Hanging leg rotation","Hanging twisting leg raise","Hanging unilateral march","Head down push-up with feet on two boxes","Headstand against wall","Heel elevated barbell squat","Heel elevated front squat","Heel elevated single hip thrust","Heel elevated step down","Heel tap","Heels elevated front ATG squat","Heels elevated sumo squat pulses","Helms dumbbell row","Heretic lunge","High bar PWL squat","High cable biceps curl","High five push-up","High heel kick","High heels ATG squat","High heels front squat","High incline bench press","High incline bench press narrow","High incline bench press – shoulder width","High incline cable fly, neutral-grip","High incline close-grip bench press","High incline Comerford curl (wrists tilted down)","High incline dumbbell bench press","High incline dumbbell curl","High incline dumbbell power fly","High incline gilotina press","High incline neutral dumbbell press","High knees","High knees hands behind head","High knees with overhead extension","High plank to downward dog","High pull","High snatch pull","Hip abduction","Hip belt squat","Hip CARS","Hip dip","Hip extension machine","Hip flexor rocker","Hip flexor stretch","Hip rotation","Hyperextension","In and out jump","Inch worm","Inchworm to push-up","Incline bench press","Incline close-grip push-up","Incline dumbbell bench press","Incline dumbbell bench press (low incline)","Incline dumbbell biceps curl","Incline neutral-grip dumbbell press, elbows tucked – partial reps","Incline plyo push-up","Incline semi-pronated dumbbell press, elbows out","Incline semi-supinated dumbbell press, elbows tucked, partial reps","Incomplete L-sit","Jackare push-up","Jackknife sit-up","Jaguar crawl","Javelin press (EZ bar)","Jefferson curl (kettlebell)","Jump in and out of tire","Jump lunge","Jump lunge with overhead extension","Jump lunge with punches","Jump rope","Jump squat","Jumping jack","Jumping lunge","Jumping pull-up","KAS hip thrust","Kettlebell armbar","Kettlebell biceps curl","Kettlebell circle around head and body","Kettlebell deadlift (pozved)","Kettlebell farmer's walk","Kettlebell goblet squat","Kettlebell snatch","Kettlebell standing march","Kettlebell swing","Kettlebell Turkish get-up","Kettlebell walking lunge (forward/backward, held in rack position)","Kettlebell/dumbbell waiter walking lunge","Kick-up + hold in wall handstand","Kickback to knees to elbows both ways","Kipping handstand push-up from headstand + slow negative","Klokov squat","Klokov squat – short","Knee hug","Knee over toe lunge","Knee to chest","Kneeling cable fly in front of body","Kneeling cable overhead triceps extension","Kneeling cable press in front of body","Kneeling chop","Kneeling Cossack squat","Kneeling crossover cable/band pulldown","Kneeling deep breathing","Kneeling lat pulldown","Kneeling lat pulldown to chest","Kneeling lift and chop","Kneeling medicine ball chop","Kneeling overhead press","Kneeling single-arm dumbbell overhead press","Kneeling unilateral dumbbell neutral-grip overhead press","L-hang","L-sit circle","Landmine chest press","Landmine goblet squat","Landmine press","Landmine rainbow","Landmine reverse lunge","Landmine Romanian deadlift","Landmine shoulder press","Landmine thruster","Lat and triceps stretch","Lat pulldown","Lat pulldown to knees","Lat pulldown with V-handle","Lat pullover","Lat stretcher","Lateral lunge","Lateral raise","Lateral to forward raise","Lateral to front raise","Lateral twist (spinal lateral flexion)","Leaning Y raise","Leg circle","Leg curl","Leg drop","Leg extension","Leg extension, feet parallel","Leg extension, feet straight","Leg extension, feet turned out","Leg extension, toes turned in","Leg extension, toes turned out","Leg kick-up to the bar","Leg lift","Leg lift and touch through","Leg lower","Leg press","Leg press IZO/dynamic","Leg press partial reps","Leg press, narrow stance","Leg press, shoulder width stance – feet parallel","Leg press, wide stance – feet turned out","Leg raise","Log flip","Long lever glute bridge","Long lever plank","Low bar ATG squat","Low bar PWL squat","Low box squat","Low cable biceps curl","Low cable biceps curl (straight bar attachment)","Low cable hammer curl","Low cable rotation in front of body","Low decline bench press","Low decline dumbbell French press to shoulders with rotation","Low incline bench press","Low incline bench press narrow","Low incline close-grip bench press","Low incline dumbbell bench press","Low incline dumbbell pectoral fly","Low incline dumbbell power fly","Low incline dumbbell press – with band","Low plank hip twist","Low pulley lateral raise","Lying alternating triceps extension","Lying band French press/overhead triceps extension with rope","Lying barbell French press behind head","Lying close-grip dumbbell press","Lying decline French press to forehead, medium grip","Lying dumbbell French press behind head","Lying dumbbell triceps extension (to shoulders)","Lying EZ bar press, close-grip","Lying EZ bar press, medium grip","Lying hamstring curl","Lying leg curl","Lying leg curl, feet neutral","Lying leg curl, feet parallel, dorsiflexed","Lying leg curl, feet parallel, plantarflexed","Lying leg curl, feet straight, dorsiflexed","Lying leg curl, feet straight, plantarflexed","Lying leg curl, feet turned in, dorsiflexed","Lying leg curl, feet turned out, dorsiflexed","Lying leg curl, feet turned out, plantarflexed","Lying leg curl, toes in, dorsiflexed","Lying leg curl, toes out, dorsiflexed","Lying leg raise","Lying slide pulldown","Lying triceps extension on crossover cables","Lying TRX hamstring curl (heels to glutes)","Machine ab crunch","Machine assisted chin-up","Machine assisted dip (chest variation)","Machine assisted pull-up","Machine back cable row","Machine biceps curl","Machine butterfly","Machine decline chest press","Machine glute ham raise","Machine hack squat","Machine hip abduction","Machine hip adduction","Machine horizontal row","Machine incline chest press","Machine iso row","Machine lat pulldown","Machine lateral raise","Machine leg curl (single)","Machine leg press","Machine lying leg curl","Machine lying leg press","Machine pec deck chest fly","Machine pec deck reverse fly","Machine preacher biceps curl","Machine reverse fly","Machine reverse hyperextension","Machine seated leg curl","Machine shoulder press","Machine shrug","Machine single-leg press","Machine standing leg curl","Machine triceps dip","Machine triceps extension","Machine triceps pushdown","Machine upright row","Machine vertical row","Marching bridge","Marching glute bridge with hold","Meadows row","Medball push press","Medicine ball slam","Medicine ball wall slam","Medium deficit deadlift","Medium incline bench press","Medium incline dumbbell hammer curl","Medium incline neutral dumbbell curl","Mid grip deadlift","Military crunch","Military press","Military press narrow","Military press with pause on the way down","Modified 21s","Modified full stretch row – high cable","Modified incline dumbbell bench press","Momentarily taking feet off wall in aligned handstand","Momentary L-sit","Momentary single-arm handstand facing wall","Monkey walk (sideways)","Morning breathing exercise (wim hof method)","Mountain climber","Mountain climber from base position","Mountain climber jump switch","Narrow front squat","Narrow pull-up (weighted)","Narrow push-up","Neck side stretch","Negative dip","Negative handstand push-up (to headstand)","Negative pistol squat","Negative pull-up","Neutral pull-up","Neutral to supinated seated curl","Neutral-grip bench press","Neutral-grip dumbbell curl (arms away from body)","Neutral-grip dumbbell French press to shoulders","Neutral-grip EZ bar biceps curl","Neutral-grip lat pulldown","Neutral-grip pull-up","Nordic curl","Nordic hamstring curl","Oblique jump lunge","Oblique mountain climber","Offset dumbbell cross-over step-up","Offset dumbbell reverse lunge","Offset dumbbell reverse lunge from deficit","Offset dumbbell reverse lunge to Romanian deadlift","Offset dumbbell split squat","Offset dumbbell step-up","Offset goblet squat","Old school Arnold row","Olympic barbell biceps curl","Olympic barbell shrug","Olympic barbell squat","One foot elevated front squat","Outward dumbbell biceps curl","Overhand dumbbell biceps curl","Overhand EZ bar curl (one foot forward)","Overhand EZ bar curl, shoulder width grip","Overhand lat pulldown","Overhand triceps pushdown, elbows behind body","Overhand triceps pushdown, elbows in front of body","Overhead extension on TRX/rings","Overhead sit-up","Overhead squat","Overhead triceps extension with band/rope cable (iso hold at max extension)","Pallof press","Pallof press horizontal circle","Palm up raise","Parallel bar press to support hold","Partial handstand push-up in wide handstand against wall","Partner squat","Passive hang","Passive hang on rings","Pata k ruce ve vzporu","Paused bench press","Pec minor broomstick mobilization","Pec mobilization with lacrosse ball","Pectoral fly","Pectoral fly on crossover cables/bands, high to low","Pelvic thrust","Pendlay power row","Pendlay row","Pendulum squat","Pendulum squat narrow (with band)","Perfect dip (extra deep, to support hold)","Performance breathing (standing/seated)","Performance HIIT (stationary bike/assault bike)","Performance tabata (stationary bike/assault bike)","Pigeon stretch","Pike push-up","Pike push-up with feet on box","Piriformis mobilization","Pistol squat","Plank","Plank alternating arm/leg extension","Plank alternating reach","Plank arm abduction","Plank arm extension","Plank arm march","Plank circle","Plank elbow to knee touch","Plank hold walk-out","Plank hop in-and-out","Plank jack","Plank jack with shoulder tap","Plank kick through","Plank knee to elbow","Plank knee tuck to chest (feet in TRX)","Plank opposite toe touch","Plank pop up","Plank pull","Plank row","Plank row rotation","Plank row to triceps extension","Plank shoulder and knee tap","Plank shoulder tap","Plank to downward dog","Plank transition from hands to elbows","Plank triceps extension","Plank walk out","Plank with alternating row","Plank-up","Plate bent-over rise","Plate curl","Plate front raise","Plate hammer curl","Plate loaded machine shoulder press (seated/kneeling)","Plate squat","Platform push-up","Platform sumo squat","Platz squat","Plyo push-up","Plyometric push-up with hands on bench","Popcorn squat","Power clean from hang","Power clean from hips","Power clean from the floor","Power snatch","Preacher curl","Preacher walking lunge","Press to straight-arm support on rings","Prisoner squat","Progression/combo of world's greatest stretch and crab","Pronated-grip seated band row","Pronated-grip seated cable row","Prone dumbbell row on incline bench","Prone dynamic spinal twist","Prone hip external rotation","Prone lying dumbbell fly","Prone lying pulldown","Prone T raise","Prone Y raise","Prone YTI","Protrakce lopatek","Prowler pull","Prowler push","Pull-up","Pull-up on bar","Pull-up to chin from active hang (no dead hang)","Pull-up to chin from passive hang (to dead hang)","Pull-up top hold + slow negative","Pull-up with iso","Pull-up, mid range pulses","Pull-up, neutral/overhand grip","Pulse jump squat","Pulse squat","Push press","Push-up","Push-up donkey kick","Push-up on knees","Push-up to alternating knee tap","Push-up to knee tap","Push-up to plank pull through","Push-up to pull through","Push-up to reach","Push-up to renegade row","Push-up to starfish","Push-up to Superman","Push-up to tucked bent-arm planche","Push-up with feet on unstable surface","Push-up with rotation","Push-up with shoulder tap","Quad rocker","Quad rocker/child's pose","Quad squat","Quad stretch lean forward","Quad stretch with reach","Quadruped extension-rotation","Quadruped rock back","Quadruped shoulder tap","Quick bound","Rack pull","Rainbow ball slam","Rear-foot-elevated barbell split squat","Rear-foot-elevated bodyweight split squat","Rear-foot-elevated dumbbell split squat","Rear-foot-elevated dumbbell split squat jump","Rear-foot-elevated goblet split squat","Renegade row","Renegade row with push-up and feet elevated","Retrakce a deprese lopatek","Retrakce lopatek","Reverse crunch","Reverse lunge into knee up","Reverse lunge jump","Reverse lunge shoulder press","Reverse lunge to single-leg skip","Reverse Nordic","Reverse pattern single-leg Romanian deadlift","Reverse pec deck","Reverse pectoral fly","Reverse plank","Reverse plank hold","Reverse plank knee drive","Reverse step-up","Reverse table top knee raise","Reverse triceps extension","Ring dip (cluster sets)","Ring dip with support","Ring plank","Ring pull-up (feet on floor)","Ring pull-up (overhand grip)","Ring pull-up, neutral-grip (cluster sets)","Ring push-up","Ring row","Ring row with feet elevated","Rocked back quadruped extension-rotation","Roll out to combat stance","Roll out to V-sit","Romanian deadlift (below knees)","Romanian deadlift to biceps curl","Romanian deadlift with dowel","Rope cable/band pushdown, elbows in front of body","Rope face pull on high cable","Rope lat pullover on high cable","Rotating bear plank","Row boat","Rowing","Rowing machine","Runner's stretch","Running","Running (1500-2500 m)","Running in place with toe taps on tire","Russian twist","Russian twist, head down (decline)","Salute plank","Scap pull-up","Scapular activation on rings (passive to active hang)","Scapular elevation and protraction with arms overhead","Scapular elevation and protraction with stick/barbell overhead","Scapular push-up","Scapular push-up on elbows","Scapular retraction and depression drill for bent-over row with stick/barbell","Scapular retraction and depression drill for deadlift with stick/barbell","Scapular retraction and depression drill, standing bench press position with stick/barbell","Scapular retraction and depression with band, straight arms","Scapular wall slide","Seal jack","Seated alternating dumbbell press","Seated ankle dorsiflexsion","Seated back extension on low cable","Seated behind-the-neck press","Seated behind-the-neck press (narrow grip)","Seated bent-over dumbbell shrug","Seated cable chest press","Seated cable row","Seated calf press","Seated calf raise","Seated calf raise, feet parallel","Seated calf raise, toes out","Seated calf raise, toes turned in","Seated calf raise, toes turned out","Seated chest press","Seated dumbbell biceps curl","Seated dumbbell curl","Seated dumbbell curl iso hold – V kontrakci","Seated dumbbell curl without support","Seated dumbbell front raise, neutral-grip","Seated dumbbell hammer curl","Seated dumbbell hammer curl, bent-over","Seated dumbbell lateral raise","Seated dumbbell overhead press","Seated dumbbell overhead press – bez opory","Seated dumbbell shoulder press","Seated dumbbell shrug","Seated dumbbell supinated lateral raise iso hold – V extenzi","Seated dumbbell W overhead press","Seated dumbbell Zottman curl","Seated EZ bar French press behind head","Seated face pull","Seated face pull to forehead","Seated face pull to shoulders","Seated football press (slight incline)","Seated French press, close-grip","Seated good morning","Seated hammer curl","Seated hamstring curl","Seated incline EZ front raise (undergrip)","Seated lat pulldown with rope","Seated lat pulldown with V-handle","Seated lateral raise","Seated leg extension","Seated low cable row","Seated low cable row (V-handle, Arnold variation)","Seated low cable row, overhand grip, to chest","Seated low cable row, underhand grip","Seated military press","Seated overhead press","Seated overhead press from pins (low)","Seated overhead press isometric (high)","Seated overhead triceps extension","Seated partial lat pulldown, underhand grip","Seated plate loaded row","Seated reverse fly","Seated row","Seated row machine","Seated single-arm dumbbell overhead press","Seated single-arm lat pulldown","Seated single-arm shoulder press","Seated single-leg hamstring curl","Seated single-leg leg press","Seated to squat jump","Seated Zottman curl (held proximally)","Semi grip pull-up","Serratus anterior punch","Shoulder flossing","Shoulder jack","Shoulder mobility and chest opener","Shoulder push-up, at top into straight-arm forward lean","Shoulder shrug","Shoulder width pull-up","Shoulder width underhand pull-up","Shrug + low cable upright row to chin","Shrug with bent arms","Shyb overhand grip","Side lunge","Side plank","Side plank crunch","Side plank dip","Side plank leg lift","Side plank reach through","Side plank row","Side plank to knee drive","Side plank wall slide","Side to side crunch","Sideways handstand wall walk","Single kettlebell shoulder press","Single-arm Arnold press","Single-arm band row","Single-arm bent-over row","Single-arm cable chest fly","Single-arm cable chest press","Single-arm cable concentration curl","Single-arm cable curl","Single-arm cable hammer curl","Single-arm cable lateral raise","Single-arm cable overhead press","Single-arm cable triceps extension","Single-arm cable upright row","Single-arm clean","Single-arm costal cable chest press","Single-arm dumbbell bench press","Single-arm dumbbell curl","Single-arm dumbbell curl on preacher bench","Single-arm dumbbell curl – partial reps","Single-arm dumbbell floor press","Single-arm dumbbell hammer curl on preacher bench","Single-arm dumbbell overhead press (semi-lunge)","Single-arm dumbbell plank row","Single-arm dumbbell press","Single-arm dumbbell push press","Single-arm dumbbell reverse lunge","Single-arm dumbbell reverse lunge from deficit","Single-arm dumbbell reverse lunge to Romanian deadlift","Single-arm dumbbell reverse lunge with blocked knee","Single-arm dumbbell Romanian deadlift","Single-arm dumbbell row","Single-arm dumbbell slideboard reverse lunge","Single-arm dumbbell split squat","Single-arm dumbbell step-up","Single-arm dumbbell suitcase shrug","Single-arm dumbbell Z press","Single-arm face pull","Single-arm half-kneeling band press","Single-arm half-kneeling band pulldown","Single-arm half-kneeling band row","Single-arm half-kneeling cable press","Single-arm half-kneeling cable row","Single-arm hands-elevated push-up","Single-arm hang clean","Single-arm incline dumbbell bench press","Single-arm kettlebell Z press","Single-arm kettlebell/dumbbell row with rotation","Single-arm landmine row","Single-arm lat pulldown","Single-arm lateral cable triceps extension","Single-arm lateral raise","Single-arm lying dumbbell rolling triceps extension","Single-arm lying dumbbell triceps extension","Single-arm machine lat pulldown","Single-arm machine preacher curl","Single-arm oblique cable twist","Single-arm overhead band press","Single-arm overhead dumbbell reverse lunge","Single-arm overhead dumbbell reverse lunge from deficit","Single-arm overhead squat","Single-arm plank","Single-arm plate curl","Single-arm push press","Single-arm raise to front raise","Single-arm rear delt cable fly","Single-arm rear delt raise","Single-arm row","Single-arm row with leg extension","Single-arm seated cable row","Single-arm seated machine row","Single-arm snatch","Single-arm staggered row","Single-arm standing band row","Single-arm standing cable row","Single-arm standing split-stance band press","Single-arm standing split-stance band row","Single-arm standing split-stance cable press","Single-arm standing split-stance cable row","Single-arm sternal cable chest press","Single-arm tall-kneeling overhead dumbbell press","Single-arm walking dumbbell farmer's carry","Single-arm weighted sit-up","Single-leg band-resisted push-up","Single-leg band-resisted Romanian deadlift","Single-leg banded glute kickback","Single-leg bent knee","Single-leg bound","Single-leg bridge press","Single-leg chest press","Single-leg deadlift","Single-leg deadlift pulses","Single-leg dumbbell glute bridge","Single-leg eccentric squat to box","Single-leg elevated hip thrust","Single-leg feet-elevated band-resisted push-up","Single-leg feet-elevated push-up","Single-leg glute bridge","Single-leg hamstring curl","Single-leg hip thrust","Single-leg hip thrust with tempo","Single-leg kick-up to wall handstand from standing","Single-leg lift","Single-leg lying leg curl","Single-leg lying leg curl, foot straight, dorsiflexed","Single-leg lying leg curl, foot turned in, dorsiflexed","Single-leg lying leg curl, toes in, dorsiflexed","Single-leg offset dumbbell Romanian deadlift","Single-leg plank","Single-leg press","Single-leg push-up","Single-leg Romanian deadlift","Single-leg seated calf press","Single-leg seated leg extension","Single-leg single-arm dumbbell Romanian deadlift","Single-leg skip","Single-leg slideboard bodysaw","Single-leg slideboard leg curl","Single-leg squat","Single-leg squat to box","Single-leg staggered","Single-leg switch","Single-leg toe touch","Single-leg V-up","Single-leg wall push-off","Single-leg weighted hip thrust","Sissy squat","Sit-up","Sit-up and twist","Sit-up to stand up","Sit-up to wall throw","Sit-up with punches","Sitting knee to chest stretch","Skater","Skater hop","Skipping","Skull crusher","Skull crusher to hip thrust","Slam ball ground slam","Slam ball push press","Sled pull","Sled push","Sledgehammer strike on tire","Slideboard bodysaw","Slideboard leg curl","Slip floor bridge curl","Slow leg lowering from the bar","Slow tempo lateral step down","Smith machine bench press","Smith machine bent-over row","Smith machine close-grip bench press","Smith machine decline chest press","Smith machine good morning","Smith machine hack squat","Smith machine incline bench press","Smith machine rack pull","Smith machine Romanian deadlift","Smith machine shoulder press","Smith machine split squat (front foot elevated)","Smith machine squat","Smith machine standing calf raise","Smith machine supinated row","Snatch deadlift","Snatch deadlift deficit","Snatch grip barbell shrug","Snatch grip deadlift","Snatch power shrug from hang","Speed band bench press","Speed squat","Spiderman crunch","Spiderman push-up","Split-stance dumbbell push press","Sprint","Sprint with tire drag (rope)","Sprinter crunch","Sprinty (15 – 50 m)","Squat","Squat (bodyweight/goblet)","Squat 4-3-1","Squat clean from hang","Squat hold with slam ball","Squat hop side to side","Squat jump to overhead press","Squat jump with press","Squat on pendulum machine/leg press","Squat pulses with isometric hold","Squat thruster","Squat to diagonal press","Squat to good morning","Squat to oblique crunch","Squat to press","Squat to side crunch","Squat to side kick","Squat to stand","Squat to stand with overhead reach","Squat to standing triple extension","Squat with hold","Squatting hip internal rotation","Stability ball crunch","Stability ball hamstring curl","Stability ball rollout","Staggered alternating deadlift","Staggered deadlift","Staggered Romanian (stiff leg)","Staggered stance single-leg deadlift","Standard dip on parallel bars","Standing alternating dumbbell overhead press","Standing band row to waist, from protraction to scapular retraction and depression","Standing band row to waist, maintaining scapular retraction and depression","Standing barbell goodmorning","Standing behind-the-neck press","Standing butt kick","Standing cable chest fly","Standing cable chest press","Standing cable low row (rope)","Standing cable upper chest fly","Standing calf raise","Standing calf raise, feet straight","Standing dumbbell press","Standing dumbbell push press","Standing elbow to knee","Standing EZ bar biceps curl","Standing face pull overhead","Standing face pull to forehead","Standing high cable triceps extension","Standing kettlebell press","Standing medicine ball lift and chop","Standing oblique crunch","Standing Olympic barbell biceps curl","Standing opposite toe tap","Standing Pallof press","Standing plate triceps extension behind head","Standing single-arm dumbbell overhead press","Standing single-leg arm press","Standing single-leg hold","Standing split-stance landmine press","Standing strict overhead press","Standing thoracic extension rotation","Standing triceps extension","Standing trunk rotation","Standing unilateral dumbbell lateral raise","Static lunge","Stationary bike (intervals seated/standing/sprint)","Stationary bike – out of saddle","Stationary bike – seated","Step down","Step-up with knee drive","Stick dislocate","Stick pass through","Stiff leg deadlift to high pull","Stiff leg/Romanian deadlift","Stiff- leg deadlift to bent-over row","Stir-the-pot","Stojka","Straddle L-sit","Straddle pulses","Straight bar cable pulldown","Straight leg sit-up","Straight leg V-up","Straight-arm band pull apart + hold","Straight-arm forward lean hold","Straight-arm forward lean on parallettes","Straight-arm press in front of body (band support press)","Straight-arm press to sides + hold (with band)","Stretch – arm sweep","Stretch – catcow","Stretch – child's pose","Stretch – full cobra","Stretch – modified pigeon pose","Stretch – pidgeon pose","Strict overhead press","Suitcase carry","Suitcase deadlift with Olympic barbell","Sumo squat","Sumo squat jump","Sumo squat pulses","Sumo squat to overhead press","Sumo squat to upright row","Sumo stance deadlift (wide stance)","Sun salutation (surya namaskar)","Super couch stretch","Superman","Superman plank","Supinated front raise","Supinated incline raise","Supinated row (palms up)","Supine banded no money drill","Supine banded scapular protraction","Supine frog pump","Supine glute bridge","Supine hips extended leg curl","Supine knee to knee pull in","Supine psoas march","Support hold in front of body (with band)","Support hold on parallel bars","Support hold protraction (drill)","Supported squat","Swinging from passive to advanced active hang","Swiss ball hamstring curl","T spine rotation","T-bar close-grip row","T-bar row","T-push-up","Table top banded kickback","Table top crunch","Table top kickback","Tall kneeling ball slam","Tall-kneeling band chop","Tall-kneeling band lift","Tall-kneeling cable chop","Tall-kneeling cable lift","Tall-kneeling landmine press","Tall-kneeling overhead Pallof press","Tall-kneeling Pallof press","Tall-kneeling Pallof press iso","Tall-kneeling Pallof press iso with band","Tempo back squat","Tempo belt squat","Tempo dumbbell goblet squat","Tempo leg extension","Tempo push-up","Tempo squat","Thoracic mobilization on foam roller","Thoracic mobilization with bench","Thread the needle","Thread the needle plank","Throw 1,2s","Thruster","Tibialis raise with kettlebell/band","Tire flip","Tire pull with rope","Toe crossover touch","Toe reach","Toe touch","Toe touch with weight","Toes to bar","Top half bench press from pins","Top half squat from pins","Top hold on parallel bars (elbows unlocked)","Towel hamstring slide (single-leg)","Towel single-arm row","Toy soldier","Track running","Transition from passive to active hang","Transition from passive to advanced active hang","Transition from passive to elite active hang","Trap 3 raise","Trap bar bent-over row","Trap bar deadlift","Trap bar farmer's walk","Traps lacrosse or tennis ball rolling (SMR)","Travelling push-up","Triceps dip","Triceps dip + hold","Triceps extension (band/dumbbell)","Triceps kickback","Triceps press","Triceps pressdown","Triceps push-up","Triceps pushdown","Triceps rope pushdown (cable/band)","Triple jump for length","TRX biceps curl (single-arm/two arms)","TRX chest press","TRX inverted row","TRX jump squat","TRX jumping Bulgarian squat","TRX mountain climber","TRX overhead squat","TRX pike","TRX pistol squat","TRX pull-up","TRX push-up","TRX rotation to forehead","TRX row (underhand, to chest)","TRX row and external rotation","TRX scarecrow","TRX single-leg squat","TRX triceps extension","Tube walking","Tuck jump","Tucked bent arm planche","Tucked front lever ice cream maker","Tucked front lever lowered from the bar","Tucked front lever pressed out from hang","Tucked L-sit","Tucked L-sit to tucked bent-arm planche","Tummo","Turkish get-up","Twist hanging leg raise","Two-leg kick-up to handstand from floor","Underhand cable triceps pushdown","Underhand chin-up – close-grip (weighted)","Underhand chin-up – shoulder width (weighted)","Underhand close-grip lat pulldown","Underhand inverted row","Underhand lat pulldown","Unilateral dumbbell hip thrust mezi lavicemi","Unilateral dumbbell press in semi-lunge","Unilateral glute bridge","Unilateral kettlebell floor press","Unilateral kettlebell press seated on floor","Unilateral kettlebell squat/double kettlebell squat","Unilateral kettlebell swing + clean","Unilateral Romanian deadlift","Up-down","Upfront row","Upper chest cable fly","Upright row","V sit-up","V-crunch","V-crunch with plate behind head","V-hold","V-up (with or without weight)","V-up with weight on bench","Vertical jump (standing)","Vertical jump reset","Vertical L pull-up","Vertical pull-up (vertical bar path)","Vertical pull-up to chest","VMO squat","Walk out to shoulder tap","Walking dumbbell cross carry","Walking farmer's carry","Walking goblet carry","Walking goblet heartbeat carry","Walking goblet lunge","Walking knee to chest","Walking lunge","Walking offset dumbbell lunge","Walking pull back butt kick","Walking push-up with pause","Walking Spiderman","Walking Spiderman with hip lift","Walking Spiderman with overhead reach","Walking Spiderman with overhead reach and hip lift","Walking two-arm waiter’s carry","Walking waiter's carry","Walking warrior lunge","Wall angel","Wall ankle mobilization","Wall ball (medicine ball throw against wall)","Wall crunch","Wall forward crunch","Wall glute iso march","Wall handstand push-up (handstand push-up)","Wall hip flexor mobilization","Wall plank","Wall press abs","Wall scapular push-up","Wall sit","Wall slide","Wall walk, belly to wall (there and back)","Weighted bench dip","Weighted burpee","Weighted burpee to squat thruster","Weighted butterfly stretch","Weighted calf raise","Weighted chin-up","Weighted clamshell","Weighted crunch","Weighted dead bug","Weighted dip","Weighted dip on parallel bars (to parallel)","Weighted dip on rings","Weighted frog pump","Weighted hanging leg raise","Weighted hip thrust","Weighted jackknife","Weighted leg extension","Weighted leg lift","Weighted lying hip abduction","Weighted marching hip thrust","Weighted modified burpee","Weighted neutral pull-up","Weighted neutral-grip pull-up","Weighted plank","Weighted pull-up","Weighted pull-up (close neutral-grip)","Weighted push-up","Weighted ring push-up","Weighted squat hold","Weighted toe touch","Weighted vertical dip on parallel bars (drop set)","Weighted wall sit","Wide feet push-up","Wide pull-up","Wide stance close-grip row","Wide stance dumbbell goblet squat","Wide stance kettlebell Romanian deadlift","Wide stance leg press","Wide stance plank row","Wide vertical pull-up to passive hang","Wide-grip barbell preacher curl","Wide-grip chin-up","Wide-grip dip","Wide-grip lat pulldown","Wide-grip lat pulldown to front","Wide-grip preacher curl","Wide-grip pull-up","Wide-grip pulldown","Windmill","World's greatest stretch","Wrist rotation at sides","Wrist stretch against wall","Wrist stretch with the other hand","X-band box walk","X-band walk","X-lat band pulldown","Y cable raise","Yates row","Yoga downward dog stretch","Yoga plex","Yoga push-up","Yoga YT full body stretch","Zercher march (Zercher walk)","Zercher squat","Zombie front squat"];
+  const VIDEOS = {"Ab wheel iso":"1vDicD_tr9M","Ab wheel rollout":"9ZCoAbI7uX0","Adductor mobilization":"hS82gl2Ea8g","Alternating barbell split jump":"fiFvoKrHxng","Alternating bodyweight split jump":"ZiupDCper-M","Alternating dumbbell bench press":"p8A3oaWhU6U","Alternating dumbbell curl":"iixND1P2lik","Alternating dumbbell split jump":"e3hCZpHeEZ4","Alternating lateral lunge walk":"-mLAtXQLiTE","Alternating single-leg V-up":"0EIDVDbzVNo","American kettlebell swing":"E6GoQYuZZT4","Anchored reverse crunch":"fcvdXzWoogg","Anchored sit-up":"CBL_WRQjvuY","Anderson front squat":"wFbJajvBZzY","Anti-rotation core activation":"8KNHP0mN9Lc","Archer squat":"p4tsleylZB8","Arms across stretch":"-1K0m5ywRcY","Arnold press":"3ml7BH7mNwQ","Arnold shoulder press":"6Z15_WdXmVw","Around the world (weight optional)":"9uqGfOvtqn0","Around the world squat":"xbj6TtFJgIY","Assisted Nordic curl":"49Uozp9wfik","Assisted bodyweight squat to box":"WnADyvqlfDg","Assisted chin-up":"A-uiFTIsgRg","Assisted lateral squat":"wTQ_wwE-ZuI","Assisted pull-up":"wFj808u2HWU","Assisted reverse lunge with blocked knee":"a2BOfZ1Ll8E","Back extension":"H8Swl1N-uis","Back extension to y's":"ph3pddpKzzw","Back lunge into kickback":"rkpvx4DuJJI","Back squat":"ultWZbUMPL8","Back-supported pullover":"FK4rHfWKEac","Backward walking":"zWTQ9UPsmf4","Ball slam to jump":"zLDENYTNhHg","Ball squat to press":"GyTTtBAvc4s","Band curl":"MkPz57rN2nw","Band face pull":"Wq-Td9UXRK8","Band pressdown":"h6tQmRu9h2E","Band pull apart":"stwYTTPXubo","Band up and over":"BvyQEahQ3XA","Band-assisted chin-up":"A-uiFTIsgRg","Band-assisted inverted row":"pKjbIyQmHiU","Band-assisted neutral-grip pull-up":"rznRMNKJTUQ","Band-assisted pull-up":"A-uiFTIsgRg","Band-assisted push-up":"Saq-JVbRZx0","Band-resisted ab wheel iso":"K4VQ2WE3R-U","Band-resisted goblet squat":"W3sp_uGF9XA","Band-resisted pull-up":"auPG8gUWiFw","Band-resisted push-up":"cOFwFzzLFWw","Band-resisted ring push-up":"kPfMkZc_Chg","Band-resisted squat":"jz47v0Uj1cY","Banded curtsy lunge into abduction":"7jwHVv51Zro","Banded eccentric pause squat":"DYs9eFN_c5Y","Banded frog thrust":"h16B74bduTY","Banded glute walk":"wQjJXuVEsEc","Banded hip extension":"FiyLIMmOs5w","Banded hip thrust to abduction":"R-xLxPU5orI","Banded kickback":"O5-ROTyo2dA","Banded no money":"KqTgISFdmew","Banded pulldown":"0H7d2qjyKbU","Banded reverse lunge to kick back":"P3QJbq1z_NA","Banded rotator cuff internal/external rotation":"8zJtj0Bw6D0","Banded row":"j5l0wcEOq1E","Banded scapular protraction":"3AZ_iF-_RFE","Banded side plank abduction":"U0O86X0TMek","Banded tube walk":"855BmSh1q_Y","Banded walk":"dgbhiejP7oI","Barbell Bulgarian split squat":"-4LVK1crLSw","Barbell French press":"JImgCWzCHwI","Barbell JM press":"rZcWkXEOKGI","Barbell Romanian deadlift":"5rIqP63yWFg","Barbell Spoto bench press":"ydJEnuvvgNU","Barbell Z press":"0fHdnBH9Gdo","Barbell bent-over row":"Nqh7q3zDCoQ","Barbell chest-supported T-bar row":"ly5AOZB0bc4","Barbell close-grip 2-pause bench press":"Cv5nS1AH_jE","Barbell close-grip biceps curl":"vSupPQiBkeY","Barbell concentration biceps curl":"QZEqB6wUPxQ","Barbell curl":"uvhnpOjDye8","Barbell deadlift from blocks":"jNIUXckSaDA","Barbell deadlift from deficit":"CpWsUsqBtN8","Barbell decline bench triceps extension":"Xrg96YYN0Fc","Barbell deficit reverse lunge":"ZPp34SHzQqA","Barbell flat bench triceps extension":"hOwZLq1VSRg","Barbell front raise":"_ikCPws1mbE","Barbell front squat iso":"nfkphUz7qVk","Barbell front squat to box":"RbMi6CQfGkk","Barbell glute bridge":"nbjJjSa0cKo","Barbell good morning":"OWz0f3CN_xg","Barbell hip thrust":"Zp26q4BY5HE","Barbell incline bench row":"KXjNfZZ0SDY","Barbell incline bench triceps extension":"ceBWWifK11M","Barbell jump squat":"0pTBkUPuMkk","Barbell overhead press":"_RlRDWO2jfg","Barbell overhead shrug":"xFlj3GiiRj4","Barbell overhead triceps extension":"szES3xIzJPo","Barbell pause Larsen bench press":"Ilt0GuTwB_Y","Barbell pause bench press":"dVM-rN5cd4E","Barbell pause squat":"nknf16JJTZo","Barbell plate ab twist":"pDTHSnoGoEc","Barbell power shrug":"96NFt3oTvpI","Barbell preacher biceps curl":"Gydpcouclx8","Barbell regular-grip biceps curl":"uvhnpOjDye8","Barbell reverse curl (pronated grip)":"W32gBdbEeoU","Barbell reverse lunge":"U5Q5HfUyy78","Barbell reverse lunge with a front squat grip":"6BqR5996pcE","Barbell reverse-grip bent-over":"3gdGSSgDby8","Barbell reverse-grip biceps curl":"nRgxYX2Ve9w","Barbell reverse-grip curl":"W32gBdbEeoU","Barbell seated shoulder press":"oBGeXxnigsQ","Barbell single-arm linear jammer":"De2G39d8S6E","Barbell single-arm row":"1W1MnqIIZ7k","Barbell skull crusher":"gTrlbuuMufQ","Barbell slideboard reverse lunge":"L3ntiAhV3Zs","Barbell split squat":"r1jukGZPnZI","Barbell standing lunge":"ci4rsmlOk24","Barbell standing overhead press":"2yjwXTZQDDI","Barbell standing shoulder press":"2yjwXTZQDDI","Barbell step-up":"860722r7v2E","Barbell stiff leg deadlift":"q3mVYFBaLq4","Barbell sumo deadlift":"7gRCzkbCT24","Barbell tempo bench press":"IZX5bS5rPkk","Barbell touch n go bench press":"Kg0N3nie2Xc","Barbell wide-grip biceps curl":"jnfveKq1i3E","Battle rope":"658VcTBuovQ","Bear knee tap":"R0s1lxjh2OM","Bear plank 360's":"ASThkQl4fWg","Bear plank hip abduction":"eqEjbNIh8F4","Belt squat":"ydyqe7RzTkA","Bench hop":"9ODXwMo2Dzc","Bench lateral stretch":"6Fc0u9xPkL8","Bench press":"rT7DgCr-3pg","Bench press from pins":"t2aOUqhQIBU","Bench push-up":"5MhQS8nU-HU","Bench stretch":"PMW9R3uZyxw","Bent knee V-up with arms":"nfWQihJo-Mc","Bent knee air crunch":"shT17pjkMaI","Bent knee hamstring dynamic":"f0lBxfbZO3c","Bent knee jackknife":"QMTsahie_98","Bent knee single-leg lift":"zo2pqw794B0","Bent knee sit-up":"eP8jUKP9RT8","Bent-over alternating row":"UKjQMYiQnS0","Bent-over palm up row to curl":"gQvdAcH1j9Q","Bent-over plate row":"GV-5bHCEKEc","Bent-over pronated grip (overhand) row":"CU3AZYX0u2Q","Bent-over rear delt row":"2S9juCSwxWw","Bent-over reverse fly":"YVQaCafbGOo","Bent-over row to biceps curl":"gQvdAcH1j9Q","Bent-over row to overhead press":"pq4ars8_E3Q","Bent-over tempo row":"yQ3Q-lSdR6o","Bicycle crunch":"1we3bh9uhqY","Bird dog":"wiFNA3sqjCA","Bodyweight Bulgarian split squat":"aSJbKnDRIiQ","Bodyweight ab crunch":"z6LRile4YiE","Bodyweight back extension":"H8Swl1N-uis","Bodyweight bench dip":"0326dy_-CzM","Bodyweight cross-over step-up":"2u-8FNBy6Ik","Bodyweight get-up":"KJVa28Rd6HA","Bodyweight lateral lunge with assistance":"t8BrYuUVQl0","Bodyweight lateral squat":"0lLIWWSmMm4","Bodyweight pike push-up":"0cT6ug3WVn4","Bodyweight pistol squat":"T2ZIdwvsq1w","Bodyweight plank":"OOi3tmzUzJo","Bodyweight pull-up":"XUkb6H9ddiQ","Bodyweight reverse lunge with blocked knee":"jrYAwn2lpFI","Bodyweight side step":"v7vqOK3VFvI","Bodyweight split squat":"vvZHaPGOIWU","Bodyweight squat":"X8DnpBl7Hwk","Bodyweight squat thrust":"fysU2ldlXSY","Bodyweight squat to box":"70vh8vN40c4","Bodyweight standing lunge":"3XDriUn0udo","Bodyweight step-up":"WCFCdxzFBa4","Bodyweight tibialis raise":"RXC7tE6IQcc","Bodyweight walking lunge":"YpKz7GDOgXg","Bowler squat":"zb2ftRZ-GiQ","Box jump":"NBY9-kTuHEk","Box squat":"nBc_2Jyp3tM","Box/tuck jump":"MdlpB3LEBVI","Broad jump":"uhz-ia-2UcM","Broad jump, hustle back":"w3KaX9dBCfQ","Bulgarian lunge":"HBYGeyb4sSM","Bulgarian split squat":"hPlKPjohFS0","Bulgarian squat":"wtGCCaPg5gE","Bulgarian squat with tempo":"F810QU8BnZA","Burpee":"auBLPXO8Fww","Burpee plank jack to jump jack":"dN63yXNfgKY","Burpee push-up":"Qe9aeEfgQTM","Burpee push-up to break dancer":"qNQfmbHvFHk","Burpee to jump lunge":"igd9QiZvEMo","Burpee without push-up":"HfV1UBKzQTo","Butt kick":"JsxQNiaX43g","Butterfly and spinal twist":"orflHFw3icE","Butterfly crunch":"Y8FaGgeTvoQ","Butterfly kick":"es9UHMkVv5k","Butterfly sit-up":"5VbyA9P2eLc","Butterfly stretch":"4J7kbCmPScQ","Cable V-bar triceps pushdown":"2-LAMcpzODU","Cable abduction":"EHq78mQYLbI","Cable bar biceps curl":"NFzTWp2qpiE","Cable behind-the-neck lat pulldown":"5I_ejzeq9m0","Cable biceps curl":"NFzTWp2qpiE","Cable chest fly":"mLgYNdxj-Vw","Cable crossover":"taI4XduLpTk","Cable curl":"NFzTWp2qpiE","Cable deadlift":"_4U_5JO3oiE","Cable decline bench triceps extension":"vVM2JlDliDg","Cable external rotation at 30 degrees abduction":"jRry9lKQRGo","Cable external rotation at 90 degrees abduction":"D5QdEQyhmVM","Cable external rotation on knee":"JlxndP60w8E","Cable face pull":"V8dZ3pyiCBo","Cable flat bench fly":"D04sUKQi85Y","Cable flat bench triceps extension":"MwfWEn04I8I","Cable front raise":"fqUgPii8Nm8","Cable hammer curl":"laKjkStPiWE","Cable incline bench biceps curl":"Vzmc5bOmAYs","Cable incline bench fly":"GtHNC-5GtR0","Cable incline bench press":"GtHNC-5GtR0","Cable incline bench triceps extension":"DBiWdDx99ms","Cable kickback":"ifP5sFBT7IE","Cable lat pulldown":"CAwf7n6Luuc","Cable lateral kick":"JcRnAtNN7vs","Cable lateral raise":"EZSAOY7b3g4","Cable narrow-grip lat pulldown":"gZr4wiQTfMM","Cable one-legged kickback":"ifP5sFBT7IE","Cable overhead curl":"5_n3gVeGEqc","Cable overhead triceps extension":"1u18yJELsh0","Cable pull through":"4oZ_0_bQcOg","Cable pulldown":"AjCCGN2tU3Q","Cable rear delt fly":"JENKmsEZQO8","Cable reverse-grip lat pulldown":"D-aYXhHBDI8","Cable reverse-grip triceps pushdown":"7R88yqmcGrw","Cable rope biceps curl":"Odz1T8WmDBI","Cable rope seated high row":"dt7zkcKEAJo","Cable rope triceps pushdown":"yUeuSjH2wqA","Cable shoulder press (seated)":"fBTGwHChaf4","Cable single-arm lat pulldown":"0BT533ueEdI","Cable single-arm overhead triceps extension":"FE_AsjcTImc","Cable squat":"nPrz-nyFKgU","Cable standing shoulder press":"QFHIkW3vbfI","Cable straight bar triceps pushdown":"Vwf9n6TwF0g","Cable straight-arm pulldown":"wcVDItawocI","Cable upright row":"9Q-j2tPu2Sk","Cable wide-grip lat pulldown":"lueEJGjTuPQ","Calf stretch":"YfjeXeiREic","Captain's chair knee raise":"711U6NbJRmc","Cat cow":"KpNznspZZEY","Charlie's angels abs":"VZltbTn_X5U","Chest dip":"dX_nSOOJIsE","Chest fly dead bug":"5M_MYQ9nhN8","Chest fly machine":"u56jywgbvE4","Chest medicine ball throw":"kKki4IPqWso","Chest opener knee raise":"UqmbxvOgnX4","Chest press + hollow hold":"aXkLkMSfwrg","Chest press machine":"mlXTzUUR9AE","Chest press with dead bug legs":"NrfJODuEXHo","Chest supported dumbbell row":"ym-Mp8tCF00","Chest-supported machine row":"9WwRJQ003hU","Chin-up":"mRy9m2Q9_1I","Chop with ball":"EygfY8ByyhQ","Clamshell":"CiqvDV8pzRk","Close-grip incline bench press":"sVr4fZOVr34","Close-grip pulldown":"gZr4wiQTfMM","Contralateral clean to press":"egMfgzQbykY","Contralateral overhead reverse lunge":"qhlGekPq-8s","Contralateral single-leg deadlift":"rQiTDw_NeR0","Contralateral snatch":"hpmrK0pUVGw","Cossack squat":"dhDjKmTX8tU","Couch stretch":"fHKndvWwenc","Criss cross jumping jack":"lF1vpdVQsUU","Cross body cable triceps extension":"TctfJadtxq0","Cross body sit-up":"_eK01SNwob0","Cross jump touch down":"xCazgyElCpg","Cross-body lat mobilization":"ToSAFXPU6Z4","Crossbody knee drive":"CfjLu7GB938","Crossbody mountain climber":"CfjLu7GB938","Curl to press to triceps extension":"G4x6LCrQE_E","Curtsy lunge":"Ix_SFZVDy0I","Curtsy lunge with pause":"cVYnf2CFO9M","Dead bug":"4XLEnwUr1d8","Deadlift":"vfKwjT5-86k","Deadlift to clean to squat":"W3u6KQG_S-I","Deadmill sprint":"HvHJM-kNiA0","Decline bench press":"LfyQBUKR8SE","Decline push-up":"SKPab2YC8BE","Deep neck flexor activation and suboccipital stretch":"CpwvQT8axGk","Deep squat to hamstring stretch":"1oQSsXhbhjk","Deep squat wall stretch":"zkj-1XvAcKM","Deep squat with reach":"H-T1kqSpecM","Depth drop":"drLJzzzhepE","Depth drop to vertical jump":"q4ogzEdb3sI","Diamond push-up":"J0DnG1_S92I","Dip":"2z8JmcrW-As","Dolphin push-up":"V5JLXeNGvhg","Double bounce high knees":"2XYP2gbYN3A","Double dumbbell swing":"99GbmjyajY8","Double under":"82jNjDS19lg","Downward dog to world's greatest stretch":"1qQ_ZqdIMzA","Drag curl":"BjBmtkfy1-0","Drop squat":"voJ1KrwEIcc","Duck walk forward and back":"b_T7odhetFk","Dumbbell 1 1/4 full squat":"dbMvGAbdKkI","Dumbbell Arnold press":"3ml7BH7mNwQ","Dumbbell Bulgarian split squat":"vLuhN_glFZ8","Dumbbell Cossack squat":"twXorSeA0BM","Dumbbell Romanian deadlift":"hQgFixeXdZo","Dumbbell ab twist":"q1MeZPov8eM","Dumbbell alternate biceps curl":"sAq_ocpRh_I","Dumbbell bench press":"SzcSrpVr0GA","Dumbbell bent-over row":"knB5Q4FN4ck","Dumbbell calf raise":"Xfe4ZqiKvnY","Dumbbell chest press":"VmB1G1K7v94","Dumbbell deficit split squat":"IfvwciB5Rwc","Dumbbell farmer's walk":"VBobkldqqvk","Dumbbell flat chest fly":"eozdVDA78K0","Dumbbell flat chest press":"QsYre__-aro","Dumbbell forward lunge":"t7DBjlOTwAk","Dumbbell frog pump":"MQ62r2V7Lw8","Dumbbell front foot elevated squat":"OFmW8Re5Zos","Dumbbell glute bridge":"FSiUH5jn3Cs","Dumbbell goblet squat":"Xjo_fY9Hl9w","Dumbbell incline bench reverse fly":"WCvRMULhUVU","Dumbbell incline bench row":"x6nEPnQ37FQ","Dumbbell incline chest press":"8iPEnn-ltC8","Dumbbell incline hammer curl":"cbRSu8Ws_hs","Dumbbell incline skull crusher":"osHzkwG-9JE","Dumbbell lateral raise":"XPPfnSEATJA","Dumbbell leg raise":"PcDvVDIxvto","Dumbbell pullover":"FK4rHfWKEac","Dumbbell reverse fly":"JoCRRZ3zRtI","Dumbbell reverse lunge":"NfMIqYNNLl8","Dumbbell shrug":"cJRVVxmytaM","Dumbbell side bend":"ARAWlmlgPbg","Dumbbell single-leg Romanian deadlift":"4I6txKzGkzk","Dumbbell snatch to press":"HHsOcHb_IFI","Dumbbell squat":"v_c67Omje48","Dumbbell step-up":"37tVohr7LcE","Dumbbell walking lunge":"I34ysEkPK7w","Eccentric chin-up":"dJXAuZ5oIVQ","Eccentric pull-up":"hvhQXzJ4vhM","Eccentric push-up":"cK-OUgfhgak","Elbow plank bodysaw":"zD0pIEs0AYo","Elbow plank jack":"eP1T4JeQtOQ","Elevated Romanian deadlift":"3Ch7uK-0j9c","Elevated plank row":"QJCbrhH5Exo","Elevated toes stiff leg deadlift":"3Ch7uK-0j9c","End range cable lateral raise":"PPrzBWZDOhA","Explosive push-up":"CvgV8W98inA","External hip rotation to lateral lunge":"-AruuHWQZZQ","FHL calf raise":"PX-8ExAl13k","Face pull":"V8dZ3pyiCBo","Farmer's carry":"z7E_YU9P1jU","Feet elevated sit-up":"5vQAMgBJIVk","Feet-elevated band-resisted push-up":"joAjlFPXfkM","Feet-elevated push-up":"yvBlNJCvTOI","Figure 4 cross body bike crunch":"yzg6OTbsmcQ","Figure 4 crunch":"yzg6OTbsmcQ","Figure 4 hip up":"Xb5gHdYtHnk","Figure 4 stretch":"Xb5gHdYtHnk","Fire hydrant":"hjMEwbXhya4","Fire hydrant leg extension":"5ZITPjWrUzQ","Fire hydrant to kick back":"tdSOoPOqqDQ","Floor chest press hollow hold":"iYAbu_CLPu8","Floor dumbbell hip thrust":"QPTcLlOWSl4","Floor press":"9vYCwtHkWgI","Floor slide":"pAgixGIu7os","Floor triceps dip":"s3Mppxwx1o8","Foam roll":"Oz4xHEgMaLY","Forearm plank":"mH5Sfb_KTGg","Forearm wall slide at 135 degrees":"GovLGiJSXwU","Forward lunge":"GA-GIqoOWek","Forward lunge with biceps curl":"fIvr9ootgos","Forward lunge with reach":"_oVuaQjj4Zw","Forward lunge with rotation":"jNXZ3xjzaXI","Forward lunge with twist":"btsKBsnysqM","Frankenstein walk":"47a71yHMN54","Frog pose":"bxO4MK8YDWE","Frogger":"e5O850feKz8","Front and back lunge":"AbNA7vXyioM","Front foot elevated lunge":"UDuoOVkcvjo","Front lunge to overhead triceps":"cRAPFi5n_NE","Front rack reverse lunge":"Vlgh0ImT5oU","Front squat":"VfBOBhwXbro","GHD Russian twist":"g-hztBRGNKY","GHD hip extension":"ZRar3mBCdmA","GHD sit-up":"1pbZ8mX2D1U","Get-up sit-up":"rASjuHdAxew","Glute biased leg press":"2WzJbFY__lk","Glute bridge chest press":"A-wKJcMrMRs","Glute bridge to sit-up":"cGdhGft43Tc","Glute bridge with calf raise":"YDSjolCIDmQ","Glute focused Romanian deadlift":"WIcpu2UkJoY","Glute focused hip extension":"w5QPcMaT_DQ","Glute focused hyper extension":"YGUOyLf6BUg","Glute focused split squat":"hPlKPjohFS0","Glute ham raise":"m0AIU1dCVkU","Glute iso step-up":"TG3xUe-UvCQ","Goblet 1 1/4 squat":"N5_xeuCiyJg","Goblet lateral lunge":"6DMXBtF_Spg","Goblet lateral lunge walk":"mpNAxv0MgVM","Goblet lateral squat":"QbzKij6Zx6s","Goblet lunge":"rTJRq7TASsg","Goblet pulse squat":"j9R9ISazx9c","Goblet reverse lunge":"rYrbrFS2bqE","Goblet reverse lunge with blocked knee":"ce0okBGTKB4","Goblet split squat":"X13mW_a88Hw","Goblet split squat with blocked knee":"jZRiY-jwePk","Goblet squat":"f-Vf2yRRqOg","Goblet squat iso":"qauQpg8QZw4","Goblet squat to box":"Aub3U8uHNQk","Goblet step-up":"ci0s9-U1S50","Goblet sumo squat":"L6vkuSVCRs4","Gorilla squat":"_e1T17mMggo","Ground to overhead press":"e2aZotdgaZs","Hack squat":"0tn5K9NlCfo","Half Turkish get-up":"sgd8n917Zv0","Half burpee":"8GJoTBRtdbg","Half dead bug":"YFh534WC3uw","Half get-up":"vmYnRlWcEjU","Half kneeling face pull":"ieJ9z19OJu4","Half kneeling lift and chop":"Psmkt_Tft5E","Half kneeling overhead press":"PDWNs3oPCow","Half kneeling row":"Yri2Z-R-Ze4","Half kneeling shoulder press":"8Fx7b81Gs1E","Half kneeling single-arm Arnold press":"V7oyQrIvF0M","Half kneeling single-arm press":"4DUIY95jX6Y","Half-kneeling Pallof press":"DWwI61I1KAM","Half-kneeling Pallof press iso":"daqBRjkFwk8","Half-kneeling Pallof press iso with band":"CRHHSmoakC8","Half-kneeling band chop":"8gu5U580aM8","Half-kneeling band lift":"qC_QDWMShi8","Half-kneeling band overhead shrug":"EevLTIs3yGA","Half-kneeling cable chop":"c1m8jdJaaS8","Half-kneeling cable lift":"0d0JDpUupxs","Hammer curl":"zC3nLlEvin4","Hammer curl to eccentric suppination":"vPPVFaKC1M4","Hamstring curl":"SbSNUXPRkc8","Hamstring mobilization with lacrosse ball":"DHPLhWH1dY4","Hamstring scoop":"9VX1IOp_qrw","Hamstring slide":"Dlazt593cuA","Hamstring strap stretch":"JR94frfcfWs","Hamstring switch":"74jrJjbcVd4","Hamstring walk out":"KUQ1RldKLHk","Hand-supported V-up":"S1ViGdqyDqM","Hands-elevated push-up":"N-O6f4U58Dk","Hang clean":"DaKC_BEN5bk","Hanging anti-lateral flexion":"f95XQj-bUDM","Hanging around the world leg raise":"g52W8r1poZE","Hanging knee raise":"RD_A-Z15ER4","Hanging leg raise":"RuIdJSVTKO4","Hanging twisting leg raise":"Pr1ieGZ5atk","Hanging unilateral march":"P_7fVVPvMu4","Heel elevated barbell squat":"gslEzVggur8","Heel elevated front squat":"s8Hx4udb96M","Heel elevated single hip thrust":"YZW3mw_h_DA","Heel elevated step down":"mJOCFguZRUE","Heel tap":"YIOIGUQMck8","Heels elevated sumo squat pulses":"iPcEh_orLxI","Helms dumbbell row":"G1UsKHGv_MY","High cable biceps curl":"0Gef7oq3cv4","High heel kick":"TDgeiFy7_ws","High knees":"DfjpR6dzLVg","High knees hands behind head":"UJC-T11TsQU","High knees with overhead extension":"OpjDCHAUpaA","High plank to downward dog":"J8QhVr5Pvig","High pull":"_5tJG8iNpkA","Hip CARS":"wz1GbxKLkKg","Hip abduction":"CP4LjhZ_Wq0","Hip belt squat":"Khcg0HgdpOY","Hip dip":"em4gADvYvMA","Hip extension machine":"O0YvpJZsf9I","Hip flexor rocker":"V4wtvX841A4","Hip flexor stretch":"m2UEzPheLYk","Hip rotation":"JwancB1LTsQ","In and out jump":"ZAK9zuAmEgM","Inch worm":"VSp0z7Mp5IU","Incline bench press":"SrqOu55lrYU","Incline dumbbell biceps curl":"soxrZlIl35U","Jefferson curl (kettlebell)":"y80cxEpuYEU","Jump lunge":"v4-w6r5bASs","Jump lunge with overhead extension":"a5Hyo_rlWQw","Jump lunge with punches":"NFnCuyJCx7c","Jump rope":"1-KvIEU03yc","Jump squat":"A-cFYWvaHr0","Jumping jack":"yg3KQQn3QWg","KAS hip thrust":"ylqOMMVUoVw","Kettlebell Turkish get-up":"sgd8n917Zv0","Kettlebell armbar":"IAByZREjXp8","Kettlebell standing march":"2_mHMuzJ4c0","Kettlebell swing":"YSxHifyI6s8","Kickback to knees to elbows both ways":"07XM_0jFFk8","Knee hug":"eP0DkztNhcs","Knee over toe lunge":"4qPJUSczLcM","Knee to chest":"8kzfXDNq_P8","Kneeling Cossack squat":"W3Ut2oNJ_o8","Kneeling chop":"knZfggvbS50","Kneeling lat pulldown":"kPRdPr0usbY","Kneeling lift and chop":"knZfggvbS50","Kneeling medicine ball chop":"kzYkGZ3Aa50","Kneeling overhead press":"PDWNs3oPCow","L-sit circle":"jgKCDwPyW2U","Landmine Romanian deadlift":"cIYWlhhroVA","Landmine chest press":"7i64SnEJv6A","Landmine goblet squat":"JrtJYtUqGHE","Landmine press":"nDBKgITcI3I","Landmine rainbow":"911qQuwcEMQ","Landmine reverse lunge":"s70b_r3heMs","Landmine shoulder press":"t9GuiNQo1O4","Landmine thruster":"jLvQenjeus8","Lat and triceps stretch":"izMQh1NeyRU","Lat pulldown":"trZQjegcRx0","Lat pullover":"KjlphIQd3ok","Lat stretcher":"s8nr6LyYmtc","Lateral lunge":"gwWv7aPcD88","Lateral raise":"pOmbQuGeHf8","Lateral to forward raise":"SqTLytmDy_8","Lateral to front raise":"DOkR3ce3t40","Lateral twist (spinal lateral flexion)":"19w3QByPWLk","Leaning Y raise":"lq7eLC30b9w","Leg circle":"pg4WRNkbnjA","Leg drop":"vO_kTH4nW7Y","Leg extension":"YyvSfVjQeL0","Leg lift":"JB2oyawG9KI","Leg lift and touch through":"luADNuPcBP8","Leg lower":"3t9egVYlPcM","Leg press":"yZmx_Ac3880","Leg raise":"JB2oyawG9KI","Long lever glute bridge":"h0CZ3xqgBsM","Long lever plank":"XM96fe7jAXE","Low plank hip twist":"-v2xs6a2JnM","Lying alternating triceps extension":"OOQiQ_mYWoo","Lying hamstring curl":"vl5nUdE9mWM","Machine ab crunch":"fuPFq2EYswE","Machine assisted chin-up":"y00_rMYk1Oc","Machine assisted dip (chest variation)":"yN6Q1UI_xkE","Machine assisted pull-up":"wFj808u2HWU","Machine back cable row":"GZbfZ033f74","Machine biceps curl":"Ja6ZlIDONac","Machine butterfly":"WpVu2duHnQE","Machine decline chest press":"sZQwv0HzinU","Machine glute ham raise":"z15C9UZUbss","Machine hack squat":"LfEhHboTcow","Machine hip abduction":"dL92FqMJqVY","Machine hip adduction":"GmRSV_n2E_0","Machine incline chest press":"TrTSvn5-MTk","Machine iso row":"W5UqY9SRhBM","Machine lat pulldown":"kwJeh3QyhVE","Machine lateral raise":"0FUpcwj_1z4","Machine leg curl (single)":"h5NievMGthk","Machine leg press":"IZxyjW7MPJQ","Machine lying leg curl":"5xR8tvg4-yM","Machine lying leg press":"VFk3RzndUEc","Machine pec deck chest fly":"eGjt4lk6g34","Machine pec deck reverse fly":"6cHY60y7QRU","Machine preacher biceps curl":"Ja6ZlIDONac","Machine reverse fly":"rtkvodbZfGY","Machine reverse hyperextension":"kTf-fU5Tab8","Machine seated leg curl":"fK0uZ3KRZRI","Machine shoulder press":"3R14MnZbcpw","Machine shrug":"3FG0onSF_n4","Machine single-leg press":"ZYDTJaAM-gE","Machine standing leg curl":"P2KTb8zyqsM","Machine triceps dip":"IsYLsO16y7g","Machine triceps extension":"Bx8ga1BLHLE","Machine triceps pushdown":"OChuGyCSC7U","Machine upright row":"QIpa-9dtkgA","Marching bridge":"IxDVTDKDxSU","Marching glute bridge with hold":"4LQUPybxCnI","Meadows row":"sRRQgK8Fm44","Medicine ball wall slam":"jpM5l0HVtE8","Military crunch":"5qS_q9FaeC4","Military press":"2yjwXTZQDDI","Modified 21s":"-5BWIpgacL4","Mountain climber":"cnyTQDSE884","Narrow front squat":"U7Y-bY4bZj0","Neck side stretch":"54y0JAT46vE","Negative pull-up":"gbPURTSxQLY","Nordic curl":"6NCN6kOagfY","Nordic hamstring curl":"6NCN6kOagfY","Oblique jump lunge":"qdDbwIj-8ok","Oblique mountain climber":"6D-rpfVuzA0","Offset dumbbell cross-over step-up":"68yrP2-wIzA","Offset dumbbell reverse lunge":"aFsk57XmgHY","Offset dumbbell reverse lunge from deficit":"qidn3D01muY","Offset dumbbell reverse lunge to Romanian deadlift":"xeNEeJ7IqKQ","Offset dumbbell split squat":"fynqcP1g-vw","Offset dumbbell step-up":"pEFBMrM4818","Offset goblet squat":"c636wmM2SV0","One foot elevated front squat":"OFmW8Re5Zos","Outward dumbbell biceps curl":"BNagnogKP5A","Overhead sit-up":"rBLLfvmNIIs","Overhead squat":"pn8mqlG0nkE","Pallof press":"ZDAW6zLajKU","Pallof press horizontal circle":"kqZVLzPrgnQ","Palm up raise":"2DtsvvK2Vng","Pec minor broomstick mobilization":"IbATWRMM58A","Pec mobilization with lacrosse ball":"FnTyO4LQxj4","Pelvic thrust":"OWC4YK_mhF8","Pendlay row":"kmFx0tti3ds","Pendulum squat":"wc2t62qiqAI","Pigeon stretch":"op-eDU9eNqM","Pike push-up":"66x0qQiJ-MA","Piriformis mobilization":"1GhiPpQvBCA","Pistol squat":"vq5-vdgJc0I","Plank":"yeKv5oX_6GY","Plank alternating arm/leg extension":"r8aHO-GlPcE","Plank alternating reach":"5vGaSkJArwI","Plank arm abduction":"5vGaSkJArwI","Plank arm extension":"iz55LbMVHOM","Plank arm march":"GbsgMtyN9d4","Plank circle":"hji_3KGD3uQ","Plank elbow to knee touch":"vr1T-fTdll0","Plank hold walk-out":"Nbg-aizDWnQ","Plank hop in-and-out":"m6WSIkhYQyY","Plank jack":"8Do3ssZ23Mc","Plank jack with shoulder tap":"zruJUdSkHsA","Plank knee to elbow":"pI7uWJXcfPE","Plank opposite toe touch":"XprFkq1V9I0","Plank pop up":"vGwFp2B-AnU","Plank pull":"aS8FD3Lblak","Plank row":"Gtc_Ns3qYYo","Plank row rotation":"sRHzrF357H4","Plank row to triceps extension":"vI7qyY2HVFY","Plank shoulder and knee tap":"9_IVZekYrgo","Plank shoulder tap":"C6At19Q9i2Q","Plank to downward dog":"5FcS9IOWpSo","Plank triceps extension":"VYgVTinbx_A","Plank walk out":"99DDQJJQ68c","Plank with alternating row":"rSc1pmDEhZg","Plank-up":"9667qmn8zdY","Plate curl":"-DWJLKoHFK8","Plate front raise":"YGF-RfaSyDM","Plate squat":"PKIiYknNvhw","Platform push-up":"4oN1hd6pJW0","Platform sumo squat":"4eDJa5MnAmY","Plyo push-up":"Y-uF4F3mQIs","Popcorn squat":"yryqhGC01G4","Preacher curl":"vngli9UR6Hw","Prisoner squat":"97p3_bDkPUE","Progression/combo of world's greatest stretch and crab":"l2PBwCr7Pio","Pronated-grip seated band row":"sa0NejgxKbc","Pronated-grip seated cable row":"FSoUijeznsM","Prone T raise":"rKVuKuR4SA4","Prone Y raise":"rKVuKuR4SA4","Prone YTI":"rKVuKuR4SA4","Prone dynamic spinal twist":"mzCI-LFFK3A","Prone hip external rotation":"Kbx5soJUlvM","Pull-up":"eGo4IYlbE5g","Pull-up with iso":"lTblcfblSlg","Pulse jump squat":"FCmQN5bj7dY","Pulse squat":"r8NaWdh8jyE","Push press":"iaBVSJm78ko","Push-up":"IODxDxX7oi4","Push-up donkey kick":"PtMfICbr8CE","Push-up on knees":"jWxvty2KROs","Push-up to Superman":"TwXPklkR8ws","Push-up to alternating knee tap":"5Zy4NBDYsCw","Push-up to knee tap":"5Zy4NBDYsCw","Push-up to plank pull through":"10zRyqH3ckI","Push-up to pull through":"3_mq9m6Yau8","Push-up to reach":"BzVQ_utfopY","Push-up to renegade row":"clVj2dQ_GoY","Push-up to starfish":"niU_1VlJmeA","Push-up with rotation":"Ohz9RWkCvH0","Push-up with shoulder tap":"yyFBdDj7EbQ","Quad rocker":"Z7rFSpUcS5o","Quad rocker/child's pose":"Q-wr-Hy6B_g","Quad stretch lean forward":"lh_N3speN0I","Quad stretch with reach":"H6CXpwaGIxs","Quadruped extension-rotation":"lhMKyeSwUhk","Quadruped rock back":"x1EOLZDWA80","Quadruped shoulder tap":"RUjjKrORHpI","Quick bound":"SyB8EaNDi-I","Rack pull":"cxVrqTqD_J4","Rainbow ball slam":"9kqGbwTpoKQ","Rear-foot-elevated barbell split squat":"d0nAqfdrVkc","Rear-foot-elevated bodyweight split squat":"kQ1VCHrfbbs","Rear-foot-elevated dumbbell split squat":"JXn1Hnv_ZWE","Rear-foot-elevated dumbbell split squat jump":"AmgM_PjBq0I","Rear-foot-elevated goblet split squat":"z9dhokzNGP8","Renegade row":"G1AcX8Y_byg","Renegade row with push-up and feet elevated":"clVj2dQ_GoY","Reverse Nordic":"x2K8uH7dcqg","Reverse crunch":"hyv14e2QDq0","Reverse lunge into knee up":"NKcPgHedtTg","Reverse lunge jump":"GE9gUamCGX8","Reverse lunge shoulder press":"mJT6hPY7gO4","Reverse lunge to single-leg skip":"lKkdBpK2fzU","Reverse pattern single-leg Romanian deadlift":"FDaAi-dCTz8","Reverse plank":"bnu5b61vqGQ","Reverse plank hold":"uUEKLhpJd1Q","Reverse plank knee drive":"bnu5b61vqGQ","Reverse step-up":"7PV_bGLFlfY","Reverse table top knee raise":"F5z-XQ5Hhm8","Reverse triceps extension":"UiDZEg2y1bc","Ring plank":"BcaaobXxRbM","Ring push-up":"FRiiZRhapeU","Ring row":"xhlReCpAE9k","Ring row with feet elevated":"u3XIZSv2Npw","Rocked back quadruped extension-rotation":"wbwu895NW9w","Romanian deadlift to biceps curl":"nWtmxbMBEJo","Romanian deadlift with dowel":"huKdEsssSUo","Rotating bear plank":"ASThkQl4fWg","Row boat":"q3F2Bao2Xnk","Rowing":"ZN0J6qKCIrI","Runner's stretch":"yjB23ki0HHE","Russian twist":"wkD8rjkodUI","Salute plank":"_4ev5sIEvfA","Scap pull-up":"kCoCVLZvI8E","Scapular push-up":"5YHZnEsE9hA","Scapular push-up on elbows":"Jmyx_fRYDt4","Scapular wall slide":"c1rn3sjgbfY","Seal jack":"fxrmaUVAajo","Seated alternating dumbbell press":"Z4fmeY-GQ8o","Seated ankle dorsiflexsion":"nP2Jab5DAds","Seated cable chest press":"tAILewhtCb0","Seated cable row":"vwHG9Jfu4sw","Seated calf press":"W-NU8NUS8lI","Seated chest press":"xUm0BiZCWlQ","Seated dumbbell curl":"BsULGO70tcU","Seated dumbbell hammer curl":"WdssQ4YuUSA","Seated dumbbell lateral raise":"TiG5Un0pLdA","Seated dumbbell overhead press":"HzIiNhHhhtA","Seated dumbbell shoulder press":"qEwKCR5JCog","Seated face pull":"EnTtxL6o9WI","Seated hamstring curl":"Orxowest56U","Seated lateral raise":"3zohLHTjFH0","Seated leg extension":"4ZDm5EbiFI8","Seated overhead press":"oBGeXxnigsQ","Seated overhead triceps extension":"YbX7Wd8jQ-Q","Seated plate loaded row":"2E6psSHltl4","Seated reverse fly":"cL1HxbOBkTs","Seated row":"GZbfZ033f74","Seated row machine":"oS_QPtHvgLw","Seated single-arm dumbbell overhead press":"9DB2kibw0os","Seated single-arm lat pulldown":"0BT533ueEdI","Seated single-arm shoulder press":"_KZcLQlkTyU","Seated single-leg hamstring curl":"O12vEgtY9pE","Seated single-leg leg press":"yxy8RzT3_fE","Seated to squat jump":"jwY9A4HCl_Q","Serratus anterior punch":"1Lg1TbWZUeY","Shoulder flossing":"ICz5ePml9zk","Shoulder jack":"-CpadtmFgNw","Shoulder mobility and chest opener":"SfxyICleU4I","Shoulder shrug":"JEnhFC1AtHw","Side lunge":"rvqLVxYqEvo","Side plank":"kiVFaQAyZAE","Side plank crunch":"CMJA332bfs0","Side plank dip":"ibyUMvywMTc","Side plank leg lift":"edTXNT-etYc","Side plank reach through":"-ruAdV34H54","Side plank row":"_K9ZvNNgWyY","Side plank to knee drive":"CPR2HCm2cRo","Side plank wall slide":"vH-58pbvjHQ","Single kettlebell shoulder press":"rONpWaNIhE8","Single-arm Arnold press":"pYcpY20QaE8","Single-arm band row":"vGGOR4DPDt0","Single-arm bent-over row":"dFzUjzfih7k","Single-arm cable chest fly":"uVmRqrTcHyc","Single-arm cable chest press":"fr3YLE0pueA","Single-arm cable concentration curl":"6uEmkzHIIPg","Single-arm cable curl":"9LSa5Jed0hs","Single-arm cable hammer curl":"HBC5s98wXko","Single-arm cable lateral raise":"idM16Yv4t0Q","Single-arm cable overhead press":"4Xf2zwFnY14","Single-arm cable triceps extension":"uLSwoSPhmqI","Single-arm cable upright row":"d6Ba29xFBnw","Single-arm clean":"D9e8ZBlFPBw","Single-arm costal cable chest press":"jb_NPNFWqhE","Single-arm dumbbell Romanian deadlift":"dFzUjzfih7k","Single-arm dumbbell Z press":"uLSwoSPhmqI","Single-arm dumbbell bench press":"tMEGqKuOa-M","Single-arm dumbbell curl":"0S0pPgQXWNk","Single-arm dumbbell floor press":"XCErz4Rwwm0","Single-arm dumbbell plank row":"ro1FDXOJT4I","Single-arm dumbbell press":"xl1YiqQY2vA","Single-arm dumbbell push press":"ZsmsBmOMtnw","Single-arm dumbbell reverse lunge":"VctKcIQGDCE","Single-arm dumbbell reverse lunge from deficit":"24DrsyEhezE","Single-arm dumbbell reverse lunge to Romanian deadlift":"DgODc-R4Nv8","Single-arm dumbbell reverse lunge with blocked knee":"oe0kbAVoyjw","Single-arm dumbbell row":"Ib-8BOyAgTQ","Single-arm dumbbell slideboard reverse lunge":"MEG6blZtUpc","Single-arm dumbbell split squat":"E76FjHHJGDI","Single-arm dumbbell step-up":"GcMYpwXGrj8","Single-arm face pull":"TEc27KAq8jI","Single-arm half-kneeling band press":"DXGkXHibwXY","Single-arm half-kneeling band pulldown":"2Z0m_i1-nN0","Single-arm half-kneeling band row":"5k2Bz_XR37U","Single-arm half-kneeling cable press":"redrpTwkplw","Single-arm half-kneeling cable row":"Bf1pMAIhQ4k","Single-arm hands-elevated push-up":"qKdTGpvA8GM","Single-arm hang clean":"SnZ75pFB7Wo","Single-arm incline dumbbell bench press":"ygiRarZWXHw","Single-arm kettlebell Z press":"ygiRarZWXHw","Single-arm landmine row":"vVW9LwaahNw","Single-arm lat pulldown":"J-6uEOkYAKM","Single-arm lateral cable triceps extension":"L9-dInqIQus","Single-arm lateral raise":"t1XQ7V7gEm4","Single-arm lying dumbbell rolling triceps extension":"DvYnG5Uar3M","Single-arm lying dumbbell triceps extension":"HBC5s98wXko","Single-arm machine lat pulldown":"DoDG6IGCeJw","Single-arm machine preacher curl":"8Mxrz-S6XD0","Single-arm oblique cable twist":"al0fcJzlSrc","Single-arm overhead band press":"qXfx8Iij3xo","Single-arm overhead dumbbell reverse lunge":"VctKcIQGDCE","Single-arm overhead dumbbell reverse lunge from deficit":"7r-NgvMgHVI","Single-arm overhead squat":"XCErz4Rwwm0","Single-arm plank":"1SEBudQXTjA","Single-arm plate curl":"dFzUjzfih7k","Single-arm push press":"-t7fuZ0KhDA","Single-arm raise to front raise":"UJP3IcIbRe4","Single-arm rear delt cable fly":"qz1OLup4W_M","Single-arm rear delt raise":"dFzUjzfih7k","Single-arm row":"GkEaYIzkZec","Single-arm row with leg extension":"f3s7oAavsAc","Single-arm seated cable row":"CrylzZHfO1c","Single-arm snatch":"sARk1TGYlPU","Single-arm staggered row":"D9e8ZBlFPBw","Single-arm standing band row":"_z5NMUxkxxw","Single-arm standing cable row":"nuZ8vgL0vRA","Single-arm standing split-stance band press":"7NfAcIJqNn8","Single-arm standing split-stance band row":"RaNrQRI9MFI","Single-arm standing split-stance cable press":"GQZ9Hy6XN9Q","Single-arm standing split-stance cable row":"45N-2_m7VI8","Single-arm sternal cable chest press":"1iLkzDx57lk","Single-arm tall-kneeling overhead dumbbell press":"amOGPorzJWE","Single-arm walking dumbbell farmer's carry":"8cTohcawjCM","Single-arm weighted sit-up":"NcRJ-CpY8Qc","Single-leg Romanian deadlift":"1u5ZDhtYC8s","Single-leg V-up":"L4nTaesNm0E","Single-leg band-resisted Romanian deadlift":"GNY0RKIvkH0","Single-leg band-resisted push-up":"qup91bTHwH8","Single-leg banded glute kickback":"y-v4seZ7eZ8","Single-leg bent knee":"I7ChaipZVM4","Single-leg bound":"Ru_OVppzC08","Single-leg bridge press":"5kXuVg9tQkE","Single-leg chest press":"84hrdsHgDuQ","Single-leg deadlift":"NAhgBYD_uKU","Single-leg deadlift pulses":"mY8n40rMqk8","Single-leg dumbbell glute bridge":"lI8-igvsnVQ","Single-leg eccentric squat to box":"M-sEYls8jRU","Single-leg elevated hip thrust":"vdmlNaXSjd4","Single-leg feet-elevated band-resisted push-up":"8D2hRCm_CoI","Single-leg feet-elevated push-up":"b1zTCyGJXCQ","Single-leg glute bridge":"Y1dQUd6OKHk","Single-leg hamstring curl":"1Dbd7wStRJg","Single-leg hip thrust":"lzDgRRuBdqY","Single-leg hip thrust with tempo":"zo2pqw794B0","Single-leg lift":"V7qZEEenaaU","Single-leg lying leg curl":"0NjTj5J-F1g","Single-leg offset dumbbell Romanian deadlift":"OgkpItr9DOY","Single-leg plank":"cM9Fc-Lfv0A","Single-leg press":"4NUJeFJ14F4","Single-leg push-up":"82IuSLk5zNc","Single-leg seated calf press":"gI7ULyY-Mvc","Single-leg seated leg extension":"mEoAgOIjOXI","Single-leg single-arm dumbbell Romanian deadlift":"0LnYSmuZ0xg","Single-leg skip":"R5ew7Gd5hkg","Single-leg slideboard bodysaw":"L5ljNgP5KQY","Single-leg slideboard leg curl":"R5ew7Gd5hkg","Single-leg squat":"IXzdtAeM1qk","Single-leg squat to box":"VUiFlZ2FsKA","Single-leg staggered":"FLOAv_bGQXA","Single-leg switch":"lENC55jZFK8","Single-leg toe touch":"0EIDVDbzVNo","Single-leg weighted hip thrust":"OvPHAdtKtHk","Sissy squat":"gAPffOEheYI","Sit-up and twist":"lGTESnlDcgU","Sit-up to stand up":"D0Yoa0_cfkk","Sit-up to wall throw":"LF1gOCOS5nk","Sit-up with punches":"9C1yGA0Il-o","Sitting knee to chest stretch":"P9IAAME-1zw","Skater":"m9MccH7mWO0","Skater hop":"4RuxhVJ4-pg","Skipping":"d_KZxkY_0cM","Skull crusher":"d_KZxkY_0cM","Skull crusher to hip thrust":"d_KZxkY_0cM","Sled pull":"9XRRXaUpnLk","Sled push":"mZ-GmcmSb6E","Slideboard bodysaw":"0w47384zyIk","Slideboard leg curl":"yMR95SIxwr0","Slip floor bridge curl":"pGtdgrL5wmA","Slow tempo lateral step down":"z_r6hDOYtO0","Smith machine Romanian deadlift":"evtRb6cPF-Q","Smith machine bench press":"k95QyBwSoto","Smith machine bent-over row":"3VP9HV1nAyQ","Smith machine close-grip bench press":"39qwRmE6ffc","Smith machine decline chest press":"8Tp_Hx1jdSc","Smith machine good morning":"vzqoYIf8T9c","Smith machine hack squat":"b8DqTO6ak0k","Smith machine incline bench press":"jQVOV0NlF_I","Smith machine rack pull":"NBR6tozmx2I","Smith machine shoulder press":"3PpzYOubZ5A","Smith machine squat":"avO_qtvHJAg","Smith machine standing calf raise":"ZjzUNteZPd8","Smith machine supinated row":"S4WRgOOR_QQ","Snatch grip barbell shrug":"a4-MC4W1_4Y","Snatch grip deadlift":"lWEBiB42FZ8","Speed squat":"CoHUM6vdjog","Spiderman crunch":"swPMrVWhplk","Spiderman push-up":"RunvqFmuSuQ","Split-stance dumbbell push press":"1-8Ow8vZhm4","Sprinter crunch":"QqvTW0pzLFw","Squat":"gslEzVggur8","Squat 4-3-1":"40GsrBtU_oI","Squat hop side to side":"5Ho5qnjksYo","Squat jump to overhead press":"FCmQN5bj7dY","Squat jump with press":"A-cFYWvaHr0","Squat pulses with isometric hold":"Id-g0YHkuVo","Squat thruster":"HFDFimq5cus","Squat to diagonal press":"VZObelUFlWM","Squat to good morning":"5F43-LTIBgY","Squat to oblique crunch":"7JtzNydMIJ8","Squat to press":"VICKgdEj554","Squat to side crunch":"dD9n9gFzawg","Squat to side kick":"KNxcFMBgFFU","Squat to stand":"0FWRt_h4-do","Squat to stand with overhead reach":"y7nzAuuW87A","Squat to standing triple extension":"_izLJ0giePc","Squat with hold":"54C5-VZFxIE","Squatting hip internal rotation":"QVMkcf3uCY0","Stability ball crunch":"RFscllOmYvA","Stability ball hamstring curl":"zeSD85M2t6c","Stability ball rollout":"zmnaA-Mbwws","Staggered Romanian (stiff leg)":"sARk1TGYlPU","Staggered alternating deadlift":"IpXl63ds9NU","Staggered deadlift":"Th4QdA2BOyg","Staggered stance single-leg deadlift":"VkNcc0BQrpA","Standing Pallof press":"OOe_HrNnQWw","Standing barbell goodmorning":"2yjwXTZQDDI","Standing butt kick":"Iwe6AmxVf7o","Standing cable chest fly":"FVWJglwid4I","Standing cable chest press":"FVWJglwid4I","Standing cable low row (rope)":"Iwe6AmxVf7o","Standing cable upper chest fly":"GAQ-oohMhog","Standing elbow to knee":"EygfY8ByyhQ","Standing medicine ball lift and chop":"Z-erdZrQVCw","Standing oblique crunch":"7SF7AYh2_Yw","Standing opposite toe tap":"M2rwvNhTOu0","Standing single-arm dumbbell overhead press":"5KZF1xdgA-A","Standing single-leg arm press":"_z5NMUxkxxw","Standing single-leg hold":"t0dgz5Uxfqo","Standing split-stance landmine press":"wuFsq9tOsfs","Standing strict overhead press":"PWmNVcs8rJY","Standing thoracic extension rotation":"-Vyt2QdsR7E","Standing triceps extension":"EnJTqLyH9ZI","Standing trunk rotation":"xoZMv_YJtkA","Static lunge":"ee3lC7iLfss","Step down":"WCFCdxzFBa4","Step-up with knee drive":"r_6Fzs8nM3g","Stick dislocate":"5VA1qaRwaeU","Stick pass through":"DCDTnGzawUI","Stiff leg deadlift to high pull":"cYKYGwcg0U8","Stiff leg/Romanian deadlift":"YakK6YFw6Cc","Stiff- leg deadlift to bent-over row":"0aCnSOxplvs","Stir-the-pot":"geS0bvXXD08","Straddle pulses":"wcVDItawocI","Straight bar cable pulldown":"WT5ZiYYbVLw","Straight leg V-up":"upm2TFlO_r0","Straight leg sit-up":"q4pyKNE8_C4","Stretch – arm sweep":"tT00XNqJ3uA","Stretch – catcow":"q-_M3Cfqmj4","Stretch – child's pose":"jwoTJNgh8BY","Stretch – full cobra":"SIdaMvrufa0","Stretch – modified pigeon pose":"HSE2XCoMosk","Stretch – pidgeon pose":"J9nSWwSXUbU","Strict overhead press":"tNHdx7pmrGI","Suitcase carry":"cDlOSfu-zHY","Sumo squat":"kjlfpqXnyL8","Sumo squat jump":"wg1aM2MLynM","Sumo squat pulses":"2SvNjQHHCx8","Sumo squat to overhead press":"5nUrHJJv08M","Sumo squat to upright row":"FAIo7kzC3us","Sumo stance deadlift (wide stance)":"1v4r9hht_K4","Super couch stretch":"Fg-lwNBzVV8","Superman":"J9zXkxUAfUA","Superman plank":"uy9WZN-ktNc","Supinated front raise":"FmT4hayWoJA","Supinated incline raise":"9QqrXC0NtiQ","Supinated row (palms up)":"oWnuU53nU-w","Supine banded no money drill":"Ma_naTzTb4Q","Supine banded scapular protraction":"29WoMxbio9w","Supine frog pump":"bUL1Lqb6JUg","Supine glute bridge":"8j9boZPcHX8","Supine hips extended leg curl":"YCle1o8ovJ8","Supine knee to knee pull in":"S2SJ2WDhGGE","Supine psoas march":"MezNdAcVfZE","Swiss ball hamstring curl":"XkESHgkTdFw","T spine rotation":"uMWob72Y-EY","T-bar close-grip row":"mUNXh5oFKKY","T-bar row":"8c23NBbwLBc","T-push-up":"vKaLCCNxMho","TRX chest press":"7VdE8LAFSWQ","TRX inverted row":"utTuYn6ncGE","TRX jump squat":"0ztDNFBa0J8","TRX pull-up":"fAQwN4t-2JI","TRX single-leg squat":"_wTnziOp_7g","Table top banded kickback":"faAQrJcDkms","Table top crunch":"fNx2sexcgbI","Table top kickback":"VOJjWXJrOrM","Tall kneeling ball slam":"qVqEkYRFPbo","Tall-kneeling Pallof press":"y30uEJhBTwQ","Tall-kneeling Pallof press iso":"jZTU2bkEFCQ","Tall-kneeling Pallof press iso with band":"P3u4PizaORA","Tall-kneeling band chop":"e6XnIBPfGAw","Tall-kneeling band lift":"SP6DoszGLQo","Tall-kneeling cable chop":"kNcl67PdCUA","Tall-kneeling cable lift":"_HVYT2nuZiw","Tall-kneeling landmine press":"wWoh6U4GM9E","Tall-kneeling overhead Pallof press":"r_tbgEXCjbg","Tempo back squat":"mmb618X9Ieg","Tempo belt squat":"Y_GWyIx1ROo","Tempo dumbbell goblet squat":"VEHSamPOkX4","Tempo leg extension":"-3zBscg3IiY","Tempo push-up":"6URcQFbGZTA","Tempo squat":"QU3EGV5vQYA","Thoracic mobilization on foam roller":"WDYFfr6KRoM","Thoracic mobilization with bench":"2b0LY4tyzgk","Thread the needle":"MfUx9FCOb1E","Thread the needle plank":"TfLt8orAiiQ","Throw 1,2s":"JyuiDu2llOY","Toe crossover touch":"xeY-Cofynwk","Toe reach":"B3W05_n3EGg","Toe touch":"y6Bv_0Shhc8","Toe touch with weight":"HdhmIUkB-iY","Towel hamstring slide (single-leg)":"8l3HR7vpdh0","Towel single-arm row":"4Ju7WeL7unw","Toy soldier":"cIqzwOUilR4","Trap bar deadlift":"WzvsIU9FW60","Traps lacrosse or tennis ball rolling (SMR)":"9M0OOz5MnVU","Travelling push-up":"H40Fuq__B24","Triceps dip":"0326dy_-CzM","Triceps dip + hold":"uHziJVkB0v8","Triceps kickback":"ZO81bExngMI","Triceps press":"bjT5WC0FyiU","Triceps pressdown":"JthKLSzmuP8","Triceps push-up":"kZi0j-7rDe8","Triceps pushdown":"LXkCrxn3caQ","Tube walking":"vG9TWYe2XjA","Tuck jump":"r7oBejx1PHM","Turkish get-up":"sgd8n917Zv0","Twist hanging leg raise":"T-XN-RpGMEw","Underhand close-grip lat pulldown":"E6LOhIP3i1c","Underhand inverted row":"2wQU1Klfc6U","Up-down":"4NRFUKgNhs8","Upfront row":"IhZLB48kluc","Upper chest cable fly":"tGXIQR89-JE","Upright row":"vJ8x0Oz06gw","V-hold":"WGwI629aTAY","V-up (with or without weight)":"iP2fjvG0g3w","V-up with weight on bench":"wmlLza-kdcg","VMO squat":"DpNwtqOwWNI","Walk out to shoulder tap":"i3NZ8BZlXTI","Walking Spiderman":"NCCyBaxKJeA","Walking Spiderman with hip lift":"qEGBq6uW8DA","Walking Spiderman with overhead reach":"1ar0g-ztdVg","Walking Spiderman with overhead reach and hip lift":"Y2UIv-e6vgE","Walking dumbbell cross carry":"tLz-9rvTuWY","Walking farmer's carry":"VBobkldqqvk","Walking goblet carry":"9Xv_5oevuqw","Walking goblet heartbeat carry":"GIX0suMnKxM","Walking goblet lunge":"oV97EckMQlo","Walking knee to chest":"pvlpCSwsvBM","Walking lunge":"r0DBxI9XiNM","Walking offset dumbbell lunge":"xeNEeJ7IqKQ","Walking pull back butt kick":"VIM9tzPgKPM","Walking push-up with pause":"l7ZmX1eaXLo","Walking two-arm waiter’s carry":"7SQeaqVHvwQ","Walking waiter's carry":"xboGjaMzIkk","Walking warrior lunge":"iS4K0puAFdQ","Wall angel":"YO87HFVgsGo","Wall ankle mobilization":"opkGhc45tmY","Wall crunch":"huwqkE9b6wE","Wall forward crunch":"huwqkE9b6wE","Wall glute iso march":"IyH1kkEFk9U","Wall hip flexor mobilization":"yiLsE4PCpOU","Wall plank":"T-bfBQXfL-I","Wall press abs":"zVvDMzZyO5M","Wall scapular push-up":"MtNsnW7Q7Fo","Wall sit":"-cdph8hv0O0","Wall slide":"YIvNRUJp7_E","Weighted bench dip":"egQiO0K-BEw","Weighted burpee":"AQY4bL7MJKI","Weighted burpee to squat thruster":"PK3j62cIjqQ","Weighted butterfly stretch":"H8cnwdmhkto","Weighted calf raise":"wxwY7GXxL4k","Weighted chin-up":"9aA0-FbxK9E","Weighted clamshell":"SiC6ViOX1Uw","Weighted crunch":"Pxkw6dUt_Ok","Weighted dead bug":"JJFSnqwlVv0","Weighted frog pump":"N6t2Fv0SKGc","Weighted hanging leg raise":"BI7wrB3Crsc","Weighted hip thrust":"Zp26q4BY5HE","Weighted jackknife":"4wOc_mGWi00","Weighted leg extension":"m0FOpMEgero","Weighted leg lift":"SkEzWAyzxJI","Weighted lying hip abduction":"4RrsARGxGGU","Weighted marching hip thrust":"WJBLYq5vREI","Weighted modified burpee":"AQY4bL7MJKI","Weighted neutral-grip pull-up":"-27Ofi_wMFc","Weighted plank":"H88Ip-MUWn0","Weighted pull-up":"EydHbpLCZJo","Weighted push-up":"m1w4h6xFivQ","Weighted ring push-up":"ONg-lNvWukE","Weighted squat hold":"HUbrc3hT4JM","Weighted toe touch":"2LoqJTguCx4","Weighted wall sit":"8e42dL8MeMw","Wide feet push-up":"NnaAyf-X01U","Wide stance close-grip row":"btppD-8cNYU","Wide stance dumbbell goblet squat":"LEY11M55Jc0","Wide stance kettlebell Romanian deadlift":"SoChBaHIt40","Wide stance leg press":"UT1U-iGl2Uc","Wide stance plank row":"Gtc_Ns3qYYo","Wide-grip chin-up":"r245A-Wy9V8","Wide-grip lat pulldown":"lueEJGjTuPQ","Wide-grip pull-up":"GRgWPT9XSQQ","Wide-grip pulldown":"lueEJGjTuPQ","Windmill":"ogCw52FZlfM","World's greatest stretch":"-CiWQ2IvY34","X-band box walk":"f2ugBVdxpPQ","X-band walk":"RyJonI6zQaE","X-lat band pulldown":"8zv8Pray4-w","Yoga YT full body stretch":"cgjdYaLdJTo","Yoga downward dog stretch":"ayQoxw8sRTk","Yoga plex":"74jm-tJnL88","Yoga push-up":"-7TEPQKkTxI","Zercher squat":"vpy4ADmlo1E","Zombie front squat":"Siwj8KDU5zI"};
+  const ALIASES = {"Alternating dumbbell bench-press":"Alternating dumbbell bench press","Band face-pull":"Band face pull","Band face-pulloverhead":"Band face pull overhead","Band press-down":"Band pressdown","Banded curtsey lunge into abduction":"Banded curtsy lunge into abduction","Banded pull-down":"Banded pulldown","Barbell close-grip 2-pause bench-press":"Barbell close-grip 2-pause bench press","Barbell close-grip bench-press (shoulder-width)":"Barbell close-grip bench press (shoulder width)","Barbell close-grip bench-press – partial reps":"Barbell close-grip bench press – partial reps","Barbell french-press":"Barbell French press","Barbell one-arm linear jammer":"Barbell single-arm linear jammer","Barbell one-arm row":"Barbell single-arm row","Barbell pause bench-press":"Barbell pause bench press","Barbell pause Larsen bench-press":"Barbell pause Larsen bench press","Barbell Spoto bench-press":"Barbell Spoto bench press","Barbell stiff-legged deadlift":"Barbell stiff leg deadlift","Barbell tempo bench-press":"Barbell tempo bench press","Barbell touch n go bench-press":"Barbell touch n go bench press","Behind-the-neck push-press":"Behind-the-neck push press","Bench jump-overs with hand support":"Bench jump over with hand support","Bench-press":"Bench press","Bench-press from pins":"Bench press from pins","Bench-press narrow":"Bench press narrow","Bench-press with chains":"Bench press with chains","Bent-knee jackknives":"Bent knee jackknife","Bent knee jack knife":"Bent knee jackknife","Bent-knee hamstring dynamic":"Bent knee hamstring dynamic","Bodyweight Bulgarian split-squat":"Bodyweight Bulgarian split squat","Cable face-pull":"Cable face pull","Cable face-pull with rotation, to forehead":"Cable face pull with rotation, to forehead","Cable incline bench-press":"Cable incline bench press","Cable lat pull-down":"Cable lat pulldown","Cable narrow-grip lat pull-down":"Cable narrow-grip lat pulldown","Single-arm cable lat pull-down":"Cable single-arm lat pulldown","Cable one-arm lat pull-down":"Cable single-arm lat pulldown","Single-arm cable overhead triceps extension":"Cable single-arm overhead triceps extension","Cable one-arm overhead triceps extension":"Cable single-arm overhead triceps extension","Cable one-arm row (seated)":"Single-arm seated cable row","Cable pull-down":"Cable pulldown","Cable reverse-grip lat pull-down":"Cable reverse-grip lat pulldown","Cable reverse-grip triceps push-down":"Cable reverse-grip triceps pushdown","Cable rope triceps push-down":"Cable rope triceps pushdown","Cable straight-arm pull-down":"Cable straight-arm pulldown","Cable straight-bar triceps push-down":"Cable straight bar triceps pushdown","Cable V-bar triceps push-down":"Cable V-bar triceps pushdown","Cable wide-grip lat pull-down":"Cable wide-grip lat pulldown","Chest-press stroj/push-ups":"Chest press stroj/push-up","Chest-to-wall handstand with walk-up":"Chest to wall handstand with walk-up","Close-grip band bench-press":"Close-grip band bench press","Close-grip bench-press from dead start":"Close-grip bench press from dead start","Close-grip decline bench-press (fat bar) with band/chains":"Close-grip decline bench press (fat bar) with band/chains","Close-grip incline bench-press":"Close-grip incline bench press","Curtsey lunge":"Curtsy lunge","Curtsey lunge with pause":"Curtsy lunge with pause","Decline bench-press":"Decline bench press","Decline close-grip bench-press with band":"Decline close-grip bench press with band","Decline EZ bar bench-press, medium grip":"Decline EZ bar bench press, medium grip","Decline EZ bar french-press, medium grip, behind head":"Decline EZ bar French press, medium grip, behind head","Decline EZ bar french-press, neutral-grip, to forehead":"Decline EZ bar French press, neutral-grip, to forehead","Deep dips with press-out to support":"Deep dip with press out to support","Double kettlebell clean and push-press":"Double kettlebell clean and push press","Dumbbell bench-press":"Dumbbell bench press","Dumbbell floor french-press":"Dumbbell floor French press","Dumbbell floor-press":"Dumbbell floor press","Dumbbell french-press":"Dumbbell French press","Dumbbell french-press (held proximally)":"Dumbbell French press (held proximally)","Dumbbell french-press to shoulders with rotation":"Dumbbell French press to shoulders with rotation","Dumbbell reverse curls, hands shoulder-width":"Dumbbell reverse curl, hands shoulder width","Extra-close-grip bench-press with band/chains":"Extra-close-grip bench press with band/chains","EZ bar french-press behind head":"EZ bar French press behind head","EZ french-press":"EZ French press","Face-pulls":"Face pull","Fat bar bench-press":"Fat bar bench press","Floor-press":"Floor press","FM flow I (base position – mountain climber – kick-through)":"FM flow I (base position – mountain climber – kick through)","Forearm wall-slide at 135 degrees":"Forearm wall slide at 135 degrees","Glute-ham raises (machine or assisted on bench)":"Glute ham raise (machine or assisted on bench)","Glute-iso step-ups":"Glute iso step-up","Hacken-squat":"Hacken squat","Half kneeling face-pulls":"Half kneeling face pull","Hanging band military-press":"Hanging band military press","Hanging bent-knee raises to 90 degrees":"Hanging bent knee raise to 90 degrees","Head-down push-ups with feet on two boxes":"Head down push-up with feet on two boxes","High incline bench-press":"High incline bench press","High incline bench-press narrow":"High incline bench press narrow","High incline bench-press – shoulder width":"High incline bench press – shoulder width","High incline close-grip bench-press":"High incline close-grip bench press","High incline dumbbell bench-press":"High incline dumbbell bench press","Hip-belt squat":"Hip belt squat","Incline bench-press":"Incline bench press","Incline dumbbell bench-press":"Incline dumbbell bench press","Incline dumbbell bench-press (low incline)":"Incline dumbbell bench press (low incline)","Leg press, shoulder-width stance – feet parallel":"Leg press, shoulder width stance – feet parallel","Leg-press":"Leg press","Leg-press IZO/dynamic":"Leg press IZO/dynamic","Long-lever plank":"Long lever plank","Low decline bench-press":"Low decline bench press","Low decline dumbbell french-press to shoulders with rotation":"Low decline dumbbell French press to shoulders with rotation","Low incline bench-press":"Low incline bench press","Low incline bench-press narrow":"Low incline bench press narrow","Low incline close-grip bench-press":"Low incline close-grip bench press","Low incline dumbbell bench-press":"Low incline dumbbell bench press","Lying band french-press/overhead triceps extension with rope":"Lying band French press/overhead triceps extension with rope","Lying barbell french-press behind head":"Lying barbell French press behind head","Lying decline french-press to forehead, medium grip":"Lying decline French press to forehead, medium grip","Lying dumbbell french-press behind head":"Lying dumbbell French press behind head","Machine glute-ham raise":"Machine glute ham raise","Machine lat pull-down":"Machine lat pulldown","Medball push-press":"Medball push press","Medium incline bench-press":"Medium incline bench press","Military-press":"Military press","Military-press narrow":"Military press narrow","Military-press with pause on the way down":"Military press with pause on the way down","Modified full-stretch rows – high cable":"Modified full stretch row – high cable","Modified incline dumbbell bench-press":"Modified incline dumbbell bench press","Momentary one-arm handstand facing wall":"Momentary single-arm handstand facing wall","Neutral-grip bench-press":"Neutral-grip bench press","Neutral-grip dumbbell french-press to shoulders":"Neutral-grip dumbbell French press to shoulders","One-arm dumbbell curl on preacher bench":"Single-arm dumbbell curl on preacher bench","One-arm dumbbell hammer curls on preacher bench":"Single-arm dumbbell hammer curl on preacher bench","One-arm dumbbell overhead press (semi-lunge)":"Single-arm dumbbell overhead press (semi-lunge)","One-arm kettlebell/dumbbell rows with rotation":"Single-arm kettlebell/dumbbell row with rotation","Overhand EZ bar curls, shoulder-width grip":"Overhand EZ bar curl, shoulder width grip","Paused bench-press":"Paused bench press","Plank elbow-to-knee touches":"Plank elbow to knee touch","Plank kick-throughs":"Plank kick through","Plate-loaded machine shoulder press (seated/kneeling)":"Plate loaded machine shoulder press (seated/kneeling)","Pull-ups, mid-range pulses":"Pull-up, mid range pulses","Push-press":"Push press","Rocked-back quadruped extension-rotation":"Rocked back quadruped extension-rotation","Roll-out to combat stance":"Roll out to combat stance","Roll-out to V-sit":"Roll out to V-sit","Rope face-pulls on high cable":"Rope face pull on high cable","Scapular retraction and depression drill, standing bench-press position with stick/barbell":"Scapular retraction and depression drill, standing bench press position with stick/barbell","Scapular wall-slide":"Scapular wall slide","Seated EZ bar french-press behind head":"Seated EZ bar French press behind head","Seated face-pull":"Seated face pull","Seated face-pull to forehead":"Seated face pull to forehead","Seated face-pull to shoulders":"Seated face pull to shoulders","Seated french-press, close-grip":"Seated French press, close-grip","Seated military-press":"Seated military press","Shoulder-width pull-up":"Shoulder width pull-up","Shoulder-width underhand pull-ups":"Shoulder width underhand pull-up","Side plank wall-slide":"Side plank wall slide","Single-arm dumbbell bench-press":"Single-arm dumbbell bench press","Single-arm dumbbell floor-press":"Single-arm dumbbell floor press","Single-arm dumbbell push-press":"Single-arm dumbbell push press","Single-arm face-pull":"Single-arm face pull","Single-arm half-kneeling band pull-down":"Single-arm half-kneeling band pulldown","Single-arm incline dumbbell bench-press":"Single-arm incline dumbbell bench press","Single-arm machine lat pull-down":"Single-arm machine lat pulldown","Single-arm push-press":"Single-arm push press","Single-leg wall push-offs":"Single-leg wall push-off","Slam ball push-press":"Slam ball push press","Smith machine bench-press":"Smith machine bench press","Smith machine close-grip bench-press":"Smith machine close-grip bench press","Smith machine incline bench-press":"Smith machine incline bench press","Speed band bench-press":"Speed band bench press","Split-stance dumbbell push-press":"Split-stance dumbbell push press","Standing dumbbell push-press":"Standing dumbbell push press","Standing face-pull to forehead":"Standing face pull to forehead","Standing face-pulloverhead":"Standing face pull overhead","Stiff leg dead lift to high pull":"Stiff leg deadlift to high pull","Straight-arm band pull-aparts + hold":"Straight-arm band pull apart + hold","Supine hips-extended leg curl":"Supine hips extended leg curl","Supine knee to knee pull-in":"Supine knee to knee pull in","Top-half bench-press from pins":"Top half bench press from pins","Triceps press-down":"Triceps pressdown","Unilateral kettlebell floor-press":"Unilateral kettlebell floor press","Walking dumbbell cross-carry":"Walking dumbbell cross carry","Walking pull-back butt kick":"Walking pull back butt kick","Wall-press abs":"Wall press abs","X-lat band pull-down":"X-lat band pulldown","1,5 Pull-ups":"1.5 pull-up","1.5-Rep close-grip underhand pull-ups":"1.5-rep close-grip underhand pull-up","45° Incline dumbbell curls (arms away from body)":"45° incline dumbbell curl (arms away from body)","45° Incline dumbbell curls, arms in front of body (straddling bench)":"45° incline dumbbell curl, arms in front of body (straddling bench)","Alternating dumbbell bent-over rows":"Alternating dumbbell bent-over row","Alternating seated dumbbell curls":"Alternating seated dumbbell curl","Archer squats":"Archer squat","Around the worlds (weight optional)":"Around the world (weight optional)","Assisted chin-ups":"Assisted chin-up","Assisted Nordic curls":"Assisted Nordic curl","Assisted pull-ups":"Assisted pull-up","ATG squats on Smith machine against band":"ATG squat on Smith machine against band","Back extensions with dumbbell on chest":"Back extension with dumbbell on chest","Back extensions with EZ bar behind head":"Back extension with EZ bar behind head","Band curls":"Band curl","Band glute ham raises":"Band glute ham raise","Band up and overs":"Band up and over","Banded eccentric pause squats":"Banded eccentric pause squat","Banded frog thrusts":"Banded frog thrust","Banded glute walks":"Banded glute walk","Banded kickbacks":"Banded kickback","Banded rows":"Banded row","Banded tube walks":"Banded tube walk","Banded walks":"Banded walk","Barbell bent-over rows":"Barbell bent-over row","Barbell deadlifts from blocks":"Barbell deadlift from blocks","Barbell deadlifts from deficit":"Barbell deadlift from deficit","Barbell lunges":"Barbell lunge","Barbell pause squats":"Barbell pause squat","Barbell power shrugs":"Barbell power shrug","Barbell seal rows":"Barbell seal row","Barbell shrugs (isometric)":"Barbell shrug (isometric)","Barbell skull crushers":"Barbell skull crusher","Barbell snatch shrugs":"Barbell snatch shrug","Bear knee taps":"Bear knee tap","Bench hops":"Bench hop","Bench jump overs with hand support":"Bench jump over with hand support","Bench push-ups":"Bench push-up","Bent knee single-leg lifts":"Bent knee single-leg lift","Bent knee sit-ups":"Bent knee sit-up","Bent knee V-ups with arms":"Bent knee V-up with arms","Bent-over lateral raises (head supported on bench)":"Bent-over lateral raise (head supported on bench)","Bent-over reverse flies":"Bent-over reverse fly","Bent-over rows overhand grip":"Bent-over row overhand grip","Bent-over rows underhand grip":"Bent-over row underhand grip","Bent-over tempo rows":"Bent-over tempo row","Bent-over underhand cable rows to waist":"Bent-over underhand cable row to waist","Biceps curls (band/dumbbell)":"Biceps curl (band/dumbbell)","Bicycle crunches":"Bicycle crunch","Bodybuilding squats":"Bodybuilding squat","Bodyweight donkey calf raises":"Bodyweight donkey calf raise","Bodyweight side steps":"Bodyweight side step","Bodyweight split squats":"Bodyweight split squat","Bodyweight squats":"Bodyweight squat","Box jumps":"Box jump","Box step-ups":"Box step-up","Broad jumps":"Broad jump","Bulgarian split squats":"Bulgarian split squat","Bulgarian split squats with dumbbell/kettlebell in goblet position":"Bulgarian split squat with dumbbell/kettlebell in goblet position","Burpee push-ups":"Burpee push-up","Burpees":"Burpee","Butt kicks":"Butt kick","Butterfly crunches":"Butterfly crunch","Butterfly kicks":"Butterfly kick","Cable bent-over raises":"Cable bent-over raise","Cable biceps curls":"Cable biceps curl","Cable chest flies":"Cable chest fly","Cable curls":"Cable curl","Cable deadlifts":"Cable deadlift","Cable flat bench flies":"Cable flat bench fly","Cable front raises":"Cable front raise","Cable incline bench flies":"Cable incline bench fly","Cable lateral kicks":"Cable lateral kick","Cable lateral raises":"Cable lateral raise","Cable overhead triceps extensions with rope":"Cable overhead triceps extension with rope","Cable pectoral flies – seated":"Cable pectoral fly – seated","Cable rear delt flies":"Cable rear delt fly","Cable squats":"Cable squat","Calf raises on leg press/standing":"Calf raise on leg press/standing","Cat cows":"Cat cow","Chest dips":"Chest dip","Chest flies dead bugs":"Chest fly dead bug","Chest flies machine":"Chest fly machine","Chest medicine ball throws":"Chest medicine ball throw","Chest press stroj/push-ups":"Chest press stroj/push-up","Chest supported dumbbell rows – neutral k pasu":"Chest supported dumbbell row – neutral k pasu","Chest supported dumbbell rows – underhand grip, k pasu":"Chest supported dumbbell row – underhand grip, k pasu","Chest supported rows – stroj":"Chest supported row – stroj","Chest-supported dumbbell rows, overhand grip, elbows out":"Chest-supported dumbbell row, overhand grip, elbows out","Chops with ball":"Chop with ball","Classic pull-ups (elliptical path)":"Classic pull-up (elliptical path)","Clean power shrugs":"Clean power shrug","Close-grip barbell preacher curls":"Close-grip barbell preacher curl","Close-grip bench dips (behind body)":"Close-grip bench dip (behind body)","Close-grip chin-ups with band":"Close-grip chin-up with band","Close-grip chin-ups – mixed-grip":"Close-grip chin-up – mixed-grip","Close-grip dips":"Close-grip dip","Close-grip pull-ups (neutral/overhand grip)":"Close-grip pull-up (neutral/overhand grip)","Close-grip reverse EZ bar curls, back against rack":"Close-grip reverse EZ bar curl, back against rack","Close-grip underhand pull-ups":"Close-grip underhand pull-up","Close-grip upright rows":"Close-grip upright row","Cobra lat pulldowns":"Cobra lat pulldown","Comerford curls":"Comerford curl","Criss cross jumping jacks":"Criss cross jumping jack","Cross body sit-ups":"Cross body sit-up","Crossbody mountain climbers":"Crossbody mountain climber","Crunches":"Crunch","Crunches over bench":"Crunch over bench","Crunches over bench/V-crunches":"Crunch over bench/V-crunch","Cuban rotations with stick/barbell":"Cuban rotation with stick/barbell","Decline neutral-grip dumbbell triceps extensions to shoulders":"Decline neutral-grip dumbbell triceps extension to shoulders","Decline pronated dumbbell triceps extensions behind head":"Decline pronated dumbbell triceps extension behind head","Deep dips with press out to support":"Deep dip with press out to support","Deficit push-ups":"Deficit push-up","Diamond push-ups":"Diamond push-up","Dips":"Dip","Dips on rings":"Dip on rings","Dolphin push-ups":"Dolphin push-up","Double dumbbell swings":"Double dumbbell swing","Drag curls":"Drag curl","Drop squats":"Drop squat","Dumbbell bent-over lateral raises":"Dumbbell bent-over lateral raise","Dumbbell bent-over rows":"Dumbbell bent-over row","Dumbbell bent-over rows with band":"Dumbbell bent-over row with band","Dumbbell bent-over shrugs":"Dumbbell bent-over shrug","Dumbbell farmer walk":"Dumbbell farmer's walk","Dumbbell flat chest flies":"Dumbbell flat chest fly","Dumbbell forward lunges":"Dumbbell forward lunge","Dumbbell front raises":"Dumbbell front raise","Dumbbell hammer curls (hands turned in)":"Dumbbell hammer curl (hands turned in)","Dumbbell hammer Scott curls":"Dumbbell hammer Scott curl","Dumbbell incline bench reverse flies":"Dumbbell incline bench reverse fly","Dumbbell incline hammer curls":"Dumbbell incline hammer curl","Dumbbell incline skull crushers":"Dumbbell incline skull crusher","Dumbbell lateral lunges":"Dumbbell lateral lunge","Dumbbell lateral raises":"Dumbbell lateral raise","Dumbbell lateral raises – partial reps with cheating":"Dumbbell lateral raise – partial reps with cheating","Dumbbell leg raises":"Dumbbell leg raise","Dumbbell lunges (stationary/walking)":"Dumbbell lunge (stationary/walking)","Dumbbell pectoral flies":"Dumbbell pectoral fly","Dumbbell Pendlay rows":"Dumbbell Pendlay row","Dumbbell power flies":"Dumbbell power fly","Dumbbell power shrugs":"Dumbbell power shrug","Dumbbell pullovers":"Dumbbell pullover","Dumbbell reverse curls, hands shoulder width":"Dumbbell reverse curl, hands shoulder width","Dumbbell reverse flies":"Dumbbell reverse fly","Dumbbell reverse lunges":"Dumbbell reverse lunge","Dumbbell Romanian deadlifts with band":"Dumbbell Romanian deadlift with band","Dumbbell rows straddling bench":"Dumbbell row straddling bench","Dumbbell Scott curls":"Dumbbell Scott curl","Dumbbell seated bent-over raises":"Dumbbell seated bent-over raise","Dumbbell seated bent-over shrugs":"Dumbbell seated bent-over shrug","Dumbbell seated front raises":"Dumbbell seated front raise","Dumbbell seated partial lat raises":"Dumbbell seated partial lat raise","Dumbbell seated semi lateral raises":"Dumbbell seated semi lateral raise","Dumbbell shrugs":"Dumbbell shrug","Dumbbell side bends":"Dumbbell side bend","Dumbbell Spiderman curls":"Dumbbell Spiderman curl","Dumbbell squats":"Dumbbell squat","Dumbbell walking lunges":"Dumbbell walking lunge","Dumbbell walking lunges drop set":"Dumbbell walking lunge drop set","Dumbbell windmills":"Dumbbell windmill","Dumbbell/kettlebell lunges with rotation to the side":"Dumbbell/kettlebell lunge with rotation to the side","Dynamic leg extensions":"Dynamic leg extension","Dynamic leg extensions in front of body (hanging)":"Dynamic leg extension in front of body (hanging)","Elbow plank jacks":"Elbow plank jack","Elevated Romanian deadlift's":"Elevated Romanian deadlift","EZ bar biceps curls (top range)":"EZ bar biceps curl (top range)","EZ bar biceps curls – overgrip":"EZ bar biceps curl – overgrip","EZ bar biceps curls, back against rack":"EZ bar biceps curl, back against rack","EZ bar biceps curls, elbows in front of body, back against rack":"EZ bar biceps curl, elbows in front of body, back against rack","EZ bar preacher curls (top range of motion)":"EZ bar preacher curl (top range of motion)","EZ bar preacher curls – close-grip":"EZ bar preacher curl – close-grip","EZ bar preacher curls – medium grip":"EZ bar preacher curl – medium grip","EZ bar reverse curls against rack":"EZ bar reverse curl against rack","EZ bar reverse-grip curls – close-grip":"EZ bar reverse-grip curl – close-grip","EZ bar reverse-grip curls – medium grip":"EZ bar reverse-grip curl – medium grip","EZ curls":"EZ curl","EZ curls neutral-grip – drop set":"EZ curl neutral-grip – drop set","EZ neutral-grip skull crushers":"EZ neutral-grip skull crusher","EZ Scott curls":"EZ Scott curl","EZ skull crushers":"EZ skull crusher","EZ Spiderman curls":"EZ Spiderman curl","Face pulls":"Face pull","False grip pull-ups":"False grip pull-up","Farmers carry":"Farmer's carry","Figure 4 hip ups":"Figure 4 hip up","Fire hydrants":"Fire hydrant","Fire hydrants to kick back":"Fire hydrant to kick back","Floor slides":"Floor slide","Floor triceps dips":"Floor triceps dip","Frankensteins":"Frankenstein walk","Froggers":"Frogger","Front foot elevated dumbbell heretic split squats":"Front foot elevated dumbbell heretic split squat","Front foot elevated dumbbell split squats":"Front foot elevated dumbbell split squat","Front foot elevated lunges":"Front foot elevated lunge","Front foot eleveated split squats":"Front foot elevated split squat","Front rack shrugs":"Front rack shrug","Front raises straddling incline bench":"Front raise straddling incline bench","Front squat drops to pins":"Front squat drop to pins","Gentleman rows":"Gentleman row","Glute bridge with calf raises":"Glute bridge with calf raise","Glute focused split squats":"Glute focused split squat","Glute ham raises":"Glute ham raise","Glute ham raises (machine or assisted on bench)":"Glute ham raise (machine or assisted on bench)","Glute iso step-ups":"Glute iso step-up","Goblet pulse squats":"Goblet pulse squat","Goblet sumo squats":"Goblet sumo squat","Half burpees":"Half burpee","Half dead bugs":"Half dead bug","Half kneeling face pulls":"Half kneeling face pull","Half kneeling palloffs":"Half-kneeling Pallof press","Half kneeling rows":"Half kneeling row","Hammer curls":"Hammer curl","Hammer curls held by one end":"Hammer curl held by one end","Hammer curls with rope attachment":"Hammer curl with rope attachment","Hamstring scoops":"Hamstring scoop","Hamstring slides":"Hamstring slide","Hamstring switches":"Hamstring switch","Hamstring walk outs":"Hamstring walk out","Hand-supported V-ups":"Hand-supported V-up","Handstand push-ups facing wall":"Handstand push-up facing wall","Handstand weight shifts hand to hand, facing wall":"Handstand weight shift hand to hand, facing wall","Hanging bent knee raises to 90 degrees":"Hanging bent knee raise to 90 degrees","Hanging knee raises":"Hanging knee raise","Hanging knee raises on bar":"Hanging knee raise on bar","Hanging knee raises on rings":"Hanging knee raise on rings","Hanging leg raises":"Hanging leg raise","Hanging leg raises on bar":"Hanging leg raise on bar","Hanging leg raises with dumbbell, to chest":"Hanging leg raise with dumbbell, to chest","Hanging leg rotations":"Hanging leg rotation","Head down push-ups with feet on two boxes":"Head down push-up with feet on two boxes","Heel taps":"Heel tap","Heretic lunges":"Heretic lunge","High five push-ups":"High five push-up","High heel kicks":"High heel kick","High incline cable flies, neutral-grip":"High incline cable fly, neutral-grip","High incline comerford curls (wrists tilted down)":"High incline Comerford curl (wrists tilted down)","High incline dumbbell curls":"High incline dumbbell curl","High incline dumbbell power flies":"High incline dumbbell power fly","Hip abductions":"Hip abduction","Hip dips":"Hip dip","Hip flexor rockers":"Hip flexor rocker","In and out jumps":"In and out jump","Incline close-grip push-ups":"Incline close-grip push-up","Incline dumbbell biceps curls":"Incline dumbbell biceps curl","Incline plyo push-ups":"Incline plyo push-up","Jackare push-ups":"Jackare push-up","Jackknife sit-ups":"Jackknife sit-up","Javelin press (EZ osa)":"Javelin press (EZ bar)","Jefferson curls (kettlebell)":"Jefferson curl (kettlebell)","Jump lunges with overhead extension":"Jump lunge with overhead extension","Jump lunges with punches":"Jump lunge with punches","Jumping jacks":"Jumping jack","Jumping lunges":"Jumping lunge","Jumping pull-ups":"Jumping pull-up","Jumps in and out of tire":"Jump in and out of tire","Kettlebell biceps curls":"Kettlebell biceps curl","Kettlebell circles around head and body":"Kettlebell circle around head and body","Kettlebell farmers walk":"Kettlebell farmer's walk","Kettlebell walking lunges (forward/backward, held in rack position)":"Kettlebell walking lunge (forward/backward, held in rack position)","Kettlebell/dumbbell waiter walking lunges":"Kettlebell/dumbbell waiter walking lunge","Kick back to knees to elbows both ways":"Kickback to knees to elbows both ways","Kipping handstand push-ups from headstand + slow negative":"Kipping handstand push-up from headstand + slow negative","Knee hugs":"Knee hug","Kneeling cable flies in front of body":"Kneeling cable fly in front of body","Kneeling cable presses in front of body":"Kneeling cable press in front of body","Kneeling chops":"Kneeling chop","Kneeling lat pulldowns to chest":"Kneeling lat pulldown to chest","Kneeling medicine ball chops":"Kneeling medicine ball chop","L-sit circles":"L-sit circle","Lat stretchers":"Lat stretcher","Lateral raises":"Lateral raise","Leaning y's":"Leaning Y raise","Leg circles":"Leg circle","Leg curls":"Leg curl","Leg drops":"Leg drop","Leg lifts":"Leg lift","Leg lowers":"Leg lower","Leg raises":"Leg raise","Low cable biceps curls":"Low cable biceps curl","Low cable biceps curls (straight bar attachment)":"Low cable biceps curl (straight bar attachment)","Low cable hammer curls":"Low cable hammer curl","Low cable rotations in front of body":"Low cable rotation in front of body","Low incline dumbbell pectoral flies":"Low incline dumbbell pectoral fly","Low incline dumbbell power flies":"Low incline dumbbell power fly","Low plank hip twists":"Low plank hip twist","Low pulley lateral raises":"Low pulley lateral raise","Lying alternating triceps extensions":"Lying alternating triceps extension","Lying dumbbell triceps extensions (to shoulders)":"Lying dumbbell triceps extension (to shoulders)","Lying EZ bar presses, close-grip":"Lying EZ bar press, close-grip","Lying EZ bar presses, medium grip":"Lying EZ bar press, medium grip","Lying leg curls":"Lying leg curl","Lying leg curls, feet neutral":"Lying leg curl, feet neutral","Lying leg curls, feet straight, dorsiflexed":"Lying leg curl, feet straight, dorsiflexed","Lying leg curls, feet straight, plantarflexed":"Lying leg curl, feet straight, plantarflexed","Lying leg curls, feet turned in, dorsiflexed":"Lying leg curl, feet turned in, dorsiflexed","Lying leg curls, feet turned out, dorsiflexed":"Lying leg curl, feet turned out, dorsiflexed","Lying leg curls, feet turned out, plantarflexed":"Lying leg curl, feet turned out, plantarflexed","Lying leg raises":"Lying leg raise","Lying triceps extensions on crossover cables":"Lying triceps extension on crossover cables","Lying TRX hamstring curls (heels to glutes)":"Lying TRX hamstring curl (heels to glutes)","Machine pec deck chest flies":"Machine pec deck chest fly","Machine pec deck reverse flies":"Machine pec deck reverse fly","Machine reverse flies":"Machine reverse fly","Machine triceps dips":"Machine triceps dip","Medicine ball slams":"Medicine ball slam","Medium incline dumbbell hammer curls":"Medium incline dumbbell hammer curl","Medium incline neutral dumbbell curls":"Medium incline neutral dumbbell curl","Modified 21's":"Modified 21s","Modified full stretch rows – high cable":"Modified full stretch row – high cable","Mountain climber jump switches":"Mountain climber jump switch","Mountain climbers from base position":"Mountain climber from base position","Narrow front squats":"Narrow front squat","Narrow pull-ups (weighted)":"Narrow pull-up (weighted)","Narrow push-ups":"Narrow push-up","Negative dips":"Negative dip","Negative handstand push-ups (to headstand)":"Negative handstand push-up (to headstand)","Negative pull-ups":"Negative pull-up","Neutral to supinated seated curls":"Neutral to supinated seated curl","Neutral-grip dumbbell curls (arms away from body)":"Neutral-grip dumbbell curl (arms away from body)","Neutral-grip EZ bar biceps curls":"Neutral-grip EZ bar biceps curl","Neutral-grip pull-ups":"Neutral-grip pull-up","Nordic curls":"Nordic curl","Oblique jump lunges":"Oblique jump lunge","Oblique mountain climbers":"Oblique mountain climber","Old school Arnold rows":"Old school Arnold row","Olympic barbell biceps curls":"Olympic barbell biceps curl","Olympic barbell shrugs":"Olympic barbell shrug","Outward dumbbell biceps curls":"Outward dumbbell biceps curl","Overhand dumbbell biceps curls":"Overhand dumbbell biceps curl","Overhand EZ bar curls (one foot forward)":"Overhand EZ bar curl (one foot forward)","Overhand EZ bar curls, shoulder width grip":"Overhand EZ bar curl, shoulder width grip","Overhand triceps pushdowns, elbows behind body":"Overhand triceps pushdown, elbows behind body","Overhand triceps pushdowns, elbows in front of body":"Overhand triceps pushdown, elbows in front of body","Overhead extensions on TRX/rings":"Overhead extension on TRX/rings","Overhead sit-ups":"Overhead sit-up","Palloff press horizontal circles":"Pallof press horizontal circle","Palm up raises":"Palm up raise","Parallel bar presses to support hold":"Parallel bar press to support hold","Partial handstand push-ups in wide handstand against wall":"Partial handstand push-up in wide handstand against wall","Pectoral flies":"Pectoral fly","Pectoral flies on crossover cables/bands, high to low":"Pectoral fly on crossover cables/bands, high to low","Pelvic thrusts":"Pelvic thrust","Pendlay power rows":"Pendlay power row","Pendlay rows":"Pendlay row","Pendulum squats":"Pendulum squat","Perfect dips (extra deep, to support hold)":"Perfect dip (extra deep, to support hold)","Pike push-ups with feet on box":"Pike push-up with feet on box","Plank alternating arm/leg extensions":"Plank alternating arm/leg extension","Plank alternating reaches":"Plank alternating reach","Plank arm extensions":"Plank arm extension","Plank circles":"Plank circle","Plank elbow to knee touches":"Plank elbow to knee touch","Plank hops in-and-out":"Plank hop in-and-out","Plank jack with shoulder taps":"Plank jack with shoulder tap","Plank jacks":"Plank jack","Plank kick throughs":"Plank kick through","Plank knee tucks to chest (feet in TRX)":"Plank knee tuck to chest (feet in TRX)","Plank knees to elbow":"Plank knee to elbow","Plank pop ups":"Plank pop up","Plank pulls":"Plank pull","Plank shoulder and knee taps":"Plank shoulder and knee tap","Plank shoulder taps":"Plank shoulder tap","Plank transitions from hands to elbows":"Plank transition from hands to elbows","Plank walk outs":"Plank walk out","Plank with alternating rows":"Plank with alternating row","Plank-ups":"Plank-up","Plate curls":"Plate curl","Platform push-ups":"Platform push-up","Plyo push-ups":"Plyo push-up","Plyometric push-ups with hands on bench":"Plyometric push-up with hands on bench","Popcorn squats":"Popcorn squat","Preacher curls":"Preacher curl","Preacher walking lunges":"Preacher walking lunge","Prone dumbbell rows on incline bench":"Prone dumbbell row on incline bench","Prone lying dumbbell flies":"Prone lying dumbbell fly","Pull-ups":"Pull-up","Pull-ups on bar":"Pull-up on bar","Pull-ups to chin from active hang (no dead hang)":"Pull-up to chin from active hang (no dead hang)","Pull-ups to chin from passive hang (to dead hang)":"Pull-up to chin from passive hang (to dead hang)","Pull-ups, mid range pulses":"Pull-up, mid range pulses","Pull-ups, neutral/overhand grip":"Pull-up, neutral/overhand grip","Pulse squats":"Pulse squat","Push-up to knee taps":"Push-up to knee tap","Push-ups":"Push-up","Push-ups on knees":"Push-up on knees","Push-ups with feet on unstable surface":"Push-up with feet on unstable surface","Push-ups with shoulder taps":"Push-up with shoulder tap","Quad rockers":"Quad rocker","Quad rockers/child's pose":"Quad rocker/child's pose","Quadruped shoulder taps'":"Quadruped shoulder tap","Quick bounds":"Quick bound","Reverse crunches":"Reverse crunch","Reverse pectoral flies":"Reverse pectoral fly","Reverse plank knee drives":"Reverse plank knee drive","Reverse planks":"Reverse plank","Reverse table top knee raises":"Reverse table top knee raise","Ring dips (cluster sets)":"Ring dip (cluster sets)","Ring dips with support":"Ring dip with support","Ring pull-ups (feet on floor)":"Ring pull-up (feet on floor)","Ring pull-ups, neutral-grip (cluster sets)":"Ring pull-up, neutral-grip (cluster sets)","Rings pull-ups (overhand grip)":"Ring pull-up (overhand grip)","Rope face pulls on high cable":"Rope face pull on high cable","Row boats":"Row boat","Scap pull-ups":"Scap pull-up","Scapular retraction and depression drill for bent-over rows with stick/barbell":"Scapular retraction and depression drill for bent-over row with stick/barbell","Scullcrusher":"Skull crusher","Seal jacks":"Seal jack","Seated back extensions on low cable":"Seated back extension on low cable","Seated calf raises":"Seated calf raise","Seated calf raises, toes turned in":"Seated calf raise, toes turned in","Seated calf raises, toes turned out":"Seated calf raise, toes turned out","Seated dumbbell biceps curls":"Seated dumbbell biceps curl","Seated dumbbell curls":"Seated dumbbell curl","Seated dumbbell curls bez opory":"Seated dumbbell curl without support","Seated dumbbell front raises, neutral-grip":"Seated dumbbell front raise, neutral-grip","Seated dumbbell hammer curls":"Seated dumbbell hammer curl","Seated dumbbell hammer curls, bent-over":"Seated dumbbell hammer curl, bent-over","Seated dumbbell lateral raises":"Seated dumbbell lateral raise","Seated dumbbell shrugs":"Seated dumbbell shrug","Seated dumbbell Zottman curls":"Seated dumbbell Zottman curl","Seated good mornings":"Seated good morning","Seated hammer curls":"Seated hammer curl","Seated incline EZ front raises (undergrip)":"Seated incline EZ front raise (undergrip)","Seated low cable rows (V-handle, Arnold variation)":"Seated low cable row (V-handle, Arnold variation)","Seated low cable rows, overhand grip, to chest":"Seated low cable row, overhand grip, to chest","Seated low cable rows, underhand grip":"Seated low cable row, underhand grip","Seated reverse flies":"Seated reverse fly","Seated Zottman curls (held proximally)":"Seated Zottman curl (held proximally)","Semi grip pull-ups":"Semi grip pull-up","Shoulder jacks":"Shoulder jack","Shoulder push-ups, at top into straight-arm forward lean":"Shoulder push-up, at top into straight-arm forward lean","Shoulder shrugs":"Shoulder shrug","Shoulder width underhand pull-ups":"Shoulder width underhand pull-up","Shrugs + low cable upright rows to chin":"Shrug + low cable upright row to chin","Shrugs with bent arms":"Shrug with bent arms","Side plank dips":"Side plank dip","Side plank rows":"Side plank row","Side to side crunches":"Side to side crunch","Single-arm cable chest flies":"Single-arm cable chest fly","Single-arm cable lateral raises":"Single-arm cable lateral raise","Single-arm dumbbell curls – partial reps":"Single-arm dumbbell curl – partial reps","Single-arm dumbbell hammer curls on preacher bench":"Single-arm dumbbell hammer curl on preacher bench","Single-arm dumbbell rows":"Single-arm dumbbell row","Single-arm kettlebell/dumbbell rows with rotation":"Single-arm kettlebell/dumbbell row with rotation","Single-arm rear delt cable flies":"Single-arm rear delt cable fly","Single-arm row with leg extensions":"Single-arm row with leg extension","Single-arm seated rows – stroj":"Single-arm seated machine row","Single-arm walking dumbbell farmer’s carry":"Single-arm walking dumbbell farmer's carry","Single-leg banded glute kickbacks":"Single-leg banded glute kickback","Single-leg bounds":"Single-leg bound","Single-leg lifts":"Single-leg lift","Single-leg switches":"Single-leg switch","Single-leg wall push offs":"Single-leg wall push-off","Sissy squats":"Sissy squat","Sit-up + throw punches":"Sit-up with punches","Sit-up punches":"Sit-up with punches","Sit-ups":"Sit-up","Skater hops":"Skater hop","Skaters":"Skater","Skull crushers to hip thrust":"Skull crusher to hip thrust","Skullcrushers":"Skull crusher","Slam ball ground slams":"Slam ball ground slam","Sledgehammer strikes on tire":"Sledgehammer strike on tire","Slow tempo lateral step downs":"Slow tempo lateral step down","Smith machine rack pulls":"Smith machine rack pull","Snatch grip barbell shrugs":"Snatch grip barbell shrug","Snatch power shrugs from hang":"Snatch power shrug from hang","Spiderman crunches":"Spiderman crunch","Spiderman push-ups":"Spiderman push-up","Sprinters crunch":"Sprinter crunch","Squat hops side to side":"Squat hop side to side","Squat thrusters":"Squat thruster","Squats (bodyweight/goblet)":"Squat (bodyweight/goblet)","Squats on pendulum machine/leg press":"Squat on pendulum machine/leg press","Stability ball crunches":"Stability ball crunch","Stability ball hamstring curls":"Stability ball hamstring curl","Standard dips on parallel bars":"Standard dip on parallel bars","Standing butt kicks":"Standing butt kick","Standing cable chest flies":"Standing cable chest fly","Standing cable upper chest flies":"Standing cable upper chest fly","Standing calf raises":"Standing calf raise","Standing EZ bar biceps curls":"Standing EZ bar biceps curl","Standing Olympic barbell biceps curls":"Standing Olympic barbell biceps curl","Standing opposite toe taps":"Standing opposite toe tap","Standing palloffs":"Standing Pallof press","Standing trunk rotations":"Standing trunk rotation","Standing unilateral dumbbell lateral raises":"Standing unilateral dumbbell lateral raise","Step downs":"Step down","Step-ups with knee drive":"Step-up with knee drive","Stick dislocates":"Stick dislocate","Straight leg sit-ups":"Straight leg sit-up","Straight leg V-ups":"Straight leg V-up","Straight-arm band pull aparts + hold":"Straight-arm band pull apart + hold","Straight-arm forward leans on parallettes":"Straight-arm forward lean on parallettes","Straight-arm presses in front of body (band support presses)":"Straight-arm press in front of body (band support press)","Sumo squat jumps":"Sumo squat jump","Supinated front raises":"Supinated front raise","Supported squats":"Supported squat","Swiss ball hamstring curls":"Swiss ball hamstring curl","T spine rotations":"T spine rotation","T-bar rows":"T-bar row","Table top banded kickbacks":"Table top banded kickback","Tall kneeling ball slams":"Tall kneeling ball slam","Tempo leg extensions":"Tempo leg extension","Tempo squats":"Tempo squat","Tibialis raises with kettlebell/band":"Tibialis raise with kettlebell/band","Toe reaches":"Toe reach","Toe touches":"Toe touch","Toe touches with weight":"Toe touch with weight","Towel hamstring slides (single-leg)":"Towel hamstring slide (single-leg)","Transitions from passive to active hang":"Transition from passive to active hang","Transitions from passive to advanced active hang":"Transition from passive to advanced active hang","Transitions from passive to elite active hang":"Transition from passive to elite active hang","Trap 3 raises":"Trap 3 raise","Trap bar bent-over rows":"Trap bar bent-over row","Trap bar farmers walk":"Trap bar farmer's walk","Triceps dips":"Triceps dip","Triceps dips + hold":"Triceps dip + hold","Triceps extensions (band/dumbbell)":"Triceps extension (band/dumbbell)","Triceps kickbacks":"Triceps kickback","Triceps presses":"Triceps press","Triceps push-ups":"Triceps push-up","Triceps pushdowns":"Triceps pushdown","TRX jumping Bulgarian squats":"TRX jumping Bulgarian squat","TRX overhead squats":"TRX overhead squat","TRX push-ups":"TRX push-up","TRX rotations to forehead":"TRX rotation to forehead","Tucked front lever ice cream makers":"Tucked front lever ice cream maker","Twist hanging leg raises":"Twist hanging leg raise","Underhand cable triceps pushdowns":"Underhand cable triceps pushdown","Up downs":"Up-down","Upper chest cable flies":"Upper chest cable fly","Upright rows":"Upright row","V sit-ups":"V sit-up","V-crunches":"V-crunch","V-crunches with plate behind head":"V-crunch with plate behind head","V-ups (with or without weight)":"V-up (with or without weight)","V-ups with weight on bench":"V-up with weight on bench","Vertical L pull-ups":"Vertical L pull-up","Vertical pull-ups (vertical bar path)":"Vertical pull-up (vertical bar path)","Vertical pull-ups to chest":"Vertical pull-up to chest","Walking lunges":"Walking lunge","Wall balls (medicine ball throws against wall)":"Wall ball (medicine ball throw against wall)","Wall handstand push-ups (handstand push-up)":"Wall handstand push-up (handstand push-up)","Wall slides":"Wall slide","Weighted calf raises":"Weighted calf raise","Weighted chin-ups":"Weighted chin-up","Weighted deadbugs":"Weighted dead bug","Weighted dips":"Weighted dip","Weighted dips on parallel bars (to parallel)":"Weighted dip on parallel bars (to parallel)","Weighted dips on rings":"Weighted dip on rings","Weighted frog pumps":"Weighted frog pump","Weighted hip thrusts":"Weighted hip thrust","Weighted jacknives":"Weighted jackknife","Weighted leg extensions":"Weighted leg extension","Weighted leg lifts":"Weighted leg lift","Weighted neutral pull-ups":"Weighted neutral pull-up","Weighted planks":"Weighted plank","Weighted pull-ups (close neutral-grip)":"Weighted pull-up (close neutral-grip)","Weighted toe touches":"Weighted toe touch","Weighted vertical dips on parallel bars (drop set)":"Weighted vertical dip on parallel bars (drop set)","Wide vertical pull-ups to passive hang":"Wide vertical pull-up to passive hang","Wide-grip barbell preacher curls":"Wide-grip barbell preacher curl","Wide-grip dips":"Wide-grip dip","Wide-grip preacher curls":"Wide-grip preacher curl","Windmills":"Windmill","Wrist rotations at sides":"Wrist rotation at sides","Y cable raises":"Y cable raise","Yates rows":"Yates row","Zombie front squats":"Zombie front squat","Chest press stroj/push-up":"Chest press machine/push-up","Chest supported dumbbell row – neutral k pasu":"Chest-supported dumbbell row, neutral grip, to waist","Chest supported dumbbell row – underhand grip, k pasu":"Chest-supported dumbbell row, underhand grip, to waist","Chest supported row – stroj":"Chest-supported machine row","Dumbbell hyperextenze":"Dumbbell hyperextension","Seated football press (lehce incline)":"Seated football press (slight incline)","Barbell low decline frenchpress":"Barbell low decline French press","Reverse peck deck":"Reverse pec deck","Hyperextenze":"Hyperextension","Chest supported machine row":"Chest-supported machine row"};
+
+  // ---------- helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10));
+  const now = () => new Date().toISOString();
+  const today = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+  const fmtDate = (s) => { if (!s) return ""; const [y, m, d] = s.split("-").map(Number); const dt = new Date(y, m - 1, d); const opts = { month: "short", day: "numeric" }; if (y !== new Date().getFullYear()) opts.year = "numeric"; return dt.toLocaleDateString(undefined, opts); };
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  // "W", "Wa", "Wb" … = warm-up: groups like a number and sorts before 1
+  const isWarmLabel = (l) => /^w\s*[a-z]?$/i.test(String(l || "").trim());
+  const labelKey = (l) => { const s = String(l || "").trim(); const m = s.match(/^(\d+)\s*([a-z]*)/i); if (m) return [parseInt(m[1], 10), m[2].toLowerCase()]; const w = s.match(/^w\s*([a-z]?)$/i); return w ? [-1, w[1].toLowerCase()] : [Infinity, s.toLowerCase()]; };
+  const cmpLabel = (a, b) => { const [an, as] = labelKey(a), [bn, bs] = labelKey(b); return an - bn || (as < bs ? -1 : as > bs ? 1 : 0); };
+  const norm = (s) => String(s || "").trim().toLowerCase();
+  const squash = (s) => norm(s).replace(/[^a-z0-9]+/g, "");   // "Push-up", "push up" and "pushup" all become "pushup"
+  const NAME_KEYS = NAMES.map(squash);
+  const customNames = new Map();          // key -> name (his own exercises, table ft_exercises)
+  let ALL_NAMES = NAMES, ALL_KEYS = NAME_KEYS;
+  const builtinKeys = new Set(NAME_KEYS);
+  function refreshNames() { const extra = [...customNames.values()].sort((a, b) => a.localeCompare(b)); ALL_NAMES = extra.length ? NAMES.concat(extra) : NAMES; ALL_KEYS = extra.length ? NAME_KEYS.concat(extra.map(squash)) : NAME_KEYS; }
+  const knownName = (n) => { const k = squash(n); return !!k && (builtinKeys.has(k) || customNames.has(k)); };
+  const nearName = (n) => { const k = squash(n); if (!k) return null; const cands = [k.replace(/(es|s)$/, ""), k + "s", k + "es"].filter((c) => c && c !== k); for (const c of cands) { const i = ALL_KEYS.indexOf(c); if (i >= 0) return ALL_NAMES[i]; } return null; };
+  const tidyName = (n) => { n = String(n || "").replace(/\s+/g, " ").trim(); return n ? n[0].toUpperCase() + n.slice(1) : ""; };
+  async function loadCustomNames() {
+    if (!sb || !signedIn) return;
+    const { data, error } = await sb.from("ft_exercises").select("name_key,name");
+    if (error || !data) return;
+    customNames.clear(); for (const r of data) customNames.set(r.name_key, r.name); refreshNames();
+  }
+  async function addCustomName(name) {
+    name = tidyName(name); const k = squash(name); if (!k || knownName(name)) return true;
+    if (!sb || !signedIn) return false;
+    const { error } = await sb.from("ft_exercises").upsert({ name_key: k, name });
+    if (error) return false;
+    customNames.set(k, name); refreshNames(); return true;
+  }
+  const looseKey = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
+  const ALIAS_LOOSE = {}; for (const o in ALIASES) ALIAS_LOOSE[looseKey(o)] = looseKey(ALIASES[o]);
+  const VIDEO_LOOSE = new Map(); for (const k in VIDEOS) VIDEO_LOOSE.set(looseKey(k), VIDEOS[k]);
+  const lsGet = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
+
+  // ---------- state ----------
+  const clients = new Map();   // id -> {id,name,notes,createdAt}
+  const trainings = new Map(); // id -> {id,clientId,title,date,createdAt,rows:[...]}
+  let view = { name: "clients" };
+  let backend = null;          // { set(kind,id,data), del(kind,id) }
+  const dirty = new Map();     // key -> local version counter (unconfirmed edits)
+  const timers = new Map();
+  const chains = new Map();
+  let inflight = 0, failed = false, failReason = "";
+  let offline = false;                    // the last sync could not reach the server: the device copy is on screen
+  const reasonOf = (e) => {
+    const m = String((e && e.message) || "");
+    if ((e && e.code === "PGRST202") || /Could not find the function/i.test(m)) return "database rule missing";
+    if (e && e.code === "P0001" && m && m.length < 40) return m;
+    return "";
+  };
+
+  // ---------- persistence ----------
+  function key(kind, id) { return kind + "/" + id; }
+  function markDirty(kind, id) { const k = key(kind, id); dirty.set(k, (dirty.get(k) || 0) + 1); }
+
+  // ---- template drafts: editing a template changes nothing until "Save template"; a client's copy is always separate
+  let templateDraft = null;              // { id, snapshot, dirty, saving }
+  let pendingGo = null;                  // where he wanted to go while a draft was unsaved
+  function draftFor(t) {
+    if (clientMode || !isTemplateClient(t.clientId)) return null;
+    if (!templateDraft || templateDraft.id !== t.id) templateDraft = { id: t.id, snapshot: JSON.stringify(t), dirty: false, saving: false };
+    return templateDraft;
+  }
+  function paintDraftBar() {
+    const d = templateDraft; const show = !!(d && d.dirty && view.name === "training" && view.id === d.id);
+    $("draftBar").hidden = !show; document.body.classList.toggle("draft", show);
+  }
+  function saveDraft() {
+    const d = templateDraft; if (!d) return;
+    const t = trainings.get(d.id); if (!t) { templateDraft = null; paintDraftBar(); return; }
+    d.dirty = false; d.saving = true; scheduleSave("trainings", d.id, 0); d.saving = false; d.snapshot = JSON.stringify(t);
+    paintDraftBar(); const n = pendingGo; pendingGo = null; if (n) go(n);
+  }
+  function discardDraft() {
+    const d = templateDraft; if (!d) return;
+    if (trainings.has(d.id)) trainings.set(d.id, JSON.parse(d.snapshot));
+    d.dirty = false; localBackend.save(); renderedTraining = null; paintDraftBar();
+    const n = pendingGo; pendingGo = null; if (n) go(n); else render();
+  }
+  $("draftSave").addEventListener("click", saveDraft);
+  $("draftDiscard").addEventListener("click", discardDraft);
+  // what still has to reach the server is written to the device too, so closing the app with no signal loses nothing
+  function persistPending() {
+    lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].map(([id, r]) => [id, [...r]]),
+      finish: [...pendingFinish], skip: [...pendingSkip], move: [...pendingMove], miss: [...pendingMiss], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]),
+      touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]), state: [...trainerState].map(([id, f]) => [id, [...f]]),
+      stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), owner: sessionEmail || pendingOwner || "" });
+    if (sessionEmail) pendingOwner = sessionEmail;
+  }
+  function restorePending() {
+    const p = lsGet("fiala.pending.v1"); if (!p || typeof p !== "object") return;
+    for (const k of p.dirty || []) if (!dirty.has(k)) dirty.set(k, 1);
+    for (const [id, rows] of p.weights || []) pendingWeightRows.set(id, new Set([...(pendingWeightRows.get(id) || []), ...rows]));
+    for (const [id, rows] of p.done || []) pendingDoneRows.set(id, new Set([...(pendingDoneRows.get(id) || []), ...rows]));
+    for (const [id, rows] of p.early || []) pendingEarlyRows.set(id, new Set([...(pendingEarlyRows.get(id) || []), ...rows]));
+    for (const id of p.finish || []) pendingFinish.add(id);
+    for (const id of p.skip || []) pendingSkip.add(id);
+    for (const id of p.move || []) pendingMove.add(id);
+    for (const id of p.miss || []) pendingMiss.add(id);
+    for (const id of new Set([...pendingMove, ...pendingMiss])) markDirty("trainings", id);   // sent again on this launch (the rule may have been missing last time)
+    for (const [id, picks] of p.swap || []) pendingSwap.set(id, new Map([...(pendingSwap.get(id) || []), ...picks]));
+    for (const [id, rows] of p.touched || []) trainerTouched.set(id, new Set([...(trainerTouched.get(id) || []), ...rows]));
+    for (const [id, fields] of p.state || []) trainerState.set(id, new Set([...(trainerState.get(id) || []), ...fields]));
+    for (const [id, rows] of p.named || []) trainerNamed.set(id, new Set([...(trainerNamed.get(id) || []), ...rows]));
+    for (const [k, stamp] of p.stamps || []) if (stamp && !seenAt.has(k)) seenAt.set(k, stamp);
+    pendingOwner = p.owner || "";
+  }
+  let pendingOwner = "";
+  function scheduleSave(kind, id, delay = 500) {
+    if (kind === "trainings" && templateDraft && templateDraft.id === id && !templateDraft.saving) { templateDraft.dirty = true; paintDraftBar(); return; }
+    markDirty(kind, id); persistPending();
+    const k = key(kind, id);
+    clearTimeout(timers.get(k));
+    timers.set(k, setTimeout(() => flushOne(kind, id), delay));
+    setStatus();
+  }
+
+  function flushAll() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); flushOne(kind, id); } }
+
+  function flushOne(kind, id) {
+    const k = key(kind, id);
+    timers.delete(k);
+    localBackend.save();
+    const map = kind === "clients" ? clients : trainings;
+    const prev = chains.get(k) || Promise.resolve();
+    inflight++; setStatus();
+    const run = prev.then(async () => {
+      if (!backend || !dirty.has(k)) return;                    // already confirmed by an earlier run in this chain
+      const doc = map.get(id);
+      const version = dirty.get(k) || 0;
+      const data = doc ? JSON.parse(JSON.stringify(doc)) : null;   // taken now, after any merge the previous run did
+      let attempt = 0;
+      if (backend !== localBackend && sb) {
+        const sess = await sb.auth.getSession().catch(() => null);
+        if (!(sess && sess.data && sess.data.session)) { offline = true; return; }   // token not usable right now: keep it queued
+      }
+      for (;;) {
+        try {
+          if (data) await backend.set(kind, id, data); else await backend.del(kind, id);
+          failed = false;
+          if (dirty.get(k) === version) { dirty.delete(k); if (kind === "trainings") trainerState.delete(id); }   // the coach's state changes went with this save; a later touch keeps its flag
+          confirmedAt.set(k, Date.now());
+          return;
+        } catch (e) {
+          attempt++;
+          failReason = reasonOf(e);
+          if (isOffline(e)) { offline = true; return; }           // no signal: keep it queued, no red status
+          if (e && e.fatal) { failed = true; if (dirty.get(k) === version) dirty.delete(k); return; }   // the server said no for good: don't carry it forever
+          if (attempt > 3) { failed = true; return; }
+          await new Promise((r) => setTimeout(r, 700 * attempt + Math.random() * 400));
+        }
+      }
+    }).finally(() => { inflight--; persistPending(); setStatus(); });
+    chains.set(k, run.catch(() => {}));
+    return run;
+  }
+
+  let deviceFull = false;                // the last write of the device copy failed (storage full or blocked)
+  function setStatus() {
+    const el = $("status");
+    const pending = timers.size + inflight;
+    if (deviceFull) { el.className = "err"; el.textContent = "Not saved on this device \u00b7 free up space"; return; }
+    if (backend && backend !== localBackend && (offline || !navigator.onLine)) { el.className = ""; el.textContent = (dirty.size || pending) ? "Offline \u00b7 will sync" : "Offline \u00b7 showing your last sync"; return; }
+    if (failed && pending === 0) { el.textContent = "Couldn't save" + (failReason ? " \u00b7 " + failReason : "") + (dirty.size ? " \u00b7 tap to retry" : ""); el.className = "err"; return; }
+    el.className = "";
+    el.textContent = pending > 0 ? "Saving\u2026" : (backend ? "Saved" : "");
+  }
+  $("status").addEventListener("click", () => { if (failed) { failed = false; for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } setStatus(); } });
+
+  const localBackend = {
+    load() { const d = lsGet("fiala.trainings.v1") || { clients: {}, trainings: {} }; for (const c of Object.values(d.clients)) clients.set(c.id, c); for (const t of Object.values(d.trainings)) trainings.set(t.id, t); },
+    save() { const ok = lsSet("fiala.trainings.v1", { clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) });  deviceFull = !ok; },
+    async set() { this.save(); },
+    async del() { this.save(); },
+  };
+
+  // ---------- cloud (Supabase) ----------
+  const SUPABASE_URL = "https://umurkxqswcjmubeucrzw.supabase.co";
+  const SUPABASE_KEY = "sb_publishable__OG8G0RdJkERDqwV8xKN2Q_uwL1zY4p";
+  let sb = null, signedIn = false, syncTimer = null, clientMode = false, myClientId = null, recovering = false;
+  let syncedOnce = false;                // this session has had one full answer from the server
+  let logSetMissing = false;             // client_log_set not installed yet (run supabase/client-log-set.sql)
+  let earlyMissing = false;              // client_finish_early not installed yet (run supabase/client-finish-early.sql)
+  let moveMissing = false, missMissing = false;   // client_move_training / client_miss_training not installed yet (run supabase/client-missed.sql)
+  const pendingWeightRows = new Map();   // trainingId -> Set(rowId), client mode only
+  const pendingDoneRows = new Map();     // trainingId -> Set(rowId), client mode only
+  const pendingEarlyRows = new Map();    // trainingId -> Set(rowId): the "finished early" reason still to reach the server, client mode only
+  const pendingFinish = new Set();       // trainingId, client mode only
+  const pendingSkip = new Set();         // trainingId, client mode only
+  const trainerState = new Map();        // trainingId -> Set(field): finished / skipped / date / missed the coach changed and not yet saved; those fields win on a conflict
+  const touchState = (id, ...fields) => { if (clientMode) return; if (!trainerState.has(id)) trainerState.set(id, new Set()); for (const f of fields) trainerState.get(id).add(f); };
+  const pendingMove = new Set();         // trainingId: "Do it today" still to reach the server, client mode only
+  const pendingMiss = new Set();         // trainingId: filed as missed, still to reach the server, client mode only
+  const pendingSwap = new Map();         // trainingId -> Map(rowId -> name tapped), client mode only
+  const customVideos = new Map();        // loose exercise name -> YouTube id (trainer's own links)
+  const videoRawKeys = new Map();        // loose key -> Set of name_key values actually stored (old spellings included)
+  const videoKeysFor = (k) => [...new Set([k, ...(videoRawKeys.get(k) || [])])];
+  async function saveVideo(k, url, id) { const { error } = await sb.from("ft_exercise_videos").upsert({ name_key: k, url, video_id: id }); if (error) return error; const stale = videoKeysFor(k).filter((x) => x !== k); if (stale.length) await sb.from("ft_exercise_videos").delete().in("name_key", stale); customVideos.set(k, id); videoRawKeys.set(k, new Set([k])); return null; }
+  async function deleteVideo(k) { const { error } = await sb.from("ft_exercise_videos").delete().in("name_key", videoKeysFor(k)); if (error) return error; customVideos.delete(k); videoRawKeys.delete(k); return null; }
+  const looseName = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
+  const youtubeId = (url) => { const m = String(url || "").match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; };
+  async function loadCustomVideos() {
+    if (!sb || !signedIn) return;
+    const { data, error } = await sb.from("ft_exercise_videos").select("name_key,video_id");
+    if (error || !data) return;
+    customVideos.clear(); videoRawKeys.clear();
+    for (const r of data) { const k = ALIAS_LOOSE[r.name_key] || r.name_key; customVideos.set(k, r.video_id); if (!videoRawKeys.has(k)) videoRawKeys.set(k, new Set()); videoRawKeys.get(k).add(r.name_key); } // links saved under an old spelling follow the rename
+  }
+  const seenAt = new Map();              // "trainings/<id>" -> updated_at last received from the server
+  const trainerTouched = new Map();      // trainingId -> Set(rowId) whose weights the trainer edited since the last sync
+  const trainerNamed = new Map();        // trainingId -> Set(rowId) whose name/alternatives the trainer edited since the last sync
+  const TABLE = { clients: "ft_clients", trainings: "ft_trainings" };
+
+  const cloudBackend = {
+    async set(kind, id, data) {
+      const k = key(kind, id);
+      const row = { id, data };
+      if (kind === "trainings") row.client_id = data.clientId;
+      const mergeServerRows = (serverData) => {                 // take the client's weights/done/swaps for rows the trainer did not touch
+        const touched = trainerTouched.get(id) || new Set(), named = trainerNamed.get(id) || new Set();
+        const live = trainings.get(id);
+        for (const sr of (serverData && serverData.rows) || []) {
+          for (const target of [data, live]) {
+            const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (!lr) continue;
+            if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; lr.setsDone = sr.setsDone || 0; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; }
+            if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
+          }
+        }
+      };
+      for (let attempt = 0; attempt < 4; attempt++) {
+        let seen = seenAt.get(k);
+        const takeState = (serverData) => {                      // the client may have finished, skipped or moved it meanwhile: keep that, field by field, unless the coach changed that field
+          if (kind !== "trainings" || !serverData) return;
+          const mine = trainerState.get(id) || new Set();
+          for (const f of ["completedAt", "skippedAt", "missed", "date"]) { if (mine.has(f)) continue; for (const target of [data, trainings.get(id)]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; } }
+        };
+        const takeNotes = (serverData) => {                      // another device may have written notes: keep both
+          if (kind !== "clients" || !serverData) return;
+          const merged = mergeNotes(data.notes, serverData.notes); data.notes = merged; const live = clients.get(id); if (live) live.notes = merged;
+        };
+        if (!seen && attempt === 0) {                               // no stamp (edited offline, app relaunched): read first, never write over the other side blind
+          const existing = await sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle();
+          if (existing.error) throw existing.error;
+          if (existing.data) { if (kind === "trainings") { mergeServerRows(existing.data.data); takeState(existing.data.data); } takeNotes(existing.data.data); seen = existing.data.updated_at; seenAt.set(k, seen); }
+        }
+        let res;
+        if (seen) res = await sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at");
+        else res = await sb.from(TABLE[kind]).upsert(row).select("updated_at");
+        if (res.error) {
+          if (res.error.code === "23505") { res.error.fatal = true; $("status").textContent = "That email is already on another client"; }
+          if (/^22/.test(String(res.error.code || ""))) seenAt.delete(k);   // a bad stamp must not poison every retry
+          throw res.error;
+        }
+        if (res.data && res.data.length) { seenAt.set(k, res.data[0].updated_at); localBackend.save(); return; }
+        // someone else (a client logging weights) saved first: take their weights, keep everything else, retry
+        const fresh = await sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle();
+        if (fresh.error) throw fresh.error;
+        if (!fresh.data) { seenAt.delete(k); continue; }
+        seenAt.set(k, fresh.data.updated_at);
+        if (kind === "trainings") { mergeServerRows(fresh.data.data); takeState(fresh.data.data); }
+        takeNotes(fresh.data.data);
+      }
+      throw new Error("save conflict");
+    },
+    async del(kind, id) {
+      const { error } = await sb.from(TABLE[kind]).delete().eq("id", id);
+      if (error) throw error;
+      localBackend.save();
+    },
+  };
+
+  const clientBackend = {
+    async set(kind, id, data) {
+      if (kind !== "trainings") return;
+      const rows = pendingWeightRows.get(id);
+      if (rows) {
+        const ids = [...rows]; rows.clear();
+        for (let i = 0; i < ids.length; i++) {
+          const r = (data.rows || []).find((x) => x.id === ids[i]); if (!r) continue;
+          const clean = (a) => (a || []).map((w) => String(w == null ? "" : w).slice(0, 16));
+          let error = null;
+          if (!logSetMissing) ({ error } = await sb.rpc("client_log_set", { p_training: id, p_row: ids[i], p_weights: clean(r.weights), p_reps: clean(r.repsDone), p_sets_done: clamp(parseInt(r.setsDone, 10) || 0, 0, 20), p_done: !!r.done }));
+          if (logSetMissing || (error && (error.code === "PGRST202" || /client_log_set/.test(error.message || "")))) {   // rule not installed yet: weights still get through the old way
+            logSetMissing = true;
+            ({ error } = await sb.rpc("client_set_weights", { p_training: id, p_row: ids[i], p_weights: clean(r.weights) }));
+            if (!error && r.done) { const d = await sb.rpc("client_set_done", { p_training: id, p_row: ids[i], p_done: true }); error = d.error; }
+          }
+          if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of ids.slice(i)) rows.add(rest); throw error; }   // P0001: the server refused for good (row or training gone)
+        }
+      }
+      const swaps = pendingSwap.get(id);
+      if (swaps && swaps.size) {
+        const picks = [...swaps.entries()]; swaps.clear();
+        for (let i = 0; i < picks.length; i++) {
+          const { error } = await sb.rpc("client_swap_exercise", { p_training: id, p_row: picks[i][0], p_name: picks[i][1] });
+          if (error) {
+            if (error.code === "P0001") { scheduleSync(); continue; } // the server said no (alternative or row gone): its version comes back on the next sync
+            for (const rest of picks.slice(i)) swaps.set(rest[0], rest[1]); throw error;
+          }
+        }
+      }
+      if (pendingFinish.has(id)) {
+        const { error } = await sb.rpc("client_finish_training", { p_training: id, p_finished: !!data.completedAt });
+        if (error && error.code !== "P0001") throw error;
+        pendingFinish.delete(id);
+      }
+      if (pendingSkip.has(id)) {
+        const { error } = await sb.rpc("client_skip_training", { p_training: id, p_skipped: !!data.skippedAt });
+        if (error && error.code !== "P0001") throw error;
+        pendingSkip.delete(id);
+      }
+      if (pendingMove.has(id) && !moveMissing) {
+        const { error } = await sb.rpc("client_move_training", { p_training: id, p_date: String(data.date || "").slice(0, 10) });
+        if (error && (error.code === "PGRST202" || /client_move_training/.test(error.message || ""))) moveMissing = true;   // rule not installed yet: stays on the device until it is
+        else { if (error && error.code !== "P0001") throw error; pendingMove.delete(id); }
+      }
+      if (pendingMiss.has(id) && !missMissing) {
+        const { error } = await sb.rpc("client_miss_training", { p_training: id, p_missed: data.missed === true });
+        if (error && (error.code === "PGRST202" || /client_miss_training/.test(error.message || ""))) missMissing = true;
+        else { if (error && error.code !== "P0001") throw error; pendingMiss.delete(id); }
+      }
+      const dones = pendingDoneRows.get(id);
+      if (dones) {
+        const dids = [...dones]; dones.clear();
+        for (let i = 0; i < dids.length; i++) {
+          const r = (data.rows || []).find((x) => x.id === dids[i]); if (!r) continue;
+          const { error } = await sb.rpc("client_set_done", { p_training: id, p_row: dids[i], p_done: !!r.done });
+          if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of dids.slice(i)) dones.add(rest); throw error; }
+        }
+      }
+      const earlies = pendingEarlyRows.get(id);
+      if (earlies && !earlyMissing) {
+        const eids = [...earlies]; earlies.clear();
+        for (let i = 0; i < eids.length; i++) {
+          const r = (data.rows || []).find((x) => x.id === eids[i]); if (!r) continue;
+          const { error } = await sb.rpc("client_finish_early", { p_training: id, p_row: eids[i], p_reason: String(r.earlyReason || "").slice(0, 40) || null });
+          if (error && (error.code === "PGRST202" || /client_finish_early/.test(error.message || ""))) { earlyMissing = true; break; }   // rule not installed yet: the reason stays on the device, everything else still syncs
+          if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of eids.slice(i)) earlies.add(rest); throw error; }
+        }
+      }
+      localBackend.save();
+    },
+    async del() {},
+  };
+
+  const confirmedAt = new Map();          // "trainings/<id>" -> when the server last confirmed our write
+  let syncing = null;
+  function syncDown() { if (syncing) return syncing; syncing = syncDownNow().finally(() => { syncing = null; }); return syncing; }
+  function mergeDown(map, kind, rows, complete, startedAt) {        // the server's answer into the local map, keeping what this device still has to send
+    const seen = new Set();
+    for (const r of rows) {
+      seen.add(r.id); if (dirty.has(key(kind, r.id))) continue;
+      if (kind === "trainings" && (pendingMove.has(r.id) || pendingMiss.has(r.id))) continue;   // the client's decision still has to reach the server: keep ours
+      if ((confirmedAt.get(key(kind, r.id)) || 0) > startedAt) continue;   // written after this read began: keep ours
+      if (kind === "trainings" && templateDraft && templateDraft.dirty && templateDraft.id === r.id) continue;   // unsaved template edits
+      if (kind === "trainings" && renderedTraining === r.id && $("rows").contains(document.activeElement)) continue; // being edited right now: next sync, stamp and all
+      map.set(r.id, { ...r.data, id: r.id });
+      if (!clientMode && r.updated_at) seenAt.set(key(kind, r.id), r.updated_at);   // the stamp travels with the record it describes
+      if (kind === "trainings") trainerState.delete(r.id);
+    }
+    if (complete) for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id))) map.delete(id);   // only a full answer can say something is gone
+  }
+  async function syncDownNow() {
+    if (!sb || !signedIn || !backend || seeding) return false;
+    const startedAt = Date.now();
+    const sess = await sb.auth.getSession().catch(() => null);           // no usable token (refresh failed, cooldown): don't sync as a stranger
+    if (!(sess && sess.data && sess.data.session)) { offline = true; setStatus(); return false; }
+    loadCustomVideos().catch(() => {}); loadCustomNames().catch(() => {});
+    let c, t;
+    if (clientMode) {
+      const res = await withTimeout(sb.rpc("client_my_data"), 8000);
+      if (res.error) {
+        if (isOffline(res.error)) {
+          if (offlineFromMirror()) return false;               // no signal: the last synced copy stands in
+          showProblem("Couldn\u2019t load your workouts \u00b7 check your signal and tap Try again"); return false;
+        }
+        showProblem("Couldn\u2019t load your workouts \u00b7 " + (res.error.message || "server error") + " \u00b7 tap Try again"); return false;
+      }
+      c = { data: res.data.clients || [] }; t = { data: res.data.trainings || [] };
+      const me = c.data[0], authoritative = !!me && !(me.data && me.data.paused);
+      if (authoritative) {                                                   // a training the trainer deleted: nothing queued for it can land
+        const serverIds = new Set(t.data.map((r) => r.id));
+        for (const k of [...dirty.keys()]) { const [kind, id] = k.split("/"); if (kind === "trainings" && !serverIds.has(id)) { dirty.delete(k); pendingWeightRows.delete(id); pendingDoneRows.delete(id); pendingEarlyRows.delete(id); pendingFinish.delete(id); pendingSkip.delete(id); pendingMove.delete(id); pendingMiss.delete(id); pendingSwap.delete(id); } }
+        persistPending();
+      }
+    } else {
+      [c, t] = await Promise.all([fetchAll("ft_clients"), fetchAll("ft_trainings")]);
+      if (c.error || t.error) {
+        const err = c.error || t.error;
+        if (/ft_clients|ft_trainings|relation/i.test(err.message)) { $("status").textContent = "Run supabase/cloud.sql first"; return false; }
+        if (isOffline(err)) { offline = true; setStatus(); } else { $("status").textContent = "Couldn\u2019t sync \u00b7 " + (err.message || "server error"); }
+        return false;                                           // the device copy stays on screen
+      }
+      for (const id of [...trainerTouched.keys()]) if (!dirty.has(key("trainings", id))) trainerTouched.delete(id);
+      for (const id of [...trainerNamed.keys()]) if (!dirty.has(key("trainings", id))) trainerNamed.delete(id);
+    }
+    const migrated = lsGet("fiala.trainings.migrated");
+    if (!clientMode && !migrated && c.data.length === 0 && t.data.length === 0 && (clients.size || trainings.size)) {
+      for (const id of clients.keys()) scheduleSave("clients", id, 0);
+      for (const id of trainings.keys()) scheduleSave("trainings", id, 0);
+    } else {
+      mergeDown(clients, "clients", c.data, c.complete !== false, startedAt); mergeDown(trainings, "trainings", t.data, t.complete !== false, startedAt);
+    }
+    lsSet("fiala.trainings.migrated", true); syncedOnce = true;
+    localBackend.save();
+    if (clientMode) {
+      myClientId = clients.size ? [...clients.keys()][0] : null;
+      if (!myClientId) { showWaiting(); return; }
+      if (view.name === "clients" || (view.name === "client" && view.id !== myClientId)) view = { name: "client", id: myClientId };
+    }
+    offline = false;
+    render(); setStatus();
+    for (const k of dirty.keys()) if (!timers.has(k)) { const [kind, id] = k.split("/"); flushOne(kind, id); }
+    return true;
+  }
+  // ---- no signal: the device copy (saved after every successful sync) stands in until the server answers again
+  function offlineFromMirror() {
+    const me = [...clients.values()].find((c) => !isTemplateClient(c.id) && norm(c.email) === norm(sessionEmail));
+    if (!me) return false;
+    myClientId = me.id; offline = true;
+    if (!(view.name === "training" && trainings.has(view.id))) view = { name: "client", id: myClientId };
+    render(); setStatus(); return true;
+  }
+  let offlineEntry = null, resuming = false, signingOut = null;   // "remembered": we came in without a session and must re-enter properly once there is one
+  function enterOffline(remembered) {     // no session could be read (token expired, no signal): use what the device knows
+    offlineEntry = "remembered"; settingsOpen = false; signedIn = true; sessionEmail = remembered.email || ""; clientMode = remembered.role !== "trainer";
+    document.body.classList.toggle("client", clientMode); backend = clientMode ? clientBackend : cloudBackend; hideAllViews();
+    if (clientMode) { $("clientFoot").hidden = false; if (!offlineFromMirror()) showLogin("You\u2019re offline. Connect once to sign in."); return; }
+    $("dataNote").textContent = "Synced to the cloud"; $("myExercises").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false;
+    offline = true; render(); setStatus();
+  }
+  async function resumeOnline() {
+    if (!sb || !signedIn || resuming) return; resuming = true;
+    try {
+      if (offlineEntry === "remembered") {                  // no session yet: get one, then enter normally (enterCloud flushes what is queued)
+        const { data } = await sb.auth.getSession().catch(() => ({ data: null }));
+        if (!(data && data.session) || offlineEntry !== "remembered" || entering) return;
+        await enterCloud(data.session); return;
+      }
+      await syncDown();                                      // a quiet retry: the screen stays as it is; a success flushes the queue itself
+    } finally { resuming = false; }
+  }
+
+  function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(() => { (offline ? resumeOnline() : syncDown()).catch(() => {}); }, 300); }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") scheduleSync(); });
+  window.addEventListener("focus", scheduleSync);
+  window.addEventListener("online", () => { failed = false; if (offline && signedIn) { resumeOnline().catch(() => {}); return; } for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } scheduleSync(); });
+  setInterval(() => { if (document.visibilityState === "visible") scheduleSync(); }, 60000);
+
+  // a request that gets no answer within `ms` counts as a network failure (a phone with one bar can hang for a long time)
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r({ data: null, error: { message: "network timeout" } }), ms))]);
+  async function fetchAll(table) {                                 // every row, page by page: the server answers at most 1,000 at a time
+    const PAGE = 1000, out = []; let after = null;
+    for (;;) {
+      let q = sb.from(table).select("id,data,updated_at").order("id").limit(PAGE); if (after) q = q.gt("id", after);   // keyed on id, so a row deleted meanwhile shifts nothing
+      const res = await withTimeout(q, 12000);
+      if (res.error) return { data: out, error: res.error, complete: false };
+      out.push(...(res.data || []));
+      if (!res.data || res.data.length < PAGE) return { data: out, error: null, complete: true };
+      after = res.data[res.data.length - 1].id;
+    }
+  }
+  async function isTrainerAccount() {
+    try {
+      const { data, error } = await withTimeout(sb.from("trainers").select("email").limit(1), 4000);
+      if (error) return null;              // unknown (offline, hiccup): let RLS decide
+      return data.length > 0;
+    } catch { return null; }
+  }
+
+  function hideAllViews() {
+    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vSettings", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
+  }
+  function showLogin(msg) {
+    signedIn = false; clientMode = false; myClientId = null; document.body.classList.remove("client");
+    $("clientFoot").hidden = true; $("localFoot").hidden = true; $("myExercises").hidden = true; $("settingsBtn").hidden = true; settingsOpen = false; fromSettings = false;
+    hideAllViews(); $("vLogin").hidden = false;
+    $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
+    $("loginMsg").textContent = msg || "";
+  }
+  function showSignup() {
+    hideAllViews(); $("vSignup").hidden = false; $("suForm").hidden = false; $("suDone").hidden = true; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
+    $("suMsg").textContent = ""; $("suEmail").value = $("loginEmail").value.trim(); setTimeout(() => $("suName").focus(), 50);
+  }
+  let settingsOpen = false;              // false | "settings" | "password" | "exercises" | "number"
+  let fromSettings = false;              // number/password opened from the Settings list: Back returns there
+  // ---- appearance: auto (follow the phone) | light | dark. Saved on this device only.
+  const THEME_KEY = "fiala.theme";
+  const themeColours = { light: "#f5f5f7", dark: "#000000" };
+  function applyTheme(v) {
+    v = v === "light" || v === "dark" ? v : "auto";
+    if (v === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", v);
+    for (const m of document.querySelectorAll('meta[name="theme-color"]')) {
+      if (m.dataset.media === undefined) m.dataset.media = m.getAttribute("media") || "";
+      const isDark = /dark/.test(m.dataset.media);
+      if (v === "auto") { m.setAttribute("media", m.dataset.media); m.content = isDark ? themeColours.dark : themeColours.light; }
+      else { m.removeAttribute("media"); m.content = themeColours[v]; }
+    }
+    for (const b of $("themeSeg").querySelectorAll("button")) { b.classList.toggle("on", b.dataset.theme === v); b.setAttribute("aria-checked", b.dataset.theme === v ? "true" : "false"); }
+  }
+  applyTheme(lsGet(THEME_KEY));
+  $("themeSeg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; lsSet(THEME_KEY, b.dataset.theme); applyTheme(b.dataset.theme); });
+  function showSettings() {
+    settingsOpen = "settings"; fromSettings = false; hideAllViews(); $("vSettings").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
+    const p = trainerPhone(); $("setNumberVal").textContent = p || "Not set"; $("setEmail").textContent = sessionEmail || "";
+  }
+  function showNumber() {
+    settingsOpen = "number"; hideAllViews(); $("vNumber").hidden = false; $("back").hidden = false; $("backLabel").textContent = fromSettings ? "Settings" : "Back"; $("brand").hidden = true; $("status").textContent = "";
+    $("myPhone").value = trainerPhone(); $("myPhoneMsg").textContent = "";
+  }
+  // the trainer's number is copied onto every client row (that is what a client can read)
+  const trainerPhone = () => { for (const c of clients.values()) if (!isTemplateClient(c.id) && c.trainerPhone) return c.trainerPhone; return lsGet("fiala.trainer.phone") || ""; };
+  function setTrainerPhone(v) {
+    v = String(v || "").trim(); lsSet("fiala.trainer.phone", v);
+    for (const c of clients.values()) { if (isTemplateClient(c.id)) continue; if ((c.trainerPhone || "") !== v) { c.trainerPhone = v; scheduleSave("clients", c.id); } }
+  }
+  function showExercises() {
+    settingsOpen = "exercises"; hideAllViews(); $("vExercises").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
+    exShown = 80; exOpenKey = null; renderExercises();
+  }
+  const videoForName = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = looseKey(ALIASES[s] || s); if (customVideos.has(looseKey(s))) return customVideos.get(looseKey(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
+  let exShown = 80, exOpenKey = null;
+  function exerciseMatches(q) {
+    const s = squash(q);
+    const all = ALL_NAMES.map((n, i) => [n, ALL_KEYS[i]]);
+    if (!s) return all.sort((x, y) => x[0].localeCompare(y[0]));
+    const exact = [], starts = [], contains = [];
+    for (const [n, k] of all) { if (k === s) exact.push([n, k]); else if (k.startsWith(s)) starts.push([n, k]); else if (k.includes(s)) contains.push([n, k]); }
+    starts.sort((x, y) => x[0].length - y[0].length || x[0].localeCompare(y[0])); contains.sort((x, y) => x[0].localeCompare(y[0]));
+    return exact.concat(starts, contains);
+  }
+  function renderExercises() {
+    const q = $("exSearch").value; const hits = exerciseMatches(q); const s = squash(q);
+    const ul = $("exList"); ul.replaceChildren();
+    $("exCount").textContent = s ? (hits.length ? hits.length + (hits.length === 1 ? " match" : " matches") : "No matches") : ALL_NAMES.length.toLocaleString() + " exercises";
+    for (const [name, key] of hits.slice(0, exShown)) ul.appendChild(exerciseRow(name, key));
+    $("exMore").hidden = hits.length <= exShown;
+    const canAdd = s.length >= 2 && !hits.some(([, k]) => k === s) && (hits.length === 0 || q.trim().split(/\s+/).length >= 2);
+    $("exEmpty").hidden = !canAdd;
+    const near = canAdd ? nearName(q) : null;
+    if (near) { $("exEmpty").innerHTML = ""; const b = document.createElement("button"); b.type = "button"; b.className = "btn quiet link"; b.textContent = "Did you mean “" + near + "”?"; b.addEventListener("click", () => { $("exSearch").value = near; exShown = 80; exOpenKey = null; renderExercises(); }); $("exEmpty").appendChild(b); }
+    else if (canAdd) { $("exEmpty").innerHTML = ""; const b = document.createElement("button"); b.type = "button"; b.className = "btn quiet link"; b.textContent = "Add “" + tidyName(q) + "” to the database"; b.addEventListener("click", async () => { b.disabled = true; const ok = await addCustomName(q); if (!ok) { b.disabled = false; $("status").textContent = "Couldn’t add · run supabase/exercises.sql, or try again online"; return; } $("exSearch").value = tidyName(q); renderExercises(); }); $("exEmpty").appendChild(b); }
+  }
+  function exerciseRow(name, key) {
+    const li = document.createElement("li"); li.dataset.key = key;
+    const b = document.createElement("button"); b.type = "button";
+    const mine = customNames.has(key); const vid = videoForName(name);
+    const pri = document.createElement("span"); pri.className = "pri"; pri.textContent = name;
+    const sec = document.createElement("span"); sec.className = "sec"; sec.innerHTML = (vid ? '<span class="dot">▶ video</span>' : "") + (vid && mine ? " · " : "") + (mine ? "yours" : "");
+    const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.innerHTML) left.append(sec);
+    const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "›";
+    b.append(left, chev);
+    const detail = document.createElement("div"); detail.className = "exdetail"; detail.hidden = key !== exOpenKey;
+    li.classList.toggle("open", key === exOpenKey);
+    if (!detail.hidden) buildExerciseDetail(detail, name, key);
+    b.addEventListener("click", () => {
+      const was = exOpenKey === key; const ul = $("exList");
+      const prev = ul.querySelector("li.open"); if (prev) { prev.classList.remove("open"); const d = prev.querySelector(".exdetail"); d.hidden = true; d.replaceChildren(); }
+      exOpenKey = was ? null : key;
+      if (!was) { li.classList.add("open"); buildExerciseDetail(detail, name, key); detail.hidden = false; li.scrollIntoView({ block: "nearest" }); }
+    });
+    li.append(b, detail); return li;
+  }
+  function buildExerciseDetail(box, name, key) {
+    box.replaceChildren();
+    const mine = customNames.has(key); const vid = videoForName(name); const vkey = looseKey(name);
+    if (mine) {
+      const inp = document.createElement("input"); inp.value = name; inp.setAttribute("autocapitalize", "sentences"); inp.setAttribute("autocomplete", "off"); inp.placeholder = "Name";
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
+      inp.addEventListener("blur", async () => { const nn = tidyName(inp.value); if (!nn || !squash(nn) || nn === name) { inp.value = name; return; } const ok = await renameCustom(key, nn); if (!ok) { inp.value = name; $("status").textContent = "Couldn’t rename · try again online"; return; } exOpenKey = squash(nn); renderExercises(); });
+      box._nameInput = inp; box.appendChild(inp);
+    }
+    const player = document.createElement("div"); player.className = "player"; player.hidden = true;
+    const actions = document.createElement("div"); actions.className = "row-actions";
+    const mk = (text, cls, fn) => { const x = document.createElement("button"); x.type = "button"; x.className = cls; x.textContent = text; x.addEventListener("click", fn); return x; };
+    if (vid) actions.appendChild(mk("▶ Watch video", "btn quiet link", () => { if (!player.hidden) { player.hidden = true; player.replaceChildren(); return; } player.replaceChildren(); const f = document.createElement("iframe"); f.src = "https://www.youtube-nocookie.com/embed/" + vid + "?playsinline=1&rel=0&modestbranding=1"; f.allow = "accelerometer; encrypted-media; picture-in-picture"; f.allowFullscreen = true; player.appendChild(f); player.hidden = false; }));
+    const form = document.createElement("div"); form.className = "vid-form"; form.hidden = true;
+    const url = document.createElement("input"); url.type = "url"; url.placeholder = "Paste a YouTube link"; url.setAttribute("autocomplete", "off"); url.setAttribute("autocapitalize", "none"); url.inputMode = "url";
+    const fa = document.createElement("div"); fa.className = "vid-actions";
+    fa.appendChild(mk("Save", "btn sm", async () => {
+      const id = youtubeId(url.value.trim()); if (!id) { $("status").textContent = "That doesn’t look like a YouTube link"; return; }
+      const error = await saveVideo(vkey, url.value.trim(), id);
+      if (error) { $("status").textContent = /ft_exercise_videos/.test(error.message) ? "Run supabase/exercise-videos.sql first" : "Couldn’t save the video"; return; }
+      setStatus(); renderExercises();
+    }));
+    fa.appendChild(mk("Cancel", "btn quiet", () => { form.hidden = true; }));
+    form.append(url, fa);
+    actions.appendChild(mk(vid ? "Change video" : "Add video", "btn quiet link", () => { form.hidden = !form.hidden; if (!form.hidden) { url.value = ""; url.focus(); } }));
+    if (customVideos.has(vkey)) actions.appendChild(mk("Remove video", "btn quiet danger-link", async () => { const error = await deleteVideo(vkey); if (error) { $("status").textContent = "Couldn’t remove the video"; return; } setStatus(); renderExercises(); }));
+    if (mine) { const rm = mk("Remove exercise", "btn quiet danger-link", async () => { const ok = await removeCustom(key); if (!ok) { $("status").textContent = "Couldn’t remove · try again online"; return; } exOpenKey = null; renderExercises(); }); rm.addEventListener("pointerdown", () => { if (box._nameInput) box._nameInput.value = name; }); actions.appendChild(rm); }
+    box.append(player, actions, form);
+  }
+  $("exSearch").addEventListener("input", () => { exShown = 80; exOpenKey = null; renderExercises(); });
+  $("exMore").addEventListener("click", () => { const hits = exerciseMatches($("exSearch").value); const ul = $("exList"); for (const [name, key] of hits.slice(exShown, exShown + 80)) ul.appendChild(exerciseRow(name, key)); exShown += 80; $("exMore").hidden = hits.length <= exShown; });
+  $("exSearch").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } });
+  async function removeCustom(k) {
+    if (!sb || !signedIn) return false;
+    const old = customNames.get(k);
+    const { error } = await sb.from("ft_exercises").delete().eq("name_key", k); if (error) return false;
+    customNames.delete(k); refreshNames();
+    if (old && customVideos.has(looseKey(old))) await deleteVideo(looseKey(old));
+    return true;
+  }
+  async function renameCustom(k, newName) {
+    const old = customNames.get(k); const nk = squash(newName);
+    if (!nk || !sb || !signedIn) return false;
+    const ov = looseKey(old), nv = looseKey(newName);
+    if (ov !== nv && customVideos.has(ov)) { const id = customVideos.get(ov); const e1 = await saveVideo(nv, "https://youtu.be/" + id, id); if (e1) return false; await deleteVideo(ov); }   // the video follows the name
+    if (nk !== k && !builtinKeys.has(nk) && !customNames.has(nk)) { const { error } = await sb.from("ft_exercises").upsert({ name_key: nk, name: newName }); if (error) return false; customNames.set(nk, newName); }
+    else if (nk === k) { const { error } = await sb.from("ft_exercises").update({ name: newName }).eq("name_key", k); if (error) return false; customNames.set(k, newName); }
+    if (nk !== k) { const ok = await removeCustom(k); if (!ok) return false; }
+    refreshNames();
+    // workouts and templates that use the old spelling follow the rename
+    for (const t of trainings.values()) {
+      let touched = false;
+      for (const r of t.rows || []) { if (r.name === old) { r.name = newName; touched = true; } if (Array.isArray(r.alts) && r.alts.includes(old)) { r.alts = r.alts.map((a) => (a === old ? newName : a)); touched = true; } }
+      if (touched) scheduleSave("trainings", t.id);
+    }
+    return true;
+  }
+  let pwTimer = 0;
+  function showPassword() {
+    clearTimeout(pwTimer); settingsOpen = "password"; hideAllViews(); $("vPassword").hidden = false; $("back").hidden = false; $("backLabel").textContent = fromSettings ? "Settings" : "Back"; $("brand").hidden = true;
+    $("pwMsg").textContent = ""; $("pwNew").value = ""; $("pwNew2").value = ""; $("pwBtn").disabled = false; $("pwUser").value = sessionEmail; $("status").textContent = "";
+  }
+  function showRecovery() {
+    hideAllViews(); $("vRecovery").hidden = false; $("recoveryBtn").disabled = false;
+    if (sb) sb.auth.getUser().then(({ data }) => { $("recoveryUser").value = (data && data.user && data.user.email) || ""; }).catch(() => {}); $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
+  }
+  let sessionEmail = "";
+  function showProblem(text) {
+    settingsOpen = false; hideAllViews(); $("vWaiting").hidden = false; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
+    $("waitingText").textContent = text;
+  }
+  function showWaiting() {
+    showProblem("Your account is ready, but " + (sessionEmail || "your email") + " is not linked to a client profile yet. Ask Michal to add this email to your profile, then tap Try again.");
+  }
+
+  let entering = false;
+  async function enterCloud(session) {
+    if (entering) return; entering = true;
+    try { await enterCloudNow(session); } finally { entering = false; }
+  }
+  async function enterCloudNow(session) {
+    const quiet = clientMode && offline && !!myClientId;    // the device copy is already on screen: swap in live data without a blank "Loading…"
+    settingsOpen = quiet ? settingsOpen : false;
+    signedIn = true; sessionEmail = session.user.email || "";
+    let trainer = await isTrainerAccount();
+    const remembered = lsGet("fiala.trainings.role");
+    if (trainer === null) {
+      if (remembered && remembered.email === sessionEmail) trainer = remembered.role === "trainer";
+      else { offline = true; offlineEntry = "remembered"; showProblem("Couldn\u2019t reach the server \u00b7 check your signal and tap Try again"); return; }   // resumeOnline retries the entry
+    } else lsSet("fiala.trainings.role", { email: sessionEmail, role: trainer ? "trainer" : "client" });
+    offlineEntry = null;
+    if (pendingOwner && pendingOwner !== sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
+      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear();
+    }
+    pendingOwner = sessionEmail; persistPending();
+    clientMode = trainer !== true;
+    document.body.classList.toggle("client", clientMode);
+    backend = clientMode ? clientBackend : cloudBackend;
+    if (!quiet) hideAllViews();
+    if (clientMode) {
+      for (const id of [...clients.keys()]) if (isTemplateClient(id) || norm(clients.get(id).email) !== norm(sessionEmail)) clients.delete(id);   // the device copy may belong to someone else
+      const mineIds = new Set(clients.keys()); for (const id of [...trainings.keys()]) if (!mineIds.has(trainings.get(id).clientId)) trainings.delete(id);
+      $("clientFoot").hidden = false;
+      if (!quiet) $("status").textContent = "Loading\u2026";
+      await syncDown();                                       // a success flushes the queue itself
+      setStatus();
+      return;
+    }
+    $("dataNote").textContent = "Synced to the cloud";
+    $("myExercises").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false; $("clientFoot").hidden = true;
+    render(); setStatus();
+    await syncDown();                                         // a success flushes the queue itself
+    seedTemplates().catch(() => {});
+  }
+
+  const isNetwork = (error) => /load failed|failed to fetch|network|fetch/i.test((error && error.message) || "");
+  const isOffline = (error) => !navigator.onLine || isNetwork(error);
+  const hasAuthToken = () => { try { return !!localStorage.getItem("sb-umurkxqswcjmubeucrzw-auth-token"); } catch { return false; } };
+  // flaky phone connections: retry a request that never reached the server (up to 3 tries)
+  async function withRetry(task) {
+    let last;
+    for (let i = 0; i < 3; i++) {
+      try { const res = await task(); if (!res.error || !isNetwork(res.error)) return res; last = res; }
+      catch (e) { last = { data: null, error: e }; if (!isNetwork(e)) return last; }
+      await new Promise((r) => setTimeout(r, 900 * (i + 1)));
+    }
+    return last;
+  }
+  const friendly = (error) => {
+    if (isNetwork(error)) return "Couldn\u2019t reach the server. Check your connection \u2014 try turning Wi-Fi off \u2014 and tap again.";
+    const m = (error && error.message) || "";
+    if (/email not confirmed/i.test(m)) return "Tap the link in the email we sent you first, then sign in.";
+    if (/invalid login credentials/i.test(m)) return "Wrong email or password.";
+    if (/different from the old/i.test(m)) return "That\u2019s already your password \u2014 choose a new one.";
+    if (/security purposes|rate limit|after \d+ seconds/i.test(m)) return "Please wait a minute and try again.";
+    return m || "Something went wrong. Please try again.";
+  };
+  $("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("loginMsg").textContent = "Signing in…"; $("loginBtn").disabled = true;
+    const { data, error } = await withRetry(() => sb.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPassword").value }));
+    $("loginBtn").disabled = false;
+    if (error) { $("loginMsg").textContent = friendly(error); return; }
+    $("loginMsg").textContent = "";
+    await enterCloud(data.session);
+  });
+  $("createBtn").addEventListener("click", showSignup);
+  $("suBack").addEventListener("click", () => showLogin(""));
+  $("suDoneBtn").addEventListener("click", () => showLogin(""));
+  $("signupForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = $("suName").value.trim(), email = $("suEmail").value.trim().toLowerCase(), phone = $("suPhone").value.trim();
+    const password = $("suPassword").value, again = $("suPassword2").value; const msg = $("suMsg");
+    if (!name) { msg.textContent = "Please enter your name."; $("suName").focus(); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg.textContent = "That email doesn\u2019t look right."; $("suEmail").focus(); return; }
+    if (phone.replace(/\D/g, "").length < 7) { msg.textContent = "Please enter your phone number."; $("suPhone").focus(); return; }
+    if (password.length < 8) { msg.textContent = "Use a password of at least 8 characters."; $("suPassword").focus(); return; }
+    if (password !== again) { msg.textContent = "The two passwords don\u2019t match."; $("suPassword2").focus(); $("suPassword2").select(); return; }
+    msg.textContent = "Creating your account\u2026"; $("suBtn").disabled = true;
+    let res; try { res = await sb.auth.signUp({ email, password, options: { data: { name, phone }, emailRedirectTo: location.origin + location.pathname } }); } catch (err) { res = { data: {}, error: err }; }
+    const { data, error } = res;
+    $("suBtn").disabled = false;
+    const sent = () => { $("loginEmail").value = email; $("suForm").hidden = true; $("suDone").hidden = false; $("suDoneText").textContent = "We sent a confirmation link to " + email + ". Open it on this phone, then come back here and sign in with your new password. Not there after a minute? Check Spam."; };
+    if (error && /security purposes|rate limit/i.test(error.message || "")) { sent(); return; }
+    if (error) { msg.textContent = friendly(error); return; }
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) { $("loginEmail").value = email; msg.textContent = "This email already has an account. Sign in instead, or use Forgot password."; return; }
+    if (data.session) { msg.textContent = ""; await enterCloud(data.session); return; }
+    sent();
+  });
+  $("passwordForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const password = $("pwNew").value, again = $("pwNew2").value; const msg = $("pwMsg");
+    if (password.length < 8) { msg.textContent = "Use a password of at least 8 characters."; $("pwNew").focus(); return; }
+    if (password !== again) { msg.textContent = "The two passwords don\u2019t match."; $("pwNew2").focus(); $("pwNew2").select(); return; }
+    msg.textContent = "Saving\u2026"; $("pwBtn").disabled = true;
+    const { error } = await withRetry(() => sb.auth.updateUser({ password }));
+    $("pwBtn").disabled = false;
+    if (error) { msg.textContent = friendly(error); return; }
+    msg.textContent = "Password changed."; $("pwNew").value = ""; $("pwNew2").value = "";
+    pwTimer = setTimeout(() => { if (settingsOpen === "password") { if (fromSettings) showSettings(); else { settingsOpen = false; hideAllViews(); render(); } } }, 1200);
+  });
+  $("settingsBtn").addEventListener("click", showSettings);
+  $("changePw").addEventListener("click", () => { fromSettings = true; showPassword(); });
+  $("myExercises").addEventListener("click", showExercises);
+  $("setNumber").addEventListener("click", () => { fromSettings = true; showNumber(); });
+  $("myPhone").addEventListener("change", () => { setTrainerPhone($("myPhone").value); $("myPhoneMsg").textContent = phoneDigits($("myPhone").value) ? "Saved. Clients now see Message Michal." : "Saved. Without a number clients see no button."; });
+  $("settingsBtn2").addEventListener("click", showSettings);
+  $("forgotBtn").addEventListener("click", async () => {
+    const email = $("loginEmail").value.trim();
+    if (!email) { $("loginMsg").textContent = "Type your email first, then tap Forgot password."; return; }
+    const { error } = await withRetry(() => sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname }));
+    $("loginMsg").textContent = error ? friendly(error) : "Check your email for a link to set a new password.";
+  });
+  $("recoveryForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const password = $("recoveryPassword").value;
+    if (password.length < 8) { $("recoveryMsg").textContent = "At least 8 characters."; return; }
+    if (password !== $("recoveryPassword2").value) { $("recoveryMsg").textContent = "The two passwords don\u2019t match."; return; }
+    $("recoveryMsg").textContent = "Saving\u2026"; $("recoveryBtn").disabled = true;
+    const { error } = await withRetry(() => sb.auth.updateUser({ password }));
+    $("recoveryBtn").disabled = false;
+    if (error) { $("recoveryMsg").textContent = friendly(error); return; }
+    recovering = false; $("recoveryPassword").value = ""; $("recoveryPassword2").value = "";
+    const { data: s } = await sb.auth.getSession();
+    if (s && s.session) await enterCloud(s.session); else showLogin("Password saved. Sign in.");
+  });
+  const signOutClient = async () => {
+    await flushNow();
+    if (dirty.size) { $("status").textContent = "Some weights are not saved yet \u00b7 try again when online"; return; }
+    const finish = () => {
+      for (const tm of timers.values()) clearTimeout(tm);
+      timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); failed = false;
+      clients.clear(); trainings.clear(); localBackend.save();
+      try { localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
+      offline = false; offlineEntry = null; pendingOwner = "";
+      view = { name: "clients" }; showLogin("");
+    };
+    const who = sessionEmail;
+    if (!signingOut) signingOut = sb.auth.signOut().catch((e) => ({ error: e })).finally(() => { signingOut = null; });
+    const out = await withTimeout(signingOut, 8000);
+    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && signedIn && sessionEmail === who) finish(); }); return; }
+    finish();
+  };
+  $("signout3").addEventListener("click", signOutClient);
+  $("retryBtn").addEventListener("click", async () => {
+    $("retryBtn").disabled = true;
+    try {
+      const { data, error } = await sb.auth.getSession().catch((e) => ({ data: null, error: e }));
+      const remembered = lsGet("fiala.trainings.role");
+      if (data && data.session) await enterCloud(data.session);
+      else if (remembered && remembered.email && (!navigator.onLine || isNetwork(error))) enterOffline(remembered);
+      else showLogin("");
+    } finally { $("retryBtn").disabled = false; }
+  });
+  const signOutTrainer = async () => {
+    await flushNow();
+    if (dirty.size) { $("status").textContent = "Some changes are not saved yet \u00b7 try again when online"; return; }
+    const finish = () => {
+      for (const tm of timers.values()) clearTimeout(tm);
+      timers.clear(); chains.clear(); dirty.clear(); trainerTouched.clear(); trainerNamed.clear(); failed = false;
+      clients.clear(); trainings.clear(); localBackend.save();
+      try { localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
+      offline = false; offlineEntry = null; pendingOwner = "";
+      view = { name: "clients" }; showLogin("");
+    };
+    const who = sessionEmail;
+    if (!signingOut) signingOut = sb.auth.signOut().catch((e) => ({ error: e })).finally(() => { signingOut = null; });
+    const out = await withTimeout(signingOut, 8000);
+    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && signedIn && sessionEmail === who) finish(); }); return; }
+    finish();
+  };
+  $("signout").addEventListener("click", () => (clientMode ? signOutClient() : signOutTrainer()));
+  async function flushNow() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); await flushOne(kind, id).catch(() => {}); } }
+
+  // ---------- data ops ----------
+  function addClient(name) {
+    const c = { id: uid(), name, notes: "", createdAt: now(), trainerPhone: trainerPhone() };
+    clients.set(c.id, c); scheduleSave("clients", c.id, 0);
+    go({ name: "client", id: c.id });
+  }
+  const localIso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  const effDate = (t) => t.completedAt ? localIso(new Date(t.completedAt)) : (t.date || "");
+  function clientTrainings(clientId) {
+    return [...trainings.values()].filter((t) => t.clientId === clientId)
+      .sort((a, b) => effDate(b).localeCompare(effDate(a)) || (b.createdAt || "").localeCompare(a.createdAt || ""));
+  }
+  function newRow(label) { return { id: uid(), label, name: "", sets: 4, reps: "", tempo: "", rest: "", weights: [], note: "" }; }
+  function nextLabel(t) { let max = 0; for (const r of t.rows) { const n = labelKey(r.label)[0]; if (Number.isFinite(n)) max = Math.max(max, n); } return String(max + 1); }
+  const freshRow = (r) => { const x = { ...r, id: uid(), weights: [], repsDone: [], setsDone: 0, done: false, alts: [...(r.alts || [])] }; delete x.earlyReason; return x; };   // the plan, with nothing logged
+  function addTraining(clientId, from, date) {
+    const t = {
+      id: uid(), clientId, date: date || today(), createdAt: now(),
+      title: from ? from.title : "", completedAt: null, skippedAt: null,
+      rows: from ? from.rows.map((r) => freshRow(r)) : [],
+    };
+    if (from && from.fromTemplate) t.fromTemplate = from.fromTemplate;
+    trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
+    go({ name: "training", id: t.id });
+  }
+  const isEmptyWorkout = (t) => !!t && !t.completedAt && !t.skippedAt && !(t.rows || []).length && !String(t.title || "").trim() && !isTemplateClient(t.clientId);
+  function deleteTraining(id) {
+    const t = trainings.get(id); if (!t) return;
+    if (templateDraft && templateDraft.id === id) { templateDraft = null; pendingGo = null; paintDraftBar(); }
+    trainings.delete(id); scheduleSave("trainings", id, 0);
+    go({ name: "client", id: t.clientId });
+  }
+  function deleteClient(id) {
+    for (const t of clientTrainings(id)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
+    clients.delete(id); scheduleSave("clients", id, 0);
+    go({ name: "clients" });
+  }
+  // Weights from the most recent earlier training of this client with the same exercise.
+  function lastWeights(t, row) {
+    const canon = (x) => squash(ALIASES[String(x || "").trim()] || x); // "Push-ups" logged last month still counts for "Push-up"
+    const name = canon(row.name); if (!name) return null;
+    for (const other of clientTrainings(t.clientId)) {
+      if (other.id === t.id) continue;
+      if (effDate(other) > effDate(t)) continue;
+      if (effDate(other) === effDate(t) && (other.createdAt || "") >= (t.createdAt || "")) continue;
+      const r = other.rows.find((x) => canon(x.name) === name && (x.weights || []).some((w) => String(w || "").trim() !== ""));
+      if (r) return { date: other.date, weights: r.weights, reps: r.repsDone || [] };
+    }
+    return null;
+  }
+
+  // ---------- navigation ----------
+  function go(next) {
+    if (templateDraft && templateDraft.dirty && view.name === "training" && view.id === templateDraft.id) {
+      pendingGo = next; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
+    }
+    if (!(next.name === "client" && isTemplateClient(next.id))) { pickFor = null; fillFor = null; }
+    if (!clientMode && (!sb || syncedOnce) && view.name === "training" && !(next.name === "training" && next.id === view.id) && fillFor !== view.id) {   // leaving an empty workout behind discards it, like an empty note (not while it waits for a template, not before the first sync)
+      const t = trainings.get(view.id); if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
+    }
+    reordering = false; view = next; lsSet("fiala.trainings.view", view); render(); window.scrollTo(0, 0); }
+  $("back").addEventListener("click", () => {
+    if (settingsOpen) {
+      if (fromSettings && settingsOpen !== "settings") { showSettings(); window.scrollTo(0, 0); return; }
+      settingsOpen = false; fromSettings = false; $("exList").querySelectorAll(".player iframe").forEach((f) => f.remove()); hideAllViews(); render(); window.scrollTo(0, 0); return;
+    }
+    if (view.name === "training") { const t = trainings.get(view.id); go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }); }
+    else if (view.name === "client" && isTemplateClient(view.id) && view.phase) go({ name: "client", id: TEMPLATES_ID, program: view.program });
+    else if (view.name === "client" && isTemplateClient(view.id) && view.program) go({ name: "client", id: TEMPLATES_ID });
+    else go({ name: "clients" });
+  });
+
+  // ---------- render ----------
+  // ---- keyboard bar (above the phone keyboard): 123/ABC switch, quick entries, Next/Done. The number keypad on iPhone has no Return key.
+  const kbbar = $("kbbar"), kbMode = kbbar.querySelector(".kb-mode"), kbChips = kbbar.querySelector(".kb-chips"), kbDone = kbbar.querySelector(".kb-done");
+  let kbTarget = null;
+  const kbKind = (el) => {
+    if (!el || el.tagName !== "INPUT" || el.readOnly) return "";
+    if (el.closest(".boxes")) return "weights";
+    if (el.closest(".setlog")) return el.classList.contains("w") ? "weights" : "repsdone";
+    if (el.classList.contains("reps")) return "reps";
+    if (el.classList.contains("tempo")) return "tempo";
+    if (el.classList.contains("rest")) return "rest";
+    return "";
+  };
+  function placeKb() {
+    const vv = window.visualViewport;
+    if (vv) kbbar.style.top = Math.round(vv.offsetTop + vv.height - kbbar.offsetHeight) + "px";
+    else { kbbar.style.top = "auto"; kbbar.style.bottom = "0"; }
+  }
+  const kbFire = (t) => t.dispatchEvent(new Event("input", { bubbles: true }));
+  const kbSibling = (t) => { const pair = t.closest(".setlog .pair"); if (pair) { const ins = [...pair.querySelectorAll("input")]; return ins[ins.indexOf(t) + 1] || null; } return t.closest(".boxes") ? t.nextElementSibling : null; };
+  function kbNext() { const t = kbTarget; if (!t) return; const nx = kbSibling(t); if (nx) nx.focus(); else t.blur(); }
+  const kbSet = (v, stay) => { const t = kbTarget; if (!t) return; t.value = v; kbFire(t); if (!stay) kbNext(); };
+  const kbInsert = (s) => { const t = kbTarget; if (!t) return; const a = t.selectionStart == null ? t.value.length : t.selectionStart, b = t.selectionEnd == null ? a : t.selectionEnd; t.value = t.value.slice(0, a) + s + t.value.slice(b); try { t.setSelectionRange(a + s.length, a + s.length); } catch (_) {} kbFire(t); };
+  function paintKb() {
+    const t = kbTarget; if (!t) return;
+    const kind = kbKind(t);
+    kbMode.textContent = t.inputMode === "text" ? "123" : "ABC";
+    kbChips.replaceChildren();
+    const chip = (label, fn) => { const b = document.createElement("button"); b.type = "button"; b.tabIndex = -1; b.textContent = label; b.addEventListener("click", fn); kbChips.appendChild(b); };
+    const unitChip = (u) => chip(u, () => { const v = kbTarget.value.trim().replace(/\s*(sec|s|min)$/i, ""); if (v) kbSet(v + " " + u, true); }); // 60 → 60 sec, 4 min → 4 sec
+    if (kind === "weights") { chip("BW", () => kbSet("BW")); unitChip("sec"); }
+    const sideChip = (w) => chip(w, () => { const v = kbTarget.value.trim().replace(/\s*(\/|each|per)\s*(side|leg|arm)$/i, ""); if (v) kbSet(v + " " + w, true); });   // 7 → "7 / side"
+    if (kind === "reps") { chip("\u2013", () => kbInsert("\u2013")); sideChip("/ side"); unitChip("sec"); }
+    if (kind === "tempo") { chip("X", () => kbInsert("X")); for (const w of ["Normal", "Controlled", "Slow"]) chip(w, () => kbSet(w, true)); for (const c of ["3010", "4010", "10X0", "41X0"]) chip(c, () => kbSet(c, true)); }
+    if (kind === "rest") { unitChip("sec"); unitChip("min"); }
+    kbDone.textContent = (kind === "weights" && kbSibling(t)) ? "Next" : "Done";
+  }
+  function showKb(el) {
+    kbTarget = el; paintKb(); kbbar.hidden = false; placeKb(); $("draftBar").classList.add("kb");
+    if (window.visualViewport) { window.visualViewport.addEventListener("resize", placeKb); window.visualViewport.addEventListener("scroll", placeKb); }
+  }
+  function hideKb() {
+    kbTarget = null; kbbar.hidden = true; $("draftBar").classList.remove("kb");
+    if (window.visualViewport) { window.visualViewport.removeEventListener("resize", placeKb); window.visualViewport.removeEventListener("scroll", placeKb); }
+  }
+  kbbar.addEventListener("pointerdown", (e) => e.preventDefault()); // taps on the bar must not take focus (and the keyboard) away from the box
+  kbbar.addEventListener("mousedown", (e) => e.preventDefault());
+  kbMode.addEventListener("click", () => {
+    const t = kbTarget; if (!t) return;
+    const text = t.inputMode !== "text";
+    const group = t.closest(".boxes") ? [...t.closest(".boxes").children] : [t];
+    for (const b of group) b.inputMode = text ? "text" : "decimal";
+    t.blur(); setTimeout(() => t.focus(), 50);   // the phone reads the keyboard type when the box takes focus
+  });
+  kbDone.addEventListener("click", kbNext);
+  document.addEventListener("focusin", (e) => { if (kbKind(e.target)) showKb(e.target); else if (kbTarget) hideKb(); });
+  document.addEventListener("focusout", () => { setTimeout(() => { if (!kbKind(document.activeElement)) hideKb(); }, 80); });
+
+  let renderedTraining = null;
+  let closeOpenAlt = null;
+  // ---- templates: workouts filed under a built-in "Templates" entry; clients never receive them (their data is read per client id)
+  const TEMPLATES_ID = "00000000-0000-4000-8000-0000000000f1";
+  const TEMPLATES_VERSION = 3;           // 2: Lean Type + Muscle Type added; 3: reps repaired
+  const MY_TEMPLATES = "My templates";
+  const isTemplateClient = (id) => id === TEMPLATES_ID;
+  let pickFor = null;                      // client id while choosing a template for them
+  let fillFor = null;                      // training id: an empty workout waiting to be filled from a template
+  const lastUse = lsGet("fiala.templates.last") || { template: null, client: null };   // where he was when he last used a template
+  let flashTemplate = null;                // template id to scroll to and flash on the Templates page
+  let seeding = false;                     // a sync must not run while the templates are being written
+  async function seedTemplates() {
+    if (clientMode || seeding) return;
+    let tc = clients.get(TEMPLATES_ID);
+    if (tc && (tc.templatesVersion || 0) >= TEMPLATES_VERSION) return;
+    seeding = true;
+    try { await seedTemplatesNow(tc); } finally { seeding = false; }
+  }
+  async function seedTemplatesNow(tc) {
+    let list;
+    try { const res = await fetch("templates.json", { cache: "no-store" }); if (!res.ok) return; list = await res.json(); } catch { return; }
+    if (!tc) { tc = { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }; clients.set(tc.id, tc); }
+    const fresh = [];
+    for (const T of list) {
+      const have = trainings.get(T.id);
+      if (have) {                                   // version 3 repair: reps that were wrongly given a "sec" unit
+        let fixed = false;
+        for (const r of have.rows || []) { const src = T.rows.find((x) => x.label === r.label && x.name === r.name); if (src && r.reps === src.reps + " sec") { r.reps = src.reps; fixed = true; } }
+        if (fixed) fresh.push(have);
+        continue;
+      }
+      const t = { id: T.id, clientId: TEMPLATES_ID, date: "2026-01-01", createdAt: now(), title: T.sub || "", completedAt: null, skippedAt: null,
+        template: { program: T.program, phase: T.phase, stage: T.stage, n: T.n, phaseName: T.phaseName || "" },
+        rows: T.rows.map((r) => ({ id: uid(), label: r.label, name: r.name, sets: r.sets, reps: r.reps || "", tempo: r.tempo || "", rest: r.rest || "", weights: [], note: r.note || "", done: false, alts: r.alts || [] })) };
+      trainings.set(t.id, t); fresh.push(t);
+    }
+    tc.templatesVersion = TEMPLATES_VERSION;
+    localBackend.save();
+    if (sb && signedIn && fresh.length) {
+      $("status").textContent = "Adding templates\u2026";
+      for (let i = 0; i < fresh.length; i += 60) {
+        const chunk = fresh.slice(i, i + 60).map((t) => ({ id: t.id, client_id: TEMPLATES_ID, data: t }));
+        const { data, error } = await sb.from("ft_trainings").upsert(chunk).select("id,updated_at");
+        if (error) { for (const t of fresh.slice(i)) scheduleSave("trainings", t.id, 0); break; }   // the queue finishes the job later
+        for (const r of data || []) seenAt.set(key("trainings", r.id), r.updated_at);
+      }
+    } else { for (const t of fresh) scheduleSave("trainings", t.id, 0); }
+    scheduleSave("clients", TEMPLATES_ID, 0);
+    render(); setStatus();
+  }
+  function templateMeta(t) { return t.template || { program: MY_TEMPLATES, phase: 0, stage: 0, n: 0, phaseName: "" }; }
+  function templateTitle(t) { const m = templateMeta(t); return (m.n ? "Workout " + m.n : "") + (t.title ? (m.n ? " \u00b7 " : "") + t.title : "") || "Template"; }
+  function templatePath(T) { const m = templateMeta(T); return [m.program, m.phase ? "Phase " + m.phase : "", m.stage ? "Stage " + m.stage : "", m.n ? "Workout " + m.n : (T.title || "")].filter(Boolean).join(" \u00b7 "); }
+  // ---- our own day picker (Monday first, the client's workouts marked), used wherever a date is chosen
+  let dp = null;                          // { clientId, title, selected, month, onPick }
+  const fmtDay = (s) => { if (!s) return ""; const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d, 12).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", ...(y !== new Date().getFullYear() ? { year: "numeric" } : {}) }); };
+  // "Finish early" asks first. What's logged stays, the remaining sets stay open, and the reason (if any) lands on the card.
+  let es = null;                                                   // { t, g, selKey, reason } while the sheet is up
+  function markEarly(t, r, reason) {                               // the note on why; "" clears it
+    if (reason) r.earlyReason = reason; else delete r.earlyReason;
+    if (clientMode) { if (!pendingEarlyRows.has(t.id)) pendingEarlyRows.set(t.id, new Set()); pendingEarlyRows.get(t.id).add(r.id); }
+  }
+  const openNotes = new Set();                                   // exercise rows whose note the client opened (this session)
+  const noteDraft = new Map();                                   // clientId -> what is typed in the notes box and not saved yet
+  const tNoteDraft = new Map(); let tNoteOpenFor = null;          // the same for the note box on a workout page
+  const growBox = (ta) => { ta.style.height = "auto"; ta.style.height = Math.max(96, ta.scrollHeight) + "px"; };
+  const openNoteGroups = new Set(), armedNotes = new Set(), deletedNotes = new Set();
+  const openNoteIds = new Set();                                 // long notes opened in full (this session)
+  // notes stay inside c.notes, the one key the server strips before a client's phone gets the record:
+  // a string is the old single note (shown as "Earlier"), an object { log: [{ id, at, text }] } is the dated list
+  const noteEntries = (c) => {
+    const n = c && c.notes;
+    const raw = n && typeof n === "object" && Array.isArray(n.log) ? n.log : [];
+    const list = raw.filter((x) => x && typeof x === "object" && typeof x.text === "string")
+      .map((x) => ({ id: String(x.id || uid()), at: x.at && !isNaN(new Date(x.at)) ? String(x.at) : null, text: x.text,
+        workout: x.workout && typeof x.workout === "object" && x.workout.id ? { id: String(x.workout.id), title: String(x.workout.title || ""), date: String(x.workout.date || "") } : null }));
+    if (typeof n === "string" && n.trim()) list.push({ id: "legacy", at: null, text: n });
+    return list;
+  };
+  const packNotes = (list) => ({ log: list.map((x) => ({ id: x.id === "legacy" ? uid() : x.id, at: x.at, text: x.text, ...(x.workout ? { workout: x.workout } : {}) })) });
+  const writeNotes = (c, list) => { c.notes = packNotes(list); scheduleSave("clients", c.id); };   // only ever from Save / Delete: a redraw never writes
+  const mergeNotes = (mine, theirs) => {                          // another device saved first: keep both sets; what this device deleted stays deleted
+    const a = noteEntries({ notes: mine }), b = noteEntries({ notes: theirs }), ids = new Set(a.map((x) => x.id));
+    const extra = b.filter((x) => x.id !== "legacy" && !ids.has(x.id) && !deletedNotes.has(x.id));
+    return extra.length ? packNotes([...a, ...extra]) : mine;
+  };
+  function renderNotes(c) {
+    const wrap = $("noteList"); wrap.replaceChildren(); if (clientMode) return;
+    const entries = noteEntries(c).sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
+    const t = today(), base = new Date(t + "T12:00:00"), monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
+    const mondayIso = localIso(monday), yIso = localIso(new Date(base.getTime() - 86400000));
+    const groups = new Map();                                                    // "This week", then this year's months, then years, then "Earlier"
+    for (const n of entries) {
+      const day = n.at ? localIso(new Date(n.at)) : "";
+      let key, title;
+      if (!day) { key = "earlier"; title = "Earlier"; }
+      else if (day >= mondayIso) { key = "week"; title = "This week"; }
+      else if (day.slice(0, 4) === t.slice(0, 4)) { key = day.slice(0, 7); title = new Date(day + "T12:00:00").toLocaleDateString(undefined, { month: "long" }); }
+      else { key = day.slice(0, 4); title = day.slice(0, 4); }
+      if (!groups.has(key)) groups.set(key, { title, items: [] }); groups.get(key).items.push(n);
+    }
+    // every group starts folded; what he opens stays open for the session
+    const when = (n) => {
+      if (!n.at) return "Earlier";
+      const d = new Date(n.at), day = localIso(d);
+      const dd = day === t ? "Today" : day === yIso ? "Yesterday" : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      return dd + " \u00b7 " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    };
+    for (const [key, g] of groups) {
+      const sec = document.createElement("div"); sec.className = "month";
+      const head = document.createElement("button"); head.type = "button";
+      head.innerHTML = "<span></span><span class=\"sub\"></span>";
+      head.firstChild.textContent = g.title; head.lastChild.textContent = g.items.length + (g.items.length === 1 ? " note" : " notes") + " \u203a";
+      const gk = c.id + "/" + key;
+      const card = document.createElement("div"); card.className = "list notes"; card.hidden = !openNoteGroups.has(gk);
+      for (const n of g.items) {
+        const row = document.createElement("div"); row.className = "entry";
+        const top = document.createElement("div"); top.className = "when";
+        const stamp = document.createElement("span"); stamp.textContent = when(n);
+        const ask = document.createElement("span"); ask.className = "ask";
+        if (armedNotes.has(n.id)) {
+          const q = document.createElement("span"); q.textContent = "Delete this note?";
+          const go = document.createElement("button"); go.type = "button"; go.className = "go"; go.textContent = "Delete";
+          go.addEventListener("click", () => { deletedNotes.add(n.id); armedNotes.delete(n.id); writeNotes(c, noteEntries(c).filter((x) => x.id !== n.id)); renderNotes(c); });
+          const keep = document.createElement("button"); keep.type = "button"; keep.className = "keep"; keep.textContent = "Keep";
+          keep.addEventListener("click", () => { armedNotes.delete(n.id); renderNotes(c); });
+          ask.append(q, go, keep);
+        } else {
+          const del = document.createElement("button"); del.type = "button"; del.textContent = "Delete";
+          del.addEventListener("click", () => { armedNotes.clear(); armedNotes.add(n.id); renderNotes(c); const k = wrap.querySelector(".entry .keep"); if (k) k.focus({ preventScroll: true }); });
+          ask.appendChild(del);
+        }
+        top.append(stamp, ask);
+        let ref = null;
+        if (n.workout) {                                                       // written with a session: say which, and open it on a tap
+          ref = document.createElement("button"); ref.type = "button"; ref.className = "ref";
+          const d = /^\d{4}-\d{2}-\d{2}$/.test(n.workout.date) ? new Date(n.workout.date + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "";
+          ref.textContent = [n.workout.title || "Workout", d].filter(Boolean).join(" \u00b7 ") + " \u203a";
+          ref.addEventListener("click", () => { if (trainings.has(n.workout.id)) go({ name: "training", id: n.workout.id }); });
+        }
+        const text = document.createElement("div"); text.className = "text"; text.textContent = n.text;
+        const opened = openNoteIds.has(n.id); text.classList.toggle("clamp", !opened);
+        const more = document.createElement("button"); more.type = "button"; more.className = "more"; more.textContent = opened ? "Less" : "More"; more.hidden = !opened;   // "More" appears once we know the note overflows
+        const toggle = () => { if (openNoteIds.has(n.id)) openNoteIds.delete(n.id); else openNoteIds.add(n.id); renderNotes(c); };
+        more.addEventListener("click", toggle);
+        text.addEventListener("click", () => { if (!more.hidden) toggle(); });
+        row.append(top); if (ref) row.append(ref); row.append(text, more); card.appendChild(row);
+      }
+      head.addEventListener("click", () => { if (card.hidden) openNoteGroups.add(gk); else openNoteGroups.delete(gk); card.hidden = !card.hidden; fitNotes(card); });
+      sec.append(head, card); wrap.appendChild(sec);
+    }
+    setTimeout(() => fitNotes(wrap), 0);
+  }
+  function fitNotes(root) {                                      // show "More" only under notes that really run past three lines
+    for (const el of root.querySelectorAll(".entry .text.clamp")) { const more = el.nextElementSibling; if (more && more.classList.contains("more")) more.hidden = !(el.scrollHeight > el.clientHeight + 1); }
+  }
+  const groupWord = (g) => g.key === "w" ? "warmup" : g.rows.length === 2 ? "superset" : g.rows.length === 3 ? "tri-set" : g.rows.length > 3 ? "giant set" : "exercise";
+  function openFinishEarly(t, g, selKey) {
+    const total = Math.max(...g.rows.map(setsOf));
+    const did = Math.min(...g.rows.map((r) => clamp(parseInt(r.setsDone, 10) || 0, 0, 20)));
+    const left = total - did, word = (n) => n + (n === 1 ? " set" : " sets");
+    es = { t, g, selKey, reason: "" };
+    $("esTitle").textContent = "Finish this " + groupWord(g) + "?";
+    $("esLead").textContent = did > 0 ? did + " of " + word(total) + " completed." : "No sets completed yet.";
+    $("esFine").textContent = (did > 0 ? "What you logged stays saved. " : "") + "The remaining " + word(left) + " will stay incomplete.";
+    for (const b of $("esReasons").querySelectorAll("button")) { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); }
+    $("earlySheet").hidden = false;
+    setTimeout(() => { if (es) $("esGo").focus({ preventScroll: true }); }, 0);
+  }
+  function closeFinishEarly() { $("earlySheet").hidden = true; es = null; }
+  function finishEarlyNow() {
+    if (!es) return;
+    const { t, g, selKey, reason } = es; closeFinishEarly();
+    for (const r of g.rows) { r.done = true; markEarly(t, r, reason); const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
+    openBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id);
+    haptic(); renderedTraining = null; render(); scrollToCard(g.key);
+  }
+  function openDatePicker(opts) {
+    const selected = opts.selected || today();
+    dp = { clientId: opts.clientId, title: opts.title || "Pick a day", selected, month: selected.slice(0, 7), onPick: opts.onPick, back: document.activeElement };
+    renderDatePicker(); $("datePick").hidden = false;
+    for (const el of document.querySelectorAll("main, header")) el.inert = true;
+    setTimeout(() => { const f = $("dpGrid").querySelector("button.sel") || $("dpCancel"); if (f && dp) f.focus({ preventScroll: true }); }, 0);
+  }
+  function closeDatePicker() {
+    const back = dp && dp.back; $("datePick").hidden = true; dp = null;
+    for (const el of document.querySelectorAll("main, header")) el.inert = false;
+    if (back && typeof back.focus === "function" && document.contains(back)) back.focus({ preventScroll: true });
+  }
+  function renderDatePicker() {
+    if (!dp) return;
+    const list = clientTrainings(dp.clientId);
+    const [y, m] = dp.month.split("-").map(Number); const first = new Date(y, m - 1, 1, 12);
+    $("dpTitle").textContent = dp.title; $("dpMonth").textContent = monthTitle(dp.month); $("dpToday").hidden = dp.month === today().slice(0, 7);
+    const grid = $("dpGrid"); grid.replaceChildren();
+    const lead = (first.getDay() + 6) % 7;
+    for (let i = 0; i < lead; i++) { const b = document.createElement("button"); b.type = "button"; b.className = "out"; b.tabIndex = -1; b.setAttribute("aria-hidden", "true"); grid.appendChild(b); }
+    const days = new Date(y, m, 0).getDate();
+    for (let day = 1; day <= days; day++) {
+      const d = new Date(y, m - 1, day, 12); const key = localIso(d);
+      const dayWorkouts = list.filter((t) => effDate(t) === key && !(t.skippedAt && !t.completedAt));
+      const b = document.createElement("button"); b.type = "button";
+      if (key === today()) { b.classList.add("today"); b.setAttribute("aria-current", "date"); }
+      if (key === dp.selected) b.classList.add("sel");
+      if (dayWorkouts.length) b.classList.add(dayWorkouts.every((t) => t.completedAt) ? "finished" : "planned");
+      const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(day);
+      const dot = document.createElement("span"); dot.className = "dot";
+      b.append(dn, dot);
+      b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + (dayWorkouts.length ? ", " + dayWorkouts.length + (dayWorkouts.length === 1 ? " workout" : " workouts") : ""));
+      b.addEventListener("click", () => { const pick = dp && dp.onPick; closeDatePicker(); if (pick) pick(key); });
+      grid.appendChild(b);
+    }
+  }
+  function applyTemplate(T, clientId, date) {
+    lastUse.template = T.id; lastUse.client = clientId; lsSet("fiala.templates.last", lastUse);
+    addTraining(clientId, { ...T, title: T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : ""), fromTemplate: T.id }, date || today());
+  }
+  function fillFromTemplate(T) {                                        // an empty workout takes the template's exercises and name, and stays on its day
+    const id = fillFor, target = trainings.get(id); fillFor = null; pickFor = null;
+    if (!target) { render(); return; }
+    lastUse.template = T.id; lastUse.client = target.clientId; lsSet("fiala.templates.last", lastUse);
+    if (!String(target.title || "").trim()) target.title = T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : "");
+    target.rows = (T.rows || []).map((r) => freshRow(r));
+    target.fromTemplate = T.id;
+    scheduleSave("trainings", target.id, 0); renderedTraining = null; go({ name: "training", id });
+  }
+  function backToTemplates(tid) {
+    const T = trainings.get(tid);
+    flashTemplate = tid; pickFor = null;
+    if (!clients.has(TEMPLATES_ID)) return;
+    go(T ? templateHome(T) : { name: "client", id: TEMPLATES_ID });
+    requestAnimationFrame(() => { const li = document.querySelector('#tplList li[data-tid="' + tid + '"]'); if (li) { li.scrollIntoView({ block: "center" }); li.classList.add("flash"); setTimeout(() => li.classList.remove("flash"), 1300); } });
+  }
+  $("fromTpl").addEventListener("click", () => { const t = trainings.get(view.id); if (t && t.fromTemplate) backToTemplates(t.fromTemplate); });
+  function saveAsTemplate(src) {
+    const mine = [...trainings.values()].filter((t) => isTemplateClient(t.clientId) && templateMeta(t).program === MY_TEMPLATES);
+    const t = { id: uid(), clientId: TEMPLATES_ID, date: "2026-01-01", createdAt: now(), title: src.title || "", completedAt: null, skippedAt: null,
+      template: { program: MY_TEMPLATES, phase: 0, stage: 0, n: mine.length + 1 },
+      rows: src.rows.map((r) => freshRow(r)) };
+    if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); }
+    trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
+    go({ name: "training", id: t.id });
+  }
+  const PROG_ORDER = [MY_TEMPLATES, "Fat Burn", "Hypertrophy", "Strength", "Lean Type", "Muscle Type"];
+  const progRank = (p) => (PROG_ORDER.indexOf(p) + 1 || 99);
+  function tplRow(t, pick) {
+    const li = document.createElement("li"); li.dataset.tid = t.id; if (t.id === lastUse.template) li.classList.add("last-used");
+    const b = document.createElement("button"); b.type = "button";
+    const m = templateMeta(t);
+    const pri = document.createElement("span"); pri.className = "pri"; pri.textContent = m.n ? "Workout " + m.n : (t.title || "Template");
+    const sec = document.createElement("span"); sec.className = "sec"; sec.textContent = m.n ? (t.title || "") : (t.rows.length + (t.rows.length === 1 ? " exercise" : " exercises"));
+    const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.textContent) left.append(sec);
+    const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = pick ? "Use" : "›"; if (pick) chev.style.color = "var(--brand)";
+    b.append(left, chev);
+    b.addEventListener("click", () => { if (pick) { if (fillFor) { fillFromTemplate(trainings.get(t.id) || t); return; } const cid = pickFor; const who = clients.get(cid); openDatePicker({ clientId: cid, title: "Add to " + ((who && who.name) || "client"), onPick: (date) => { pickFor = null; applyTemplate(trainings.get(t.id) || t, cid, date); } }); } else go({ name: "training", id: t.id }); });
+    li.appendChild(b); return li;
+  }
+  function navRow(title, sub, onClick) {
+    const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
+    b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = title; b.lastChild.textContent = sub; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
+    b.addEventListener("click", onClick); li.appendChild(b); return li;
+  }
+  const h2 = (text) => { const e = document.createElement("h2"); e.textContent = text; e.style.marginTop = "24px"; return e; };
+  function renderTemplates(c) {
+    const all = clientTrainings(c.id);
+    const wrap = $("tplList"); wrap.replaceChildren(); wrap.hidden = false;
+    const prog = view.program || null, ph = view.phase || null;
+    $("pickNote").hidden = !pickFor;
+    if (pickFor) { const pc = clients.get(pickFor); $("pickNote").innerHTML = "Choose a workout for <b></b> · <button class=\"btn quiet\" type=\"button\" id=\"pickCancel\">Cancel</button>"; $("pickNote").querySelector("b").textContent = pc ? pc.name : "the client"; $("pickCancel").addEventListener("click", () => { pickFor = null; fillFor = null; render(); }); }
+    $("newTraining").hidden = !!prog;
+    const byProg = new Map();
+    for (const t of all) { const m = templateMeta(t); if (!byProg.has(m.program)) byProg.set(m.program, []); byProg.get(m.program).push(t); }
+    const wn = (n) => n + (n === 1 ? " workout" : " workouts");
+    if (!prog) {                                             // level 1: programs
+      $("tplKicker").textContent = "Workout library"; $("cName").value = "Templates";
+      const mine = (byProg.get(MY_TEMPLATES) || []).sort((x, y) => templateMeta(x).n - templateMeta(y).n);
+      if (mine.length) { wrap.appendChild(h2("My templates")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...mine.map((t) => tplRow(t, !!pickFor))); wrap.appendChild(ul); }
+      const progs = [...byProg.keys()].filter((p) => p !== MY_TEMPLATES).sort((x, y) => progRank(x) - progRank(y) || x.localeCompare(y));
+      if (progs.length) { wrap.appendChild(h2("Programs")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...progs.map((p) => navRow(p, wn(byProg.get(p).length), () => go({ ...view, program: p, phase: null, stage: null })))); wrap.appendChild(ul); }
+      if (!all.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "No templates yet. Open a workout and tap Save as template."; wrap.appendChild(e); }
+      return;
+    }
+    const items = byProg.get(prog) || [];
+    if (!ph) {                                               // level 2: phases of a program
+      $("tplKicker").textContent = "Templates"; $("cName").value = prog;
+      const phases = new Map();
+      for (const t of items) { const m = templateMeta(t); if (!phases.has(m.phase)) phases.set(m.phase, []); phases.get(m.phase).push(t); }
+      wrap.appendChild(h2("Phases")); const ul = document.createElement("ul"); ul.className = "list";
+      for (const [n, pitems] of [...phases.entries()].sort((x, y) => x[0] - y[0])) {
+        const pn = (pitems.find((t) => templateMeta(t).phaseName) || { template: {} }).template.phaseName || "";
+        ul.appendChild(navRow("Phase " + n + (pn ? " · " + pn : ""), wn(pitems.length), () => go({ ...view, phase: n, stage: 1 })));
+      }
+      wrap.appendChild(ul); return;
+    }
+    const pitems = items.filter((t) => templateMeta(t).phase === ph);   // level 3: stage tabs + workouts
+    const pn = (pitems.find((t) => templateMeta(t).phaseName) || { template: {} }).template.phaseName || "";
+    $("tplKicker").textContent = prog; $("cName").value = "Phase " + ph + (pn ? " · " + pn : "");
+    const stages = [...new Set(pitems.map((t) => templateMeta(t).stage))].sort((x, y) => x - y);
+    const cur = stages.includes(view.stage) ? view.stage : stages[0];
+    const seg = document.createElement("div"); seg.className = "seg stages"; seg.setAttribute("role", "tablist");
+    for (const s of stages) { const b = document.createElement("button"); b.type = "button"; b.textContent = "Stage " + s; b.classList.toggle("on", s === cur); b.addEventListener("click", () => { view.stage = s; lsSet("fiala.trainings.view", view); renderTemplates(c); }); seg.appendChild(b); }
+    wrap.appendChild(seg);
+    const ul = document.createElement("ul"); ul.className = "list"; ul.style.marginTop = "16px";
+    ul.replaceChildren(...pitems.filter((t) => templateMeta(t).stage === cur).sort((x, y) => templateMeta(x).n - templateMeta(y).n).map((t) => tplRow(t, !!pickFor)));
+    wrap.appendChild(ul);
+  }
+  const templateHome = (t) => { const m = templateMeta(t); return m.program === MY_TEMPLATES ? { name: "client", id: TEMPLATES_ID } : { name: "client", id: TEMPLATES_ID, program: m.program, phase: m.phase, stage: m.stage }; };
+  function render() {
+    if (recovering) { showRecovery(); return; }
+    if (settingsOpen) { if (signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : "vPassword").hidden = false; $("back").hidden = false; $("brand").hidden = true; } return; }
+    if (sb && !signedIn) { showLogin($("loginMsg").textContent); return; }
+    if (clientMode && !myClientId) { showWaiting(); return; }
+    if (celebrating) { hideAllViews(); $("vCelebrate").hidden = false; $("back").hidden = true; $("brand").hidden = false; return; }   // "Nice work" stays up until it hands over to the client page, whatever refreshes meanwhile
+    $("vLogin").hidden = true; $("vRecovery").hidden = true; $("vWaiting").hidden = true; $("vCelebrate").hidden = true;
+    if (clientMode && (view.name === "clients" || (view.name === "client" && view.id !== myClientId))) view = { name: "client", id: myClientId };
+    if (clientMode && clients.get(myClientId)?.paused) view = { name: "client", id: myClientId };
+    if (view.name === "client" && !clients.has(view.id)) view = clientMode ? { name: "client", id: myClientId } : { name: "clients" };
+    if (view.name === "training" && !trainings.has(view.id)) view = clientMode ? { name: "client", id: myClientId } : { name: "clients" };
+    if (view.name !== "training") previewClient = false;
+    if (!clientMode) document.body.classList.toggle("client", previewClient && view.name === "training" && !isTemplateClient(trainings.get(view.id).clientId));
+    $("vClients").hidden = view.name !== "clients";
+    $("vClient").hidden = view.name !== "client";
+    $("vTraining").hidden = view.name !== "training";
+    $("back").hidden = view.name === "clients" || (clientMode && view.name === "client");
+    $("brand").hidden = !(view.name === "clients" || (clientMode && view.name === "client"));
+    if (view.name === "clients") { renderedTraining = null; renderClients(); }
+    else if (view.name === "client") { renderedTraining = null; $("backLabel").textContent = isTemplateClient(view.id) && view.phase ? view.program : (isTemplateClient(view.id) && view.program ? "Templates" : "Clients"); renderClient(); }
+    else { const t = trainings.get(view.id); $("backLabel").textContent = clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
+    paintDraftBar();
+    if (dp) renderDatePicker();
+  }
+
+  // clients keep the order he sets (c.sort); unsorted ones follow alphabetically
+  const clientOrder = (a, b) => ((a.sort ?? Infinity) - (b.sort ?? Infinity)) || a.name.localeCompare(b.name);
+  const peopleList = () => [...clients.values()].filter((c) => !isTemplateClient(c.id)).sort(clientOrder);
+  const activeList = () => peopleList().filter((c) => !c.paused);
+  let reordering = false;
+  function moveClientTo(id, j) {
+    const list = activeList(); const i = list.findIndex((c) => c.id === id);
+    if (i < 0 || j < 0 || j >= list.length || i === j) { renderClients(); return; }
+    const [c] = list.splice(i, 1); list.splice(j, 0, c);
+    list.forEach((x, k) => { if (x.sort !== k) { x.sort = k; scheduleSave("clients", x.id); } });
+    renderClients();
+  }
+  // drag a row with the finger; the others slide out of the way; the order is saved on release
+  function dragRow(li, id) {
+    li.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 && e.pointerType === "mouse") return;
+      const ul = li.parentElement, rows = [...ul.children], i = rows.indexOf(li);
+      const rect = rows.map((r) => r.getBoundingClientRect()), h0 = rect[i].height, c0 = rect[i].top + h0 / 2;
+      const minDy = rect[0].top - rect[i].top, maxDy = rect[rows.length - 1].bottom - rect[i].bottom;
+      let dy = 0, target = i;
+      li.setPointerCapture(e.pointerId); li.classList.add("dragging");
+      const move = (ev) => {
+        dy = Math.max(minDy, Math.min(maxDy, ev.clientY - e.clientY));
+        const c = c0 + dy; let up = 0, down = 0;
+        rows.forEach((r, k) => {
+          if (k === i) return;
+          const ck = rect[k].top + rect[k].height / 2;
+          if (k > i && c > ck) { r.style.transform = "translateY(" + (-h0) + "px)"; up++; }
+          else if (k < i && c < ck) { r.style.transform = "translateY(" + h0 + "px)"; down++; }
+          else r.style.transform = "";
+        });
+        target = i + up - down;
+        li.style.transform = "translateY(" + dy + "px)";
+      };
+      const end = () => {
+        li.removeEventListener("pointermove", move); li.removeEventListener("pointerup", end); li.removeEventListener("pointercancel", end);
+        li.classList.remove("dragging"); rows.forEach((r) => { r.style.transform = ""; });
+        moveClientTo(id, target);
+      };
+      li.addEventListener("pointermove", move); li.addEventListener("pointerup", end); li.addEventListener("pointercancel", end);
+    });
+  }
+  function renderClients() {
+    const list = activeList(), inactive = peopleList().filter((c) => c.paused);
+    const tpl = clients.get(TEMPLATES_ID);
+    $("tplCard").hidden = !tpl || clientMode;
+    $("clientCount").textContent = list.length ? list.length + (list.length === 1 ? " client" : " clients") : "";
+    $("reorderBtn").hidden = clientMode || list.length < 2; $("reorderBtn").textContent = reordering ? "Done" : "Reorder";
+    const ul = $("clientList"); ul.replaceChildren();
+    list.forEach((c, i) => {
+      const li = document.createElement("li");
+      if (reordering) {
+        li.className = "drag-row";
+        const row = document.createElement("div"); row.className = "rowline";
+        const name = document.createElement("span"); name.textContent = c.name;
+        const grip = document.createElement("span"); grip.className = "grip"; grip.textContent = "\u2261"; grip.setAttribute("aria-hidden", "true");
+        row.append(name, grip); li.appendChild(row); dragRow(li, c.id);
+      } else {
+        const b = document.createElement("button"); b.type = "button";
+        const n = clientTrainings(c.id).length;
+        b.innerHTML = `<span></span><span class="sub"></span>`;
+        b.firstChild.textContent = c.name; b.lastChild.textContent = (n ? n + (n === 1 ? " workout" : " workouts") : ""); b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
+        b.addEventListener("click", () => go({ name: "client", id: c.id }));
+        li.appendChild(b);
+      }
+      ul.appendChild(li);
+    });
+    $("clientEmpty").hidden = list.length > 0 || inactive.length > 0;
+    $("clientBar").hidden = !list.length && inactive.length > 0; $("clientList").hidden = !list.length;
+    $("inactiveBar").hidden = !inactive.length; $("inactiveList").hidden = !inactive.length;
+    $("inactiveList").replaceChildren(...inactive.map((c) => {
+      const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
+      b.innerHTML = `<span></span><span class="sub">Paused<span class="chev">&rsaquo;</span></span>`; b.firstChild.textContent = c.name;
+      b.addEventListener("click", () => go({ name: "client", id: c.id })); li.appendChild(b); return li;
+    }));
+  }
+  $("tplCard").addEventListener("click", () => go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }));
+  $("reorderBtn").addEventListener("click", () => { reordering = !reordering; renderClients(); });
+  // month calendar under the week strip: Week | Month switch, arrows, Today, finger-follow swipe
+  let calOpen = lsGet("fiala.cal.open") === true, calMonth = today().slice(0, 7), calFor = null, calAnchor = calMonth, calSliding = false;
+  const NEXT_DAYS = 3, NEXT_STEP = 5;      // "Up next" shows this many days ahead (the very next workout always); each "Show more" adds this many workouts
+  let nextExtra = 0, nextFor = null;
+  const monthAdd = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1, 12); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
+  const monthTitle = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1, 12).toLocaleDateString(undefined, { month: "long", year: "numeric" }); };
+  $("calToggle").addEventListener("click", () => {
+    calOpen = !calOpen; lsSet("fiala.cal.open", calOpen); if (calOpen) { calMonth = today().slice(0, 7); calAnchor = calMonth; }
+    if (view.name === "client") renderClient();
+  });
+  $("dpCancel").addEventListener("click", closeDatePicker);
+  $("esKeep").addEventListener("click", closeFinishEarly);
+  $("esGo").addEventListener("click", finishEarlyNow);
+  $("earlySheet").addEventListener("click", (e) => { if (e.target === $("earlySheet")) closeFinishEarly(); });
+  $("esReasons").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b || !es) return;
+    const on = !b.classList.contains("on");                          // tap again to clear
+    for (const x of $("esReasons").querySelectorAll("button")) { x.classList.toggle("on", on && x === b); x.setAttribute("aria-pressed", String(on && x === b)); }
+    es.reason = on ? b.dataset.reason : "";
+  });
+  $("datePick").addEventListener("click", (e) => { if (e.target === $("datePick")) closeDatePicker(); });
+  $("dpPrev").addEventListener("click", () => { if (dp) { dp.month = monthAdd(dp.month, -1); renderDatePicker(); } });
+  $("dpNext").addEventListener("click", () => { if (dp) { dp.month = monthAdd(dp.month, 1); renderDatePicker(); } });
+  $("dpToday").addEventListener("click", () => { if (dp) { dp.month = today().slice(0, 7); renderDatePicker(); } });
+  { const g = $("dpGrid"); let sx = null, sy = null, swiped = false;
+    g.addEventListener("pointerdown", (e) => { if (!e.isPrimary) return; sx = e.clientX; sy = e.clientY; swiped = false; });
+    g.addEventListener("pointermove", (e) => { if (sx === null || !e.isPrimary) return; const dx = e.clientX - sx, dy = e.clientY - sy; if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { try { g.setPointerCapture(e.pointerId); } catch {} } });
+    g.addEventListener("pointerup", (e) => { if (sx === null || !dp) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = sy = null; if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) { swiped = true; dp.month = monthAdd(dp.month, dx < 0 ? 1 : -1); renderDatePicker(); setTimeout(() => { swiped = false; }, 0); } });
+    g.addEventListener("pointercancel", () => { sx = sy = null; });
+    g.addEventListener("click", (e) => { if (swiped) { e.stopPropagation(); e.preventDefault(); } }, true);
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && dp) closeDatePicker(); if (e.key === "Escape" && es) closeFinishEarly(); });
+  $("calToday").addEventListener("click", () => { calMonth = today().slice(0, 7); calAnchor = calMonth; if (view.name === "client") renderClient(); });
+  {
+    const view_ = $("calView"), track = $("calTrack");
+    const reduced = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let busy = false, sx = null, sy = null, dragging = null, dx = 0, swallow = false, finishNow = null;
+    const settle = (dir) => {                      // slide to the neighbour panel, then re-render around the new month
+      if (busy) { if (finishNow) finishNow(); else return; }
+      busy = true; calSliding = true;
+      if (dir) { calMonth = monthAdd(calMonth, dir); $("calTitle").textContent = monthTitle(calMonth); $("calToday").hidden = calMonth === today().slice(0, 7); }
+      const target = track.children[1 + (dir || 0)];
+      void view_.offsetHeight; view_.style.transition = "";
+      if (target) view_.style.height = target.offsetHeight + "px";
+      let done = false;
+      const finish = () => { if (done) return; done = true; finishNow = null; track.removeEventListener("transitionend", finish); busy = false; calSliding = false; view_.style.transition = ""; if (dir && view.name === "client") renderClient(); else view_.style.height = track.children[1].offsetHeight + "px"; };
+      finishNow = finish;
+      if (reduced()) { track.style.transition = "none"; track.style.transform = "translateX(" + (-100 - (dir || 0) * 100) + "%)"; finish(); return; }
+      track.addEventListener("transitionend", finish);
+      track.style.transition = "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)";
+      track.style.transform = "translateX(" + (-100 - (dir || 0) * 100) + "%)";
+      setTimeout(finish, 360);
+    };
+    $("calPrev").addEventListener("click", () => settle(-1));
+    $("calNext").addEventListener("click", () => settle(1));
+    view_.addEventListener("pointerdown", (e) => { if (!e.isPrimary) return; if (busy && finishNow) finishNow(); if (busy) return; sx = e.clientX; sy = e.clientY; dragging = null; dx = 0; });
+    view_.addEventListener("pointermove", (e) => {
+      if (sx === null || busy || !e.isPrimary) return;
+      dx = e.clientX - sx; const dy = e.clientY - sy;
+      if (dragging === null) { if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { dragging = true; try { view_.setPointerCapture(e.pointerId); } catch {} } else if (Math.abs(dy) > 8) dragging = false; }
+      if (dragging) {
+        track.style.transition = "none"; track.style.transform = "translateX(calc(-100% + " + dx + "px))";
+        const centre = track.children[1], side = track.children[dx < 0 ? 2 : 0];
+        if (centre && side) { const f = Math.min(1, Math.abs(dx) / Math.max(1, view_.clientWidth)); view_.style.transition = "none"; view_.style.height = Math.round(centre.offsetHeight + (side.offsetHeight - centre.offsetHeight) * f) + "px"; }
+      }
+    });
+    const release = (cancel) => {
+      if (sx === null) return; const was = dragging; const moved = dx; sx = sy = null; dragging = null; dx = 0;
+      if (!was) return;
+      swallow = true; setTimeout(() => { swallow = false; }, 0);
+      if (!cancel && Math.abs(moved) > 48) settle(moved < 0 ? 1 : -1); else settle(0);
+    };
+    view_.addEventListener("pointerup", () => release(false));
+    view_.addEventListener("pointercancel", () => release(true));
+    view_.addEventListener("click", (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
+  }
+
+  function renderClient() {
+    const c = clients.get(view.id);
+    const isTpl = isTemplateClient(c.id);
+    $("vClient").classList.toggle("tpl", isTpl);
+    $("newTraining").textContent = isTpl ? "+ New template" : "+ New workout";
+    if (!isTpl) { $("tplList").hidden = true; $("pickNote").hidden = true; }
+    $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !c.paused;
+    if (isTpl) { $("cName").readOnly = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }
+    $("cName").value = c.name; $("cName").readOnly = true;
+    if (document.activeElement !== $("cNameField")) $("cNameField").value = c.name || "";
+    if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
+    if (document.activeElement !== $("cPhone")) $("cPhone").value = c.phone || "";
+    if (document.activeElement !== $("cBirthday")) $("cBirthday").value = c.birthday || "";
+    if (detailsFor !== c.id) { detailsFor = c.id; detailsOpen = false; }
+    $("detailsBody").hidden = !detailsOpen; $("detailsBtn").classList.toggle("open", detailsOpen); $("detailsBtn").setAttribute("aria-expanded", String(detailsOpen));
+    $("detailsBtn").classList.toggle("needs", !c.email);
+    for (const b of $("chatSeg").querySelectorAll("button")) b.classList.toggle("on", (c.chat || "sms") === b.dataset.chat);
+    paintMsg(c); paintTrainerMsg(c);
+    for (const b of $("unitSeg").querySelectorAll("button")) b.classList.toggle("on", (c.unit || "lb") === b.dataset.unit);
+    for (const b of $("accessSeg").querySelectorAll("button")) b.classList.toggle("on", (c.paused ? "paused" : "active") === b.dataset.access);
+    $("pausedCard").hidden = !(c.paused && clientMode);
+    $("pausedText").textContent = phoneDigits(c.trainerPhone) ? "Your workouts are on hold for now. Message Michal when you’re ready to pick up again." : "Your workouts are on hold for now. Michal will switch them back on when you’re ready to pick up again.";
+    document.body.classList.toggle("paused", !!(c.paused && clientMode));
+    if (document.activeElement !== $("cNotes")) $("cNotes").value = noteDraft.get(c.id) || "";
+    $("noteActions").hidden = !String($("cNotes").value).trim(); growNotesBox();
+    renderNotes(c);
+    if (!clientMode) {                                                        // the report row: the last two years of months to pick from
+      const sel = $("reportMonth"), base = new Date(today() + "T12:00:00"); sel.replaceChildren(new Option("Pick a month", ""));
+      for (let i = 1; i <= 24; i++) { const d = new Date(base.getFullYear(), base.getMonth() - i, 1, 12); sel.appendChild(new Option(d.toLocaleDateString(undefined, { month: "long", year: "numeric" }), localIso(d).slice(0, 7))); }
+      loadReportFonts();
+    }
+    if (!clientMode && (!sb || syncedOnce)) for (const t of clientTrainings(c.id)) if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }   // empty workouts left behind (an accidental tap on a day) go away, once the server's copy has been seen
+    const list = clientTrainings(c.id);
+    const relDay = (iso) => {                                            // "Today", "Tomorrow", "In 4 days", "Yesterday", "3 days ago"
+      const n = Math.round((new Date(iso + "T12:00:00") - new Date(today() + "T12:00:00")) / 86400000);
+      if (!Number.isFinite(n)) return "";                                  // no date on the record: no caption
+      if (n === 0) return "Today"; if (n === 1) return "Tomorrow"; if (n === -1) return "Yesterday";
+      if (n > 1) return n < 14 ? "In " + n + " days" : "In " + Math.round(n / 7) + " weeks";
+      return n > -14 ? (-n) + " days ago" : Math.round(-n / 7) + " weeks ago";
+    };
+    const rowOf = (t, next) => {
+      const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
+      if (next) li.className = "next";
+      const cards = new Map();
+      t.rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!cards.has(k)) cards.set(k, true); if (!r.done) cards.set(k, false); });
+      const total = cards.size, done = [...cards.values()].filter(Boolean).length;
+      const d = new Date(effDate(t) + "T12:00:00");
+      const pri = document.createElement("span"); pri.className = "pri";
+      const skipped = !t.completedAt && !!t.skippedAt;
+      pri.textContent = (t.completedAt ? "\u2713 " : skipped ? (t.missed === true ? "Missed \u00b7 " : "Skipped \u00b7 ") : "") + d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      if (skipped) pri.style.color = "var(--text-tertiary)";
+      const sec = document.createElement("span"); sec.className = "sec";
+      sec.textContent = [t.title, !t.completedAt && done ? done + " of " + total + " done" : ""].filter(Boolean).join(" \u00b7 ");
+      const left = document.createElement("span"); left.style.minWidth = "0";
+      const overdue = next && !skipped && !t.completedAt && !!effDate(t) && effDate(t) < today();
+      const whenText = next ? (overdue ? "Missed \u00b7 " : "") + relDay(effDate(t)) : "";
+      if (whenText) { const when = document.createElement("span"); when.className = "when"; when.textContent = whenText; left.append(when); }
+      let acts = null;
+      if (overdue) {                                                       // the missed workout is the first thing to decide
+        acts = document.createElement("div"); acts.className = "missed-actions";
+        const doToday = document.createElement("button"); doToday.type = "button"; doToday.textContent = "Do it today";
+        doToday.addEventListener("click", () => { t.date = today(); t.missed = false; t.skippedAt = null; touchState(t.id, "date", "missed", "skippedAt"); if (clientMode) { pendingMove.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
+        const skip = document.createElement("button"); skip.type = "button"; skip.textContent = "Skip";
+        skip.addEventListener("click", () => { t.skippedAt = now(); t.missed = false; touchState(t.id, "skippedAt", "missed"); if (clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
+        acts.append(doToday, skip);
+      }
+      left.append(pri); if (sec.textContent) left.append(sec);
+      const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a";
+      b.append(left, chev);
+      b.addEventListener("click", () => go({ name: "training", id: t.id }));
+      li.appendChild(b); if (acts) li.appendChild(acts); return li;       // the choices sit under the row
+    };
+
+    const base = new Date(); base.setHours(12, 0, 0, 0);
+    const monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
+    const iso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    const weekEl = $("week"); weekEl.replaceChildren();
+    const weekStart = iso(monday);
+    const dayButton = (d, withWeekday) => {
+      const key = iso(d);
+      const dayWorkouts = list.filter((t) => effDate(t) === key && !(t.skippedAt && !t.completedAt));
+      const b = document.createElement("button"); b.type = "button";
+      if (key === today()) { b.classList.add("today"); b.setAttribute("aria-current", "date"); }
+      if (withWeekday) { const wd = document.createElement("span"); wd.className = "wd"; wd.textContent = d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 3); b.appendChild(wd); }
+      const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(d.getDate());
+      if (dayWorkouts.length) b.classList.add(dayWorkouts.every((t) => t.completedAt) ? "finished" : "planned");
+      const dot = document.createElement("span"); dot.className = "dot";
+      b.append(dn, dot);
+      b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + (dayWorkouts.length ? (dayWorkouts.every((t) => t.completedAt) ? ", finished" : ", planned") : ""));
+      b.addEventListener("click", () => {
+        if (dayWorkouts.length) go({ name: "training", id: dayWorkouts[0].id });
+        else if (!clientMode) addTraining(c.id, null, key);
+      });
+      return b;
+    };
+    for (let i = 0; i < 7; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); weekEl.appendChild(dayButton(d, true)); }
+    // month view: three months on a sliding track (previous, shown, next) so a swipe follows the finger
+    $("calToggleText").textContent = calOpen ? "Week" : "Month"; $("calToggle").classList.toggle("open", calOpen); $("calToggle").setAttribute("aria-expanded", String(calOpen));
+    weekEl.hidden = calOpen; $("calWrap").hidden = !calOpen;
+    if (calOpen) {
+      // a new client, or the month rolling over while "this month" is shown, re-anchors to today; a browsed month stays
+      const cur = today().slice(0, 7);
+      if (calFor !== c.id || (cur !== calAnchor && calMonth === calAnchor)) calMonth = cur;
+      calFor = c.id; calAnchor = cur;
+      const panel = (ym) => {
+        const [y, m] = ym.split("-").map(Number);
+        const first = new Date(y, m - 1, 1, 12, 0, 0, 0);
+        const wrap = document.createElement("div"); wrap.className = "cal-panel"; wrap.dataset.ym = ym;
+        const cal = document.createElement("div"); cal.className = "cal";
+        const lead = (first.getDay() + 6) % 7;
+        for (let i = 0; i < lead; i++) { const b = document.createElement("button"); b.type = "button"; b.className = "out"; b.tabIndex = -1; b.setAttribute("aria-hidden", "true"); cal.appendChild(b); }
+        const days = new Date(y, m, 0).getDate();
+        for (let day = 1; day <= days; day++) cal.appendChild(dayButton(new Date(y, m - 1, day, 12, 0, 0, 0), false));
+        wrap.appendChild(cal); return wrap;
+      };
+      const track = $("calTrack");
+      if (calSliding) return;                      // a slide is in flight: finish() re-renders when it lands
+      track.style.transition = "none"; track.style.transform = "translateX(-100%)";
+      track.replaceChildren(panel(monthAdd(calMonth, -1)), panel(calMonth), panel(monthAdd(calMonth, 1)));
+      for (const p of [track.children[0], track.children[2]]) p.setAttribute("aria-hidden", "true");
+      for (const b of track.children[1].querySelectorAll("button")) { if (!b.classList.contains("out")) b.tabIndex = 0; }
+      for (const p of [track.children[0], track.children[2]]) for (const b of p.querySelectorAll("button")) b.tabIndex = -1;
+      $("calTitle").textContent = monthTitle(calMonth);
+      $("calToday").hidden = calMonth === cur;
+      $("calView").style.height = track.children[1].offsetHeight + "px";
+    }
+
+    // missed by more than a week with nothing logged: it files itself under History as "Missed"
+    const stale = (() => { const d = new Date(base); d.setDate(base.getDate() - 7); return iso(d); })();
+    const nothingLogged = (t) => (t.rows || []).every((r) => !r.done && !(parseInt(r.setsDone, 10) > 0) && !(r.weights || []).some((w) => String(w == null ? "" : w).trim()) && !(r.repsDone || []).some((x) => String(x == null ? "" : x).trim()));
+    if (!sb || syncedOnce) for (const t of list) {                              // only once this device has seen the server's copy
+      if (t.completedAt || t.skippedAt || t.missed !== undefined || !effDate(t) || effDate(t) >= stale || !nothingLogged(t)) continue;   // missed: true = filed before, false = a person decided
+      t.skippedAt = now(); t.missed = true; if (clientMode) pendingMiss.add(t.id); scheduleSave("trainings", t.id);
+    }
+    const next = list.filter((t) => !t.completedAt && !t.skippedAt).sort((a, b) => effDate(a).localeCompare(effDate(b)));
+    // keep it short: anything due within the next few days (the very next workout always shows);
+    // "Show more" adds the next few workouts each tap, "Show less" folds back to the short list
+    if (nextFor !== c.id) { nextFor = c.id; nextExtra = 0; }
+    const edge = new Date(base); edge.setDate(base.getDate() + NEXT_DAYS); const horizon = iso(edge);
+    const soon = next.filter((t, i) => i === 0 || effDate(t) <= horizon);
+    nextExtra = Math.max(0, Math.min(nextExtra, next.length - soon.length));
+    const shown = next.slice(0, soon.length + nextExtra), left = next.length - shown.length;
+    $("nextHead").hidden = next.length === 0; $("nextList").hidden = next.length === 0;
+    $("nextList").replaceChildren(...shown.map((t, i) => rowOf(t, i === 0)));
+    if (left > 0 || nextExtra > 0) {
+      const li = document.createElement("li"); li.className = "more"; const bar = document.createElement("div");
+      if (left > 0) {
+        const b = document.createElement("button"); b.type = "button";
+        const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = left + " more";
+        b.append("Show more", sub); b.addEventListener("click", () => { nextExtra += NEXT_STEP; renderClient(); });
+        bar.appendChild(b);
+      }
+      if (nextExtra > 0) {
+        const b = document.createElement("button"); b.type = "button"; b.textContent = "Show less";
+        b.addEventListener("click", () => { nextExtra = 0; renderClient(); });
+        bar.appendChild(b);
+      }
+      li.appendChild(bar); $("nextList").appendChild(li);
+    }
+
+    const rest = list.filter((t) => !next.includes(t));
+    const months = new Map();
+    for (const t of rest) { const k = effDate(t).slice(0, 7); if (!months.has(k)) months.set(k, []); months.get(k).push(t); }
+    const hist = $("histList"); hist.replaceChildren();
+    $("histHead").hidden = rest.length === 0;
+    for (const [k, items] of months) {
+      const wrap = document.createElement("div"); wrap.className = "month";
+      const head = document.createElement("button"); head.type = "button";
+      const md = new Date(k + "-15T12:00:00");
+      head.innerHTML = "<span></span><span class=\"sub\"></span>";
+      head.firstChild.textContent = md.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+      head.lastChild.textContent = items.length + (items.length === 1 ? " workout" : " workouts") + " \u203a";
+      const ul = document.createElement("ul"); ul.className = "list"; ul.hidden = true;       // every month starts folded; a tap opens it
+      ul.replaceChildren(...items.map((t) => rowOf(t)));
+      head.addEventListener("click", () => { ul.hidden = !ul.hidden; });
+      wrap.append(head, ul); hist.appendChild(wrap);
+    }
+    $("trainingEmpty").hidden = list.length > 0;
+    $("delClientConfirm").hidden = true; $("delClient").hidden = false;
+  }
+
+  function paintFinish(t) {
+    $("finishWrap").hidden = t.rows.length === 0;
+    const done = !!t.completedAt, skipped = !done && !!t.skippedAt;
+    $("finishBtn").hidden = done || skipped; $("finishedLine").hidden = !done;
+    $("skipLine").hidden = done || skipped; $("skippedLine").hidden = !skipped;
+    if (skipped) $("skippedText").textContent = t.missed === true ? "Missed" : "Skipped";
+    if (done) { const d = new Date(t.completedAt); $("finishedText").textContent = "\u2713 Finished \u00b7 " + d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); }
+  }
+  const ordinal = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+  function setFinished(finished) {
+    const t = trainings.get(view.id); if (!t) return;
+    if (!finished && t.completedAt) {                                     // undo keeps it on the day it was done, and no sweep files it by itself
+      const day = localIso(new Date(t.completedAt));
+      if (/^\d{4}-\d{2}-\d{2}$/.test(day) && day !== t.date) { t.date = day; touchState(t.id, "date"); if (clientMode) pendingMove.add(t.id); }
+      t.missed = false; touchState(t.id, "missed"); if (clientMode) pendingMiss.add(t.id);
+    }
+    t.completedAt = finished ? now() : null; touchState(t.id, "completedAt");
+    if (finished && t.skippedAt) { t.skippedAt = null; t.missed = false; touchState(t.id, "skippedAt", "missed"); if (clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } }   // finished beats skipped
+    if (finished && !clientMode && /^\d{4}-\d{2}-\d{2}$/.test(t.date || "") && t.date < today()) {   // the coach logging a past session: it was done on that day
+      const d = new Date(); const [y, m, dd] = t.date.split("-").map(Number); d.setFullYear(y, m - 1, dd);
+      if (!isNaN(d)) t.completedAt = d.toISOString();
+    }
+    if (clientMode) pendingFinish.add(t.id);
+    scheduleSave("trainings", t.id); paintFinish(t);
+    if (finished) {
+      const count = clientTrainings(t.clientId).filter((x) => x.completedAt).length;
+      $("celeText").textContent = "That\u2019s your " + ordinal(count) + " workout. Nice work.";
+      celebrating = true; render();
+      window.scrollTo(0, 0);
+      clearTimeout(celeTimer);
+      celeTimer = setTimeout(() => { if (celebrating) $("celeBack").click(); }, 4000);
+    }
+  }
+  let celeTimer = null, celebrating = false;   // the "Nice work" screen is a state, not just a visible panel: a sync's redraw can't knock it off
+  $("celeBack").addEventListener("click", () => { clearTimeout(celeTimer); celebrating = false; const t = trainings.get(view.id); go({ name: "client", id: t ? t.clientId : myClientId }); });
+
+  function renderTraining(t) {
+    if (document.activeElement !== $("tTitle")) { $("tTitle").value = t.title || ""; requestAnimationFrame(() => { const el = $("tTitle"); el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); }
+    $("tDate").textContent = fmtDay(t.date || today());
+    const asClient = clientMode || previewClient;
+    $("tTitle").readOnly = asClient; $("tDate").disabled = asClient;
+    const isTpl = isTemplateClient(t.clientId);
+    if (isTpl) draftFor(t);
+    paintTrainerMsg(clients.get(t.clientId));
+    const src = !asClient && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
+    $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = templatePath(src);
+    $("tplFill").hidden = asClient || isTpl || (t.rows || []).length > 0 || !!t.completedAt;   // only an empty workout offers a template
+    $("tNoteWrap").hidden = clientMode || isTpl;                                                // the coach's session note, in either view, never for a client
+    paintWorkoutNotes(t);
+    const open = tNoteOpenFor === t.id;
+    $("tNoteBox").hidden = !open; $("tNoteOpen").hidden = open;
+    if (document.activeElement !== $("tNote")) { $("tNote").value = tNoteDraft.get(t.id) || ""; growBox($("tNote")); }
+    $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || clientMode;
+    $("viewSeg").hidden = clientMode || isTpl; for (const b of $("viewSeg").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.view === "client") === previewClient); if (!isTpl) $("usePick").hidden = true;
+    $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
+    paintFinish(t);
+    const rowsEl = $("rows");
+    const active = document.activeElement;
+    if (renderedTraining === t.id && rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return; // never rebuild under a typing finger
+    renderedTraining = t.id;
+    if (!clientMode && normalizeLabels(t)) scheduleSave("trainings", t.id);
+    t.rows.sort((a, b) => cmpLabel(a.label, b.label));
+    if (closeOpenAlt) closeOpenAlt();
+    rowsEl.replaceChildren();
+    const groups = [];
+    t.rows.forEach((r, i) => {
+      const k = groupKey(r.label, i);
+      if (!groups.length || groups[groups.length - 1].key !== k) groups.push({ key: k, rows: [] });
+      groups[groups.length - 1].rows.push(r);
+    });
+    let numbered = 0;
+    const currentKey = asClient && !isTpl ? (groups.find((g) => !g.rows.every((r) => r.done)) || {}).key : null;   // client: the first card not yet finished is the one open
+    groups.forEach((g) => {
+      const block = document.createElement("div");
+      const warm = g.key === "w";
+      block.className = "block"; block.dataset.key = g.key;
+      if (g.rows.length >= 2 || warm || asClient) {
+        const cap = document.createElement("div"); cap.className = "group-cap";
+        const kind = g.rows.length < 2 ? "" : g.rows.length === 2 ? "Superset" : g.rows.length === 3 ? "Tri-set" : "Giant set";
+        if (asClient) {                                        // client: a big numeral up here does the work the badge used to do
+          const num = /^\d+$/.test(String(g.key)) ? String(g.key) : "";
+          const big = document.createElement("b"); big.className = "num"; big.textContent = warm ? "Warmup" : "Exercise " + num;   // "Exercise 1", "Exercise 2 · Superset", "Warmup · Superset": always "Exercise N" first, so the numbers run in order
+          if (kind) { const k = document.createElement("i"); k.className = "kind"; k.textContent = " \u00b7 " + kind; big.appendChild(k); }
+          cap.appendChild(big);
+        } else {
+          const b = document.createElement("b"); b.textContent = warm ? (kind ? "Warmup \u00b7 " + kind : "Warmup") : kind;
+          cap.appendChild(b);
+        }
+        if (kind) {
+          const after = g.rows.length === 2 ? "rest after both" : "rest after all " + g.rows.length;
+          const name = (r) => asClient ? ((String(r.label || "").match(/^(?:\d+|w)([a-z])$/i) || [])[1] || r.label || "").toUpperCase() : r.label;
+          const s = document.createElement("span"); s.textContent = g.rows.map(name).join(" + ") + " back to back \u00b7 " + after;
+          cap.appendChild(s);
+        }
+        block.appendChild(cap);
+      }
+      const card = document.createElement("div"); card.className = "group";
+      const total = Math.max(...g.rows.map(setsOf));
+      const doneSets = Math.min(...g.rows.map((r) => { const n = clamp(parseInt(r.setsDone, 10) || 0, 0, 20); return n >= setsOf(r) ? total : n; }));   // a shorter row that is finished does not hold the others back
+      const selKey = t.id + "/" + g.key;
+      {
+        let sel = null;
+        if (!isTpl) { sel = setSel.has(selKey) ? setSel.get(selKey) : doneSets; sel = clamp(sel, 0, total - 1); g.sel = sel; }
+        const tr = document.createElement("div"); tr.className = "tracker"; tr.setAttribute("aria-label", "Sets");
+        const head = document.createElement("div"); head.className = "tr-head"; const chips = document.createElement("div"); chips.className = "tr-chips"; tr.append(head, chips);
+        const lab = document.createElement("span"); lab.className = "tr-label"; lab.textContent = total + (total === 1 ? " set" : " sets"); head.appendChild(lab);   // "4 sets", then the chips
+        for (let i = 0; i < total; i++) {
+          const b = document.createElement("button"); b.type = "button"; b.textContent = String(i + 1);
+          if (isTpl) { b.classList.add("static"); b.tabIndex = -1; }
+          else {
+            if (i < doneSets) b.classList.add("done");
+            if (i === sel) b.classList.add("cur");
+            b.setAttribute("aria-label", "Set " + (i + 1) + (i < doneSets ? ", done" : i === sel ? ", current" : ""));
+            b.addEventListener("click", () => { setSel.set(selKey, i); renderedTraining = null; render(); });
+          }
+          chips.appendChild(b);
+        }
+        if (!asClient) {                                     // the trainer changes the number of sets right here, for every exercise in the card
+          const setCount = (n) => {
+            n = clamp(n, 1, 20); if (n === total) return;
+            for (const r of g.rows) {
+              const was = setsOf(r), sd = clamp(parseInt(r.setsDone, 10) || 0, 0, 20), wasDone = !!r.done;
+              r.sets = n;
+              if (sd > n) r.setsDone = n;
+              if (sd >= n) r.done = true; else if (r.done && sd >= was) { r.done = false; markEarly(t, r, ""); }   // a set added to a finished exercise reopens it; "finished early" stays finished
+              if (!isTpl && (r.done !== wasDone || sd > n)) { if (!trainerTouched.has(t.id)) trainerTouched.set(t.id, new Set()); trainerTouched.get(t.id).add(r.id); }
+            }
+            setSel.delete(selKey); scheduleSave("trainings", t.id); renderedTraining = null; render();
+          };
+          const minus = document.createElement("button"); minus.type = "button"; minus.className = "step minus"; minus.textContent = "\u2212"; minus.setAttribute("aria-label", "One set fewer"); minus.disabled = total <= 1;
+          const plus = document.createElement("button"); plus.type = "button"; plus.className = "step plus"; plus.textContent = "+"; plus.setAttribute("aria-label", "One set more"); plus.disabled = total >= 20;
+          minus.addEventListener("click", () => setCount(total - 1)); plus.addEventListener("click", () => setCount(total + 1));
+          const steps = document.createElement("div"); steps.className = "tr-steps"; steps.append(minus, plus); head.appendChild(steps);
+        }
+        card.appendChild(tr);
+      }
+      g.rows.forEach((r) => card.appendChild(rowEl(t, r, isTpl ? null : g)));
+      const foot = document.createElement("div"); foot.className = "card-foot";
+      let resume = null;                                   // undo for "Finish early": shown on the opened card while it is finished early
+      if (total > 0 && !isTpl) {
+        const sel = g.sel, current = sel === doneSets && doneSets < total;
+        const complete = document.createElement("label"); complete.htmlFor = "hapticSwitch"; complete.className = "btn complete"; complete.setAttribute("role", "button"); complete.tabIndex = 0;   // a label for the hidden switch: the tap itself gives the haptic on iPhone
+        complete.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); complete.click(); } });
+        complete.textContent = current ? (sel + 1 === total ? "Complete last set \u2192" : "Complete set \u2192") : "Back to set " + (Math.min(doneSets, total - 1) + 1);
+        if (!current) { complete.classList.add("quiet-back"); if (doneSets >= total) complete.hidden = true; }
+        const undo = document.createElement("button"); undo.type = "button"; undo.className = "finish-early undo-set"; undo.textContent = "Mark set " + (sel + 1) + " as not done";
+        undo.hidden = !(sel < doneSets);
+        undo.addEventListener("click", () => {                // this set and anything after it go back to not done
+          for (const r of g.rows) { if (sel < setsOf(r)) { r.setsDone = Math.min(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), sel); r.done = false; markEarly(t, r, ""); } const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
+          setSel.set(selKey, sel); scheduleSave("trainings", t.id); renderedTraining = null; render();
+        });
+        complete.addEventListener("click", () => {
+          haptic();
+          if (!current) { setSel.delete(selKey); setTimeout(() => { renderedTraining = null; render(); }, 0); return; }   // just go back to the current set
+          const prevDone = doneSets;
+          for (const r of g.rows) {
+            if (sel >= setsOf(r)) continue;                                               // this exercise has fewer sets than the card
+            r.weights = r.weights || []; r.repsDone = r.repsDone || [];
+            while (r.weights.length <= sel) r.weights.push(""); while (r.repsDone.length <= sel) r.repsDone.push("");
+            const last = lastWeights(t, r), carry = carried(r, sel);
+            if (!String(r.weights[sel] || "").trim()) r.weights[sel] = carry.w || (last && last.weights[sel] ? String(last.weights[sel]) : "");   // untouched box = same as the set before, else same as last time
+            if (!String(r.repsDone[sel] || "").trim()) r.repsDone[sel] = carry.rp || (last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "");
+            if (current) r.setsDone = Math.max(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), Math.min(prevDone + 1, setsOf(r)));
+            if ((r.setsDone || 0) >= setsOf(r)) r.done = true;
+            const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id);
+          }
+          if (g.rows.every((r) => r.done)) openBlocks.delete(selKey);
+          setSel.delete(selKey); scheduleSave("trainings", t.id);
+          setTimeout(() => { renderedTraining = null; render(); scrollToCard(g.key); }, 0);   // after the tap has flipped the switch (the iPhone tick), then redraw and glide
+        });
+        const early = document.createElement("button"); early.type = "button"; early.className = "finish-early"; early.textContent = "Finish early";
+        early.addEventListener("click", () => openFinishEarly(t, g, selKey));
+        resume = document.createElement("button"); resume.type = "button"; resume.className = "resume"; resume.hidden = true; resume.textContent = "Resume this " + groupWord(g);
+        resume.addEventListener("click", () => {              // the remaining sets open again; what was logged stays, the reason goes
+          for (const r of g.rows) { r.done = clamp(parseInt(r.setsDone, 10) || 0, 0, 20) >= setsOf(r); markEarly(t, r, ""); const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
+          openBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id); renderedTraining = null; render(); scrollToCard(g.key);
+        });
+        foot.append(complete, early, undo, resume);
+      }
+      const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
+      const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold-btn";
+      const sum = document.createElement("div"); sum.className = "card-sum";
+      const paintSum = (all) => {
+        sum.replaceChildren(); if (resume) resume.hidden = true; if (!all) return;
+        const did = Math.min(...g.rows.map((r) => clamp(parseInt(r.setsDone, 10) || 0, 0, 20)));
+        const early = g.rows.some((r) => r.done && clamp(parseInt(r.setsDone, 10) || 0, 0, 20) < setsOf(r));
+        if (resume) resume.hidden = !early;
+        const sets = (n) => n + " of " + total + (total === 1 ? " set" : " sets");
+        const line = (text) => { const d = document.createElement("div"); d.textContent = text; sum.appendChild(d); };
+        if (!early) { line("Finished \u00b7 " + sets(total)); return; }
+        line("Finished early \u00b7 " + sets(did));
+        const left = total - did, why = (g.rows.find((r) => r.earlyReason) || {}).earlyReason || "";
+        line(left + (left === 1 ? " set" : " sets") + " not completed" + (why ? " \u00b7 " + why : ""));
+      };
+      const chev = document.createElement("button"); chev.type = "button"; chev.className = "card-chev";   // finished card: a chevron on the status line (folded) or in the corner (open)
+      chev.innerHTML = '<svg class="i-down" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg><svg class="i-up" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg>';
+      const paintFold = () => {
+        const done = block.classList.contains("done"), open = block.classList.contains("open");
+        fold.hidden = true; chev.hidden = !done; chev.classList.toggle("up", open);
+        chev.setAttribute("aria-label", open ? "Hide sets" : "Show sets");
+      };
+      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey)) block.classList.add("open"); if (!all) openBlocks.delete(selKey); btn.textContent = all ? "\u2713 Done" : "Done"; paintSum(all); paintFold(); };
+      const toggleOpen = () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey); else openBlocks.delete(selKey); paintFold(); };
+      fold.addEventListener("click", toggleOpen); chev.addEventListener("click", toggleOpen);
+      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.composedPath().some((n) => n.tagName === "BUTTON")) { block.classList.add("open"); openBlocks.add(selKey); paintFold(); } });
+      btn.addEventListener("click", () => {
+        const next = !g.rows.every((r) => r.done);
+        const track = clientMode ? pendingDoneRows : trainerTouched;
+        if (!track.has(t.id)) track.set(t.id, new Set());
+        for (const r of g.rows) { r.done = next; if (!next) markEarly(t, r, ""); track.get(t.id).add(r.id); }
+        scheduleSave("trainings", t.id); paint();
+      });
+      paint(); foot.append(btn, fold); card.append(sum, foot, chev);
+      if (currentKey != null && g.key !== currentKey && !g.rows.every((r) => r.done)) {   // client: still to come
+        const peeking = peekBlocks.has(selKey);
+        const chev = document.createElement("button"); chev.type = "button"; chev.className = "card-chev"; chev.setAttribute("aria-label", peeking ? "Fold" : "Open");
+        chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (peeking ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4") + '"/></svg>';
+        card.appendChild(chev);
+        const unpeek = () => { peekBlocks.delete(selKey); renderedTraining = null; render(); };
+        if (peeking) { block.classList.add("peek"); chev.addEventListener("click", unpeek); for (const top of card.querySelectorAll(".row .top")) top.addEventListener("click", (e) => { if (e.target.closest(".ex-icons")) return; unpeek(); }); }
+        else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey); renderedTraining = null; render(); }); }
+      } else peekBlocks.delete(selKey);
+      block.appendChild(card); rowsEl.appendChild(block);
+    });
+    $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false;
+  }
+
+  function groupKey(label, index) {
+    const s = String(label || "").trim().toLowerCase();
+    const m = s.match(/^(\d+)/);
+    if (m) return m[1];
+    return isWarmLabel(s) ? "w" : (s || "row-" + index);
+  }
+  // Numbering rule: one exercise on a number is plain (2); two or more share letters (1a, 1b …).
+  // The letter you type is a position: 1a moves that exercise to the top of its card,
+  // 1c to third place; the others shift to fill.
+  let lastEditedId = null;
+  function normalizeLabels(t) {
+    const groups = new Map();
+    t.rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+    let changed = false;
+    for (const [k, members] of groups) {
+      if (!/^(\d+|w)$/.test(k)) continue;
+      const base = k === "w" ? "W" : k;
+      if (members.length === 1) {
+        if (members[0].label !== base) { members[0].label = base; changed = true; }
+        continue;
+      }
+      const letter = (r) => ((String(r.label || "").trim().match(/^(?:\d+|w)\s*([a-z]*)/i) || [])[1] || "").toLowerCase();
+      const edited = members.find((r) => r.id === lastEditedId) || null;
+      const ordered = members.filter((r) => r !== edited)
+        .sort((a, b) => { const la = letter(a) || "~", lb = letter(b) || "~"; return la < lb ? -1 : la > lb ? 1 : 0; });
+      if (edited) {
+        const L = letter(edited);
+        const at = L ? Math.max(0, Math.min(L.charCodeAt(0) - 97, ordered.length)) : ordered.length;
+        ordered.splice(at, 0, edited);
+      }
+      ordered.forEach((r, j) => { const want = base + String.fromCharCode(97 + Math.min(j, 25)); if (r.label !== want) { r.label = want; changed = true; } });
+    }
+    lastEditedId = null;
+    return changed;
+  }
+
+  const setsOf = (r) => Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20));   // blank = the default 4; 0 still counts as one
+  // what the set before (in this workout) was logged at: the next set starts from it, so nothing is retyped unless something changed
+  // after Complete set: bring the card's Sets line back under the header (or on to the next card once this one is finished)
+  const haptic = () => { try { if (navigator.vibrate) navigator.vibrate(10); } catch (_) {} };   // Android; iPhone ticks on its own through the switch the button is a label for
+  function scrollToCard(key) {
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();   // the keyboard leaves first; the glide follows the page as it settles
+    const target = () => {
+      let el = document.querySelector('.block[data-key="' + CSS.escape(String(key)) + '"]'); if (!el) return null;
+      if (el.classList.contains("done")) { let n = el.nextElementSibling; while (n && !(n.classList.contains("block") && !n.classList.contains("done"))) n = n.nextElementSibling; if (n) el = n; }
+      const head = document.querySelector("header"); const off = (head ? head.getBoundingClientRect().bottom : 0) + 12;
+      const sc = document.scrollingElement || document.documentElement;
+      return Math.max(0, Math.min(sc.scrollTop + el.getBoundingClientRect().top - off, sc.scrollHeight - sc.clientHeight));
+    };
+    glide(target);
+  }
+  // our own glide: it re-reads where the card is on every step (names settling, the keyboard closing), eases towards it, and lands exactly
+  function glide(target) {
+    const sc = document.scrollingElement || document.documentElement;
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) { const to = target(); if (to != null) sc.scrollTop = to; return; }
+    const t0 = performance.now(), dur = 380, cap = 1100;
+    const step = () => {
+      const to = target(); if (to == null) return;
+      const t = performance.now() - t0, p = Math.min(1, t / dur), gap = to - sc.scrollTop;
+      if ((p >= 1 && Math.abs(gap) <= 1) || t > cap) { sc.scrollTop = to; return; }
+      sc.scrollTop = sc.scrollTop + gap * (p >= 1 ? 0.5 : 0.22);
+      setTimeout(step, 16);
+    };
+    setTimeout(step, 40);
+  }
+  // the word after a number: "10 reps" but "1 rep", nothing after "30 sec" or "12 each leg"
+  const repsWord = (v) => { const t = String(v || "").trim(); if (/[a-z]/i.test(t)) return ""; return t === "1" ? "rep" : "reps"; };
+  // "30 lbs", "1 lb", "20 kg"; nothing after "Bodyweight", "band" or "60 sec"
+  const weightWord = (v, unit) => { const t = String(v || "").trim(); if (t && !/^[\d.,\s]+$/.test(t)) return ""; const n = parseFloat(t.replace(",", ".")); return unit === "kg" ? "kg" : (n === 1 ? "lb" : "lbs"); };
+  const showWeight = (v) => /^bw$/i.test(String(v || "").trim()) ? "Bodyweight" : v;   // typed or picked as BW, read as a word
+  const showReps = (v) => String(v || "").replace(/^(\d+(?:\s*[\u2013-]\s*\d+)?)\s*(\/|each|per)\s*(side|leg|arm)$/i, (m, n, e, w) => n + (n === "1" ? " rep " : " reps ") + (e === "/" ? "/ " : e + " ") + w);   // "7 / side" reads "7 reps / side"
+  // a chip shows its words as text ("8–10 reps", "30 lbs"); the box only appears while someone types in it
+  // o.readOnly: text only (client) · o.empty: the grey label when there is nothing at all ("Weight") · o.suffix: text, or fn(shown) → text ("" hides it) · o.show: fn(shown) → what to display
+  function wireChip(inp, o = {}) {
+    const chip = inp.closest(".chip"), val = chip.querySelector(".val"), sfx = chip.querySelector(".suffix");
+    const fit = () => {
+      const raw = inp.value || inp.placeholder || "", nothing = !raw, editing = chip.classList.contains("editing");
+      val.textContent = nothing ? (o.empty || "") : (o.show ? o.show(raw) : raw);
+      val.classList.toggle("ph", !inp.value); chip.classList.toggle("filled", !!inp.value);
+      if (o.suffix !== undefined) sfx.textContent = typeof o.suffix === "function" ? o.suffix(raw) : o.suffix;
+      sfx.hidden = !sfx.textContent || (nothing && !editing);               // "Weight" alone until the box is tapped, then "lbs" waits for the number
+    };
+    fit(); inp.addEventListener("input", fit);
+    if (o.readOnly) { inp.tabIndex = -1; return fit; }
+    chip.addEventListener("click", (e) => { if (e.target !== inp) { inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {} } });
+    inp.addEventListener("focus", () => { chip.classList.add("editing"); fit(); });
+    inp.addEventListener("blur", () => { chip.classList.remove("editing"); fit(); });
+    return fit;
+  }
+  const carried = (r, sel) => { const pick = (arr) => { for (let i = sel - 1; i >= 0; i--) { const v = String((arr || [])[i] || "").trim(); if (v) return v; } return ""; }; return { w: pick(r.weights), rp: pick(r.repsDone) }; };
+  const setSel = new Map();               // "<training>/<group>" -> set the client is looking at (0-based)
+  const openBlocks = new Set();           // finished cards the user opened with "Show sets"
+  const peekBlocks = new Set();   // client: exercises still to come that were tapped open to have a look
+  let previewClient = false;       // trainer: showing the workout as the client sees it (display only; saving stays the trainer's)
+  function rowEl(t, r, group) {
+    const el = document.createElement("div"); el.className = "row"; el.dataset.id = r.id;
+    el.innerHTML = `
+      <div class="top">
+        <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
+        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg class="i-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg><svg class="i-up" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="alt-btn" type="button" hidden aria-label="Options" title="Options"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
+      </div>
+      <div class="sum"></div>
+      <div class="newname trainer-only" hidden><span>New exercise</span><button class="btn quiet link addname" type="button">Add to database</button></div>
+      <div class="player" hidden></div>
+      <div class="vidrow trainer-only" hidden><button class="vid-edit" type="button">Change video</button></div>
+      <div class="vid-form" hidden><input class="vid-url" type="url" placeholder="Paste a YouTube link" autocomplete="off" autocapitalize="none" inputmode="url"><div class="vid-actions"><button class="btn sm vid-save" type="button">Save</button><button class="btn danger vid-remove" type="button" hidden>Remove</button><button class="btn quiet vid-cancel" type="button">Cancel</button></div></div>
+      <div class="specs">
+        <div class="chip"><span class="val"></span><input class="reps tab" inputmode="decimal" placeholder="10" aria-label="Reps"><span class="suffix">reps</span></div>
+        <div class="chip"><span class="val"></span><input class="rest tab" inputmode="decimal" placeholder="60 sec" aria-label="Rest"><span class="suffix rest-suffix">rest</span></div>
+      </div>
+      <div class="tempo-wrap"><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"><div class="tempo-tiles" hidden></div></div>
+      <div class="cnote" hidden><button class="cnote-btn" type="button" aria-expanded="false"><span class="cnote-lab">See note</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="cnote-text" hidden></div></div>
+      <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
+      <div class="setlog"><div class="pair"><div class="chip"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></div><div class="chip"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></div></div></div>
+      <div class="lifts" hidden><span class="lift last"><i>Last</i><b></b></span><span class="lift best"><i>Best</i><b></b></span></div>
+      <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Note"></textarea></div>`;
+    const q = (s) => el.querySelector(s);
+    let wText = false;                       // a row that already holds BW / 60 sec opens on the full keyboard (the bar above the keyboard switches it)
+    const nonNum = (w) => !!w && !/^[\d.,\s]*$/.test(String(w));
+    q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
+    const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; };
+    const asClient = clientMode || previewClient;        // what to show; what to save still follows clientMode
+    const layoutIcons = () => { const n = (q(".vid-btn").hidden ? 0 : 1) + (asClient ? 0 : 1) + (q(".alt-btn").hidden ? 0 : 1); q(".name").style.paddingRight = (n ? 10 + n * 38 : 16) + "px"; growName(); };   // the name wraps before the icons
+    const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
+    const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
+    const markNamed = () => { if (clientMode) return; if (!trainerNamed.has(t.id)) trainerNamed.set(t.id, new Set()); trainerNamed.get(t.id).add(r.id); };
+    const exwrap = q(".top .exwrap"), altBtn = q(".alt-btn"), altMenu = q(".alt-menu");
+    const letter = (String(r.label || "").match(/^(?:\d+|w)([a-z])$/i) || [])[1] || "";   // superset rows read "A  Bench press" (warm-up Wa / Wb too)
+    exwrap.dataset.letter = letter.toUpperCase(); el.style.setProperty("--letw", letter ? "42px" : "0px");
+    let altMode = "list";
+    const altList = () => (r.alts || []).filter(Boolean);
+    const paintAltBtn = () => { const n = altList().length; const show = !asClient || n > 0; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };
+    const outside = (e) => { if (!exwrap.contains(e.target)) closeAlt(); };
+    const closeAlt = () => { altMenu.hidden = true; altMenu.replaceChildren(); altMode = "list"; document.removeEventListener("pointerdown", outside, true); if (closeOpenAlt === closeAlt) closeOpenAlt = null; };
+    function swapTo(a) {
+      const old = r.name; r.name = a; r.alts = altList().map((v) => (v === a ? old : v)).filter(Boolean);
+      if (clientMode) { if (!pendingSwap.has(t.id)) pendingSwap.set(t.id, new Map()); pendingSwap.get(t.id).set(r.id, a); } else markNamed();
+      save(); renderedTraining = null; render();
+      const n = $("rows").querySelector('.row[data-id="' + r.id + '"]'); const b = n && n.closest(".block");
+      if (b && b.classList.contains("done")) { b.classList.add("open"); const f = b.querySelector(".fold-btn"); if (f) f.textContent = "Hide weights"; } // a folded card stays open to show the swap
+    }
+    const addAlt = (name) => { name = String(name || "").trim(); name = ALIASES[name] || name; if (!name) return; if (name === r.name || altList().includes(name)) { paintAltList(); return; } r.alts = [...altList(), name].slice(0, 2); markNamed(); save(); paintAltBtn(); paintAltList(); };
+    const dropAltNamed = () => { if (altList().includes(r.name)) { r.alts = altList().filter((v) => v !== r.name); paintAltBtn(); } };
+    const removeAlt = (a) => { r.alts = altList().filter((v) => v !== a); markNamed(); save(); paintAltBtn(); paintAltList(); };
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const menuItem = (text, cls, onPick, onRemove) => {
+      const d = mk("div", "item"); const b = mk("button", "pick" + (cls ? " " + cls : ""), text); b.type = "button";
+      b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", onPick); d.appendChild(b);
+      if (onRemove) { const x = mk("button", "rm", "\u00d7"); x.type = "button"; x.setAttribute("aria-label", "Remove alternative"); x.addEventListener("mousedown", (ev) => ev.preventDefault()); x.addEventListener("click", onRemove); d.appendChild(x); }
+      return d;
+    };
+    function paintAltList() {
+      altMode = "list"; altMenu.replaceChildren();
+      const alts = altList().filter((a) => a !== r.name);
+      if (String(r.name || "").trim()) { const c = mk("div", "cur"); c.appendChild(mk("span", "ck", "\u2713")); c.appendChild(mk("span", null, r.name)); altMenu.appendChild(c); }
+      for (const a of alts) altMenu.appendChild(menuItem(a, "", () => { closeAlt(); swapTo(a); }, asClient ? null : () => removeAlt(a)));
+      if (!asClient && alts.length < 2) altMenu.appendChild(menuItem("+ Add alternative", "add", paintAltAdd));
+      if (!asClient) { const d = menuItem("Remove exercise", "remove", () => { closeAlt(); t.rows = t.rows.filter((x) => x.id !== r.id); save(); renderedTraining = null; render(); }); d.classList.add("last"); altMenu.appendChild(d); }
+      altMenu.hidden = false;
+    }
+    function paintAltAdd() {
+      altMode = "add"; altMenu.replaceChildren();
+      const inp = mk("input", "alt-input"); inp.maxLength = 120; inp.placeholder = "Alternative exercise"; inp.autocomplete = "off"; inp.setAttribute("autocapitalize", "sentences"); inp.setAttribute("enterkeyhint", "done");
+      const hits = mk("div", "alt-hits"); altMenu.append(inp, hits);
+      const paintHits = () => {
+        const s = squash(inp.value); hits.replaceChildren(); if (s.length < 2) return;
+        const taken = new Set([squash(r.name), ...altList().map(squash)]); const starts = [], contains = [];
+        ALL_NAMES.forEach((n, i) => { const k = ALL_KEYS[i]; if (taken.has(k)) return; if (k.startsWith(s)) starts.push(n); else if (k.includes(s)) contains.push(n); });
+        starts.sort((a, b) => a.length - b.length || a.localeCompare(b));
+        for (const n of [...starts, ...contains]) hits.appendChild(menuItem(n, "", () => addAlt(n)));
+      };
+      inp.addEventListener("input", paintHits);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); if (inp.value.trim()) addAlt(inp.value); else paintAltList(); } else if (e.key === "Escape") paintAltList(); });
+      inp.addEventListener("blur", () => setTimeout(() => { if (altMode === "add" && !altMenu.hidden && !inp.value.trim()) paintAltList(); }, 200));
+      inp.focus();
+    }
+    altBtn.addEventListener("mousedown", (ev) => ev.preventDefault());
+    altBtn.addEventListener("click", () => {
+      if (!altMenu.hidden) { closeAlt(); return; }
+      q(".sugg").hidden = true; q(".numpick").hidden = true;
+      paintAltList(); document.addEventListener("pointerdown", outside, true); closeOpenAlt = closeAlt;
+    });
+    paintAltBtn();
+    const newName = q(".newname");
+    const paintNewName = () => { const n = String(r.name || "").trim(); const near = !knownName(n) && n ? nearName(n) : null; newName.hidden = asClient || !n || knownName(n); newName.firstElementChild.textContent = near ? "Did you mean “" + near + "”? · Or" : "New exercise"; };
+    q(".addname").addEventListener("click", async () => {
+      const b = q(".addname"); b.disabled = true; b.textContent = "Adding\u2026";
+      const ok = await addCustomName(r.name); b.disabled = false; b.textContent = "Add to database";
+      if (ok) { const t2 = tidyName(r.name); if (t2 !== r.name) { r.name = t2; q(".name").value = t2; save(); } paintNewName(); $("status").textContent = "Added to your exercises"; setTimeout(setStatus, 1500); }
+      else { $("status").textContent = "Couldn\u2019t add \u00b7 run supabase/exercises.sql, or try again online"; $("status").className = "err"; setTimeout(setStatus, 4000); }
+    });
+    paintNewName();
+    let videoId = null;
+    const vidBtn = q(".vid-btn"), vidRow = q(".vidrow");
+    const paintVideo = () => {
+      const id = videoFor(r.name); const pl = q(".player");
+      if (id !== videoId) { videoId = id; pl.replaceChildren(); pl.hidden = true; vidRow.hidden = true; vidBtn.classList.remove("open"); }
+      vidBtn.hidden = asClient && !id;                                  // the trainer always has it: with no video it opens the link box
+      vidBtn.classList.toggle("has", !!id); vidBtn.title = id ? "Watch video" : "Add video"; vidBtn.setAttribute("aria-label", vidBtn.title);
+      q(".vid-remove").hidden = !customVideos.has(loose(r.name));
+      layoutIcons();
+    };
+    const openVidForm = () => { const f = q(".vid-form"); f.hidden = !f.hidden; if (!f.hidden) { q(".vid-url").value = ""; q(".vid-url").focus(); } };
+    q(".vid-edit").addEventListener("click", openVidForm);
+    q(".vid-cancel").addEventListener("click", () => { q(".vid-form").hidden = true; });
+    q(".vid-save").addEventListener("click", async () => {
+      const url = q(".vid-url").value.trim(), id = youtubeId(url), keyName = loose(r.name);
+      if (!keyName) { $("status").textContent = "Name the exercise first"; return; }
+      if (!id) { $("status").textContent = "That doesn\u2019t look like a YouTube link"; return; }
+      const error = await saveVideo(keyName, url, id);
+      if (error) { $("status").textContent = /ft_exercise_videos/.test(error.message) ? "Run supabase/exercise-videos.sql first" : "Couldn\u2019t save the video"; return; }
+      q(".vid-form").hidden = true; paintVideo(); setStatus();
+    });
+    q(".vid-remove").addEventListener("click", async () => {
+      const keyName = loose(r.name);
+      const error = await deleteVideo(keyName);
+      if (error) { $("status").textContent = "Couldn\u2019t remove the video"; return; }
+      q(".vid-form").hidden = true; paintVideo(); setStatus();
+    });
+    vidBtn.addEventListener("click", () => {
+      closeAlt();
+      if (!videoId) { if (!asClient) openVidForm(); return; }
+      const pl = q(".player");
+      if (!pl.hidden) { pl.replaceChildren(); pl.hidden = true; vidRow.hidden = true; vidBtn.classList.remove("open"); vidBtn.title = "Watch video"; vidBtn.setAttribute("aria-pressed", "false"); return; }
+      const f = document.createElement("iframe");
+      f.src = "https://www.youtube-nocookie.com/embed/" + videoId + "?playsinline=1&rel=0&modestbranding=1";
+      f.allow = "accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"; f.setAttribute("allowfullscreen", "");
+      f.setAttribute("playsinline", ""); f.title = r.name || "Exercise video"; f.loading = "lazy";
+      pl.replaceChildren(f); pl.hidden = false; vidRow.hidden = false; vidBtn.classList.add("open"); vidBtn.title = "Hide video"; vidBtn.setAttribute("aria-pressed", "true");   // "Change video" sits under the open player (trainer)
+    });
+    paintVideo();
+    if (ALIASES[r.name]) { r.name = ALIASES[r.name]; if (!clientMode) scheduleSave("trainings", t.id); }
+    if (!clientMode && Array.isArray(r.alts) && r.alts.some((a) => ALIASES[a])) { r.alts = r.alts.map((a) => ALIASES[a] || a); scheduleSave("trainings", t.id); }
+    q(".label").value = r.label || ""; q(".name").value = r.name || "";
+    requestAnimationFrame(growName);
+    q(".name").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
+    q(".reps").value = r.reps || ""; q(".tempo").value = r.tempo || ""; q(".rest").value = r.rest || "";
+
+    const save = () => scheduleSave("trainings", t.id);
+    if (asClient) { for (const s of [".label", ".name", ".reps", ".tempo", ".rest"]) q(s).readOnly = true; for (const s of [".reps", ".tempo", ".rest"]) { const el = q(s); if (!el.value) el.value = el.placeholder; } }   // the trainer's grey defaults read as filled in for the client
+    const bind = (sel, field, transform) => { if (asClient) return; q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); }); };
+    if (!asClient) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
+    bind(".reps", "reps"); bind(".tempo", "tempo", (v) => { setTimeout(paintTempo, 0); return v; });
+    bind(".rest", "rest");
+    wireChip(q(".reps"), { readOnly: asClient, suffix: repsWord, show: showReps }); const fitRest = wireChip(q(".rest"), { readOnly: asClient });
+    if (!asClient) q(".rest").addEventListener("blur", (e) => { const v = e.target.value.trim(); if (/^\d+([.,]\d+)?$/.test(v)) { r.rest = v + " sec"; e.target.value = r.rest; fitRest(); save(); } });
+    const numpick = q(".numpick");
+    function showNumbers() {
+      let max = 0;
+      for (const x of t.rows) { const m = String(x.label || "").match(/^(\d+)/); if (m) max = Math.max(max, Number(m[1])); }
+      const cur = (String(r.label || "").match(/^(\d+)/) || [])[1] || (isWarmLabel(r.label) ? "W" : "");
+      const choices = ["W", ...Array.from({ length: Math.max(max + 1, 1) }, (_, i) => String(i + 1))];
+      numpick.replaceChildren(...choices.map((n) => {
+        const b = document.createElement("button"); b.type = "button"; b.textContent = n; if (n === "W") b.title = "Warmup";
+        if (n === cur) b.classList.add("cur");
+        b.addEventListener("mousedown", (ev) => ev.preventDefault());
+        b.addEventListener("click", () => { r.label = n; lastEditedId = r.id; q(".label").value = n; numpick.hidden = true; save(); renderedTraining = null; render(); });
+        return b;
+      }));
+      numpick.hidden = false;
+    }
+    if (!asClient) {
+      let labelAtFocus = "";
+      q(".label").addEventListener("focus", (e) => { labelAtFocus = e.target.value; showNumbers(); });
+      q(".label").addEventListener("blur", () => { numpick.hidden = true; if (q(".label").value !== labelAtFocus) { renderedTraining = null; render(); } });
+      q(".name").addEventListener("input", (e) => { closeAlt(); r.name = e.target.value.replace(/\n/g, " "); markNamed(); dropAltNamed(); growName(); save(); suggest(e.target.value); renderWeights(); paintVideo(); paintNewName(); });
+      q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
+      q(".name").addEventListener("focus", (e) => { closeAlt(); suggest(e.target.value); });
+    }
+
+    const tempoTiles = q(".tempo-tiles"), tempoInp = q(".tempo");
+    const paintTempo = () => {
+      const raw = String(r.tempo || "").trim();
+      const m = /^([0-9X])([0-9X])([0-9X])([0-9X])$/i.exec(raw);
+      const word = !m && /[a-wyz]/i.test(raw) && !/^normal$/i.test(raw) ? raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase() : "";   // "Controlled", "Slow" … (not a half-typed code)
+      tempoTiles.replaceChildren();
+      const normal = !m && !word;
+      q(".tempo-wrap").hidden = asClient && normal;                       // Normal (or blank) is nothing to show a client
+      const show = document.activeElement !== tempoInp;                    // one cell: the card stands in for the box, except while the trainer is typing
+      tempoTiles.hidden = !show; tempoInp.hidden = show;
+      if (!show) return;
+      if (!m) { const w = document.createElement("div"); w.className = "word"; if (normal) { w.classList.add("normal"); w.textContent = "Normal tempo"; } else w.textContent = word.charAt(0).toUpperCase() + word.slice(1) + (/tempo/i.test(word) ? "" : " tempo"); tempoTiles.append(w); return; }
+      if (asClient) {                                                       // the client reads it as words: "3 sec down │ 1 sec pause │ fast up"
+        const fast = (x) => /x/i.test(x) || x === "0";
+        const parts = [fast(m[1]) ? "fast down" : m[1] + " sec down", fast(m[2]) ? "" : m[2] + " sec pause", fast(m[3]) ? "fast up" : m[3] + " sec up", fast(m[4]) ? "" : m[4] + " sec pause"].filter(Boolean);
+        tempoTiles.classList.add("words");
+        for (const text of parts) { const e = document.createElement("span"); e.className = "si"; e.textContent = text; tempoTiles.appendChild(e); }
+        return;
+      }
+      const v = (x) => /x/i.test(x) ? "X" : x + "s";
+      const tile = (d, text) => { const e = document.createElement("div"); const b = document.createElement("b"); b.textContent = v(d); const s = document.createElement("span"); s.textContent = text; e.append(b, s); return e; };
+      tempoTiles.append(
+        tile(m[1], /x/i.test(m[1]) ? "Lower · fast" : "Lower"),
+        tile(m[2], "Bottom pause"),
+        tile(m[3], /x/i.test(m[3]) ? "Lift · fast" : "Lift"),
+        tile(m[4], "Top pause"));
+    };
+    paintTempo();
+    if (!asClient) {
+      tempoTiles.setAttribute("role", "button"); tempoTiles.tabIndex = 0; tempoTiles.setAttribute("aria-label", "Tempo, tap to change");
+      const editTempo = () => { tempoTiles.hidden = true; tempoInp.hidden = false; tempoInp.focus(); try { tempoInp.setSelectionRange(tempoInp.value.length, tempoInp.value.length); } catch (_) {} };
+      tempoTiles.addEventListener("click", editTempo);
+      tempoTiles.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editTempo(); } });
+      tempoInp.addEventListener("blur", () => setTimeout(paintTempo, 100));   // after the keyboard bar's ABC/123 switch (blur, refocus at 50 ms) so the box is not swapped out mid-switch
+    }
+    const cnote = q(".cnote"), cnoteBtn = q(".cnote-btn"), cnoteLab = q(".cnote-lab"), cnoteText = q(".cnote-text");
+    const paintClientNote = () => {
+      const v = String(r.note || "").trim(), open = openNotes.has(r.id);
+      cnote.hidden = !asClient || !v; cnoteText.textContent = v; cnoteText.hidden = !open;
+      cnoteLab.textContent = open ? "Hide note" : "See note"; cnoteBtn.classList.toggle("open", open); cnoteBtn.setAttribute("aria-expanded", String(open));
+    };
+    cnoteBtn.addEventListener("click", () => { if (openNotes.has(r.id)) openNotes.delete(r.id); else openNotes.add(r.id); paintClientNote(); });
+    paintClientNote();
+    const noteBtn = q(".note-btn"), noteBox = q(".note"), noteField = q(".note-field");
+    const growNote = () => { noteField.style.height = "auto"; noteField.style.height = noteField.scrollHeight + "px"; };
+    const showNote = () => { const v = (r.note || "").trim(); noteBtn.classList.toggle("has", !!v); noteBtn.title = v ? "Note" : "Add note"; noteBtn.setAttribute("aria-label", noteBtn.title); };
+    noteBtn.addEventListener("click", () => { closeAlt(); noteBox.hidden = false; noteField.value = r.note || ""; growNote(); noteField.focus(); });
+    noteField.addEventListener("input", (e) => { r.note = e.target.value; growNote(); save(); });
+    noteField.addEventListener("blur", () => { noteBox.hidden = true; showNote(); });
+    showNote();
+
+    function suggest(v) {
+      const ul = q(".sugg"); const s = squash(v);
+      if (s.length < 2) { ul.hidden = true; return; }
+      const exact = [], starts = [], contains = [], typed = norm(v);
+      ALL_NAMES.forEach((n, i) => { const k = ALL_KEYS[i]; if (k === s) { if (n.toLowerCase() !== typed) exact.push(n); } else if (k.startsWith(s)) starts.push(n); else if (k.includes(s)) contains.push(n); }); // "push up" offers "Push-up" first
+      starts.sort((a, b) => a.length - b.length || a.localeCompare(b));
+      const hits = [...exact, ...starts, ...contains].slice(0, 20);   // enough to pick from; the library page lists everything
+      ul.replaceChildren(...hits.map((n) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { r.name = n; markNamed(); dropAltNamed(); q(".name").value = n; growName(); ul.hidden = true; save(); renderWeights(); paintVideo(); paintNewName(); }); li.appendChild(b); return li; }));
+      ul.hidden = hits.length === 0;
+    }
+
+    const liftHistory = () => {                                      // this exercise, this client: the last session's top set and the best ever (by weight, then reps)
+      const canon = (x) => squash(ALIASES[String(x || "").trim()] || x); const name = canon(r.name); if (!name) return null;
+      const num = (v) => { const str = String(v == null ? "" : v).trim(); return /^\d+(?:[.,]\d+)?$/.test(str) ? parseFloat(str.replace(",", ".")) : null; };
+      const heavier = (a, b) => !b || a.w > b.w || (a.w === b.w && (a.rp || 0) > (b.rp || 0));
+      const top = (row) => { let b = null; const ws = row.weights || [], rs = row.repsDone || []; for (let i = 0; i < ws.length; i++) { const w = num(ws[i]); if (w == null) continue; const st = { w, rp: num(rs[i]) }; if (heavier(st, b)) b = st; } return b; };
+      let best = null, last = null;
+      for (const other of clientTrainings(t.clientId)) {              // newest first
+        const earlier = other.id !== t.id && (effDate(other) < effDate(t) || (effDate(other) === effDate(t) && (other.createdAt || "") < (t.createdAt || "")));
+        for (const x of other.rows || []) {
+          if (canon(x.name) !== name) continue; const st = top(x); if (!st) continue;
+          if (heavier(st, best)) best = st;
+          if (!last && earlier) last = st;
+        }
+      }
+      return best ? { best, last } : null;
+    };
+    const paintLifts = () => {
+      const box = q(".lifts"), h = isTemplateClient(t.clientId) ? null : liftHistory();
+      box.hidden = !h; if (!h) return;
+      const unit = (clients.get(t.clientId) || {}).unit || "lb", fmt = (st) => st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "");
+      q(".lift.last").hidden = !h.last; if (h.last) q(".lift.last b").textContent = fmt(h.last);
+      q(".lift.best b").textContent = fmt(h.best);
+    };
+    function renderWeights() {
+      const n = setsOf(r);
+      const boxes = q(".boxes"); const last = lastWeights(t, r);
+      q(".last").textContent = last ? "last time \u00b7 " + fmtDate(last.date) : "";
+      paintLifts();
+      r.weights = (r.weights || []).slice(0, n); while (r.weights.length < n) r.weights.push("");
+      r.repsDone = (r.repsDone || []).slice(0, n);
+      if (!wText && r.weights.some(nonNum)) wText = true;
+      boxes.replaceChildren(...Array.from({ length: n }, (_, i) => {
+        const inp = document.createElement("input"); inp.className = "tab"; inp.inputMode = wText ? "text" : "decimal"; inp.setAttribute("autocapitalize", "none"); inp.setAttribute("aria-label", "Set " + (i + 1) + " weight");
+        inp.value = r.weights[i] || ""; const hint = !!(last && last.weights[i]); inp.placeholder = hint ? last.weights[i] : "\u2013"; inp.classList.toggle("hint", hint);
+        inp.addEventListener("input", (e) => {
+          r.weights[i] = e.target.value;
+          const track = clientMode ? pendingWeightRows : trainerTouched;
+          if (!track.has(t.id)) track.set(t.id, new Set());
+          track.get(t.id).add(r.id);
+          save();
+        });
+        inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const nx = boxes.children[i + 1]; if (nx) nx.focus(); else inp.blur(); } });
+        return inp;
+      }));
+      el.querySelector(".weights").hidden = n === 0;
+    }
+    renderWeights();
+    if (group && group.rows.length > 1 && group.rows[group.rows.length - 1] !== r) q(".rest-suffix").textContent = "transition";
+    if (group && group.sel != null && group.sel >= setsOf(r)) q(".setlog").hidden = true;   // no such set for this exercise
+    else if (group && group.sel != null) {      // one set at a time: the boxes show the set the tracker points at
+      const sel = group.sel; const unit = (clients.get(t.clientId) || {}).unit || "lb";
+      const last = lastWeights(t, r);
+      r.weights = r.weights || []; r.repsDone = r.repsDone || [];
+      const w = q(".setlog .w"), rp = q(".setlog .rp");
+      const lw = last && last.weights[sel] ? String(last.weights[sel]) : "", lr = last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "";
+      const carry = carried(r, sel);   // the set before (else last time) shows in grey: type over it, or leave it and Complete set writes it down
+      w.value = r.weights[sel] || ""; w.placeholder = carry.w || lw || "";           // nothing to suggest: the chip just says "lb"
+      rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || (r.reps ? String(r.reps) : "");
+      w.inputMode = (wText || nonNum(r.weights[sel] || carry.w || "")) ? "text" : "decimal";
+      const mark = () => { const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
+      w.addEventListener("input", (e) => { while (r.weights.length <= sel) r.weights.push(""); r.weights[sel] = e.target.value; mark(); });
+      rp.addEventListener("input", (e) => { while (r.repsDone.length <= sel) r.repsDone.push(""); r.repsDone[sel] = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); e.target.value = r.repsDone[sel]; mark(); });
+      w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.focus(); } });
+      rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.blur(); } });
+      wireChip(w, { empty: "Weight", suffix: (v) => weightWord(v, unit), show: showWeight });   // after the handlers above, so the words follow the tidied value
+      wireChip(rp, { empty: "Reps", suffix: repsWord, show: showReps });
+    }
+    const chipText = (c) => c.querySelector(".val").textContent + (c.querySelector(".suffix").hidden ? "" : " " + c.querySelector(".suffix").textContent);
+    const nSets = setsOf(r), sumEl = q(".sum"); sumEl.replaceChildren();   // "3 sets · 8–10 reps · 60 sec transition" (the open card hides the sets part: the chips above say it)
+    const chips = [...el.querySelectorAll(".specs .chip")];
+    for (const [text, cls] of [[nSets + (nSets === 1 ? " set" : " sets"), "si sum-sets"], [chipText(chips[0]), "si sum-reps"], [chipText(chips[1]), "si sum-rest"]]) { if (!text) continue; const e = document.createElement("span"); e.className = cls; e.textContent = text; sumEl.appendChild(e); }
+    return el;
+  }
+
+  // ---------- events ----------
+  $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; renderedTraining = null; render(); });
+  $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
+  $("cNameField").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.name = e.target.value; $("cName").value = c.name; scheduleSave("clients", c.id); });
+  const growNotesBox = () => growBox($("cNotes"));
+  const wNoteOpen = new Set();                                   // workouts whose notes are unfolded (this session)
+  function paintWorkoutNotes(t) {
+    const c = clients.get(t.clientId), wrap = $("wNote");
+    const mine = c && !clientMode && !isTemplateClient(t.clientId) ? noteEntries(c).filter((n) => n.workout && n.workout.id === t.id).sort((a, b) => String(a.at || "").localeCompare(String(b.at || ""))) : [];
+    wrap.hidden = !mine.length; if (!mine.length) return;
+    const open = wNoteOpen.has(t.id), word = mine.length === 1 ? "note" : "notes";
+    $("wNoteLab").textContent = open ? "Hide " + word : "Read " + (mine.length === 1 ? "note" : mine.length + " notes");
+    $("wNoteBtn").classList.toggle("open", open); $("wNoteBtn").setAttribute("aria-expanded", String(open));
+    const list = $("wNoteList"); list.hidden = !open; list.replaceChildren();
+    for (const n of mine) {
+      const row = document.createElement("div"); row.className = "entry";
+      const when = document.createElement("div"); when.className = "when"; const d = new Date(n.at);
+      when.textContent = n.at ? d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "Earlier";
+      const text = document.createElement("div"); text.className = "text"; text.textContent = n.text;
+      row.append(when, text); list.appendChild(row);
+    }
+  }
+  $("wNoteBtn").addEventListener("click", () => { const t = trainings.get(view.id); if (!t) return; if (wNoteOpen.has(t.id)) wNoteOpen.delete(t.id); else wNoteOpen.add(t.id); paintWorkoutNotes(t); });
+  $("tNoteOpen").addEventListener("click", () => { const t = trainings.get(view.id); if (!t) return; tNoteOpenFor = t.id; $("tNoteBox").hidden = false; $("tNoteOpen").hidden = true; $("tNote").focus(); });
+  $("tNote").addEventListener("input", (e) => { tNoteDraft.set(view.id, e.target.value); growBox(e.target); });
+  $("tNoteDiscard").addEventListener("click", () => { tNoteDraft.delete(view.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false; });
+  $("tNoteSave").addEventListener("click", () => {
+    const t = trainings.get(view.id), c = t && clients.get(t.clientId); if (!t || !c) return;
+    const text = String($("tNote").value || "").trim(); if (!text) return;
+    tNoteDraft.delete(t.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false;
+    writeNotes(c, [...noteEntries(c), { id: uid(), at: now(), text, workout: { id: t.id, title: String(t.title || ""), date: effDate(t) || String(t.date || "") } }]);
+    wNoteOpen.add(t.id); paintWorkoutNotes(t);
+  });
+  $("cNotes").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; noteDraft.set(c.id, e.target.value); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
+  $("noteSave").addEventListener("click", () => {
+    const c = clients.get(view.id); if (!c) return;
+    const text = String($("cNotes").value || "").trim(); if (!text) return;
+    noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox();
+    writeNotes(c, [...noteEntries(c), { id: uid(), at: now(), text }]); renderNotes(c);
+  });
+  $("noteDiscard").addEventListener("click", () => { const c = clients.get(view.id); if (c) noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox(); });
+  $("unitSeg").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-unit]"); const c = clients.get(view.id); if (!b || !c) return;
+    c.unit = b.dataset.unit; scheduleSave("clients", c.id);
+    for (const x of $("unitSeg").querySelectorAll("button")) x.classList.toggle("on", x === b);
+  });
+  $("cEmail").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.email = e.target.value.trim().toLowerCase(); scheduleSave("clients", c.id); });
+  $("cEmail").addEventListener("blur", () => { const c = clients.get(view.id); if (c) $("detailsBtn").classList.toggle("needs", !c.email); });
+  $("cPhone").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.phone = e.target.value.trim(); scheduleSave("clients", c.id); });
+  $("cBirthday").addEventListener("change", (e) => { const c = clients.get(view.id); if (!c) return; c.birthday = e.target.value || ""; scheduleSave("clients", c.id); });
+  // phone -> international digits for sms: and wa.me (US numbers without a country code get +1)
+  const phoneDigits = (p) => { let d = String(p || "").replace(/\D/g, ""); if (!d) return ""; if (String(p).trim().startsWith("+")) return d; if (d.length === 10) return "1" + d; if (d.length === 11 && d[0] === "1") return d; return d.length >= 7 ? d : ""; };
+  function paintTrainerMsg(c) {
+    const tel = c ? phoneDigits(c.trainerPhone) : ""; const wa = c && (c.chat || "sms") === "whatsapp";
+    for (const id of ["trainerBtn", "trainerBtn2"]) { const a = $(id); if (!tel || !clientMode) { a.hidden = true; if (id === "trainerBtn") $("trainerRow").hidden = true; continue; } a.hidden = false; if (id === "trainerBtn") $("trainerRow").hidden = false; a.href = wa ? "https://wa.me/" + tel : "sms:+" + tel; if (wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); } }
+  }
+  function paintMsg(c) {
+    const tel = phoneDigits(c.phone); $("contactRow").hidden = !tel || clientMode; if (!tel) return;
+    const wa = (c.chat || "sms") === "whatsapp"; const a = $("msgBtn");
+    $("msgText").textContent = "Message " + ((c.name || "").trim().split(/\s+/)[0] || "client");
+    a.href = wa ? "https://wa.me/" + tel : "sms:+" + tel;
+    if (wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); }
+  }
+  $("cPhone").addEventListener("blur", () => { const c = clients.get(view.id); if (c) paintMsg(c); });
+  $("accessSeg").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    const c = clients.get(view.id); if (!c || isTemplateClient(c.id)) return;
+    const paused = b.dataset.access === "paused"; if (!!c.paused === paused) return;
+    c.paused = paused; if (!paused) c.sort = activeList().length; scheduleSave("clients", c.id); renderClient();
+  });
+  $("chatSeg").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-chat]"); const c = clients.get(view.id); if (!b || !c) return;
+    c.chat = b.dataset.chat; scheduleSave("clients", c.id);
+    for (const x of $("chatSeg").querySelectorAll("button")) x.classList.toggle("on", x === b);
+    paintMsg(c);
+  });
+  let detailsOpen = false, detailsFor = null;
+  $("detailsBtn").addEventListener("click", () => { detailsOpen = !detailsOpen; $("detailsBody").hidden = !detailsOpen; $("detailsBtn").classList.toggle("open", detailsOpen); $("detailsBtn").setAttribute("aria-expanded", String(detailsOpen)); });
+  $("newTraining").addEventListener("click", () => addTraining(view.id, null, today()));
+  $("delClient").addEventListener("click", () => { $("delClient").hidden = true; $("delClientConfirm").hidden = false; });
+  $("delClientNo").addEventListener("click", () => { $("delClientConfirm").hidden = true; $("delClient").hidden = false; });
+  $("delClientYes").addEventListener("click", () => deleteClient(view.id));
+
+  $("tTitle").addEventListener("input", (e) => { const t = trainings.get(view.id); if (!t) return; t.title = e.target.value.replace(/\n/g, " "); e.target.style.height = "auto"; e.target.style.height = Math.max(32, e.target.scrollHeight) + "px"; scheduleSave("trainings", t.id); });
+  $("tTitle").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
+  $("tDate").addEventListener("click", () => {
+    const t = trainings.get(view.id); if (!t || clientMode || isTemplateClient(t.clientId)) return;
+    const id = t.id;
+    openDatePicker({ clientId: t.clientId, title: "Move to", selected: t.date || today(), onPick: (date) => { const cur = trainings.get(id); if (!cur) return; touchState(id, "date"); cur.date = date; scheduleSave("trainings", id); renderedTraining = null; render(); } });
+  });
+  $("addRow").addEventListener("click", () => {
+    const t = trainings.get(view.id); if (!t) return;
+    const r = newRow(nextLabel(t)); t.rows.push(r); scheduleSave("trainings", t.id);
+    renderedTraining = null; render();
+    const el = document.querySelector('.row[data-id="' + r.id + '"]'); if (el) el.querySelector(".name").focus();
+  });
+  function setSkipped(skipped) {
+    const t = trainings.get(view.id); if (!t) return;
+    t.skippedAt = skipped ? now() : null; t.missed = false; touchState(t.id, "skippedAt", "missed");   // a person decided: never filed by itself again
+    if (clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); }
+    scheduleSave("trainings", t.id); paintFinish(t);
+    if (skipped) go({ name: "client", id: t.clientId });
+  }
+  $("skipBtn").addEventListener("click", () => setSkipped(true));
+  $("unskipBtn").addEventListener("click", () => setSkipped(false));
+  $("finishBtn").addEventListener("click", () => setFinished(true));
+  $("unfinishBtn").addEventListener("click", () => setFinished(false));
+  $("copyTraining").addEventListener("click", () => { const t = trainings.get(view.id); if (t) addTraining(t.clientId, t); });
+  $("saveTemplate").addEventListener("click", () => { const t = trainings.get(view.id); if (t) saveAsTemplate(t); });
+  $("tplFill").addEventListener("click", () => { const t = trainings.get(view.id); if (!t) return; fillFor = t.id; pickFor = t.clientId; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });
+  $("fromTemplate").addEventListener("click", () => { pickFor = view.id; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });
+  $("useBtn").addEventListener("click", () => {
+    const t = trainings.get(view.id); if (!t) return;
+    const ul = $("usePick"); if (!ul.hidden) { ul.hidden = true; return; }
+    const people = peopleList(); if (lastUse.client) { const i = people.findIndex((c) => c.id === lastUse.client); if (i > 0) people.unshift(people.splice(i, 1)[0]); }
+    ul.replaceChildren(...people.map((c) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = c.name || "Unnamed"; b.lastChild.textContent = c.id === lastUse.client ? "last used" : ""; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>'); b.addEventListener("click", () => openDatePicker({ clientId: c.id, title: "Add to " + (c.name || "client"), onPick: (date) => applyTemplate(trainings.get(t.id) || t, c.id, date) })); li.appendChild(b); return li; }));
+    if (!people.length) { const li = document.createElement("li"); li.className = "empty"; li.style.padding = "12px 16px"; li.textContent = "Add a client first."; ul.appendChild(li); }
+    ul.hidden = false;
+  });
+  $("delTraining").addEventListener("click", () => { $("delTraining").hidden = true; $("delTrainingConfirm").hidden = false; });
+  $("delTrainingNo").addEventListener("click", () => { $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false; });
+  $("delTrainingYes").addEventListener("click", () => deleteTraining(view.id));
+
+  window.addEventListener("pagehide", flushAll);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushAll(); });
+
+  // ---------- report PDF: one client's month (sessions, logged sets, your notes), set in Inter, to mail yourself ----------
+  function parseTtf(buf) {                                          // the little we need from a TrueType file: char -> glyph, widths, metrics
+    const dv = new DataView(buf), tables = {}, n = dv.getUint16(4);
+    for (let i = 0; i < n; i++) { const o = 12 + i * 16; tables[String.fromCharCode(dv.getUint8(o), dv.getUint8(o + 1), dv.getUint8(o + 2), dv.getUint8(o + 3))] = { off: dv.getUint32(o + 8), len: dv.getUint32(o + 12) }; }
+    const head = tables.head.off, hhea = tables.hhea.off, upem = dv.getUint16(head + 18), k = 1000 / upem;
+    const bbox = [dv.getInt16(head + 36), dv.getInt16(head + 38), dv.getInt16(head + 40), dv.getInt16(head + 42)].map((v) => Math.round(v * k));
+    const ascent = Math.round(dv.getInt16(hhea + 4) * k), descent = Math.round(dv.getInt16(hhea + 6) * k), numH = dv.getUint16(hhea + 34);
+    const hmtx = tables.hmtx.off, width = (g) => Math.round(dv.getUint16(hmtx + Math.min(g, numH - 1) * 4) * k);
+    const cmap = tables.cmap.off, subs = dv.getUint16(cmap + 2); let best = null;
+    for (let i = 0; i < subs; i++) {
+      const pid = dv.getUint16(cmap + 4 + i * 8), eid = dv.getUint16(cmap + 6 + i * 8), off = dv.getUint32(cmap + 8 + i * 8);
+      if (dv.getUint16(cmap + off) === 4 && ((pid === 3 && (eid === 1 || eid === 0)) || pid === 0)) { best = cmap + off; if (pid === 3 && eid === 1) break; }
+    }
+    const map = new Map();
+    if (best != null) {
+      const segX2 = dv.getUint16(best + 6), ends = best + 14, starts = ends + segX2 + 2, deltas = starts + segX2, ranges = deltas + segX2;
+      for (let sgi = 0; sgi < segX2 / 2; sgi++) {
+        const endC = dv.getUint16(ends + sgi * 2), startC = dv.getUint16(starts + sgi * 2), delta = dv.getInt16(deltas + sgi * 2), ro = dv.getUint16(ranges + sgi * 2);
+        if (startC === 0xffff) continue;
+        for (let c = startC; c <= endC; c++) {
+          let g;
+          if (ro === 0) g = (c + delta) & 0xffff;
+          else { const gi = ranges + sgi * 2 + ro + (c - startC) * 2; if (gi + 1 >= buf.byteLength) continue; g = dv.getUint16(gi); if (g) g = (g + delta) & 0xffff; }
+          if (g) map.set(c, g);
+        }
+      }
+    }
+    return { bytes: new Uint8Array(buf), bbox, ascent, descent, gid: (ch) => map.get(ch.codePointAt(0)) || 0, width };
+  }
+  let reportFonts = null, reportFontsP = null;
+  function loadReportFonts() {                                      // Inter Regular + Bold from the app's own folder (the offline shell keeps them)
+    if (reportFonts) return Promise.resolve(reportFonts);
+    if (!reportFontsP) reportFontsP = Promise.all(["fonts/Inter-Regular.ttf", "fonts/Inter-Bold.ttf"].map((u) => fetch(u).then((r) => { if (!r.ok) throw new Error(u); return r.arrayBuffer(); })))
+      .then(([a, b]) => (reportFonts = { regular: parseTtf(a), bold: parseTtf(b) }))
+      .catch(() => { reportFontsP = null; return null; });
+    return reportFontsP;
+  }
+  function pdfDoc(fonts) {
+    const W = 612, H = 792, M = 54, BOTTOM = 64;                     // US Letter, 3/4 inch margins
+    const pages = []; let cur = null, y = 0;
+    const used = { regular: new Map(), bold: new Map() };            // glyph -> character, for the widths table and copy-paste text
+    const latin = (str) => Array.from(String(str)).map((ch) => ch.charCodeAt(0) <= 0xff ? ch : ch.normalize("NFD").replace(/[̀-ͯ]/g, "")).join("").replace(/[^\x20-\x7e\xa0-\xff]/g, "?");
+    const measure = (str, size, bold) => {
+      if (!fonts) return String(str).length * size * 0.5;
+      const f = bold ? fonts.bold : fonts.regular; let w = 0;
+      for (const ch of String(str)) w += f.width(f.gid(ch) || f.gid("?"));
+      return w * size / 1000;
+    };
+    const show = (str, bold) => {                                   // the text operand: glyph ids with Inter, Latin-1 with Helvetica
+      if (!fonts) return "(" + latin(str).replace(/[\\()]/g, (m) => "\\" + m) + ")";
+      const f = bold ? fonts.bold : fonts.regular, u = bold ? used.bold : used.regular; let hex = "";
+      for (const ch of String(str)) { let g = f.gid(ch), cp = ch.codePointAt(0); if (!g) { g = f.gid("?"); cp = 63; } u.set(g, cp); hex += g.toString(16).padStart(4, "0"); }
+      return "<" + hex + ">";
+    };
+    const wrap = (str, size, bold, maxW) => { const lines = []; let line = ""; for (const w of String(str).split(/\s+/)) { const t = line ? line + " " + w : w; if (measure(t, size, bold) > maxW && line) { lines.push(line); line = w; } else line = t; } lines.push(line); return lines; };
+    const clip = (str, size, bold, maxW) => { let t = String(str); if (measure(t, size, bold) <= maxW) return t; while (t.length && measure(t + "…", size, bold) > maxW) t = t.slice(0, -1); return t.trimEnd() + "…"; };
+    const newPage = () => { cur = []; pages.push(cur); y = H - M; };
+    const need = (h) => { if (!cur || y - h < BOTTOM) newPage(); };
+    const op = (x, yy, str, size, bold, color) => cur.push(color + " rg BT /" + (bold ? "F2" : "F1") + " " + size + " Tf " + x.toFixed(1) + " " + yy.toFixed(1) + " Td " + show(str, bold) + " Tj ET");
+    const text = (str, { size = 11, bold = false, indent = 0, color = "0 0 0", gap = 3, maxW = W - 2 * M - indent } = {}) => {
+      for (const para of String(str).split("\n")) for (const line of wrap(para, size, bold, maxW)) { need(size + gap); y -= size; op(M + indent, y, line, size, bold, color); y -= gap; }
+    };
+    const row = (cells, { size = 10.5, gap = 5 } = {}) => {        // one baseline, several columns; a cell: { x | right, text, size, bold, color, maxW }
+      need(size + gap); y -= size;
+      for (const c of cells) { const sz = c.size || size, bold = !!c.bold, str = c.maxW ? clip(c.text, sz, bold, c.maxW) : String(c.text); op(c.right != null ? c.right - measure(str, sz, bold) : c.x, y, str, sz, bold, c.color || "0 0 0"); }
+      y -= gap;
+    };
+    const space = (h) => { y -= h; };
+    const rule = (color = "0.88 0.88 0.9") => { need(10); y -= 3; cur.push(color + " RG 0.6 w " + M + " " + y.toFixed(1) + " m " + (W - M) + " " + y.toFixed(1) + " l S"); y -= 7; };
+    const section = (title) => { need(72); y -= 16; y -= 13; op(M, y, title, 13, true, "0 0 0"); y -= 4; rule("0.80 0.80 0.83"); };   // a heading never sits alone at the foot of a page
+    const footer = (left) => {                                      // on every page: who and which month, and "1 of 2"
+      pages.forEach((pg, i) => { const keep = cur; cur = pg; const yy = 36, sz = 8.5, c = "0.55 0.55 0.58"; op(M, yy, left, sz, false, c); const r = (i + 1) + " of " + pages.length; op(W - M - measure(r, sz, false), yy, r, sz, false, c); cur = keep; });
+    };
+    const bytes = () => {
+      const parts = []; let len = 0; const offs = [];
+      const put = (x) => { const u = typeof x === "string" ? Uint8Array.from(x, (ch) => ch.charCodeAt(0) & 0xff) : x; parts.push(u); len += u.length; };
+      const objs = []; const add = (o) => { objs.push(o); return objs.length; };
+      add("<< /Type /Catalog /Pages 2 0 R >>"); add(""); add("");    // 2: pages, 3: resources, filled below
+      let f1, f2;
+      if (fonts) {
+        const embed = (f, u, name) => {
+          const ff = add({ pre: "<< /Length " + f.bytes.length + " /Length1 " + f.bytes.length + " >>\nstream\n", bin: f.bytes, post: "\nendstream" });
+          const fd = add("<< /Type /FontDescriptor /FontName /" + name + " /Flags 32 /FontBBox [" + f.bbox.join(" ") + "] /ItalicAngle 0 /Ascent " + f.ascent + " /Descent " + f.descent + " /CapHeight 700 /StemV 80 /FontFile2 " + ff + " 0 R >>");
+          const gids = [...u.keys()].sort((a, b) => a - b);
+          const cid = add("<< /Type /Font /Subtype /CIDFontType2 /BaseFont /" + name + " /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor " + fd + " 0 R /DW 1000 /W [" + gids.map((g) => g + " [" + f.width(g) + "]").join(" ") + "] /CIDToGIDMap /Identity >>");
+          let cm = "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n";
+          for (let i = 0; i < gids.length; i += 100) { const chunk = gids.slice(i, i + 100); cm += chunk.length + " beginbfchar\n" + chunk.map((g) => "<" + g.toString(16).padStart(4, "0") + "> <" + u.get(g).toString(16).padStart(4, "0") + ">").join("\n") + "\nendbfchar\n"; }
+          cm += "endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend";
+          const tu = add("<< /Length " + cm.length + " >>\nstream\n" + cm + "\nendstream");
+          return add("<< /Type /Font /Subtype /Type0 /BaseFont /" + name + " /Encoding /Identity-H /DescendantFonts [" + cid + " 0 R] /ToUnicode " + tu + " 0 R >>");
+        };
+        f1 = embed(fonts.regular, used.regular, "Inter-Regular"); f2 = embed(fonts.bold, used.bold, "Inter-Bold");
+      } else {
+        f1 = add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"); f2 = add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+      }
+      objs[2] = "<< /Font << /F1 " + f1 + " 0 R /F2 " + f2 + " 0 R >> >>";
+      const kids = [];
+      for (const pg of pages) {
+        const stream = pg.join("\n");
+        const c = add("<< /Length " + stream.length + " >>\nstream\n" + stream + "\nendstream");
+        kids.push(add("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + W + " " + H + "] /Resources 3 0 R /Contents " + c + " 0 R >>") + " 0 R");
+      }
+      objs[1] = "<< /Type /Pages /Kids [" + kids.join(" ") + "] /Count " + kids.length + " >>";
+      put("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n");
+      objs.forEach((o, i) => { offs.push(len); put((i + 1) + " 0 obj\n"); if (typeof o === "string") put(o); else { put(o.pre); put(o.bin); put(o.post); } put("\nendobj\n"); });
+      const xref = len;
+      put("xref\n0 " + (objs.length + 1) + "\n0000000000 65535 f \n" + offs.map((o) => String(o).padStart(10, "0") + " 00000 n \n").join(""));
+      put("trailer\n<< /Size " + (objs.length + 1) + " /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF");
+      const out = new Uint8Array(len); let at = 0; for (const u of parts) { out.set(u, at); at += u.length; }
+      return out;
+    };
+    newPage();
+    return { text, row, space, rule, section, footer, bytes, wrap, keep: need, M, W };
+  }
+  function reportRange(kind) {                                      // "month" = this month; "2026-09" = that month
+    const base = new Date(today() + "T12:00:00");
+    const first = /^\d{4}-\d{2}$/.test(kind) ? new Date(Number(kind.slice(0, 4)), Number(kind.slice(5, 7)) - 1, 1, 12) : new Date(base.getFullYear(), base.getMonth(), 1, 12);
+    const last = new Date(first.getFullYear(), first.getMonth() + 1, 0, 12);
+    return { from: localIso(first), to: localIso(last), title: first.toLocaleDateString(undefined, { month: "long", year: "numeric" }) };
+  }
+  function buildReport(kind, fonts, c) {                           // the client's month on paper: overview, progress, sessions, notes
+    const r = reportRange(kind), doc = pdfDoc(fonts), t = today(), made = new Date(), M = doc.M, R = doc.W - doc.M;
+    const grey = "0.45 0.45 0.47", soft = "0.25 0.25 0.27", brand = "0.435 0.42 0.6", fern = "0.235 0.478 0.306", warn = "0.65 0.23 0.27";
+    const inRange = (day) => day >= r.from && day <= r.to, unit = c.unit || "lb";
+    const sessions = clientTrainings(c.id).filter((x) => inRange(effDate(x))).sort((a, b) => effDate(a).localeCompare(effDate(b)));
+    const notes = noteEntries(c).filter((n) => n.at && inRange(localIso(new Date(n.at)))).sort((a, b) => a.at.localeCompare(b.at));
+    const status = (x) => x.completedAt ? "Finished" : x.skippedAt ? (x.missed === true ? "Missed" : "Skipped") : effDate(x) < t ? "Not done" : "Planned";
+    const totals = { finished: 0, missed: 0, skipped: 0, planned: 0 };
+    for (const x of sessions) { const st = status(x); totals[st === "Finished" ? "finished" : st === "Skipped" ? "skipped" : st === "Planned" ? "planned" : "missed"]++; }
+    const when = (d) => d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    // the header
+    doc.text("FIALA TRAININGS", { size: 9, bold: true, color: brand, gap: 10 });
+    doc.text(c.name || "Client", { size: 26, bold: true, gap: 5 });
+    doc.row([{ x: M, text: r.title + "  ·  Monthly report", color: grey }, { right: R, text: "Made " + when(made), size: 9, color: grey }], { size: 12, gap: 8 });
+    // overview: the month in three figures
+    doc.section("Overview");
+    const held = totals.finished + totals.missed + totals.skipped;
+    const tiles = [[String(totals.finished), "Finished"], [String(totals.missed), "Missed"], [String(totals.skipped), "Skipped"], [held ? Math.round(100 * totals.finished / held) + "%" : "–", "Attendance"]];
+    doc.space(6);
+    doc.row(tiles.map((tl, i) => ({ x: M + i * 126, text: tl[0], size: 24, bold: true })), { size: 24, gap: 3 });
+    doc.row(tiles.map((tl, i) => ({ x: M + i * 126, text: tl[1].toUpperCase(), size: 8, color: grey })), { size: 8, gap: 8 });
+    if (totals.planned) doc.text(totals.planned + (totals.planned === 1 ? " session" : " sessions") + " still planned this month.", { size: 10, color: grey });
+    // progress: per exercise, the top set at the first and the last session of the month, and the best
+    const num = (v) => { const str = String(v == null ? "" : v).trim(); return /^\d+(?:[.,]\d+)?$/.test(str) ? parseFloat(str.replace(",", ".")) : null; };
+    const better = (a, b) => !b || (a.w != null && (b.w == null || a.w > b.w || (a.w === b.w && (a.rp || 0) > (b.rp || 0)))) || (a.w == null && b.w == null && (a.rp || 0) > (b.rp || 0));
+    const topSet = (row) => { let best = null; const done = clamp(parseInt(row.setsDone, 10) || 0, 0, 20); for (let i = 0; i < done; i++) { const st = { w: num((row.weights || [])[i]), rp: num((row.repsDone || [])[i]) }; if (st.w == null && st.rp == null) continue; if (better(st, best)) best = st; } return best; };
+    const fmtSet = (st) => st.w != null ? st.w + " " + unit + (st.rp != null ? " × " + st.rp : "") : (st.rp != null ? st.rp + (st.rp === 1 ? " rep" : " reps") : "–");
+    const same = (a, b) => a.w === b.w && a.rp === b.rp;
+    const prog = new Map();
+    for (const x of sessions) if (x.completedAt) for (const row of x.rows || []) {
+      const top = topSet(row), name = String(row.name || "").trim(); if (!top || !name) continue;
+      const k = name.toLowerCase(); if (!prog.has(k)) prog.set(k, { name, first: top, last: top, best: top, n: 0 });
+      const e = prog.get(k); e.n++; e.last = top; e.name = name; if (better(top, e.best)) e.best = top;
+    }
+    doc.section("Progress");
+    if (!prog.size) doc.text("No sets logged this month.", { size: 10.5, color: grey });
+    else {
+      const col = { name: M, n: M + 206, start: M + 262, end: M + 344, best: M + 426 };
+      doc.row([{ x: col.name, text: "EXERCISE" }, { x: col.n, text: "SESSIONS" }, { x: col.start, text: "START" }, { x: col.end, text: "END" }, { x: col.best, text: "BEST" }].map((h) => ({ ...h, size: 8, color: grey })), { size: 8, gap: 2 });
+      doc.rule();
+      for (const e of [...prog.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name))) {
+        const up = e.n > 1 && !same(e.first, e.last) && better(e.last, e.first);
+        doc.row([{ x: col.name, text: e.name, bold: true, maxW: 196 }, { x: col.n, text: String(e.n), color: soft }, { x: col.start, text: fmtSet(e.first), color: soft, maxW: 78 }, { x: col.end, text: e.n > 1 ? fmtSet(e.last) : "–", color: up ? fern : soft, bold: up, maxW: 78 }, { x: col.best, text: fmtSet(e.best), color: soft, maxW: 78 }], { size: 10, gap: 7 });
+      }
+    }
+    // sessions: one line each, logged sets underneath
+    doc.section("Sessions");
+    if (!sessions.length) doc.text("No sessions this month.", { size: 10.5, color: grey });
+    for (const x of sessions) {
+      const st = status(x); doc.keep(42);                                      // a session's line stays with its first logged sets
+      doc.row([{ x: M, text: fmtDay(effDate(x)), bold: true }, { x: M + 92, text: x.title || "Workout", bold: true, maxW: 290 }, { right: R, text: st, color: st === "Finished" ? fern : st === "Missed" || st === "Not done" ? warn : grey }], { size: 10.5, gap: 3 });
+      if (x.completedAt) for (const row of x.rows || []) {
+        const done = clamp(parseInt(row.setsDone, 10) || 0, 0, 20), sets = [];
+        for (let i = 0; i < done; i++) { const w = String((row.weights || [])[i] || "").trim(), rp = String((row.repsDone || [])[i] || "").trim(); sets.push(w ? (/^\d+(?:[.,]\d+)?$/.test(w) ? w + " " + unit : w) + (rp ? " × " + rp : "") : (rp ? rp + " reps" : "–")); }
+        const lines = doc.wrap((done ? sets.join(", ") : "not started") + (row.earlyReason ? "  ·  finished early: " + row.earlyReason : ""), 9.5, false, R - (M + 252));
+        doc.row([{ x: M + 92, text: row.name || "Exercise", color: soft, maxW: 150 }, { x: M + 252, text: lines[0], color: soft }], { size: 9.5, gap: 2 });
+        for (const ln of lines.slice(1)) doc.text(ln, { size: 9.5, indent: 198, gap: 2, color: soft });
+      }
+      doc.space(5);
+    }
+    // notes, each with its time and the session it came with
+    doc.section("Notes");
+    if (!notes.length) doc.text("No notes this month.", { size: 10.5, color: grey });
+    notes.forEach((n, i) => {
+      const d = new Date(n.at); doc.keep(44);                                  // a note's heading stays with its first lines
+      doc.row([{ x: M, text: d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }), bold: true, color: grey }, ...(n.workout ? [{ x: M + 150, text: n.workout.title || "Workout", color: grey, maxW: 300 }] : [])], { size: 9, gap: 3 });
+      doc.text(n.text, { size: 10.5, gap: 4 });
+      if (i < notes.length - 1) { doc.space(2); doc.rule(); }
+    });
+    doc.footer((c.name || "Client") + "  ·  " + r.title);
+    return { bytes: doc.bytes(), name: ((c.name || "Client") + " " + r.title).replace(/[^\p{L}\p{N}\- ]+/gu, " ").replace(/\s+/g, " ").trim() + ".pdf" };
+  }
+  async function shareReport(kind, clientId) {                     // the phone's share sheet (Mail is one tap away); elsewhere a download
+    const c = clients.get(clientId); if (!c) return;
+    const fonts = await loadReportFonts();
+    const { bytes, name } = buildReport(kind, fonts, c);
+    const file = new File([bytes], name, { type: "application/pdf" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  $("reportNow").addEventListener("click", () => shareReport("month", view.id));
+  $("reportMonth").addEventListener("change", (e) => { const v = e.target.value; e.target.value = ""; if (v) shareReport(v, view.id); });
+  $("backup").addEventListener("click", () => {
+    const data = { app: "fiala-trainings", exported: now(), clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "fiala-trainings-" + today() + ".json";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+  $("restore").addEventListener("click", () => $("restoreFile").click());
+  function validateBackup(d) {
+    const isObj = (x) => !!x && typeof x === "object" && !Array.isArray(x);
+    if (!isObj(d) || d.app !== "fiala-trainings") throw new Error("not a backup");
+    const cs = Object.values(isObj(d.clients) ? d.clients : {}), ts = Object.values(isObj(d.trainings) ? d.trainings : {});
+    for (const c of cs) if (!isObj(c) || typeof c.id !== "string" || !c.id || typeof (c.name == null ? "" : c.name) !== "string") throw new Error("bad client");
+    const ids = new Set(cs.map((c) => c.id));
+    for (const t of ts) {
+      if (!isObj(t) || typeof t.id !== "string" || !t.id || typeof t.clientId !== "string" || !Array.isArray(t.rows)) throw new Error("bad training");
+      if (t.date != null && !/^\d{4}-\d{2}-\d{2}$/.test(String(t.date))) throw new Error("bad date");
+      if (!ids.has(t.clientId) && !clients.has(t.clientId)) throw new Error("orphan training");
+      for (const r of t.rows) if (!isObj(r) || typeof r.id !== "string") throw new Error("bad row");
+    }
+    return { cs, ts };
+  }
+  $("restoreFile").addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    try {
+      const { cs, ts } = validateBackup(JSON.parse(await f.text()));        // the whole file first; nothing is touched if any part is wrong
+      for (const c of cs) { clients.set(c.id, c); scheduleSave("clients", c.id, 0); }
+      for (const t of ts) { trainings.set(t.id, t); scheduleSave("trainings", t.id, 0); }
+      render();
+    } catch { $("status").textContent = "That file is not a Fiala backup"; }
+    e.target.value = "";
+  });
+
+  // ---------- boot ----------
+  async function boot() {
+    const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) view = saved;
+    localBackend.load();                       // instant start from the device copy
+    restorePending();                          // and whatever was still waiting to reach the server
+    if (window.supabase && window.supabase.createClient) {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" } });
+      $("status").textContent = "Loading\u2026";
+      const fromRecoveryLink = /type=recovery/.test(location.hash);
+      sb.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") { recovering = true; showRecovery(); }
+        if (event === "SIGNED_OUT" && signedIn) { backend = null; offline = false; offlineEntry = null; pendingOwner = ""; try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); }
+      });
+      // no signal: the library retries the token refresh for up to 30 s before answering. Don't make anyone wait for that:
+      // after 4 s show what the device knows, and switch to live data if the session comes through later.
+      const remembered = lsGet("fiala.trainings.role");
+      const sessionP = sb.auth.getSession();
+      const first = await Promise.race([sessionP, new Promise((r) => setTimeout(() => r("slow"), 4000))]);
+      if (first === "slow") {
+        if (remembered && remembered.email && !fromRecoveryLink) enterOffline(remembered); else showLogin("");
+        sessionP.then(({ data }) => { if (data && data.session) { if (fromRecoveryLink) { recovering = true; showRecovery(); return; } if (entering || resuming || (signedIn && offlineEntry !== "remembered")) return; enterCloud(data.session); } else if (!signedIn) showLogin($("loginMsg").textContent); }).catch(() => {});
+        return;
+      }
+      const { data, error: sessionError } = first;
+      if (location.hash && /access_token|error/.test(location.hash)) history.replaceState(null, "", location.pathname);
+      if (fromRecoveryLink && data && data.session) { recovering = true; showRecovery(); return; }
+      if (data && data.session) { await enterCloud(data.session); }
+      else if ((!navigator.onLine || isNetwork(sessionError)) && remembered && remembered.email) enterOffline(remembered);
+      else showLogin("");
+      return;
+    }
+    // no library (blocked network): work from the device copy
+    backend = localBackend; $("localFoot").hidden = false; render(); setStatus();
+    seedTemplates().catch(() => {});
+  }
+  if (!(window.supabase && window.supabase.createClient)) render();
+
+  // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
+  export function internals() {
+    return {
+      fns: { fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes, validateBackup, buildReport, reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      maps: { clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap },
+      get: () => ({ sb, signedIn, clientMode, myClientId, backend, view, renderedTraining, offline, syncedOnce, moveMissing, missMissing, earlyMissing, logSetMissing, deviceFull, failed, inflight }),
+      set: (o) => { if ("sb" in o) sb = o.sb; if ("signedIn" in o) signedIn = o.signedIn; if ("clientMode" in o) clientMode = o.clientMode; if ("myClientId" in o) myClientId = o.myClientId; if ("backend" in o) backend = o.backend; if ("view" in o) view = o.view; if ("renderedTraining" in o) renderedTraining = o.renderedTraining; if ("offline" in o) offline = o.offline; if ("syncedOnce" in o) syncedOnce = o.syncedOnce; if ("moveMissing" in o) moveMissing = o.moveMissing; if ("missMissing" in o) missMissing = o.missMissing; if ("earlyMissing" in o) earlyMissing = o.earlyMissing; if ("logSetMissing" in o) logSetMissing = o.logSetMissing; if ("failed" in o) failed = o.failed; },
+      reset: () => {
+        for (const m of [clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap]) m.clear();
+        sb = null; signedIn = false; clientMode = false; myClientId = null; backend = null; offline = false; syncedOnce = false; moveMissing = false; missMissing = false; earlyMissing = false; logSetMissing = false; failed = false; inflight = 0; view = { name: "clients" }; renderedTraining = null; deviceFull = false; localStorage.clear();
+      },
+    };
+  }
+  export { boot };
