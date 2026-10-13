@@ -2,7 +2,7 @@
 // The app page is fetched from the network when there is one (so updates land on the next open)
 // and served from this cache when there is not. Fonts, icons, the templates and the Supabase
 // library are kept on the device and refreshed quietly in the background. API calls are never cached.
-const VERSION = "fiala-shell-v6";
+const VERSION = "fiala-shell-v7";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./favicon.ico", "./templates.json", "./fonts/Inter-Regular.ttf", "./fonts/Inter-Bold.ttf", "./app/main.js", "./app/catalog.js", "./app/util.js", "./app/model.js", "./app/notes.js", "./app/pdf.js", "./app/report.js"];
 // keep LIB identical to the <script src> in index.html
 const LIB = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js";
@@ -37,13 +37,14 @@ self.addEventListener("fetch", (event) => {
 
   if (req.mode === "navigate" && !isShellPage(url)) return;  // other pages on this origin: plain network
   if (isAppScript(url)) {                                   // like the page: network first, cache when the network is slow or gone
+    const bare = url.origin + url.pathname;                 // one cache entry per module, whatever ?v= the page asked for
     event.respondWith((async () => {
       const cache = await caches.open(VERSION);
-      const net = fetch(req).then((fresh) => { if (fresh && fresh.ok) cache.put(req, fresh.clone()); return fresh; });
+      const net = fetch(new Request(req, { cache: "no-cache" })).then((fresh) => { if (fresh && fresh.ok) cache.put(bare, fresh.clone()); return fresh; });   // always checked with the server, so one deploy's files never mix with another's
       const fresh = await Promise.race([net.catch(() => null), new Promise((r) => setTimeout(() => r(null), 3500))]);
       if (fresh && fresh.ok) return fresh;
       event.waitUntil(net.catch(() => {}));
-      return (await cache.match(req, { ignoreSearch: true })) || (fresh || net.catch(() => Response.error()));
+      return (await cache.match(bare)) || (fresh || net.catch(() => Response.error()));
     })());
     return;
   }
