@@ -15,8 +15,7 @@ begin
     select 1 from ft_trainings t join ft_clients c on c.id = t.client_id
     where t.id = p_training and lower(coalesce(c.data ->> 'email', '')) = my_email()
   ) then raise exception 'not allowed'; end if;
-  update ft_trainings set data = jsonb_set(data, '{date}', to_jsonb(p_date))
-    where id = p_training and coalesce(data ->> 'completedAt', '') = '';
+  update ft_trainings set data = jsonb_set(data, '{date}', to_jsonb(p_date)) where id = p_training;
 end;
 $$;
 revoke execute on function client_move_training(uuid, text) from public, anon;
@@ -34,8 +33,9 @@ begin
   ) then raise exception 'not allowed'; end if;
   if p_missed then
     -- filed by itself: out of the plan, marked as missed
+    -- never over a decision already on the server (finished, skipped, or marked decided from another device)
     update ft_trainings set data = jsonb_set(jsonb_set(data, '{skippedAt}', to_jsonb(now())), '{missed}', 'true'::jsonb)
-      where id = p_training and coalesce(data ->> 'completedAt', '') = '';
+      where id = p_training and coalesce(data ->> 'completedAt', '') = '' and coalesce(data ->> 'skippedAt', '') = '' and coalesce(data ->> 'missed', '') <> 'false';
   else
     -- the client decided (undo, skip, do it today): remember that, so it is never filed by itself again
     update ft_trainings set data = jsonb_set(data, '{missed}', 'false'::jsonb) where id = p_training;
