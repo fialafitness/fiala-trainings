@@ -1359,8 +1359,7 @@ import { reportRange, buildReport } from "./report.js";
         if (!isTpl) { sel = setSel.has(selKey) ? setSel.get(selKey) : doneSets; sel = clamp(sel, 0, total - 1); g.sel = sel; }
         const tr = document.createElement("div"); tr.className = "tracker"; tr.setAttribute("aria-label", "Sets");
         const head = document.createElement("div"); head.className = "tr-head"; const chips = document.createElement("div"); chips.className = "tr-chips"; tr.append(head, chips);
-        const lab = document.createElement("span"); lab.className = "tr-label"; lab.textContent = asClient && g.rows.length > 1 ? total + (total === 1 ? " round" : " rounds") : total + (total === 1 ? " set" : " sets"); head.appendChild(lab);   // coach: "4 sets" and the stepper; client: "Set" or "Round" beside the chips
-        if (asClient) tr.classList.add("inline");
+        const lab = document.createElement("span"); lab.className = "tr-label"; lab.textContent = total + (total === 1 ? " set" : " sets"); head.appendChild(lab);   // "4 sets", then the chips
         for (let i = 0; i < total; i++) {
           const b = document.createElement("button"); b.type = "button"; b.textContent = String(i + 1);
           if (isTpl) { b.classList.add("static"); b.tabIndex = -1; }
@@ -1392,10 +1391,7 @@ import { reportRange, buildReport } from "./report.js";
         tracker = tr;
       }
       const rowEls = g.rows.map((r) => rowEl(t, r, isTpl ? null : g));
-      if (tracker) {
-        const slot = asClient && !isTpl && g.rows.length === 1 ? rowEls[0].querySelector(".setlog") : null;
-        if (slot) slot.before(tracker); else { if (asClient) tracker.classList.add("top"); card.appendChild(tracker); }   // one exercise: name first, then "Set" and the chips above the boxes
-      }
+      if (tracker) card.appendChild(tracker);
       rowEls.forEach((e) => card.appendChild(e));
       const foot = document.createElement("div"); foot.className = "card-foot";
       let resume = null;                                   // undo for "Finish early": shown on the opened card while it is finished early
