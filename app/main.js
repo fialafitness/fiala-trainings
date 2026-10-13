@@ -1,8 +1,10 @@
 // Fiala Trainings — the app. Loaded by index.html as an ES module; boot() starts it.
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
+import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, ui } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet } from "./util.js";
 import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
+import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
 import { reportRange, buildReport } from "./report.js";
 
@@ -21,15 +23,15 @@ import { reportRange, buildReport } from "./report.js";
   const nearName = (n) => { const k = squash(n); if (!k) return null; const cands = [k.replace(/(es|s)$/, ""), k + "s", k + "es"].filter((c) => c && c !== k); for (const c of cands) { const i = ALL_KEYS.indexOf(c); if (i >= 0) return ALL_NAMES[i]; } return null; };
   const tidyName = (n) => { n = String(n || "").replace(/\s+/g, " ").trim(); return n ? n[0].toUpperCase() + n.slice(1) : ""; };
   async function loadCustomNames() {
-    if (!sb || !signedIn) return;
-    const { data, error } = await sb.from("ft_exercises").select("name_key,name");
+    if (!S.sb || !S.signedIn) return;
+    const { data, error } = await S.sb.from("ft_exercises").select("name_key,name");
     if (error || !data) return;
     customNames.clear(); for (const r of data) customNames.set(r.name_key, r.name); refreshNames();
   }
   async function addCustomName(name) {
     name = tidyName(name); const k = squash(name); if (!k || knownName(name)) return true;
-    if (!sb || !signedIn) return false;
-    const { error } = await sb.from("ft_exercises").upsert({ name_key: k, name });
+    if (!S.sb || !S.signedIn) return false;
+    const { error } = await S.sb.from("ft_exercises").upsert({ name_key: k, name });
     if (error) return false;
     customNames.set(k, name); refreshNames(); return true;
   }
@@ -38,436 +40,95 @@ import { reportRange, buildReport } from "./report.js";
   const VIDEO_LOOSE = new Map(); for (const k in VIDEOS) VIDEO_LOOSE.set(looseKey(k), VIDEOS[k]);
 
   // ---------- state ----------
-  const clients = new Map();   // id -> {id,name,notes,createdAt}
-  const trainings = new Map(); // id -> {id,clientId,title,date,createdAt,rows:[...]}
-  let view = { name: "clients" };
-  let backend = null;          // { set(kind,id,data), del(kind,id) }
-  const dirty = new Map();     // key -> local version counter (unconfirmed edits)
-  const timers = new Map();
-  const chains = new Map();
-  let inflight = 0, failed = false, failReason = "";
-  let offline = false;                    // the last sync could not reach the server: the device copy is on screen
-  const reasonOf = (e) => {
-    const m = String((e && e.message) || "");
-    if ((e && e.code === "PGRST202") || /Could not find the function/i.test(m)) return "database rule missing";
-    if (e && e.code === "P0001" && m && m.length < 40) return m;
-    return "";
-  };
 
-  // ---------- persistence ----------
-  function key(kind, id) { return kind + "/" + id; }
-  function markDirty(kind, id) { const k = key(kind, id); dirty.set(k, (dirty.get(k) || 0) + 1); }
 
   // ---- template drafts: editing a template changes nothing until "Save template"; a client's copy is always separate
-  let templateDraft = null;              // { id, snapshot, dirty, saving }
-  let pendingGo = null;                  // where he wanted to go while a draft was unsaved
   function draftFor(t) {
-    if (clientMode || !isTemplateClient(t.clientId)) return null;
-    if (!templateDraft || templateDraft.id !== t.id) templateDraft = { id: t.id, snapshot: JSON.stringify(t), dirty: false, saving: false };
-    return templateDraft;
+    if (S.clientMode || !isTemplateClient(t.clientId)) return null;
+    if (!S.templateDraft || S.templateDraft.id !== t.id) S.templateDraft = { id: t.id, snapshot: JSON.stringify(t), dirty: false, saving: false };
+    return S.templateDraft;
   }
   function paintDraftBar() {
-    const d = templateDraft; const show = !!(d && d.dirty && view.name === "training" && view.id === d.id);
+    const d = S.templateDraft; const show = !!(d && d.dirty && S.view.name === "training" && S.view.id === d.id);
     $("draftBar").hidden = !show; document.body.classList.toggle("draft", show);
   }
   function saveDraft() {
-    const d = templateDraft; if (!d) return;
-    const t = trainings.get(d.id); if (!t) { templateDraft = null; paintDraftBar(); return; }
+    const d = S.templateDraft; if (!d) return;
+    const t = trainings.get(d.id); if (!t) { S.templateDraft = null; paintDraftBar(); return; }
     d.dirty = false; d.saving = true; scheduleSave("trainings", d.id, 0); d.saving = false; d.snapshot = JSON.stringify(t);
-    paintDraftBar(); const n = pendingGo; pendingGo = null; if (n) go(n);
+    paintDraftBar(); const n = S.pendingGo; S.pendingGo = null; if (n) go(n);
   }
   function discardDraft() {
-    const d = templateDraft; if (!d) return;
+    const d = S.templateDraft; if (!d) return;
     if (trainings.has(d.id)) trainings.set(d.id, JSON.parse(d.snapshot));
-    d.dirty = false; localBackend.save(); renderedTraining = null; paintDraftBar();
-    const n = pendingGo; pendingGo = null; if (n) go(n); else render();
+    d.dirty = false; localBackend.save(); S.renderedTraining = null; paintDraftBar();
+    const n = S.pendingGo; S.pendingGo = null; if (n) go(n); else render();
   }
   $("draftSave").addEventListener("click", saveDraft);
   $("draftDiscard").addEventListener("click", discardDraft);
-  // what still has to reach the server is written to the device too, so closing the app with no signal loses nothing
-  function persistPending() {
-    lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].map(([id, r]) => [id, [...r]]),
-      finish: [...pendingFinish], skip: [...pendingSkip], move: [...pendingMove], miss: [...pendingMiss], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]),
-      touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]), state: [...trainerState].map(([id, f]) => [id, [...f]]),
-      stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), owner: sessionEmail || pendingOwner || "" });
-    if (sessionEmail) pendingOwner = sessionEmail;
-  }
-  function restorePending() {
-    const p = lsGet("fiala.pending.v1"); if (!p || typeof p !== "object") return;
-    for (const k of p.dirty || []) if (!dirty.has(k)) dirty.set(k, 1);
-    for (const [id, rows] of p.weights || []) pendingWeightRows.set(id, new Set([...(pendingWeightRows.get(id) || []), ...rows]));
-    for (const [id, rows] of p.done || []) pendingDoneRows.set(id, new Set([...(pendingDoneRows.get(id) || []), ...rows]));
-    for (const [id, rows] of p.early || []) pendingEarlyRows.set(id, new Set([...(pendingEarlyRows.get(id) || []), ...rows]));
-    for (const id of p.finish || []) pendingFinish.add(id);
-    for (const id of p.skip || []) pendingSkip.add(id);
-    for (const id of p.move || []) pendingMove.add(id);
-    for (const id of p.miss || []) pendingMiss.add(id);
-    for (const id of new Set([...pendingMove, ...pendingMiss])) markDirty("trainings", id);   // sent again on this launch (the rule may have been missing last time)
-    for (const [id, picks] of p.swap || []) pendingSwap.set(id, new Map([...(pendingSwap.get(id) || []), ...picks]));
-    for (const [id, rows] of p.touched || []) trainerTouched.set(id, new Set([...(trainerTouched.get(id) || []), ...rows]));
-    for (const [id, fields] of p.state || []) trainerState.set(id, new Set([...(trainerState.get(id) || []), ...fields]));
-    for (const [id, rows] of p.named || []) trainerNamed.set(id, new Set([...(trainerNamed.get(id) || []), ...rows]));
-    for (const [k, stamp] of p.stamps || []) if (stamp && !seenAt.has(k)) seenAt.set(k, stamp);
-    pendingOwner = p.owner || "";
-  }
-  let pendingOwner = "";
-  function scheduleSave(kind, id, delay = 500) {
-    if (kind === "trainings" && templateDraft && templateDraft.id === id && !templateDraft.saving) { templateDraft.dirty = true; paintDraftBar(); return; }
-    markDirty(kind, id); persistPending();
-    const k = key(kind, id);
-    clearTimeout(timers.get(k));
-    timers.set(k, setTimeout(() => flushOne(kind, id), delay));
-    setStatus();
-  }
 
-  function flushAll() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); flushOne(kind, id); } }
 
-  function flushOne(kind, id) {
-    const k = key(kind, id);
-    timers.delete(k);
-    localBackend.save();
-    const map = kind === "clients" ? clients : trainings;
-    const prev = chains.get(k) || Promise.resolve();
-    inflight++; setStatus();
-    const run = prev.then(async () => {
-      if (!backend || !dirty.has(k)) return;                    // already confirmed by an earlier run in this chain
-      const doc = map.get(id);
-      const version = dirty.get(k) || 0;
-      const data = doc ? JSON.parse(JSON.stringify(doc)) : null;   // taken now, after any merge the previous run did
-      let attempt = 0;
-      if (backend !== localBackend && sb) {
-        const sess = await sb.auth.getSession().catch(() => null);
-        if (!(sess && sess.data && sess.data.session)) { offline = true; return; }   // token not usable right now: keep it queued
-      }
-      for (;;) {
-        try {
-          if (data) await backend.set(kind, id, data); else await backend.del(kind, id);
-          failed = false;
-          if (dirty.get(k) === version) { dirty.delete(k); if (kind === "trainings") trainerState.delete(id); }   // the coach's state changes went with this save; a later touch keeps its flag
-          confirmedAt.set(k, Date.now());
-          return;
-        } catch (e) {
-          attempt++;
-          failReason = reasonOf(e);
-          if (isOffline(e)) { offline = true; return; }           // no signal: keep it queued, no red status
-          if (e && e.fatal) { failed = true; if (dirty.get(k) === version) dirty.delete(k); return; }   // the server said no for good: don't carry it forever
-          if (attempt > 3) { failed = true; return; }
-          await new Promise((r) => setTimeout(r, 700 * attempt + Math.random() * 400));
-        }
-      }
-    }).finally(() => { inflight--; persistPending(); setStatus(); });
-    chains.set(k, run.catch(() => {}));
-    return run;
-  }
-
-  let deviceFull = false;                // the last write of the device copy failed (storage full or blocked)
   function setStatus() {
     const el = $("status");
-    const pending = timers.size + inflight;
-    if (deviceFull) { el.className = "err"; el.textContent = "Not saved on this device \u00b7 free up space"; return; }
-    if (backend && backend !== localBackend && (offline || !navigator.onLine)) { el.className = ""; el.textContent = (dirty.size || pending) ? "Offline \u00b7 will sync" : "Offline \u00b7 showing your last sync"; return; }
-    if (failed && pending === 0) { el.textContent = "Couldn't save" + (failReason ? " \u00b7 " + failReason : "") + (dirty.size ? " \u00b7 tap to retry" : ""); el.className = "err"; return; }
+    const pending = timers.size + S.inflight;
+    if (S.deviceFull) { el.className = "err"; el.textContent = "Not saved on this device \u00b7 free up space"; return; }
+    if (S.backend && S.backend !== localBackend && (S.offline || !navigator.onLine)) { el.className = ""; el.textContent = (dirty.size || pending) ? "Offline \u00b7 will sync" : "Offline \u00b7 showing your last sync"; return; }
+    if (S.failed && pending === 0) { el.textContent = "Couldn't save" + (S.failReason ? " \u00b7 " + S.failReason : "") + (dirty.size ? " \u00b7 tap to retry" : ""); el.className = "err"; return; }
     el.className = "";
-    el.textContent = pending > 0 ? "Saving\u2026" : (backend ? "Saved" : "");
+    el.textContent = pending > 0 ? "Saving\u2026" : (S.backend ? "Saved" : "");
   }
-  $("status").addEventListener("click", () => { if (failed) { failed = false; for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } setStatus(); } });
+  $("status").addEventListener("click", () => { if (S.failed) { S.failed = false; for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } setStatus(); } });
 
-  const localBackend = {
-    load() { const d = lsGet("fiala.trainings.v1") || { clients: {}, trainings: {} }; for (const c of Object.values(d.clients)) clients.set(c.id, c); for (const t of Object.values(d.trainings)) trainings.set(t.id, t); },
-    save() { const ok = lsSet("fiala.trainings.v1", { clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) });  deviceFull = !ok; },
-    async set() { this.save(); },
-    async del() { this.save(); },
-  };
 
   // ---------- cloud (Supabase) ----------
   const SUPABASE_URL = "https://umurkxqswcjmubeucrzw.supabase.co";
   const SUPABASE_KEY = "sb_publishable__OG8G0RdJkERDqwV8xKN2Q_uwL1zY4p";
-  let sb = null, signedIn = false, syncTimer = null, clientMode = false, myClientId = null, recovering = false;
-  let syncedOnce = false;                // this session has had one full answer from the server
-  let logSetMissing = false;             // client_log_set not installed yet (run supabase/client-log-set.sql)
-  let earlyMissing = false;              // client_finish_early not installed yet (run supabase/client-finish-early.sql)
-  let moveMissing = false, missMissing = false;   // client_move_training / client_miss_training not installed yet (run supabase/client-missed.sql)
-  const pendingWeightRows = new Map();   // trainingId -> Set(rowId), client mode only
-  const pendingDoneRows = new Map();     // trainingId -> Set(rowId), client mode only
-  const pendingEarlyRows = new Map();    // trainingId -> Set(rowId): the "finished early" reason still to reach the server, client mode only
-  const pendingFinish = new Set();       // trainingId, client mode only
-  const pendingSkip = new Set();         // trainingId, client mode only
-  const trainerState = new Map();        // trainingId -> Set(field): finished / skipped / date / missed the coach changed and not yet saved; those fields win on a conflict
-  const touchState = (id, ...fields) => { if (clientMode) return; if (!trainerState.has(id)) trainerState.set(id, new Set()); for (const f of fields) trainerState.get(id).add(f); };
-  const pendingMove = new Set();         // trainingId: "Do it today" still to reach the server, client mode only
-  const pendingMiss = new Set();         // trainingId: filed as missed, still to reach the server, client mode only
-  const pendingSwap = new Map();         // trainingId -> Map(rowId -> name tapped), client mode only
   const customVideos = new Map();        // loose exercise name -> YouTube id (trainer's own links)
   const videoRawKeys = new Map();        // loose key -> Set of name_key values actually stored (old spellings included)
   const videoKeysFor = (k) => [...new Set([k, ...(videoRawKeys.get(k) || [])])];
-  async function saveVideo(k, url, id) { const { error } = await sb.from("ft_exercise_videos").upsert({ name_key: k, url, video_id: id }); if (error) return error; const stale = videoKeysFor(k).filter((x) => x !== k); if (stale.length) await sb.from("ft_exercise_videos").delete().in("name_key", stale); customVideos.set(k, id); videoRawKeys.set(k, new Set([k])); return null; }
-  async function deleteVideo(k) { const { error } = await sb.from("ft_exercise_videos").delete().in("name_key", videoKeysFor(k)); if (error) return error; customVideos.delete(k); videoRawKeys.delete(k); return null; }
+  async function saveVideo(k, url, id) { const { error } = await S.sb.from("ft_exercise_videos").upsert({ name_key: k, url, video_id: id }); if (error) return error; const stale = videoKeysFor(k).filter((x) => x !== k); if (stale.length) await S.sb.from("ft_exercise_videos").delete().in("name_key", stale); customVideos.set(k, id); videoRawKeys.set(k, new Set([k])); return null; }
+  async function deleteVideo(k) { const { error } = await S.sb.from("ft_exercise_videos").delete().in("name_key", videoKeysFor(k)); if (error) return error; customVideos.delete(k); videoRawKeys.delete(k); return null; }
   const looseName = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
   const youtubeId = (url) => { const m = String(url || "").match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; };
   async function loadCustomVideos() {
-    if (!sb || !signedIn) return;
-    const { data, error } = await sb.from("ft_exercise_videos").select("name_key,video_id");
+    if (!S.sb || !S.signedIn) return;
+    const { data, error } = await S.sb.from("ft_exercise_videos").select("name_key,video_id");
     if (error || !data) return;
     customVideos.clear(); videoRawKeys.clear();
     for (const r of data) { const k = ALIAS_LOOSE[r.name_key] || r.name_key; customVideos.set(k, r.video_id); if (!videoRawKeys.has(k)) videoRawKeys.set(k, new Set()); videoRawKeys.get(k).add(r.name_key); } // links saved under an old spelling follow the rename
   }
-  const seenAt = new Map();              // "trainings/<id>" -> updated_at last received from the server
-  const trainerTouched = new Map();      // trainingId -> Set(rowId) whose weights the trainer edited since the last sync
-  const trainerNamed = new Map();        // trainingId -> Set(rowId) whose name/alternatives the trainer edited since the last sync
-  const TABLE = { clients: "ft_clients", trainings: "ft_trainings" };
 
-  const cloudBackend = {
-    async set(kind, id, data) {
-      const k = key(kind, id);
-      const row = { id, data };
-      if (kind === "trainings") row.client_id = data.clientId;
-      const mergeServerRows = (serverData) => {                 // take the client's weights/done/swaps for rows the trainer did not touch
-        const touched = trainerTouched.get(id) || new Set(), named = trainerNamed.get(id) || new Set();
-        const live = trainings.get(id);
-        for (const sr of (serverData && serverData.rows) || []) {
-          for (const target of [data, live]) {
-            const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (!lr) continue;
-            if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; lr.setsDone = sr.setsDone || 0; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; }
-            if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
-          }
-        }
-      };
-      for (let attempt = 0; attempt < 4; attempt++) {
-        let seen = seenAt.get(k);
-        const takeState = (serverData) => {                      // the client may have finished, skipped or moved it meanwhile: keep that, field by field, unless the coach changed that field
-          if (kind !== "trainings" || !serverData) return;
-          const mine = trainerState.get(id) || new Set();
-          for (const f of ["completedAt", "skippedAt", "missed", "date"]) { if (mine.has(f)) continue; for (const target of [data, trainings.get(id)]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; } }
-        };
-        const takeNotes = (serverData) => {                      // another device may have written notes: keep both
-          if (kind !== "clients" || !serverData) return;
-          const merged = mergeNotes(data.notes, serverData.notes, deletedNotes); data.notes = merged; const live = clients.get(id); if (live) live.notes = merged;
-        };
-        if (!seen && attempt === 0) {                               // no stamp (edited offline, app relaunched): read first, never write over the other side blind
-          const existing = await sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle();
-          if (existing.error) throw existing.error;
-          if (existing.data) { if (kind === "trainings") { mergeServerRows(existing.data.data); takeState(existing.data.data); } takeNotes(existing.data.data); seen = existing.data.updated_at; seenAt.set(k, seen); }
-        }
-        let res;
-        if (seen) res = await sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at");
-        else res = await sb.from(TABLE[kind]).upsert(row).select("updated_at");
-        if (res.error) {
-          if (res.error.code === "23505") { res.error.fatal = true; $("status").textContent = "That email is already on another client"; }
-          if (/^22/.test(String(res.error.code || ""))) seenAt.delete(k);   // a bad stamp must not poison every retry
-          throw res.error;
-        }
-        if (res.data && res.data.length) { seenAt.set(k, res.data[0].updated_at); localBackend.save(); return; }
-        // someone else (a client logging weights) saved first: take their weights, keep everything else, retry
-        const fresh = await sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle();
-        if (fresh.error) throw fresh.error;
-        if (!fresh.data) { seenAt.delete(k); continue; }
-        seenAt.set(k, fresh.data.updated_at);
-        if (kind === "trainings") { mergeServerRows(fresh.data.data); takeState(fresh.data.data); }
-        takeNotes(fresh.data.data);
-      }
-      throw new Error("save conflict");
-    },
-    async del(kind, id) {
-      const { error } = await sb.from(TABLE[kind]).delete().eq("id", id);
-      if (error) throw error;
-      localBackend.save();
-    },
-  };
-
-  const clientBackend = {
-    async set(kind, id, data) {
-      if (kind !== "trainings") return;
-      const rows = pendingWeightRows.get(id);
-      if (rows) {
-        const ids = [...rows]; rows.clear();
-        for (let i = 0; i < ids.length; i++) {
-          const r = (data.rows || []).find((x) => x.id === ids[i]); if (!r) continue;
-          const clean = (a) => (a || []).map((w) => String(w == null ? "" : w).slice(0, 16));
-          let error = null;
-          if (!logSetMissing) ({ error } = await sb.rpc("client_log_set", { p_training: id, p_row: ids[i], p_weights: clean(r.weights), p_reps: clean(r.repsDone), p_sets_done: clamp(parseInt(r.setsDone, 10) || 0, 0, 20), p_done: !!r.done }));
-          if (logSetMissing || (error && (error.code === "PGRST202" || /client_log_set/.test(error.message || "")))) {   // rule not installed yet: weights still get through the old way
-            logSetMissing = true;
-            ({ error } = await sb.rpc("client_set_weights", { p_training: id, p_row: ids[i], p_weights: clean(r.weights) }));
-            if (!error && r.done) { const d = await sb.rpc("client_set_done", { p_training: id, p_row: ids[i], p_done: true }); error = d.error; }
-          }
-          if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of ids.slice(i)) rows.add(rest); throw error; }   // P0001: the server refused for good (row or training gone)
-        }
-      }
-      const swaps = pendingSwap.get(id);
-      if (swaps && swaps.size) {
-        const picks = [...swaps.entries()]; swaps.clear();
-        for (let i = 0; i < picks.length; i++) {
-          const { error } = await sb.rpc("client_swap_exercise", { p_training: id, p_row: picks[i][0], p_name: picks[i][1] });
-          if (error) {
-            if (error.code === "P0001") { scheduleSync(); continue; } // the server said no (alternative or row gone): its version comes back on the next sync
-            for (const rest of picks.slice(i)) swaps.set(rest[0], rest[1]); throw error;
-          }
-        }
-      }
-      if (pendingFinish.has(id)) {
-        const { error } = await sb.rpc("client_finish_training", { p_training: id, p_finished: !!data.completedAt });
-        if (error && error.code !== "P0001") throw error;
-        pendingFinish.delete(id);
-      }
-      if (pendingSkip.has(id)) {
-        const { error } = await sb.rpc("client_skip_training", { p_training: id, p_skipped: !!data.skippedAt });
-        if (error && error.code !== "P0001") throw error;
-        pendingSkip.delete(id);
-      }
-      if (pendingMove.has(id) && !moveMissing) {
-        const { error } = await sb.rpc("client_move_training", { p_training: id, p_date: String(data.date || "").slice(0, 10) });
-        if (error && (error.code === "PGRST202" || /client_move_training/.test(error.message || ""))) moveMissing = true;   // rule not installed yet: stays on the device until it is
-        else { if (error && error.code !== "P0001") throw error; pendingMove.delete(id); }
-      }
-      if (pendingMiss.has(id) && !missMissing) {
-        const { error } = await sb.rpc("client_miss_training", { p_training: id, p_missed: data.missed === true });
-        if (error && (error.code === "PGRST202" || /client_miss_training/.test(error.message || ""))) missMissing = true;
-        else { if (error && error.code !== "P0001") throw error; pendingMiss.delete(id); }
-      }
-      const dones = pendingDoneRows.get(id);
-      if (dones) {
-        const dids = [...dones]; dones.clear();
-        for (let i = 0; i < dids.length; i++) {
-          const r = (data.rows || []).find((x) => x.id === dids[i]); if (!r) continue;
-          const { error } = await sb.rpc("client_set_done", { p_training: id, p_row: dids[i], p_done: !!r.done });
-          if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of dids.slice(i)) dones.add(rest); throw error; }
-        }
-      }
-      const earlies = pendingEarlyRows.get(id);
-      if (earlies && !earlyMissing) {
-        const eids = [...earlies]; earlies.clear();
-        for (let i = 0; i < eids.length; i++) {
-          const r = (data.rows || []).find((x) => x.id === eids[i]); if (!r) continue;
-          const { error } = await sb.rpc("client_finish_early", { p_training: id, p_row: eids[i], p_reason: String(r.earlyReason || "").slice(0, 40) || null });
-          if (error && (error.code === "PGRST202" || /client_finish_early/.test(error.message || ""))) { earlyMissing = true; break; }   // rule not installed yet: the reason stays on the device, everything else still syncs
-          if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of eids.slice(i)) earlies.add(rest); throw error; }
-        }
-      }
-      localBackend.save();
-    },
-    async del() {},
-  };
-
-  const confirmedAt = new Map();          // "trainings/<id>" -> when the server last confirmed our write
-  let syncing = null;
-  function syncDown() { if (syncing) return syncing; syncing = syncDownNow().finally(() => { syncing = null; }); return syncing; }
-  function mergeDown(map, kind, rows, complete, startedAt) {        // the server's answer into the local map, keeping what this device still has to send
-    const seen = new Set();
-    for (const r of rows) {
-      seen.add(r.id); if (dirty.has(key(kind, r.id))) continue;
-      if (kind === "trainings" && (pendingMove.has(r.id) || pendingMiss.has(r.id))) continue;   // the client's decision still has to reach the server: keep ours
-      if ((confirmedAt.get(key(kind, r.id)) || 0) > startedAt) continue;   // written after this read began: keep ours
-      if (kind === "trainings" && templateDraft && templateDraft.dirty && templateDraft.id === r.id) continue;   // unsaved template edits
-      if (kind === "trainings" && renderedTraining === r.id && $("rows").contains(document.activeElement)) continue; // being edited right now: next sync, stamp and all
-      map.set(r.id, { ...r.data, id: r.id });
-      if (!clientMode && r.updated_at) seenAt.set(key(kind, r.id), r.updated_at);   // the stamp travels with the record it describes
-      if (kind === "trainings") trainerState.delete(r.id);
-    }
-    if (complete) for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id))) map.delete(id);   // only a full answer can say something is gone
-  }
-  async function syncDownNow() {
-    if (!sb || !signedIn || !backend || seeding) return false;
-    const startedAt = Date.now();
-    const sess = await sb.auth.getSession().catch(() => null);           // no usable token (refresh failed, cooldown): don't sync as a stranger
-    if (!(sess && sess.data && sess.data.session)) { offline = true; setStatus(); return false; }
-    loadCustomVideos().catch(() => {}); loadCustomNames().catch(() => {});
-    let c, t;
-    if (clientMode) {
-      const res = await withTimeout(sb.rpc("client_my_data"), 8000);
-      if (res.error) {
-        if (isOffline(res.error)) {
-          if (offlineFromMirror()) return false;               // no signal: the last synced copy stands in
-          showProblem("Couldn\u2019t load your workouts \u00b7 check your signal and tap Try again"); return false;
-        }
-        showProblem("Couldn\u2019t load your workouts \u00b7 " + (res.error.message || "server error") + " \u00b7 tap Try again"); return false;
-      }
-      c = { data: res.data.clients || [] }; t = { data: res.data.trainings || [] };
-      const me = c.data[0], authoritative = !!me && !(me.data && me.data.paused);
-      if (authoritative) {                                                   // a training the trainer deleted: nothing queued for it can land
-        const serverIds = new Set(t.data.map((r) => r.id));
-        for (const k of [...dirty.keys()]) { const [kind, id] = k.split("/"); if (kind === "trainings" && !serverIds.has(id)) { dirty.delete(k); pendingWeightRows.delete(id); pendingDoneRows.delete(id); pendingEarlyRows.delete(id); pendingFinish.delete(id); pendingSkip.delete(id); pendingMove.delete(id); pendingMiss.delete(id); pendingSwap.delete(id); } }
-        persistPending();
-      }
-    } else {
-      [c, t] = await Promise.all([fetchAll("ft_clients"), fetchAll("ft_trainings")]);
-      if (c.error || t.error) {
-        const err = c.error || t.error;
-        if (/ft_clients|ft_trainings|relation/i.test(err.message)) { $("status").textContent = "Run supabase/cloud.sql first"; return false; }
-        if (isOffline(err)) { offline = true; setStatus(); } else { $("status").textContent = "Couldn\u2019t sync \u00b7 " + (err.message || "server error"); }
-        return false;                                           // the device copy stays on screen
-      }
-      for (const id of [...trainerTouched.keys()]) if (!dirty.has(key("trainings", id))) trainerTouched.delete(id);
-      for (const id of [...trainerNamed.keys()]) if (!dirty.has(key("trainings", id))) trainerNamed.delete(id);
-    }
-    const migrated = lsGet("fiala.trainings.migrated");
-    if (!clientMode && !migrated && c.data.length === 0 && t.data.length === 0 && (clients.size || trainings.size)) {
-      for (const id of clients.keys()) scheduleSave("clients", id, 0);
-      for (const id of trainings.keys()) scheduleSave("trainings", id, 0);
-    } else {
-      mergeDown(clients, "clients", c.data, c.complete !== false, startedAt); mergeDown(trainings, "trainings", t.data, t.complete !== false, startedAt);
-    }
-    lsSet("fiala.trainings.migrated", true); syncedOnce = true;
-    localBackend.save();
-    if (clientMode) {
-      myClientId = clients.size ? [...clients.keys()][0] : null;
-      if (!myClientId) { showWaiting(); return; }
-      if (view.name === "clients" || (view.name === "client" && view.id !== myClientId)) view = { name: "client", id: myClientId };
-    }
-    offline = false;
-    render(); setStatus();
-    for (const k of dirty.keys()) if (!timers.has(k)) { const [kind, id] = k.split("/"); flushOne(kind, id); }
-    return true;
-  }
   // ---- no signal: the device copy (saved after every successful sync) stands in until the server answers again
   function offlineFromMirror() {
-    const me = [...clients.values()].find((c) => !isTemplateClient(c.id) && norm(c.email) === norm(sessionEmail));
+    const me = [...clients.values()].find((c) => !isTemplateClient(c.id) && norm(c.email) === norm(S.sessionEmail));
     if (!me) return false;
-    myClientId = me.id; offline = true;
-    if (!(view.name === "training" && trainings.has(view.id))) view = { name: "client", id: myClientId };
+    S.myClientId = me.id; S.offline = true;
+    if (!(S.view.name === "training" && trainings.has(S.view.id))) S.view = { name: "client", id: S.myClientId };
     render(); setStatus(); return true;
   }
-  let offlineEntry = null, resuming = false, signingOut = null;   // "remembered": we came in without a session and must re-enter properly once there is one
   function enterOffline(remembered) {     // no session could be read (token expired, no signal): use what the device knows
-    offlineEntry = "remembered"; settingsOpen = false; signedIn = true; sessionEmail = remembered.email || ""; clientMode = remembered.role !== "trainer";
-    document.body.classList.toggle("client", clientMode); backend = clientMode ? clientBackend : cloudBackend; hideAllViews();
-    if (clientMode) { $("clientFoot").hidden = false; if (!offlineFromMirror()) showLogin("You\u2019re offline. Connect once to sign in."); return; }
+    S.offlineEntry = "remembered"; settingsOpen = false; S.signedIn = true; S.sessionEmail = remembered.email || ""; S.clientMode = remembered.role !== "trainer";
+    document.body.classList.toggle("client", S.clientMode); S.backend = S.clientMode ? clientBackend : cloudBackend; hideAllViews();
+    if (S.clientMode) { $("clientFoot").hidden = false; if (!offlineFromMirror()) showLogin("You\u2019re offline. Connect once to sign in."); return; }
     $("dataNote").textContent = "Synced to the cloud"; $("myExercises").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false;
-    offline = true; render(); setStatus();
+    S.offline = true; render(); setStatus();
   }
   async function resumeOnline() {
-    if (!sb || !signedIn || resuming) return; resuming = true;
+    if (!S.sb || !S.signedIn || S.resuming) return; S.resuming = true;
     try {
-      if (offlineEntry === "remembered") {                  // no session yet: get one, then enter normally (enterCloud flushes what is queued)
-        const { data } = await sb.auth.getSession().catch(() => ({ data: null }));
-        if (!(data && data.session) || offlineEntry !== "remembered" || entering) return;
+      if (S.offlineEntry === "remembered") {                  // no session yet: get one, then enter normally (enterCloud flushes what is queued)
+        const { data } = await S.sb.auth.getSession().catch(() => ({ data: null }));
+        if (!(data && data.session) || S.offlineEntry !== "remembered" || S.entering) return;
         await enterCloud(data.session); return;
       }
       await syncDown();                                      // a quiet retry: the screen stays as it is; a success flushes the queue itself
-    } finally { resuming = false; }
+    } finally { S.resuming = false; }
   }
 
-  function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(() => { (offline ? resumeOnline() : syncDown()).catch(() => {}); }, 300); }
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") scheduleSync(); });
-  window.addEventListener("focus", scheduleSync);
-  window.addEventListener("online", () => { failed = false; if (offline && signedIn) { resumeOnline().catch(() => {}); return; } for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } scheduleSync(); });
-  setInterval(() => { if (document.visibilityState === "visible") scheduleSync(); }, 60000);
 
-  // a request that gets no answer within `ms` counts as a network failure (a phone with one bar can hang for a long time)
-  const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r({ data: null, error: { message: "network timeout" } }), ms))]);
-  async function fetchAll(table) {                                 // every row, page by page: the server answers at most 1,000 at a time
-    const PAGE = 1000, out = []; let after = null;
-    for (;;) {
-      let q = sb.from(table).select("id,data,updated_at").order("id").limit(PAGE); if (after) q = q.gt("id", after);   // keyed on id, so a row deleted meanwhile shifts nothing
-      const res = await withTimeout(q, 12000);
-      if (res.error) return { data: out, error: res.error, complete: false };
-      out.push(...(res.data || []));
-      if (!res.data || res.data.length < PAGE) return { data: out, error: null, complete: true };
-      after = res.data[res.data.length - 1].id;
-    }
-  }
   async function isTrainerAccount() {
     try {
-      const { data, error } = await withTimeout(sb.from("trainers").select("email").limit(1), 4000);
+      const { data, error } = await withTimeout(S.sb.from("trainers").select("email").limit(1), 4000);
       if (error) return null;              // unknown (offline, hiccup): let RLS decide
       return data.length > 0;
     } catch { return null; }
@@ -477,7 +138,7 @@ import { reportRange, buildReport } from "./report.js";
     for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vSettings", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
   }
   function showLogin(msg) {
-    signedIn = false; clientMode = false; myClientId = null; document.body.classList.remove("client");
+    S.signedIn = false; S.clientMode = false; S.myClientId = null; document.body.classList.remove("client");
     $("clientFoot").hidden = true; $("localFoot").hidden = true; $("myExercises").hidden = true; $("settingsBtn").hidden = true; settingsOpen = false; fromSettings = false;
     hideAllViews(); $("vLogin").hidden = false;
     $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
@@ -507,7 +168,7 @@ import { reportRange, buildReport } from "./report.js";
   $("themeSeg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; lsSet(THEME_KEY, b.dataset.theme); applyTheme(b.dataset.theme); });
   function showSettings() {
     settingsOpen = "settings"; fromSettings = false; hideAllViews(); $("vSettings").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
-    const p = trainerPhone(); $("setNumberVal").textContent = p || "Not set"; $("setEmail").textContent = sessionEmail || "";
+    const p = trainerPhone(); $("setNumberVal").textContent = p || "Not set"; $("setEmail").textContent = S.sessionEmail || "";
   }
   function showNumber() {
     settingsOpen = "number"; hideAllViews(); $("vNumber").hidden = false; $("back").hidden = false; $("backLabel").textContent = fromSettings ? "Settings" : "Back"; $("brand").hidden = true; $("status").textContent = "";
@@ -599,20 +260,20 @@ import { reportRange, buildReport } from "./report.js";
   $("exMore").addEventListener("click", () => { const hits = exerciseMatches($("exSearch").value); const ul = $("exList"); for (const [name, key] of hits.slice(exShown, exShown + 80)) ul.appendChild(exerciseRow(name, key)); exShown += 80; $("exMore").hidden = hits.length <= exShown; });
   $("exSearch").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } });
   async function removeCustom(k) {
-    if (!sb || !signedIn) return false;
+    if (!S.sb || !S.signedIn) return false;
     const old = customNames.get(k);
-    const { error } = await sb.from("ft_exercises").delete().eq("name_key", k); if (error) return false;
+    const { error } = await S.sb.from("ft_exercises").delete().eq("name_key", k); if (error) return false;
     customNames.delete(k); refreshNames();
     if (old && customVideos.has(looseKey(old))) await deleteVideo(looseKey(old));
     return true;
   }
   async function renameCustom(k, newName) {
     const old = customNames.get(k); const nk = squash(newName);
-    if (!nk || !sb || !signedIn) return false;
+    if (!nk || !S.sb || !S.signedIn) return false;
     const ov = looseKey(old), nv = looseKey(newName);
     if (ov !== nv && customVideos.has(ov)) { const id = customVideos.get(ov); const e1 = await saveVideo(nv, "https://youtu.be/" + id, id); if (e1) return false; await deleteVideo(ov); }   // the video follows the name
-    if (nk !== k && !builtinKeys.has(nk) && !customNames.has(nk)) { const { error } = await sb.from("ft_exercises").upsert({ name_key: nk, name: newName }); if (error) return false; customNames.set(nk, newName); }
-    else if (nk === k) { const { error } = await sb.from("ft_exercises").update({ name: newName }).eq("name_key", k); if (error) return false; customNames.set(k, newName); }
+    if (nk !== k && !builtinKeys.has(nk) && !customNames.has(nk)) { const { error } = await S.sb.from("ft_exercises").upsert({ name_key: nk, name: newName }); if (error) return false; customNames.set(nk, newName); }
+    else if (nk === k) { const { error } = await S.sb.from("ft_exercises").update({ name: newName }).eq("name_key", k); if (error) return false; customNames.set(k, newName); }
     if (nk !== k) { const ok = await removeCustom(k); if (!ok) return false; }
     refreshNames();
     // workouts and templates that use the old spelling follow the rename
@@ -626,47 +287,45 @@ import { reportRange, buildReport } from "./report.js";
   let pwTimer = 0;
   function showPassword() {
     clearTimeout(pwTimer); settingsOpen = "password"; hideAllViews(); $("vPassword").hidden = false; $("back").hidden = false; $("backLabel").textContent = fromSettings ? "Settings" : "Back"; $("brand").hidden = true;
-    $("pwMsg").textContent = ""; $("pwNew").value = ""; $("pwNew2").value = ""; $("pwBtn").disabled = false; $("pwUser").value = sessionEmail; $("status").textContent = "";
+    $("pwMsg").textContent = ""; $("pwNew").value = ""; $("pwNew2").value = ""; $("pwBtn").disabled = false; $("pwUser").value = S.sessionEmail; $("status").textContent = "";
   }
   function showRecovery() {
     hideAllViews(); $("vRecovery").hidden = false; $("recoveryBtn").disabled = false;
-    if (sb) sb.auth.getUser().then(({ data }) => { $("recoveryUser").value = (data && data.user && data.user.email) || ""; }).catch(() => {}); $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
+    if (S.sb) S.sb.auth.getUser().then(({ data }) => { $("recoveryUser").value = (data && data.user && data.user.email) || ""; }).catch(() => {}); $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
   }
-  let sessionEmail = "";
   function showProblem(text) {
     settingsOpen = false; hideAllViews(); $("vWaiting").hidden = false; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("waitingText").textContent = text;
   }
   function showWaiting() {
-    showProblem("Your account is ready, but " + (sessionEmail || "your email") + " is not linked to a client profile yet. Ask Michal to add this email to your profile, then tap Try again.");
+    showProblem("Your account is ready, but " + (S.sessionEmail || "your email") + " is not linked to a client profile yet. Ask Michal to add this email to your profile, then tap Try again.");
   }
 
-  let entering = false;
   async function enterCloud(session) {
-    if (entering) return; entering = true;
-    try { await enterCloudNow(session); } finally { entering = false; }
+    if (S.entering) return; S.entering = true;
+    try { await enterCloudNow(session); } finally { S.entering = false; }
   }
   async function enterCloudNow(session) {
-    const quiet = clientMode && offline && !!myClientId;    // the device copy is already on screen: swap in live data without a blank "Loading…"
+    const quiet = S.clientMode && S.offline && !!S.myClientId;    // the device copy is already on screen: swap in live data without a blank "Loading…"
     settingsOpen = quiet ? settingsOpen : false;
-    signedIn = true; sessionEmail = session.user.email || "";
+    S.signedIn = true; S.sessionEmail = session.user.email || "";
     let trainer = await isTrainerAccount();
     const remembered = lsGet("fiala.trainings.role");
     if (trainer === null) {
-      if (remembered && remembered.email === sessionEmail) trainer = remembered.role === "trainer";
-      else { offline = true; offlineEntry = "remembered"; showProblem("Couldn\u2019t reach the server \u00b7 check your signal and tap Try again"); return; }   // resumeOnline retries the entry
-    } else lsSet("fiala.trainings.role", { email: sessionEmail, role: trainer ? "trainer" : "client" });
-    offlineEntry = null;
-    if (pendingOwner && pendingOwner !== sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
+      if (remembered && remembered.email === S.sessionEmail) trainer = remembered.role === "trainer";
+      else { S.offline = true; S.offlineEntry = "remembered"; showProblem("Couldn\u2019t reach the server \u00b7 check your signal and tap Try again"); return; }   // resumeOnline retries the entry
+    } else lsSet("fiala.trainings.role", { email: S.sessionEmail, role: trainer ? "trainer" : "client" });
+    S.offlineEntry = null;
+    if (S.pendingOwner && S.pendingOwner !== S.sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
       dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear();
     }
-    pendingOwner = sessionEmail; persistPending();
-    clientMode = trainer !== true;
-    document.body.classList.toggle("client", clientMode);
-    backend = clientMode ? clientBackend : cloudBackend;
+    S.pendingOwner = S.sessionEmail; persistPending();
+    S.clientMode = trainer !== true;
+    document.body.classList.toggle("client", S.clientMode);
+    S.backend = S.clientMode ? clientBackend : cloudBackend;
     if (!quiet) hideAllViews();
-    if (clientMode) {
-      for (const id of [...clients.keys()]) if (isTemplateClient(id) || norm(clients.get(id).email) !== norm(sessionEmail)) clients.delete(id);   // the device copy may belong to someone else
+    if (S.clientMode) {
+      for (const id of [...clients.keys()]) if (isTemplateClient(id) || norm(clients.get(id).email) !== norm(S.sessionEmail)) clients.delete(id);   // the device copy may belong to someone else
       const mineIds = new Set(clients.keys()); for (const id of [...trainings.keys()]) if (!mineIds.has(trainings.get(id).clientId)) trainings.delete(id);
       $("clientFoot").hidden = false;
       if (!quiet) $("status").textContent = "Loading\u2026";
@@ -681,8 +340,6 @@ import { reportRange, buildReport } from "./report.js";
     seedTemplates().catch(() => {});
   }
 
-  const isNetwork = (error) => /load failed|failed to fetch|network|fetch/i.test((error && error.message) || "");
-  const isOffline = (error) => !navigator.onLine || isNetwork(error);
   const hasAuthToken = () => { try { return !!localStorage.getItem("sb-umurkxqswcjmubeucrzw-auth-token"); } catch { return false; } };
   // flaky phone connections: retry a request that never reached the server (up to 3 tries)
   async function withRetry(task) {
@@ -706,7 +363,7 @@ import { reportRange, buildReport } from "./report.js";
   $("loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     $("loginMsg").textContent = "Signing in…"; $("loginBtn").disabled = true;
-    const { data, error } = await withRetry(() => sb.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPassword").value }));
+    const { data, error } = await withRetry(() => S.sb.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPassword").value }));
     $("loginBtn").disabled = false;
     if (error) { $("loginMsg").textContent = friendly(error); return; }
     $("loginMsg").textContent = "";
@@ -725,7 +382,7 @@ import { reportRange, buildReport } from "./report.js";
     if (password.length < 8) { msg.textContent = "Use a password of at least 8 characters."; $("suPassword").focus(); return; }
     if (password !== again) { msg.textContent = "The two passwords don\u2019t match."; $("suPassword2").focus(); $("suPassword2").select(); return; }
     msg.textContent = "Creating your account\u2026"; $("suBtn").disabled = true;
-    let res; try { res = await sb.auth.signUp({ email, password, options: { data: { name, phone }, emailRedirectTo: location.origin + location.pathname } }); } catch (err) { res = { data: {}, error: err }; }
+    let res; try { res = await S.sb.auth.signUp({ email, password, options: { data: { name, phone }, emailRedirectTo: location.origin + location.pathname } }); } catch (err) { res = { data: {}, error: err }; }
     const { data, error } = res;
     $("suBtn").disabled = false;
     const sent = () => { $("loginEmail").value = email; $("suForm").hidden = true; $("suDone").hidden = false; $("suDoneText").textContent = "We sent a confirmation link to " + email + ". Open it on this phone, then come back here and sign in with your new password. Not there after a minute? Check Spam."; };
@@ -741,7 +398,7 @@ import { reportRange, buildReport } from "./report.js";
     if (password.length < 8) { msg.textContent = "Use a password of at least 8 characters."; $("pwNew").focus(); return; }
     if (password !== again) { msg.textContent = "The two passwords don\u2019t match."; $("pwNew2").focus(); $("pwNew2").select(); return; }
     msg.textContent = "Saving\u2026"; $("pwBtn").disabled = true;
-    const { error } = await withRetry(() => sb.auth.updateUser({ password }));
+    const { error } = await withRetry(() => S.sb.auth.updateUser({ password }));
     $("pwBtn").disabled = false;
     if (error) { msg.textContent = friendly(error); return; }
     msg.textContent = "Password changed."; $("pwNew").value = ""; $("pwNew2").value = "";
@@ -756,7 +413,7 @@ import { reportRange, buildReport } from "./report.js";
   $("forgotBtn").addEventListener("click", async () => {
     const email = $("loginEmail").value.trim();
     if (!email) { $("loginMsg").textContent = "Type your email first, then tap Forgot password."; return; }
-    const { error } = await withRetry(() => sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname }));
+    const { error } = await withRetry(() => S.sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname }));
     $("loginMsg").textContent = error ? friendly(error) : "Check your email for a link to set a new password.";
   });
   $("recoveryForm").addEventListener("submit", async (e) => {
@@ -765,11 +422,11 @@ import { reportRange, buildReport } from "./report.js";
     if (password.length < 8) { $("recoveryMsg").textContent = "At least 8 characters."; return; }
     if (password !== $("recoveryPassword2").value) { $("recoveryMsg").textContent = "The two passwords don\u2019t match."; return; }
     $("recoveryMsg").textContent = "Saving\u2026"; $("recoveryBtn").disabled = true;
-    const { error } = await withRetry(() => sb.auth.updateUser({ password }));
+    const { error } = await withRetry(() => S.sb.auth.updateUser({ password }));
     $("recoveryBtn").disabled = false;
     if (error) { $("recoveryMsg").textContent = friendly(error); return; }
-    recovering = false; $("recoveryPassword").value = ""; $("recoveryPassword2").value = "";
-    const { data: s } = await sb.auth.getSession();
+    S.recovering = false; $("recoveryPassword").value = ""; $("recoveryPassword2").value = "";
+    const { data: s } = await S.sb.auth.getSession();
     if (s && s.session) await enterCloud(s.session); else showLogin("Password saved. Sign in.");
   });
   const signOutClient = async () => {
@@ -777,23 +434,23 @@ import { reportRange, buildReport } from "./report.js";
     if (dirty.size) { $("status").textContent = "Some weights are not saved yet \u00b7 try again when online"; return; }
     const finish = () => {
       for (const tm of timers.values()) clearTimeout(tm);
-      timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); failed = false;
+      timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); S.failed = false;
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
-      offline = false; offlineEntry = null; pendingOwner = "";
-      view = { name: "clients" }; showLogin("");
+      S.offline = false; S.offlineEntry = null; S.pendingOwner = "";
+      S.view = { name: "clients" }; showLogin("");
     };
-    const who = sessionEmail;
-    if (!signingOut) signingOut = sb.auth.signOut().catch((e) => ({ error: e })).finally(() => { signingOut = null; });
-    const out = await withTimeout(signingOut, 8000);
-    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && signedIn && sessionEmail === who) finish(); }); return; }
+    const who = S.sessionEmail;
+    if (!S.signingOut) S.signingOut = S.sb.auth.signOut().catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });
+    const out = await withTimeout(S.signingOut, 8000);
+    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (S.signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && S.signedIn && S.sessionEmail === who) finish(); }); return; }
     finish();
   };
   $("signout3").addEventListener("click", signOutClient);
   $("retryBtn").addEventListener("click", async () => {
     $("retryBtn").disabled = true;
     try {
-      const { data, error } = await sb.auth.getSession().catch((e) => ({ data: null, error: e }));
+      const { data, error } = await S.sb.auth.getSession().catch((e) => ({ data: null, error: e }));
       const remembered = lsGet("fiala.trainings.role");
       if (data && data.session) await enterCloud(data.session);
       else if (remembered && remembered.email && (!navigator.onLine || isNetwork(error))) enterOffline(remembered);
@@ -805,19 +462,19 @@ import { reportRange, buildReport } from "./report.js";
     if (dirty.size) { $("status").textContent = "Some changes are not saved yet \u00b7 try again when online"; return; }
     const finish = () => {
       for (const tm of timers.values()) clearTimeout(tm);
-      timers.clear(); chains.clear(); dirty.clear(); trainerTouched.clear(); trainerNamed.clear(); failed = false;
+      timers.clear(); chains.clear(); dirty.clear(); trainerTouched.clear(); trainerNamed.clear(); S.failed = false;
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
-      offline = false; offlineEntry = null; pendingOwner = "";
-      view = { name: "clients" }; showLogin("");
+      S.offline = false; S.offlineEntry = null; S.pendingOwner = "";
+      S.view = { name: "clients" }; showLogin("");
     };
-    const who = sessionEmail;
-    if (!signingOut) signingOut = sb.auth.signOut().catch((e) => ({ error: e })).finally(() => { signingOut = null; });
-    const out = await withTimeout(signingOut, 8000);
-    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && signedIn && sessionEmail === who) finish(); }); return; }
+    const who = S.sessionEmail;
+    if (!S.signingOut) S.signingOut = S.sb.auth.signOut().catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });
+    const out = await withTimeout(S.signingOut, 8000);
+    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (S.signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && S.signedIn && S.sessionEmail === who) finish(); }); return; }
     finish();
   };
-  $("signout").addEventListener("click", () => (clientMode ? signOutClient() : signOutTrainer()));
+  $("signout").addEventListener("click", () => (S.clientMode ? signOutClient() : signOutTrainer()));
   async function flushNow() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); await flushOne(kind, id).catch(() => {}); } }
 
   // ---------- data ops ----------
@@ -844,7 +501,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   function deleteTraining(id) {
     const t = trainings.get(id); if (!t) return;
-    if (templateDraft && templateDraft.id === id) { templateDraft = null; pendingGo = null; paintDraftBar(); }
+    if (S.templateDraft && S.templateDraft.id === id) { S.templateDraft = null; S.pendingGo = null; paintDraftBar(); }
     trainings.delete(id); scheduleSave("trainings", id, 0);
     go({ name: "client", id: t.clientId });
   }
@@ -869,22 +526,22 @@ import { reportRange, buildReport } from "./report.js";
 
   // ---------- navigation ----------
   function go(next) {
-    if (templateDraft && templateDraft.dirty && view.name === "training" && view.id === templateDraft.id) {
-      pendingGo = next; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
+    if (S.templateDraft && S.templateDraft.dirty && S.view.name === "training" && S.view.id === S.templateDraft.id) {
+      S.pendingGo = next; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
     }
     if (!(next.name === "client" && isTemplateClient(next.id))) { pickFor = null; fillFor = null; }
-    if (!clientMode && (!sb || syncedOnce) && view.name === "training" && !(next.name === "training" && next.id === view.id) && fillFor !== view.id) {   // leaving an empty workout behind discards it, like an empty note (not while it waits for a template, not before the first sync)
-      const t = trainings.get(view.id); if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
+    if (!S.clientMode && (!S.sb || S.syncedOnce) && S.view.name === "training" && !(next.name === "training" && next.id === S.view.id) && fillFor !== S.view.id) {   // leaving an empty workout behind discards it, like an empty note (not while it waits for a template, not before the first sync)
+      const t = trainings.get(S.view.id); if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
     }
-    reordering = false; view = next; lsSet("fiala.trainings.view", view); render(); window.scrollTo(0, 0); }
+    reordering = false; S.view = next; lsSet("fiala.trainings.view", S.view); render(); window.scrollTo(0, 0); }
   $("back").addEventListener("click", () => {
     if (settingsOpen) {
       if (fromSettings && settingsOpen !== "settings") { showSettings(); window.scrollTo(0, 0); return; }
       settingsOpen = false; fromSettings = false; $("exList").querySelectorAll(".player iframe").forEach((f) => f.remove()); hideAllViews(); render(); window.scrollTo(0, 0); return;
     }
-    if (view.name === "training") { const t = trainings.get(view.id); go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }); }
-    else if (view.name === "client" && isTemplateClient(view.id) && view.phase) go({ name: "client", id: TEMPLATES_ID, program: view.program });
-    else if (view.name === "client" && isTemplateClient(view.id) && view.program) go({ name: "client", id: TEMPLATES_ID });
+    if (S.view.name === "training") { const t = trainings.get(S.view.id); go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }); }
+    else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.phase) go({ name: "client", id: TEMPLATES_ID, program: S.view.program });
+    else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.program) go({ name: "client", id: TEMPLATES_ID });
     else go({ name: "clients" });
   });
 
@@ -946,7 +603,6 @@ import { reportRange, buildReport } from "./report.js";
   document.addEventListener("focusin", (e) => { if (kbKind(e.target)) showKb(e.target); else if (kbTarget) hideKb(); });
   document.addEventListener("focusout", () => { setTimeout(() => { if (!kbKind(document.activeElement)) hideKb(); }, 80); });
 
-  let renderedTraining = null;
   let closeOpenAlt = null;
   // ---- templates: workouts filed under a built-in "Templates" entry; clients never receive them (their data is read per client id)
   const TEMPLATES_VERSION = 3;           // 2: Lean Type + Muscle Type added; 3: reps repaired
@@ -955,13 +611,12 @@ import { reportRange, buildReport } from "./report.js";
   let fillFor = null;                      // training id: an empty workout waiting to be filled from a template
   const lastUse = lsGet("fiala.templates.last") || { template: null, client: null };   // where he was when he last used a template
   let flashTemplate = null;                // template id to scroll to and flash on the Templates page
-  let seeding = false;                     // a sync must not run while the templates are being written
   async function seedTemplates() {
-    if (clientMode || seeding) return;
+    if (S.clientMode || S.seeding) return;
     let tc = clients.get(TEMPLATES_ID);
     if (tc && (tc.templatesVersion || 0) >= TEMPLATES_VERSION) return;
-    seeding = true;
-    try { await seedTemplatesNow(tc); } finally { seeding = false; }
+    S.seeding = true;
+    try { await seedTemplatesNow(tc); } finally { S.seeding = false; }
   }
   async function seedTemplatesNow(tc) {
     let list;
@@ -983,11 +638,11 @@ import { reportRange, buildReport } from "./report.js";
     }
     tc.templatesVersion = TEMPLATES_VERSION;
     localBackend.save();
-    if (sb && signedIn && fresh.length) {
+    if (S.sb && S.signedIn && fresh.length) {
       $("status").textContent = "Adding templates\u2026";
       for (let i = 0; i < fresh.length; i += 60) {
         const chunk = fresh.slice(i, i + 60).map((t) => ({ id: t.id, client_id: TEMPLATES_ID, data: t }));
-        const { data, error } = await sb.from("ft_trainings").upsert(chunk).select("id,updated_at");
+        const { data, error } = await S.sb.from("ft_trainings").upsert(chunk).select("id,updated_at");
         if (error) { for (const t of fresh.slice(i)) scheduleSave("trainings", t.id, 0); break; }   // the queue finishes the job later
         for (const r of data || []) seenAt.set(key("trainings", r.id), r.updated_at);
       }
@@ -1004,19 +659,19 @@ import { reportRange, buildReport } from "./report.js";
   let es = null;                                                   // { t, g, selKey, reason } while the sheet is up
   function markEarly(t, r, reason) {                               // the note on why; "" clears it
     if (reason) r.earlyReason = reason; else delete r.earlyReason;
-    if (clientMode) { if (!pendingEarlyRows.has(t.id)) pendingEarlyRows.set(t.id, new Set()); pendingEarlyRows.get(t.id).add(r.id); }
+    if (S.clientMode) { if (!pendingEarlyRows.has(t.id)) pendingEarlyRows.set(t.id, new Set()); pendingEarlyRows.get(t.id).add(r.id); }
   }
   const openNotes = new Set();                                   // exercise rows whose note the client opened (this session)
   const noteDraft = new Map();                                   // clientId -> what is typed in the notes box and not saved yet
   const tNoteDraft = new Map(); let tNoteOpenFor = null;          // the same for the note box on a workout page
   const growBox = (ta) => { ta.style.height = "auto"; ta.style.height = Math.max(96, ta.scrollHeight) + "px"; };
-  const openNoteGroups = new Set(), armedNotes = new Set(), deletedNotes = new Set();
+  const openNoteGroups = new Set(), armedNotes = new Set();
   const openNoteIds = new Set();                                 // long notes opened in full (this session)
   // notes stay inside c.notes, the one key the server strips before a client's phone gets the record:
   // a string is the old single note (shown as "Earlier"), an object { log: [{ id, at, text }] } is the dated list
   const writeNotes = (c, list) => { c.notes = packNotes(list); scheduleSave("clients", c.id); };   // only ever from Save / Delete: a redraw never writes
   function renderNotes(c) {
-    const wrap = $("noteList"); wrap.replaceChildren(); if (clientMode) return;
+    const wrap = $("noteList"); wrap.replaceChildren(); if (S.clientMode) return;
     const entries = noteEntries(c).sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
     const t = today(), base = new Date(t + "T12:00:00"), monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
     const mondayIso = localIso(monday), yIso = localIso(new Date(base.getTime() - 86400000));
@@ -1102,9 +757,9 @@ import { reportRange, buildReport } from "./report.js";
   function finishEarlyNow() {
     if (!es) return;
     const { t, g, selKey, reason } = es; closeFinishEarly();
-    for (const r of g.rows) { r.done = true; markEarly(t, r, reason); const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
+    for (const r of g.rows) { r.done = true; markEarly(t, r, reason); const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
     openBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id);
-    haptic(); renderedTraining = null; render(); scrollToCard(g.key);
+    haptic(); S.renderedTraining = null; render(); scrollToCard(g.key);
   }
   function openDatePicker(opts) {
     const selected = opts.selected || today();
@@ -1153,7 +808,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!String(target.title || "").trim()) target.title = T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : "");
     target.rows = (T.rows || []).map((r) => freshRow(r));
     target.fromTemplate = T.id;
-    scheduleSave("trainings", target.id, 0); renderedTraining = null; go({ name: "training", id });
+    scheduleSave("trainings", target.id, 0); S.renderedTraining = null; go({ name: "training", id });
   }
   function backToTemplates(tid) {
     const T = trainings.get(tid);
@@ -1162,7 +817,7 @@ import { reportRange, buildReport } from "./report.js";
     go(T ? templateHome(T) : { name: "client", id: TEMPLATES_ID });
     requestAnimationFrame(() => { const li = document.querySelector('#tplList li[data-tid="' + tid + '"]'); if (li) { li.scrollIntoView({ block: "center" }); li.classList.add("flash"); setTimeout(() => li.classList.remove("flash"), 1300); } });
   }
-  $("fromTpl").addEventListener("click", () => { const t = trainings.get(view.id); if (t && t.fromTemplate) backToTemplates(t.fromTemplate); });
+  $("fromTpl").addEventListener("click", () => { const t = trainings.get(S.view.id); if (t && t.fromTemplate) backToTemplates(t.fromTemplate); });
   function saveAsTemplate(src) {
     const mine = [...trainings.values()].filter((t) => isTemplateClient(t.clientId) && templateMeta(t).program === MY_TEMPLATES);
     const t = { id: uid(), clientId: TEMPLATES_ID, date: "2026-01-01", createdAt: now(), title: src.title || "", completedAt: null, skippedAt: null,
@@ -1195,7 +850,7 @@ import { reportRange, buildReport } from "./report.js";
   function renderTemplates(c) {
     const all = clientTrainings(c.id);
     const wrap = $("tplList"); wrap.replaceChildren(); wrap.hidden = false;
-    const prog = view.program || null, ph = view.phase || null;
+    const prog = S.view.program || null, ph = S.view.phase || null;
     $("pickNote").hidden = !pickFor;
     if (pickFor) { const pc = clients.get(pickFor); $("pickNote").innerHTML = "Choose a workout for <b></b> · <button class=\"btn quiet\" type=\"button\" id=\"pickCancel\">Cancel</button>"; $("pickNote").querySelector("b").textContent = pc ? pc.name : "the client"; $("pickCancel").addEventListener("click", () => { pickFor = null; fillFor = null; render(); }); }
     $("newTraining").hidden = !!prog;
@@ -1207,7 +862,7 @@ import { reportRange, buildReport } from "./report.js";
       const mine = (byProg.get(MY_TEMPLATES) || []).sort((x, y) => templateMeta(x).n - templateMeta(y).n);
       if (mine.length) { wrap.appendChild(h2("My templates")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...mine.map((t) => tplRow(t, !!pickFor))); wrap.appendChild(ul); }
       const progs = [...byProg.keys()].filter((p) => p !== MY_TEMPLATES).sort((x, y) => progRank(x) - progRank(y) || x.localeCompare(y));
-      if (progs.length) { wrap.appendChild(h2("Programs")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...progs.map((p) => navRow(p, wn(byProg.get(p).length), () => go({ ...view, program: p, phase: null, stage: null })))); wrap.appendChild(ul); }
+      if (progs.length) { wrap.appendChild(h2("Programs")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...progs.map((p) => navRow(p, wn(byProg.get(p).length), () => go({ ...S.view, program: p, phase: null, stage: null })))); wrap.appendChild(ul); }
       if (!all.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "No templates yet. Open a workout and tap Save as template."; wrap.appendChild(e); }
       return;
     }
@@ -1219,7 +874,7 @@ import { reportRange, buildReport } from "./report.js";
       wrap.appendChild(h2("Phases")); const ul = document.createElement("ul"); ul.className = "list";
       for (const [n, pitems] of [...phases.entries()].sort((x, y) => x[0] - y[0])) {
         const pn = (pitems.find((t) => templateMeta(t).phaseName) || { template: {} }).template.phaseName || "";
-        ul.appendChild(navRow("Phase " + n + (pn ? " · " + pn : ""), wn(pitems.length), () => go({ ...view, phase: n, stage: 1 })));
+        ul.appendChild(navRow("Phase " + n + (pn ? " · " + pn : ""), wn(pitems.length), () => go({ ...S.view, phase: n, stage: 1 })));
       }
       wrap.appendChild(ul); return;
     }
@@ -1227,9 +882,9 @@ import { reportRange, buildReport } from "./report.js";
     const pn = (pitems.find((t) => templateMeta(t).phaseName) || { template: {} }).template.phaseName || "";
     $("tplKicker").textContent = prog; $("cName").value = "Phase " + ph + (pn ? " · " + pn : "");
     const stages = [...new Set(pitems.map((t) => templateMeta(t).stage))].sort((x, y) => x - y);
-    const cur = stages.includes(view.stage) ? view.stage : stages[0];
+    const cur = stages.includes(S.view.stage) ? S.view.stage : stages[0];
     const seg = document.createElement("div"); seg.className = "seg stages"; seg.setAttribute("role", "tablist");
-    for (const s of stages) { const b = document.createElement("button"); b.type = "button"; b.textContent = "Stage " + s; b.classList.toggle("on", s === cur); b.addEventListener("click", () => { view.stage = s; lsSet("fiala.trainings.view", view); renderTemplates(c); }); seg.appendChild(b); }
+    for (const s of stages) { const b = document.createElement("button"); b.type = "button"; b.textContent = "Stage " + s; b.classList.toggle("on", s === cur); b.addEventListener("click", () => { S.view.stage = s; lsSet("fiala.trainings.view", S.view); renderTemplates(c); }); seg.appendChild(b); }
     wrap.appendChild(seg);
     const ul = document.createElement("ul"); ul.className = "list"; ul.style.marginTop = "16px";
     ul.replaceChildren(...pitems.filter((t) => templateMeta(t).stage === cur).sort((x, y) => templateMeta(x).n - templateMeta(y).n).map((t) => tplRow(t, !!pickFor)));
@@ -1237,26 +892,26 @@ import { reportRange, buildReport } from "./report.js";
   }
   const templateHome = (t) => { const m = templateMeta(t); return m.program === MY_TEMPLATES ? { name: "client", id: TEMPLATES_ID } : { name: "client", id: TEMPLATES_ID, program: m.program, phase: m.phase, stage: m.stage }; };
   function render() {
-    if (recovering) { showRecovery(); return; }
-    if (settingsOpen) { if (signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : "vPassword").hidden = false; $("back").hidden = false; $("brand").hidden = true; } return; }
-    if (sb && !signedIn) { showLogin($("loginMsg").textContent); return; }
-    if (clientMode && !myClientId) { showWaiting(); return; }
+    if (S.recovering) { showRecovery(); return; }
+    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : "vPassword").hidden = false; $("back").hidden = false; $("brand").hidden = true; } return; }
+    if (S.sb && !S.signedIn) { showLogin($("loginMsg").textContent); return; }
+    if (S.clientMode && !S.myClientId) { showWaiting(); return; }
     if (celebrating) { hideAllViews(); $("vCelebrate").hidden = false; $("back").hidden = true; $("brand").hidden = false; return; }   // "Nice work" stays up until it hands over to the client page, whatever refreshes meanwhile
     $("vLogin").hidden = true; $("vRecovery").hidden = true; $("vWaiting").hidden = true; $("vCelebrate").hidden = true;
-    if (clientMode && (view.name === "clients" || (view.name === "client" && view.id !== myClientId))) view = { name: "client", id: myClientId };
-    if (clientMode && clients.get(myClientId)?.paused) view = { name: "client", id: myClientId };
-    if (view.name === "client" && !clients.has(view.id)) view = clientMode ? { name: "client", id: myClientId } : { name: "clients" };
-    if (view.name === "training" && !trainings.has(view.id)) view = clientMode ? { name: "client", id: myClientId } : { name: "clients" };
-    if (view.name !== "training") previewClient = false;
-    if (!clientMode) document.body.classList.toggle("client", previewClient && view.name === "training" && !isTemplateClient(trainings.get(view.id).clientId));
-    $("vClients").hidden = view.name !== "clients";
-    $("vClient").hidden = view.name !== "client";
-    $("vTraining").hidden = view.name !== "training";
-    $("back").hidden = view.name === "clients" || (clientMode && view.name === "client");
-    $("brand").hidden = !(view.name === "clients" || (clientMode && view.name === "client"));
-    if (view.name === "clients") { renderedTraining = null; renderClients(); }
-    else if (view.name === "client") { renderedTraining = null; $("backLabel").textContent = isTemplateClient(view.id) && view.phase ? view.program : (isTemplateClient(view.id) && view.program ? "Templates" : "Clients"); renderClient(); }
-    else { const t = trainings.get(view.id); $("backLabel").textContent = clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
+    if (S.clientMode && (S.view.name === "clients" || (S.view.name === "client" && S.view.id !== S.myClientId))) S.view = { name: "client", id: S.myClientId };
+    if (S.clientMode && clients.get(S.myClientId)?.paused) S.view = { name: "client", id: S.myClientId };
+    if (S.view.name === "client" && !clients.has(S.view.id)) S.view = S.clientMode ? { name: "client", id: S.myClientId } : { name: "clients" };
+    if (S.view.name === "training" && !trainings.has(S.view.id)) S.view = S.clientMode ? { name: "client", id: S.myClientId } : { name: "clients" };
+    if (S.view.name !== "training") previewClient = false;
+    if (!S.clientMode) document.body.classList.toggle("client", previewClient && S.view.name === "training" && !isTemplateClient(trainings.get(S.view.id).clientId));
+    $("vClients").hidden = S.view.name !== "clients";
+    $("vClient").hidden = S.view.name !== "client";
+    $("vTraining").hidden = S.view.name !== "training";
+    $("back").hidden = S.view.name === "clients" || (S.clientMode && S.view.name === "client");
+    $("brand").hidden = !(S.view.name === "clients" || (S.clientMode && S.view.name === "client"));
+    if (S.view.name === "clients") { S.renderedTraining = null; renderClients(); }
+    else if (S.view.name === "client") { S.renderedTraining = null; $("backLabel").textContent = isTemplateClient(S.view.id) && S.view.phase ? S.view.program : (isTemplateClient(S.view.id) && S.view.program ? "Templates" : "Clients"); renderClient(); }
+    else { const t = trainings.get(S.view.id); $("backLabel").textContent = S.clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
     paintDraftBar();
     if (dp) renderDatePicker();
   }
@@ -1306,9 +961,9 @@ import { reportRange, buildReport } from "./report.js";
   function renderClients() {
     const list = activeList(), inactive = peopleList().filter((c) => c.paused);
     const tpl = clients.get(TEMPLATES_ID);
-    $("tplCard").hidden = !tpl || clientMode;
+    $("tplCard").hidden = !tpl || S.clientMode;
     $("clientCount").textContent = list.length ? list.length + (list.length === 1 ? " client" : " clients") : "";
-    $("reorderBtn").hidden = clientMode || list.length < 2; $("reorderBtn").textContent = reordering ? "Done" : "Reorder";
+    $("reorderBtn").hidden = S.clientMode || list.length < 2; $("reorderBtn").textContent = reordering ? "Done" : "Reorder";
     const ul = $("clientList"); ul.replaceChildren();
     list.forEach((c, i) => {
       const li = document.createElement("li");
@@ -1347,7 +1002,7 @@ import { reportRange, buildReport } from "./report.js";
   const monthTitle = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1, 12).toLocaleDateString(undefined, { month: "long", year: "numeric" }); };
   $("calToggle").addEventListener("click", () => {
     calOpen = !calOpen; lsSet("fiala.cal.open", calOpen); if (calOpen) { calMonth = today().slice(0, 7); calAnchor = calMonth; }
-    if (view.name === "client") renderClient();
+    if (S.view.name === "client") renderClient();
   });
   $("dpCancel").addEventListener("click", closeDatePicker);
   $("esKeep").addEventListener("click", closeFinishEarly);
@@ -1371,7 +1026,7 @@ import { reportRange, buildReport } from "./report.js";
     g.addEventListener("click", (e) => { if (swiped) { e.stopPropagation(); e.preventDefault(); } }, true);
   }
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && dp) closeDatePicker(); if (e.key === "Escape" && es) closeFinishEarly(); });
-  $("calToday").addEventListener("click", () => { calMonth = today().slice(0, 7); calAnchor = calMonth; if (view.name === "client") renderClient(); });
+  $("calToday").addEventListener("click", () => { calMonth = today().slice(0, 7); calAnchor = calMonth; if (S.view.name === "client") renderClient(); });
   {
     const view_ = $("calView"), track = $("calTrack");
     const reduced = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1384,7 +1039,7 @@ import { reportRange, buildReport } from "./report.js";
       void view_.offsetHeight; view_.style.transition = "";
       if (target) view_.style.height = target.offsetHeight + "px";
       let done = false;
-      const finish = () => { if (done) return; done = true; finishNow = null; track.removeEventListener("transitionend", finish); busy = false; calSliding = false; view_.style.transition = ""; if (dir && view.name === "client") renderClient(); else view_.style.height = track.children[1].offsetHeight + "px"; };
+      const finish = () => { if (done) return; done = true; finishNow = null; track.removeEventListener("transitionend", finish); busy = false; calSliding = false; view_.style.transition = ""; if (dir && S.view.name === "client") renderClient(); else view_.style.height = track.children[1].offsetHeight + "px"; };
       finishNow = finish;
       if (reduced()) { track.style.transition = "none"; track.style.transform = "translateX(" + (-100 - (dir || 0) * 100) + "%)"; finish(); return; }
       track.addEventListener("transitionend", finish);
@@ -1417,7 +1072,7 @@ import { reportRange, buildReport } from "./report.js";
   }
 
   function renderClient() {
-    const c = clients.get(view.id);
+    const c = clients.get(S.view.id);
     const isTpl = isTemplateClient(c.id);
     $("vClient").classList.toggle("tpl", isTpl);
     $("newTraining").textContent = isTpl ? "+ New template" : "+ New workout";
@@ -1436,18 +1091,18 @@ import { reportRange, buildReport } from "./report.js";
     paintMsg(c); paintTrainerMsg(c);
     for (const b of $("unitSeg").querySelectorAll("button")) b.classList.toggle("on", (c.unit || "lb") === b.dataset.unit);
     for (const b of $("accessSeg").querySelectorAll("button")) b.classList.toggle("on", (c.paused ? "paused" : "active") === b.dataset.access);
-    $("pausedCard").hidden = !(c.paused && clientMode);
+    $("pausedCard").hidden = !(c.paused && S.clientMode);
     $("pausedText").textContent = phoneDigits(c.trainerPhone) ? "Your workouts are on hold for now. Message Michal when you’re ready to pick up again." : "Your workouts are on hold for now. Michal will switch them back on when you’re ready to pick up again.";
-    document.body.classList.toggle("paused", !!(c.paused && clientMode));
+    document.body.classList.toggle("paused", !!(c.paused && S.clientMode));
     if (document.activeElement !== $("cNotes")) $("cNotes").value = noteDraft.get(c.id) || "";
     $("noteActions").hidden = !String($("cNotes").value).trim(); growNotesBox();
     renderNotes(c);
-    if (!clientMode) {                                                        // the report row: the last two years of months to pick from
+    if (!S.clientMode) {                                                        // the report row: the last two years of months to pick from
       const sel = $("reportMonth"), base = new Date(today() + "T12:00:00"); sel.replaceChildren(new Option("Pick a month", ""));
       for (let i = 1; i <= 24; i++) { const d = new Date(base.getFullYear(), base.getMonth() - i, 1, 12); sel.appendChild(new Option(d.toLocaleDateString(undefined, { month: "long", year: "numeric" }), localIso(d).slice(0, 7))); }
       loadReportFonts();
     }
-    if (!clientMode && (!sb || syncedOnce)) for (const t of clientTrainings(c.id)) if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }   // empty workouts left behind (an accidental tap on a day) go away, once the server's copy has been seen
+    if (!S.clientMode && (!S.sb || S.syncedOnce)) for (const t of clientTrainings(c.id)) if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }   // empty workouts left behind (an accidental tap on a day) go away, once the server's copy has been seen
     const list = clientTrainings(c.id);
     const relDay = (iso) => {                                            // "Today", "Tomorrow", "In 4 days", "Yesterday", "3 days ago"
       const n = Math.round((new Date(iso + "T12:00:00") - new Date(today() + "T12:00:00")) / 86400000);
@@ -1477,9 +1132,9 @@ import { reportRange, buildReport } from "./report.js";
       if (overdue) {                                                       // the missed workout is the first thing to decide
         acts = document.createElement("div"); acts.className = "missed-actions";
         const doToday = document.createElement("button"); doToday.type = "button"; doToday.textContent = "Do it today";
-        doToday.addEventListener("click", () => { t.date = today(); t.missed = false; t.skippedAt = null; touchState(t.id, "date", "missed", "skippedAt"); if (clientMode) { pendingMove.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
+        doToday.addEventListener("click", () => { t.date = today(); t.missed = false; t.skippedAt = null; touchState(t.id, "date", "missed", "skippedAt"); if (S.clientMode) { pendingMove.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
         const skip = document.createElement("button"); skip.type = "button"; skip.textContent = "Skip";
-        skip.addEventListener("click", () => { t.skippedAt = now(); t.missed = false; touchState(t.id, "skippedAt", "missed"); if (clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
+        skip.addEventListener("click", () => { t.skippedAt = now(); t.missed = false; touchState(t.id, "skippedAt", "missed"); if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
         acts.append(doToday, skip);
       }
       left.append(pri); if (sec.textContent) left.append(sec);
@@ -1507,7 +1162,7 @@ import { reportRange, buildReport } from "./report.js";
       b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + (dayWorkouts.length ? (dayWorkouts.every((t) => t.completedAt) ? ", finished" : ", planned") : ""));
       b.addEventListener("click", () => {
         if (dayWorkouts.length) go({ name: "training", id: dayWorkouts[0].id });
-        else if (!clientMode) addTraining(c.id, null, key);
+        else if (!S.clientMode) addTraining(c.id, null, key);
       });
       return b;
     };
@@ -1546,9 +1201,9 @@ import { reportRange, buildReport } from "./report.js";
     // missed by more than a week with nothing logged: it files itself under History as "Missed"
     const stale = (() => { const d = new Date(base); d.setDate(base.getDate() - 7); return iso(d); })();
     const nothingLogged = (t) => (t.rows || []).every((r) => !r.done && !(parseInt(r.setsDone, 10) > 0) && !(r.weights || []).some((w) => String(w == null ? "" : w).trim()) && !(r.repsDone || []).some((x) => String(x == null ? "" : x).trim()));
-    if (!sb || syncedOnce) for (const t of list) {                              // only once this device has seen the server's copy
+    if (!S.sb || S.syncedOnce) for (const t of list) {                              // only once this device has seen the server's copy
       if (t.completedAt || t.skippedAt || t.missed !== undefined || !effDate(t) || effDate(t) >= stale || !nothingLogged(t)) continue;   // missed: true = filed before, false = a person decided
-      t.skippedAt = now(); t.missed = true; if (clientMode) pendingMiss.add(t.id); scheduleSave("trainings", t.id);
+      t.skippedAt = now(); t.missed = true; if (S.clientMode) pendingMiss.add(t.id); scheduleSave("trainings", t.id);
     }
     const next = list.filter((t) => !t.completedAt && !t.skippedAt).sort((a, b) => effDate(a).localeCompare(effDate(b)));
     // keep it short: anything due within the next few days (the very next workout always shows);
@@ -1607,19 +1262,19 @@ import { reportRange, buildReport } from "./report.js";
   }
   const ordinal = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
   function setFinished(finished) {
-    const t = trainings.get(view.id); if (!t) return;
+    const t = trainings.get(S.view.id); if (!t) return;
     if (!finished && t.completedAt) {                                     // undo keeps it on the day it was done, and no sweep files it by itself
       const day = localIso(new Date(t.completedAt));
-      if (/^\d{4}-\d{2}-\d{2}$/.test(day) && day !== t.date) { t.date = day; touchState(t.id, "date"); if (clientMode) pendingMove.add(t.id); }
-      t.missed = false; touchState(t.id, "missed"); if (clientMode) pendingMiss.add(t.id);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(day) && day !== t.date) { t.date = day; touchState(t.id, "date"); if (S.clientMode) pendingMove.add(t.id); }
+      t.missed = false; touchState(t.id, "missed"); if (S.clientMode) pendingMiss.add(t.id);
     }
     t.completedAt = finished ? now() : null; touchState(t.id, "completedAt");
-    if (finished && t.skippedAt) { t.skippedAt = null; t.missed = false; touchState(t.id, "skippedAt", "missed"); if (clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } }   // finished beats skipped
-    if (finished && !clientMode && /^\d{4}-\d{2}-\d{2}$/.test(t.date || "") && t.date < today()) {   // the coach logging a past session: it was done on that day
+    if (finished && t.skippedAt) { t.skippedAt = null; t.missed = false; touchState(t.id, "skippedAt", "missed"); if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } }   // finished beats skipped
+    if (finished && !S.clientMode && /^\d{4}-\d{2}-\d{2}$/.test(t.date || "") && t.date < today()) {   // the coach logging a past session: it was done on that day
       const d = new Date(); const [y, m, dd] = t.date.split("-").map(Number); d.setFullYear(y, m - 1, dd);
       if (!isNaN(d)) t.completedAt = d.toISOString();
     }
-    if (clientMode) pendingFinish.add(t.id);
+    if (S.clientMode) pendingFinish.add(t.id);
     scheduleSave("trainings", t.id); paintFinish(t);
     if (finished) {
       const count = clientTrainings(t.clientId).filter((x) => x.completedAt).length;
@@ -1631,12 +1286,12 @@ import { reportRange, buildReport } from "./report.js";
     }
   }
   let celeTimer = null, celebrating = false;   // the "Nice work" screen is a state, not just a visible panel: a sync's redraw can't knock it off
-  $("celeBack").addEventListener("click", () => { clearTimeout(celeTimer); celebrating = false; const t = trainings.get(view.id); go({ name: "client", id: t ? t.clientId : myClientId }); });
+  $("celeBack").addEventListener("click", () => { clearTimeout(celeTimer); celebrating = false; const t = trainings.get(S.view.id); go({ name: "client", id: t ? t.clientId : S.myClientId }); });
 
   function renderTraining(t) {
     if (document.activeElement !== $("tTitle")) { $("tTitle").value = t.title || ""; requestAnimationFrame(() => { const el = $("tTitle"); el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); }
     $("tDate").textContent = fmtDay(t.date || today());
-    const asClient = clientMode || previewClient;
+    const asClient = S.clientMode || previewClient;
     $("tTitle").readOnly = asClient; $("tDate").disabled = asClient;
     const isTpl = isTemplateClient(t.clientId);
     if (isTpl) draftFor(t);
@@ -1644,20 +1299,20 @@ import { reportRange, buildReport } from "./report.js";
     const src = !asClient && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
     $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = templatePath(src);
     $("tplFill").hidden = asClient || isTpl || (t.rows || []).length > 0 || !!t.completedAt;   // only an empty workout offers a template
-    $("tNoteWrap").hidden = clientMode || isTpl;                                                // the coach's session note, in either view, never for a client
+    $("tNoteWrap").hidden = S.clientMode || isTpl;                                                // the coach's session note, in either view, never for a client
     paintWorkoutNotes(t);
     const open = tNoteOpenFor === t.id;
     $("tNoteBox").hidden = !open; $("tNoteOpen").hidden = open;
     if (document.activeElement !== $("tNote")) { $("tNote").value = tNoteDraft.get(t.id) || ""; growBox($("tNote")); }
-    $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || clientMode;
-    $("viewSeg").hidden = clientMode || isTpl; for (const b of $("viewSeg").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.view === "client") === previewClient); if (!isTpl) $("usePick").hidden = true;
+    $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || S.clientMode;
+    $("viewSeg").hidden = S.clientMode || isTpl; for (const b of $("viewSeg").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.view === "client") === previewClient); if (!isTpl) $("usePick").hidden = true;
     $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
     paintFinish(t);
     const rowsEl = $("rows");
     const active = document.activeElement;
-    if (renderedTraining === t.id && rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return; // never rebuild under a typing finger
-    renderedTraining = t.id;
-    if (!clientMode && normalizeLabels(t)) scheduleSave("trainings", t.id);
+    if (S.renderedTraining === t.id && rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return; // never rebuild under a typing finger
+    S.renderedTraining = t.id;
+    if (!S.clientMode && normalizeLabels(t)) scheduleSave("trainings", t.id);
     t.rows.sort((a, b) => cmpLabel(a.label, b.label));
     if (closeOpenAlt) closeOpenAlt();
     rowsEl.replaceChildren();
@@ -1710,7 +1365,7 @@ import { reportRange, buildReport } from "./report.js";
             if (i < doneSets) b.classList.add("done");
             if (i === sel) b.classList.add("cur");
             b.setAttribute("aria-label", "Set " + (i + 1) + (i < doneSets ? ", done" : i === sel ? ", current" : ""));
-            b.addEventListener("click", () => { setSel.set(selKey, i); renderedTraining = null; render(); });
+            b.addEventListener("click", () => { setSel.set(selKey, i); S.renderedTraining = null; render(); });
           }
           chips.appendChild(b);
         }
@@ -1724,7 +1379,7 @@ import { reportRange, buildReport } from "./report.js";
               if (sd >= n) r.done = true; else if (r.done && sd >= was) { r.done = false; markEarly(t, r, ""); }   // a set added to a finished exercise reopens it; "finished early" stays finished
               if (!isTpl && (r.done !== wasDone || sd > n)) { if (!trainerTouched.has(t.id)) trainerTouched.set(t.id, new Set()); trainerTouched.get(t.id).add(r.id); }
             }
-            setSel.delete(selKey); scheduleSave("trainings", t.id); renderedTraining = null; render();
+            setSel.delete(selKey); scheduleSave("trainings", t.id); S.renderedTraining = null; render();
           };
           const minus = document.createElement("button"); minus.type = "button"; minus.className = "step minus"; minus.textContent = "\u2212"; minus.setAttribute("aria-label", "One set fewer"); minus.disabled = total <= 1;
           const plus = document.createElement("button"); plus.type = "button"; plus.className = "step plus"; plus.textContent = "+"; plus.setAttribute("aria-label", "One set more"); plus.disabled = total >= 20;
@@ -1745,12 +1400,12 @@ import { reportRange, buildReport } from "./report.js";
         const undo = document.createElement("button"); undo.type = "button"; undo.className = "finish-early undo-set"; undo.textContent = "Mark set " + (sel + 1) + " as not done";
         undo.hidden = !(sel < doneSets);
         undo.addEventListener("click", () => {                // this set and anything after it go back to not done
-          for (const r of g.rows) { if (sel < setsOf(r)) { r.setsDone = Math.min(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), sel); r.done = false; markEarly(t, r, ""); } const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
-          setSel.set(selKey, sel); scheduleSave("trainings", t.id); renderedTraining = null; render();
+          for (const r of g.rows) { if (sel < setsOf(r)) { r.setsDone = Math.min(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), sel); r.done = false; markEarly(t, r, ""); } const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
+          setSel.set(selKey, sel); scheduleSave("trainings", t.id); S.renderedTraining = null; render();
         });
         complete.addEventListener("click", () => {
           haptic();
-          if (!current) { setSel.delete(selKey); setTimeout(() => { renderedTraining = null; render(); }, 0); return; }   // just go back to the current set
+          if (!current) { setSel.delete(selKey); setTimeout(() => { S.renderedTraining = null; render(); }, 0); return; }   // just go back to the current set
           const prevDone = doneSets;
           for (const r of g.rows) {
             if (sel >= setsOf(r)) continue;                                               // this exercise has fewer sets than the card
@@ -1761,18 +1416,18 @@ import { reportRange, buildReport } from "./report.js";
             if (!String(r.repsDone[sel] || "").trim()) r.repsDone[sel] = carry.rp || (last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "");
             if (current) r.setsDone = Math.max(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), Math.min(prevDone + 1, setsOf(r)));
             if ((r.setsDone || 0) >= setsOf(r)) r.done = true;
-            const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id);
+            const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id);
           }
           if (g.rows.every((r) => r.done)) openBlocks.delete(selKey);
           setSel.delete(selKey); scheduleSave("trainings", t.id);
-          setTimeout(() => { renderedTraining = null; render(); scrollToCard(g.key); }, 0);   // after the tap has flipped the switch (the iPhone tick), then redraw and glide
+          setTimeout(() => { S.renderedTraining = null; render(); scrollToCard(g.key); }, 0);   // after the tap has flipped the switch (the iPhone tick), then redraw and glide
         });
         const early = document.createElement("button"); early.type = "button"; early.className = "finish-early"; early.textContent = "Finish early";
         early.addEventListener("click", () => openFinishEarly(t, g, selKey));
         resume = document.createElement("button"); resume.type = "button"; resume.className = "resume"; resume.hidden = true; resume.textContent = "Resume this " + groupWord(g);
         resume.addEventListener("click", () => {              // the remaining sets open again; what was logged stays, the reason goes
-          for (const r of g.rows) { r.done = clamp(parseInt(r.setsDone, 10) || 0, 0, 20) >= setsOf(r); markEarly(t, r, ""); const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
-          openBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id); renderedTraining = null; render(); scrollToCard(g.key);
+          for (const r of g.rows) { r.done = clamp(parseInt(r.setsDone, 10) || 0, 0, 20) >= setsOf(r); markEarly(t, r, ""); const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
+          openBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); scrollToCard(g.key);
         });
         foot.append(complete, early, undo, resume);
       }
@@ -1804,7 +1459,7 @@ import { reportRange, buildReport } from "./report.js";
       card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.composedPath().some((n) => n.tagName === "BUTTON")) { block.classList.add("open"); openBlocks.add(selKey); paintFold(); } });
       btn.addEventListener("click", () => {
         const next = !g.rows.every((r) => r.done);
-        const track = clientMode ? pendingDoneRows : trainerTouched;
+        const track = S.clientMode ? pendingDoneRows : trainerTouched;
         if (!track.has(t.id)) track.set(t.id, new Set());
         for (const r of g.rows) { r.done = next; if (!next) markEarly(t, r, ""); track.get(t.id).add(r.id); }
         scheduleSave("trainings", t.id); paint();
@@ -1815,9 +1470,9 @@ import { reportRange, buildReport } from "./report.js";
         const chev = document.createElement("button"); chev.type = "button"; chev.className = "card-chev"; chev.setAttribute("aria-label", peeking ? "Fold" : "Open");
         chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (peeking ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4") + '"/></svg>';
         card.appendChild(chev);
-        const unpeek = () => { peekBlocks.delete(selKey); renderedTraining = null; render(); };
+        const unpeek = () => { peekBlocks.delete(selKey); S.renderedTraining = null; render(); };
         if (peeking) { block.classList.add("peek"); chev.addEventListener("click", unpeek); for (const top of card.querySelectorAll(".row .top")) top.addEventListener("click", (e) => { if (e.target.closest(".ex-icons")) return; unpeek(); }); }
-        else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey); renderedTraining = null; render(); }); }
+        else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey); S.renderedTraining = null; render(); }); }
       } else peekBlocks.delete(selKey);
       block.appendChild(card); rowsEl.appendChild(block);
     });
@@ -1939,11 +1594,11 @@ import { reportRange, buildReport } from "./report.js";
     const nonNum = (w) => !!w && !/^[\d.,\s]*$/.test(String(w));
     q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; };
-    const asClient = clientMode || previewClient;        // what to show; what to save still follows clientMode
+    const asClient = S.clientMode || previewClient;        // what to show; what to save still follows clientMode
     const layoutIcons = () => { const n = (q(".vid-btn").hidden ? 0 : 1) + (asClient ? 0 : 1) + (q(".alt-btn").hidden ? 0 : 1); q(".name").style.paddingRight = (n ? 10 + n * 38 : 16) + "px"; growName(); };   // the name wraps before the icons
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
-    const markNamed = () => { if (clientMode) return; if (!trainerNamed.has(t.id)) trainerNamed.set(t.id, new Set()); trainerNamed.get(t.id).add(r.id); };
+    const markNamed = () => { if (S.clientMode) return; if (!trainerNamed.has(t.id)) trainerNamed.set(t.id, new Set()); trainerNamed.get(t.id).add(r.id); };
     const exwrap = q(".top .exwrap"), altBtn = q(".alt-btn"), altMenu = q(".alt-menu");
     const letter = (String(r.label || "").match(/^(?:\d+|w)([a-z])$/i) || [])[1] || "";   // superset rows read "A  Bench press" (warm-up Wa / Wb too)
     exwrap.dataset.letter = letter.toUpperCase(); el.style.setProperty("--letw", letter ? "42px" : "0px");
@@ -1954,8 +1609,8 @@ import { reportRange, buildReport } from "./report.js";
     const closeAlt = () => { altMenu.hidden = true; altMenu.replaceChildren(); altMode = "list"; document.removeEventListener("pointerdown", outside, true); if (closeOpenAlt === closeAlt) closeOpenAlt = null; };
     function swapTo(a) {
       const old = r.name; r.name = a; r.alts = altList().map((v) => (v === a ? old : v)).filter(Boolean);
-      if (clientMode) { if (!pendingSwap.has(t.id)) pendingSwap.set(t.id, new Map()); pendingSwap.get(t.id).set(r.id, a); } else markNamed();
-      save(); renderedTraining = null; render();
+      if (S.clientMode) { if (!pendingSwap.has(t.id)) pendingSwap.set(t.id, new Map()); pendingSwap.get(t.id).set(r.id, a); } else markNamed();
+      save(); S.renderedTraining = null; render();
       const n = $("rows").querySelector('.row[data-id="' + r.id + '"]'); const b = n && n.closest(".block");
       if (b && b.classList.contains("done")) { b.classList.add("open"); const f = b.querySelector(".fold-btn"); if (f) f.textContent = "Hide weights"; } // a folded card stays open to show the swap
     }
@@ -1975,7 +1630,7 @@ import { reportRange, buildReport } from "./report.js";
       if (String(r.name || "").trim()) { const c = mk("div", "cur"); c.appendChild(mk("span", "ck", "\u2713")); c.appendChild(mk("span", null, r.name)); altMenu.appendChild(c); }
       for (const a of alts) altMenu.appendChild(menuItem(a, "", () => { closeAlt(); swapTo(a); }, asClient ? null : () => removeAlt(a)));
       if (!asClient && alts.length < 2) altMenu.appendChild(menuItem("+ Add alternative", "add", paintAltAdd));
-      if (!asClient) { const d = menuItem("Remove exercise", "remove", () => { closeAlt(); t.rows = t.rows.filter((x) => x.id !== r.id); save(); renderedTraining = null; render(); }); d.classList.add("last"); altMenu.appendChild(d); }
+      if (!asClient) { const d = menuItem("Remove exercise", "remove", () => { closeAlt(); t.rows = t.rows.filter((x) => x.id !== r.id); save(); S.renderedTraining = null; render(); }); d.classList.add("last"); altMenu.appendChild(d); }
       altMenu.hidden = false;
     }
     function paintAltAdd() {
@@ -2049,8 +1704,8 @@ import { reportRange, buildReport } from "./report.js";
       pl.replaceChildren(f); pl.hidden = false; vidRow.hidden = false; vidBtn.classList.add("open"); vidBtn.title = "Hide video"; vidBtn.setAttribute("aria-pressed", "true");   // "Change video" sits under the open player (trainer)
     });
     paintVideo();
-    if (ALIASES[r.name]) { r.name = ALIASES[r.name]; if (!clientMode) scheduleSave("trainings", t.id); }
-    if (!clientMode && Array.isArray(r.alts) && r.alts.some((a) => ALIASES[a])) { r.alts = r.alts.map((a) => ALIASES[a] || a); scheduleSave("trainings", t.id); }
+    if (ALIASES[r.name]) { r.name = ALIASES[r.name]; if (!S.clientMode) scheduleSave("trainings", t.id); }
+    if (!S.clientMode && Array.isArray(r.alts) && r.alts.some((a) => ALIASES[a])) { r.alts = r.alts.map((a) => ALIASES[a] || a); scheduleSave("trainings", t.id); }
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
     requestAnimationFrame(growName);
     q(".name").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
@@ -2074,7 +1729,7 @@ import { reportRange, buildReport } from "./report.js";
         const b = document.createElement("button"); b.type = "button"; b.textContent = n; if (n === "W") b.title = "Warmup";
         if (n === cur) b.classList.add("cur");
         b.addEventListener("mousedown", (ev) => ev.preventDefault());
-        b.addEventListener("click", () => { r.label = n; lastEditedId = r.id; q(".label").value = n; numpick.hidden = true; save(); renderedTraining = null; render(); });
+        b.addEventListener("click", () => { r.label = n; lastEditedId = r.id; q(".label").value = n; numpick.hidden = true; save(); S.renderedTraining = null; render(); });
         return b;
       }));
       numpick.hidden = false;
@@ -2082,7 +1737,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!asClient) {
       let labelAtFocus = "";
       q(".label").addEventListener("focus", (e) => { labelAtFocus = e.target.value; showNumbers(); });
-      q(".label").addEventListener("blur", () => { numpick.hidden = true; if (q(".label").value !== labelAtFocus) { renderedTraining = null; render(); } });
+      q(".label").addEventListener("blur", () => { numpick.hidden = true; if (q(".label").value !== labelAtFocus) { S.renderedTraining = null; render(); } });
       q(".name").addEventListener("input", (e) => { closeAlt(); r.name = e.target.value.replace(/\n/g, " "); markNamed(); dropAltNamed(); growName(); save(); suggest(e.target.value); renderWeights(); paintVideo(); paintNewName(); });
       q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
       q(".name").addEventListener("focus", (e) => { closeAlt(); suggest(e.target.value); });
@@ -2186,7 +1841,7 @@ import { reportRange, buildReport } from "./report.js";
         inp.value = r.weights[i] || ""; const hint = !!(last && last.weights[i]); inp.placeholder = hint ? last.weights[i] : "\u2013"; inp.classList.toggle("hint", hint);
         inp.addEventListener("input", (e) => {
           r.weights[i] = e.target.value;
-          const track = clientMode ? pendingWeightRows : trainerTouched;
+          const track = S.clientMode ? pendingWeightRows : trainerTouched;
           if (!track.has(t.id)) track.set(t.id, new Set());
           track.get(t.id).add(r.id);
           save();
@@ -2209,7 +1864,7 @@ import { reportRange, buildReport } from "./report.js";
       w.value = r.weights[sel] || ""; w.placeholder = carry.w || lw || "";           // nothing to suggest: the chip just says "lb"
       rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || (r.reps ? String(r.reps) : "");
       w.inputMode = (wText || nonNum(r.weights[sel] || carry.w || "")) ? "text" : "decimal";
-      const mark = () => { const track = clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
+      const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
       w.addEventListener("input", (e) => { while (r.weights.length <= sel) r.weights.push(""); r.weights[sel] = e.target.value; mark(); });
       rp.addEventListener("input", (e) => { while (r.repsDone.length <= sel) r.repsDone.push(""); r.repsDone[sel] = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); e.target.value = r.repsDone[sel]; mark(); });
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.focus(); } });
@@ -2225,14 +1880,14 @@ import { reportRange, buildReport } from "./report.js";
   }
 
   // ---------- events ----------
-  $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; renderedTraining = null; render(); });
+  $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; S.renderedTraining = null; render(); });
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
-  $("cNameField").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.name = e.target.value; $("cName").value = c.name; scheduleSave("clients", c.id); });
+  $("cNameField").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.name = e.target.value; $("cName").value = c.name; scheduleSave("clients", c.id); });
   const growNotesBox = () => growBox($("cNotes"));
   const wNoteOpen = new Set();                                   // workouts whose notes are unfolded (this session)
   function paintWorkoutNotes(t) {
     const c = clients.get(t.clientId), wrap = $("wNote");
-    const mine = c && !clientMode && !isTemplateClient(t.clientId) ? noteEntries(c).filter((n) => n.workout && n.workout.id === t.id).sort((a, b) => String(a.at || "").localeCompare(String(b.at || ""))) : [];
+    const mine = c && !S.clientMode && !isTemplateClient(t.clientId) ? noteEntries(c).filter((n) => n.workout && n.workout.id === t.id).sort((a, b) => String(a.at || "").localeCompare(String(b.at || ""))) : [];
     wrap.hidden = !mine.length; if (!mine.length) return;
     const open = wNoteOpen.has(t.id), word = mine.length === 1 ? "note" : "notes";
     $("wNoteLab").textContent = open ? "Hide " + word : "Read " + (mine.length === 1 ? "note" : mine.length + " notes");
@@ -2246,84 +1901,84 @@ import { reportRange, buildReport } from "./report.js";
       row.append(when, text); list.appendChild(row);
     }
   }
-  $("wNoteBtn").addEventListener("click", () => { const t = trainings.get(view.id); if (!t) return; if (wNoteOpen.has(t.id)) wNoteOpen.delete(t.id); else wNoteOpen.add(t.id); paintWorkoutNotes(t); });
-  $("tNoteOpen").addEventListener("click", () => { const t = trainings.get(view.id); if (!t) return; tNoteOpenFor = t.id; $("tNoteBox").hidden = false; $("tNoteOpen").hidden = true; $("tNote").focus(); });
-  $("tNote").addEventListener("input", (e) => { tNoteDraft.set(view.id, e.target.value); growBox(e.target); });
-  $("tNoteDiscard").addEventListener("click", () => { tNoteDraft.delete(view.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false; });
+  $("wNoteBtn").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t) return; if (wNoteOpen.has(t.id)) wNoteOpen.delete(t.id); else wNoteOpen.add(t.id); paintWorkoutNotes(t); });
+  $("tNoteOpen").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t) return; tNoteOpenFor = t.id; $("tNoteBox").hidden = false; $("tNoteOpen").hidden = true; $("tNote").focus(); });
+  $("tNote").addEventListener("input", (e) => { tNoteDraft.set(S.view.id, e.target.value); growBox(e.target); });
+  $("tNoteDiscard").addEventListener("click", () => { tNoteDraft.delete(S.view.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false; });
   $("tNoteSave").addEventListener("click", () => {
-    const t = trainings.get(view.id), c = t && clients.get(t.clientId); if (!t || !c) return;
+    const t = trainings.get(S.view.id), c = t && clients.get(t.clientId); if (!t || !c) return;
     const text = String($("tNote").value || "").trim(); if (!text) return;
     tNoteDraft.delete(t.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false;
     writeNotes(c, [...noteEntries(c), { id: uid(), at: now(), text, workout: { id: t.id, title: String(t.title || ""), date: effDate(t) || String(t.date || "") } }]);
     wNoteOpen.add(t.id); paintWorkoutNotes(t);
   });
-  $("cNotes").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; noteDraft.set(c.id, e.target.value); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
+  $("cNotes").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; noteDraft.set(c.id, e.target.value); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
   $("noteSave").addEventListener("click", () => {
-    const c = clients.get(view.id); if (!c) return;
+    const c = clients.get(S.view.id); if (!c) return;
     const text = String($("cNotes").value || "").trim(); if (!text) return;
     noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox();
     writeNotes(c, [...noteEntries(c), { id: uid(), at: now(), text }]); renderNotes(c);
   });
-  $("noteDiscard").addEventListener("click", () => { const c = clients.get(view.id); if (c) noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox(); });
+  $("noteDiscard").addEventListener("click", () => { const c = clients.get(S.view.id); if (c) noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox(); });
   $("unitSeg").addEventListener("click", (e) => {
-    const b = e.target.closest("button[data-unit]"); const c = clients.get(view.id); if (!b || !c) return;
+    const b = e.target.closest("button[data-unit]"); const c = clients.get(S.view.id); if (!b || !c) return;
     c.unit = b.dataset.unit; scheduleSave("clients", c.id);
     for (const x of $("unitSeg").querySelectorAll("button")) x.classList.toggle("on", x === b);
   });
-  $("cEmail").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.email = e.target.value.trim().toLowerCase(); scheduleSave("clients", c.id); });
-  $("cEmail").addEventListener("blur", () => { const c = clients.get(view.id); if (c) $("detailsBtn").classList.toggle("needs", !c.email); });
-  $("cPhone").addEventListener("input", (e) => { const c = clients.get(view.id); if (!c) return; c.phone = e.target.value.trim(); scheduleSave("clients", c.id); });
-  $("cBirthday").addEventListener("change", (e) => { const c = clients.get(view.id); if (!c) return; c.birthday = e.target.value || ""; scheduleSave("clients", c.id); });
+  $("cEmail").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.email = e.target.value.trim().toLowerCase(); scheduleSave("clients", c.id); });
+  $("cEmail").addEventListener("blur", () => { const c = clients.get(S.view.id); if (c) $("detailsBtn").classList.toggle("needs", !c.email); });
+  $("cPhone").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.phone = e.target.value.trim(); scheduleSave("clients", c.id); });
+  $("cBirthday").addEventListener("change", (e) => { const c = clients.get(S.view.id); if (!c) return; c.birthday = e.target.value || ""; scheduleSave("clients", c.id); });
   // phone -> international digits for sms: and wa.me (US numbers without a country code get +1)
   const phoneDigits = (p) => { let d = String(p || "").replace(/\D/g, ""); if (!d) return ""; if (String(p).trim().startsWith("+")) return d; if (d.length === 10) return "1" + d; if (d.length === 11 && d[0] === "1") return d; return d.length >= 7 ? d : ""; };
   function paintTrainerMsg(c) {
     const tel = c ? phoneDigits(c.trainerPhone) : ""; const wa = c && (c.chat || "sms") === "whatsapp";
-    for (const id of ["trainerBtn", "trainerBtn2"]) { const a = $(id); if (!tel || !clientMode) { a.hidden = true; if (id === "trainerBtn") $("trainerRow").hidden = true; continue; } a.hidden = false; if (id === "trainerBtn") $("trainerRow").hidden = false; a.href = wa ? "https://wa.me/" + tel : "sms:+" + tel; if (wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); } }
+    for (const id of ["trainerBtn", "trainerBtn2"]) { const a = $(id); if (!tel || !S.clientMode) { a.hidden = true; if (id === "trainerBtn") $("trainerRow").hidden = true; continue; } a.hidden = false; if (id === "trainerBtn") $("trainerRow").hidden = false; a.href = wa ? "https://wa.me/" + tel : "sms:+" + tel; if (wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); } }
   }
   function paintMsg(c) {
-    const tel = phoneDigits(c.phone); $("contactRow").hidden = !tel || clientMode; if (!tel) return;
+    const tel = phoneDigits(c.phone); $("contactRow").hidden = !tel || S.clientMode; if (!tel) return;
     const wa = (c.chat || "sms") === "whatsapp"; const a = $("msgBtn");
     $("msgText").textContent = "Message " + ((c.name || "").trim().split(/\s+/)[0] || "client");
     a.href = wa ? "https://wa.me/" + tel : "sms:+" + tel;
     if (wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); }
   }
-  $("cPhone").addEventListener("blur", () => { const c = clients.get(view.id); if (c) paintMsg(c); });
+  $("cPhone").addEventListener("blur", () => { const c = clients.get(S.view.id); if (c) paintMsg(c); });
   $("accessSeg").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
-    const c = clients.get(view.id); if (!c || isTemplateClient(c.id)) return;
+    const c = clients.get(S.view.id); if (!c || isTemplateClient(c.id)) return;
     const paused = b.dataset.access === "paused"; if (!!c.paused === paused) return;
     c.paused = paused; if (!paused) c.sort = activeList().length; scheduleSave("clients", c.id); renderClient();
   });
   $("chatSeg").addEventListener("click", (e) => {
-    const b = e.target.closest("button[data-chat]"); const c = clients.get(view.id); if (!b || !c) return;
+    const b = e.target.closest("button[data-chat]"); const c = clients.get(S.view.id); if (!b || !c) return;
     c.chat = b.dataset.chat; scheduleSave("clients", c.id);
     for (const x of $("chatSeg").querySelectorAll("button")) x.classList.toggle("on", x === b);
     paintMsg(c);
   });
   let detailsOpen = false, detailsFor = null;
   $("detailsBtn").addEventListener("click", () => { detailsOpen = !detailsOpen; $("detailsBody").hidden = !detailsOpen; $("detailsBtn").classList.toggle("open", detailsOpen); $("detailsBtn").setAttribute("aria-expanded", String(detailsOpen)); });
-  $("newTraining").addEventListener("click", () => addTraining(view.id, null, today()));
+  $("newTraining").addEventListener("click", () => addTraining(S.view.id, null, today()));
   $("delClient").addEventListener("click", () => { $("delClient").hidden = true; $("delClientConfirm").hidden = false; });
   $("delClientNo").addEventListener("click", () => { $("delClientConfirm").hidden = true; $("delClient").hidden = false; });
-  $("delClientYes").addEventListener("click", () => deleteClient(view.id));
+  $("delClientYes").addEventListener("click", () => deleteClient(S.view.id));
 
-  $("tTitle").addEventListener("input", (e) => { const t = trainings.get(view.id); if (!t) return; t.title = e.target.value.replace(/\n/g, " "); e.target.style.height = "auto"; e.target.style.height = Math.max(32, e.target.scrollHeight) + "px"; scheduleSave("trainings", t.id); });
+  $("tTitle").addEventListener("input", (e) => { const t = trainings.get(S.view.id); if (!t) return; t.title = e.target.value.replace(/\n/g, " "); e.target.style.height = "auto"; e.target.style.height = Math.max(32, e.target.scrollHeight) + "px"; scheduleSave("trainings", t.id); });
   $("tTitle").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
   $("tDate").addEventListener("click", () => {
-    const t = trainings.get(view.id); if (!t || clientMode || isTemplateClient(t.clientId)) return;
+    const t = trainings.get(S.view.id); if (!t || S.clientMode || isTemplateClient(t.clientId)) return;
     const id = t.id;
-    openDatePicker({ clientId: t.clientId, title: "Move to", selected: t.date || today(), onPick: (date) => { const cur = trainings.get(id); if (!cur) return; touchState(id, "date"); cur.date = date; scheduleSave("trainings", id); renderedTraining = null; render(); } });
+    openDatePicker({ clientId: t.clientId, title: "Move to", selected: t.date || today(), onPick: (date) => { const cur = trainings.get(id); if (!cur) return; touchState(id, "date"); cur.date = date; scheduleSave("trainings", id); S.renderedTraining = null; render(); } });
   });
   $("addRow").addEventListener("click", () => {
-    const t = trainings.get(view.id); if (!t) return;
+    const t = trainings.get(S.view.id); if (!t) return;
     const r = newRow(nextLabel(t)); t.rows.push(r); scheduleSave("trainings", t.id);
-    renderedTraining = null; render();
+    S.renderedTraining = null; render();
     const el = document.querySelector('.row[data-id="' + r.id + '"]'); if (el) el.querySelector(".name").focus();
   });
   function setSkipped(skipped) {
-    const t = trainings.get(view.id); if (!t) return;
+    const t = trainings.get(S.view.id); if (!t) return;
     t.skippedAt = skipped ? now() : null; t.missed = false; touchState(t.id, "skippedAt", "missed");   // a person decided: never filed by itself again
-    if (clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); }
+    if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); }
     scheduleSave("trainings", t.id); paintFinish(t);
     if (skipped) go({ name: "client", id: t.clientId });
   }
@@ -2331,12 +1986,12 @@ import { reportRange, buildReport } from "./report.js";
   $("unskipBtn").addEventListener("click", () => setSkipped(false));
   $("finishBtn").addEventListener("click", () => setFinished(true));
   $("unfinishBtn").addEventListener("click", () => setFinished(false));
-  $("copyTraining").addEventListener("click", () => { const t = trainings.get(view.id); if (t) addTraining(t.clientId, t); });
-  $("saveTemplate").addEventListener("click", () => { const t = trainings.get(view.id); if (t) saveAsTemplate(t); });
-  $("tplFill").addEventListener("click", () => { const t = trainings.get(view.id); if (!t) return; fillFor = t.id; pickFor = t.clientId; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });
-  $("fromTemplate").addEventListener("click", () => { pickFor = view.id; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });
+  $("copyTraining").addEventListener("click", () => { const t = trainings.get(S.view.id); if (t) addTraining(t.clientId, t); });
+  $("saveTemplate").addEventListener("click", () => { const t = trainings.get(S.view.id); if (t) saveAsTemplate(t); });
+  $("tplFill").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t) return; fillFor = t.id; pickFor = t.clientId; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });
+  $("fromTemplate").addEventListener("click", () => { pickFor = S.view.id; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });
   $("useBtn").addEventListener("click", () => {
-    const t = trainings.get(view.id); if (!t) return;
+    const t = trainings.get(S.view.id); if (!t) return;
     const ul = $("usePick"); if (!ul.hidden) { ul.hidden = true; return; }
     const people = peopleList(); if (lastUse.client) { const i = people.findIndex((c) => c.id === lastUse.client); if (i > 0) people.unshift(people.splice(i, 1)[0]); }
     ul.replaceChildren(...people.map((c) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = c.name || "Unnamed"; b.lastChild.textContent = c.id === lastUse.client ? "last used" : ""; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>'); b.addEventListener("click", () => openDatePicker({ clientId: c.id, title: "Add to " + (c.name || "client"), onPick: (date) => applyTemplate(trainings.get(t.id) || t, c.id, date) })); li.appendChild(b); return li; }));
@@ -2345,7 +2000,7 @@ import { reportRange, buildReport } from "./report.js";
   });
   $("delTraining").addEventListener("click", () => { $("delTraining").hidden = true; $("delTrainingConfirm").hidden = false; });
   $("delTrainingNo").addEventListener("click", () => { $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false; });
-  $("delTrainingYes").addEventListener("click", () => deleteTraining(view.id));
+  $("delTrainingYes").addEventListener("click", () => deleteTraining(S.view.id));
 
   window.addEventListener("pagehide", flushAll);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushAll(); });
@@ -2367,8 +2022,8 @@ import { reportRange, buildReport } from "./report.js";
     if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
     const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
-  $("reportNow").addEventListener("click", () => shareReport("month", view.id));
-  $("reportMonth").addEventListener("change", (e) => { const v = e.target.value; e.target.value = ""; if (v) shareReport(v, view.id); });
+  $("reportNow").addEventListener("click", () => shareReport("month", S.view.id));
+  $("reportMonth").addEventListener("change", (e) => { const v = e.target.value; e.target.value = ""; if (v) shareReport(v, S.view.id); });
   $("backup").addEventListener("click", () => {
     const data = { app: "fiala-trainings", exported: now(), clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -2388,38 +2043,39 @@ import { reportRange, buildReport } from "./report.js";
   });
 
   // ---------- boot ----------
+  Object.assign(ui, { $, setStatus, render, showProblem, showWaiting, loadCustomVideos, loadCustomNames, offlineFromMirror, resumeOnline, paintDraftBar });   // what the sync layer may call on the screens
   async function boot() {
-    const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) view = saved;
+    const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) S.view = saved;
     localBackend.load();                       // instant start from the device copy
     restorePending();                          // and whatever was still waiting to reach the server
     if (window.supabase && window.supabase.createClient) {
-      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" } });
+      S.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" } });
       $("status").textContent = "Loading\u2026";
       const fromRecoveryLink = /type=recovery/.test(location.hash);
-      sb.auth.onAuthStateChange((event) => {
-        if (event === "PASSWORD_RECOVERY") { recovering = true; showRecovery(); }
-        if (event === "SIGNED_OUT" && signedIn) { backend = null; offline = false; offlineEntry = null; pendingOwner = ""; try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); }
+      S.sb.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") { S.recovering = true; showRecovery(); }
+        if (event === "SIGNED_OUT" && S.signedIn) { S.backend = null; S.offline = false; S.offlineEntry = null; S.pendingOwner = ""; try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); }
       });
       // no signal: the library retries the token refresh for up to 30 s before answering. Don't make anyone wait for that:
       // after 4 s show what the device knows, and switch to live data if the session comes through later.
       const remembered = lsGet("fiala.trainings.role");
-      const sessionP = sb.auth.getSession();
+      const sessionP = S.sb.auth.getSession();
       const first = await Promise.race([sessionP, new Promise((r) => setTimeout(() => r("slow"), 4000))]);
       if (first === "slow") {
         if (remembered && remembered.email && !fromRecoveryLink) enterOffline(remembered); else showLogin("");
-        sessionP.then(({ data }) => { if (data && data.session) { if (fromRecoveryLink) { recovering = true; showRecovery(); return; } if (entering || resuming || (signedIn && offlineEntry !== "remembered")) return; enterCloud(data.session); } else if (!signedIn) showLogin($("loginMsg").textContent); }).catch(() => {});
+        sessionP.then(({ data }) => { if (data && data.session) { if (fromRecoveryLink) { S.recovering = true; showRecovery(); return; } if (S.entering || S.resuming || (S.signedIn && S.offlineEntry !== "remembered")) return; enterCloud(data.session); } else if (!S.signedIn) showLogin($("loginMsg").textContent); }).catch(() => {});
         return;
       }
       const { data, error: sessionError } = first;
       if (location.hash && /access_token|error/.test(location.hash)) history.replaceState(null, "", location.pathname);
-      if (fromRecoveryLink && data && data.session) { recovering = true; showRecovery(); return; }
+      if (fromRecoveryLink && data && data.session) { S.recovering = true; showRecovery(); return; }
       if (data && data.session) { await enterCloud(data.session); }
       else if ((!navigator.onLine || isNetwork(sessionError)) && remembered && remembered.email) enterOffline(remembered);
       else showLogin("");
       return;
     }
     // no library (blocked network): work from the device copy
-    backend = localBackend; $("localFoot").hidden = false; render(); setStatus();
+    S.backend = localBackend; $("localFoot").hidden = false; render(); setStatus();
     seedTemplates().catch(() => {});
   }
   if (!(window.supabase && window.supabase.createClient)) render();
@@ -2429,12 +2085,9 @@ import { reportRange, buildReport } from "./report.js";
     return {
       fns: { fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap },
-      get: () => ({ sb, signedIn, clientMode, myClientId, backend, view, renderedTraining, offline, syncedOnce, moveMissing, missMissing, earlyMissing, logSetMissing, deviceFull, failed, inflight }),
-      set: (o) => { if ("sb" in o) sb = o.sb; if ("signedIn" in o) signedIn = o.signedIn; if ("clientMode" in o) clientMode = o.clientMode; if ("myClientId" in o) myClientId = o.myClientId; if ("backend" in o) backend = o.backend; if ("view" in o) view = o.view; if ("renderedTraining" in o) renderedTraining = o.renderedTraining; if ("offline" in o) offline = o.offline; if ("syncedOnce" in o) syncedOnce = o.syncedOnce; if ("moveMissing" in o) moveMissing = o.moveMissing; if ("missMissing" in o) missMissing = o.missMissing; if ("earlyMissing" in o) earlyMissing = o.earlyMissing; if ("logSetMissing" in o) logSetMissing = o.logSetMissing; if ("failed" in o) failed = o.failed; },
-      reset: () => {
-        for (const m of [clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap]) m.clear();
-        sb = null; signedIn = false; clientMode = false; myClientId = null; backend = null; offline = false; syncedOnce = false; moveMissing = false; missMissing = false; earlyMissing = false; logSetMissing = false; failed = false; inflight = 0; view = { name: "clients" }; renderedTraining = null; deviceFull = false; localStorage.clear();
-      },
+      get: () => ({ ...S }),
+      set: (o) => { Object.assign(S, o); },
+      reset: () => { resetState(); localStorage.clear(); },
     };
   }
   export { boot };
