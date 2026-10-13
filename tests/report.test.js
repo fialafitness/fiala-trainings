@@ -1,7 +1,10 @@
-"use strict";
-const fs = require("fs"), path = require("path");
-const { test, assert } = require("./assert");
-const app = require("./load")();
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { test, assert } from "./assert.js";
+import { load } from "./load.js";
+const app = await load();
 const { fns, maps } = app;
 const day = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return fns.localIso(d); };
 const at = (n, h) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(h, 0, 0, 0); return d.toISOString(); };

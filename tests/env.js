@@ -1,6 +1,5 @@
 // A tiny stand-in for the browser, just enough for the app's script to load in Node.
 // Elements are permissive stubs: any property reads back what was written, any method is a no-op.
-"use strict";
 const METHODS = new Set(["addEventListener", "removeEventListener", "dispatchEvent", "focus", "blur", "click", "scrollIntoView", "setAttribute", "removeAttribute",
   "append", "appendChild", "prepend", "replaceChildren", "remove", "insertAdjacentHTML", "after", "before", "select", "setSelectionRange", "showPicker", "scrollTo"]);
 const byId = new Map();
@@ -48,4 +47,4 @@ define({
 });
 const realSetInterval = globalThis.setInterval;
 globalThis.setInterval = (fn, ms) => { const t = realSetInterval(fn, ms); if (t && t.unref) t.unref(); return t; };
-module.exports = { el, byId, storage, document };
+export { el, byId, storage, document };

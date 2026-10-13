@@ -1,8 +1,8 @@
-"use strict";
-const { test, assert, tick } = require("./assert");
-const { makeSupabase } = require("./fake-supabase");
-const env = require("./env");
-const app = require("./load")();
+import { test, assert, tick } from "./assert.js";
+import { makeSupabase } from "./fake-supabase.js";
+import * as env from "./env.js";
+import { load } from "./load.js";
+const app = await load();
 const { fns, maps } = app;
 const day = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return fns.localIso(d); };
 const row = (id, w, r, done) => ({ id, label: "1", name: "Deadlift", sets: 3, reps: "5", rest: "90 sec", tempo: "", weights: w || [], repsDone: r || [], setsDone: done || 0, done: (done || 0) >= 3, note: "", alts: [] });

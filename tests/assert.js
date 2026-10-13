@@ -1,5 +1,4 @@
-"use strict";
-const assert = require("assert");
+import assert from "node:assert";
 const tests = [];
 function test(name, fn) { tests.push({ name, fn }); }
 async function runAll() {
@@ -11,4 +10,4 @@ async function runAll() {
   return { pass, fail };
 }
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));
-module.exports = { test, runAll, assert, tick };
+export { test, runAll, assert, tick };
