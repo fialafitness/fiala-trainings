@@ -54,6 +54,8 @@ test("notes: the old single note shows as Earlier, saving folds it in, merges ke
   assert.strictEqual(packed.log.length, 2); assert.notStrictEqual(packed.log[0].id, "legacy");
   const theirs = { log: [{ id: "n1", at: "2026-10-13T10:00:00.000Z", text: "New" }, { id: "n2", at: "2026-10-13T11:00:00.000Z", text: "Theirs" }] };
   const merged = fns.mergeNotes(packed, theirs); assert.deepStrictEqual(merged.log.map((x) => x.text).sort(), ["Bad knee", "New", "Theirs"]);
+  const { mergeNotes } = await import("../app/notes.js");
+  const kept = mergeNotes(packed, theirs, new Set(["n2"])); assert.deepStrictEqual(kept.log.map((x) => x.text).sort(), ["Bad knee", "New"], "a note deleted on this device does not come back");
   assert.deepStrictEqual(fns.noteEntries({ notes: { log: [null, { id: "x", at: "nonsense", text: "T" }, { id: "y", text: 5 }] } }).map((x) => [x.id, x.at]), [["x", null]]);
 });
 test("a workout tagged on a note keeps its tag through pack and merge", () => {
