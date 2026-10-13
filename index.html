@@ -538,6 +538,13 @@
   .tracker .step { width: 36px; height: 30px; background: transparent; color: var(--text-secondary); font-size: 18px; font-weight: 400; }
   .tracker .step:disabled { opacity: 0.35; cursor: default; }
   .setlog { margin-top: 14px; }
+  .setlog .chip.stack { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: 74px; padding: 10px 14px; text-align: left; }   /* a label on top, the number below */
+  .setlog .chip.stack .lab { font-size: 13px; line-height: 1.2; color: var(--text-secondary); }
+  .setlog .chip.stack .valrow { display: flex; align-items: baseline; gap: 5px; min-width: 0; max-width: 100%; font-size: 22px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .setlog .chip.stack .valrow .val { font-weight: 600; }
+  .setlog .chip.stack .valrow .suffix { font-size: 15px; font-weight: 500; }
+  .setlog .chip.stack.editing .valrow input { position: static; flex: 1 1 auto; width: 0; min-width: 3ch; height: auto; font-size: 22px; font-weight: 600; padding: 0; }
+  .setlog .chip.stack.editing .valrow .val { display: none; }
   .lifts { display: flex; flex-wrap: wrap; gap: 4px 22px; margin: 10px 0 0 2px; font-size: 13px; line-height: 1.3; }   /* under the boxes: last lifted, best ever, on this exercise */
   .lifts[hidden] { display: none; }
   .lift { display: inline-flex; align-items: center; gap: 5px; }
@@ -1021,7 +1028,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=7";
+  import { boot } from "./app/main.js?v=8";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

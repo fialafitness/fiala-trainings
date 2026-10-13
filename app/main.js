@@ -1629,7 +1629,7 @@ import { reportRange, buildReport } from "./report.js";
       <div class="tempo-wrap"><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"><div class="tempo-tiles" hidden></div></div>
       <div class="cnote" hidden><button class="cnote-btn" type="button" aria-expanded="false"><span class="cnote-lab">See instructions</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="cnote-text" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
-      <div class="setlog"><div class="pair"><div class="chip"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></div><div class="chip"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></div></div></div>
+      <div class="setlog"><div class="pair"><div class="chip stack"><span class="lab">Weight</span><span class="valrow"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></span></div><div class="chip stack"><span class="lab">Reps</span><span class="valrow"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></span></div></div></div>
       <div class="lifts" hidden><span class="lift last" aria-label="Last time"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9"/><path d="M2.5 2.5v3h3M8 5.2V8l2 1.3"/></svg><b></b></span><span class="lift best" aria-label="Best ever"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 1.6l1.9 4 4.4.6-3.2 3.1.8 4.4L8 11.6l-3.9 2.1.8-4.4L1.7 6.2l4.4-.6z"/></svg><b></b></span></div>
       <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Instructions for the client"></textarea></div>`;
     const q = (s) => el.querySelector(s);
@@ -1914,8 +1914,10 @@ import { reportRange, buildReport } from "./report.js";
       rp.addEventListener("input", (e) => { while (r.repsDone.length <= sel) r.repsDone.push(""); r.repsDone[sel] = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); e.target.value = r.repsDone[sel]; mark(); });
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.focus(); } });
       rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.blur(); } });
-      wireChip(w, { empty: "Weight", suffix: (v) => weightWord(v, unit), show: showWeight });   // after the handlers above, so the words follow the tidied value
-      wireChip(rp, { empty: "Reps", suffix: repsWord, show: showReps });
+      wireChip(w, { empty: "\u2013", suffix: (v) => weightWord(v, unit), show: showWeight });   // after the handlers above, so the words follow the tidied value
+      const perSide = /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || ""));             // "10 / side": the label says so, the box holds the number
+      q(".setlog .chip.stack:nth-child(2) .lab").textContent = perSide ? "Reps / side" : "Reps";
+      wireChip(rp, { empty: "\u2013", suffix: perSide ? () => "" : repsWord, show: perSide ? (v) => String(v || "").replace(/\s*(\/|each|per)\s*(side|leg|arm)\s*$/i, "") : showReps });
     }
     const chipText = (c) => c.querySelector(".val").textContent + (c.querySelector(".suffix").hidden ? "" : " " + c.querySelector(".suffix").textContent);
     const nSets = setsOf(r), sumEl = q(".sum"); sumEl.replaceChildren();   // "3 sets · 8–10 reps · 60 sec transition" (the open card hides the sets part: the chips above say it)
