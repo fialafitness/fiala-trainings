@@ -1634,7 +1634,7 @@ import { reportRange, buildReport } from "./report.js";
       <div class="cnote" hidden><button class="cnote-btn" type="button" aria-expanded="false"><span class="cnote-lab">See instructions</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="cnote-text" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="setlog"><div class="pair"><div class="chip"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></div><div class="chip"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></div></div></div>
-      <div class="lifts" hidden><span class="lift last"><i>Last</i><b></b></span><span class="lift best"><i>Best</i><b></b></span></div>
+      <div class="lifts" hidden><span class="lift last" aria-label="Last time"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9"/><path d="M2.5 2.5v3h3M8 5.2V8l2 1.3"/></svg><b></b></span><span class="lift best" aria-label="Best ever"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 1.6l1.9 4 4.4.6-3.2 3.1.8 4.4L8 11.6l-3.9 2.1.8-4.4L1.7 6.2l4.4-.6z"/></svg><b></b></span></div>
       <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Instructions for the client"></textarea></div>`;
     const q = (s) => el.querySelector(s);
     let wText = false;                       // a row that already holds BW / 60 sec opens on the full keyboard (the bar above the keyboard switches it)
@@ -1804,9 +1804,11 @@ import { reportRange, buildReport } from "./report.js";
       if (!m) { const w = document.createElement("div"); w.className = "word"; if (normal) { w.classList.add("normal"); w.textContent = "Normal tempo"; } else w.textContent = word.charAt(0).toUpperCase() + word.slice(1) + (/tempo/i.test(word) ? "" : " tempo"); tempoTiles.append(w); return; }
       if (asClient) {                                                       // the client reads it as words: "3 sec down │ 1 sec pause │ fast up"
         const fast = (x) => /x/i.test(x) || x === "0";
-        const parts = [fast(m[1]) ? "fast down" : m[1] + " sec down", fast(m[2]) ? "" : m[2] + " sec pause", fast(m[3]) ? "fast up" : m[3] + " sec up", fast(m[4]) ? "" : m[4] + " sec pause"].filter(Boolean);
+        const ico = { down: "M8 3v10M4.5 9.5 8 13l3.5-3.5", up: "M8 13V3M4.5 6.5 8 3l3.5 3.5", bottom: "M6 3v7M10 3v7M3.5 13h9", top: "M3.5 3h9M6 6v7M10 6v7" };   // down, up, pause at the bottom, pause at the top
+        const tok = (kind, text, label) => { const e = document.createElement("span"); e.className = "si tempo-" + kind; e.setAttribute("aria-label", label); e.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="' + ico[kind] + '"/></svg><span>' + text + "</span>"; return e; };
+        const parts = [tok("down", fast(m[1]) ? "fast" : m[1] + "s", (fast(m[1]) ? "fast" : m[1] + " seconds") + " down"), fast(m[2]) ? null : tok("bottom", m[2] + "s", m[2] + " second pause at the bottom"), tok("up", fast(m[3]) ? "fast" : m[3] + "s", (fast(m[3]) ? "fast" : m[3] + " seconds") + " up"), fast(m[4]) ? null : tok("top", m[4] + "s", m[4] + " second pause at the top")].filter(Boolean);
         tempoTiles.classList.add("words");
-        for (const text of parts) { const e = document.createElement("span"); e.className = "si"; e.textContent = text; tempoTiles.appendChild(e); }
+        for (const e of parts) tempoTiles.appendChild(e);
         return;
       }
       const v = (x) => /x/i.test(x) ? "X" : x + "s";
