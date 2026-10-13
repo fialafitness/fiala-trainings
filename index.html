@@ -49,6 +49,7 @@
     --done-tint: rgba(60,122,78,0.08);  /* soft fern wash inside a finished card */
     --done-ink: #ffffff;
     --danger: #a63a46;                  /* Crimson deep — red text on light */
+    --gold: #b08a2e;                    /* the best lift: a quiet gold */
     --ink: #1d1d1f;                     /* the badge: black on light, white on dark */
     --ink-on: #ffffff;
     --btn-bg: var(--brand-fill);        /* the primary action wears the brand, as Fitness+ wears its green */
@@ -82,6 +83,7 @@
       --done-tint: rgba(191,232,194,0.07);
       --done-ink: #1d1d1f;
       --danger: #e06470;                /* Crimson */
+      --gold: #e0c268;
       --ink: #ffffff;
       --ink-on: #1d1d1f;
       --btn-bg: var(--brand-fill);
@@ -115,6 +117,7 @@
     --done-tint: rgba(191,232,194,0.07);
     --done-ink: #1d1d1f;
     --danger: #e06470;
+    --gold: #e0c268;
     --ink: #ffffff;
     --ink-on: #1d1d1f;
     --btn-bg: var(--brand-fill);
@@ -517,6 +520,13 @@
   .tracker .step { width: 36px; height: 30px; background: transparent; color: var(--text-secondary); font-size: 18px; font-weight: 400; }
   .tracker .step:disabled { opacity: 0.35; cursor: default; }
   .setlog { margin-top: 14px; }
+  .lifts { display: flex; flex-wrap: wrap; gap: 4px 22px; margin: 10px 0 0 2px; font-size: 13px; line-height: 1.3; }   /* under the boxes: last lifted, best ever, on this exercise */
+  .lifts[hidden] { display: none; }
+  .lift { display: inline-flex; align-items: baseline; gap: 6px; }
+  .lift i { font-style: normal; color: var(--text-tertiary); font-weight: 500; }
+  .lift b { font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .lift.best b { color: var(--gold); }
+  .block.done:not(.open) .row .lifts, body.client .block.ahead .row .lifts { display: none; }
   .setlog .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .setlog .chip .val.ph { color: var(--text-secondary); }                 /* last time's or the set before's numbers, until they are written down */
   .row .weights { display: none; }                  /* the per-set grid is replaced by logging one set at a time */
@@ -2942,6 +2952,7 @@
       <div class="cnote" hidden><button class="cnote-btn" type="button" aria-expanded="false"><span class="cnote-lab">See note</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="cnote-text" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="setlog"><div class="pair"><div class="chip"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></div><div class="chip"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></div></div></div>
+      <div class="lifts" hidden><span class="lift last"><i>Last</i><b></b></span><span class="lift best"><i>Best</i><b></b></span></div>
       <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Note"></textarea></div>`;
     const q = (s) => el.querySelector(s);
     let wText = false;                       // a row that already holds BW / 60 sec opens on the full keyboard (the bar above the keyboard switches it)
@@ -3159,10 +3170,34 @@
       ul.hidden = hits.length === 0;
     }
 
+    const liftHistory = () => {                                      // this exercise, this client: the last session's top set and the best ever (by weight, then reps)
+      const canon = (x) => squash(ALIASES[String(x || "").trim()] || x); const name = canon(r.name); if (!name) return null;
+      const num = (v) => { const x = parseFloat(String(v == null ? "" : v).replace(",", ".")); return isNaN(x) ? null : x; };
+      const heavier = (a, b) => !b || a.w > b.w || (a.w === b.w && (a.rp || 0) > (b.rp || 0));
+      const top = (row) => { let b = null; const ws = row.weights || [], rs = row.repsDone || []; for (let i = 0; i < ws.length; i++) { const w = num(ws[i]); if (w == null) continue; const st = { w, rp: num(rs[i]) }; if (heavier(st, b)) b = st; } return b; };
+      let best = null, last = null;
+      for (const other of clientTrainings(t.clientId)) {              // newest first
+        const earlier = other.id !== t.id && (effDate(other) < effDate(t) || (effDate(other) === effDate(t) && (other.createdAt || "") < (t.createdAt || "")));
+        for (const x of other.rows || []) {
+          if (canon(x.name) !== name) continue; const st = top(x); if (!st) continue;
+          if (heavier(st, best)) best = st;
+          if (!last && earlier) last = st;
+        }
+      }
+      return best ? { best, last } : null;
+    };
+    const paintLifts = () => {
+      const box = q(".lifts"), h = isTemplateClient(t.clientId) ? null : liftHistory();
+      box.hidden = !h; if (!h) return;
+      const unit = (clients.get(t.clientId) || {}).unit || "lb", fmt = (st) => st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "");
+      q(".lift.last").hidden = !h.last; if (h.last) q(".lift.last b").textContent = fmt(h.last);
+      q(".lift.best b").textContent = fmt(h.best);
+    };
     function renderWeights() {
       const n = setsOf(r);
       const boxes = q(".boxes"); const last = lastWeights(t, r);
       q(".last").textContent = last ? "last time \u00b7 " + fmtDate(last.date) : "";
+      paintLifts();
       r.weights = (r.weights || []).slice(0, n); while (r.weights.length < n) r.weights.push("");
       r.repsDone = (r.repsDone || []).slice(0, n);
       if (!wText && r.weights.some(nonNum)) wText = true;
