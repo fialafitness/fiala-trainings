@@ -1363,6 +1363,20 @@
   const confirmedAt = new Map();          // "trainings/<id>" -> when the server last confirmed our write
   let syncing = null;
   function syncDown() { if (syncing) return syncing; syncing = syncDownNow().finally(() => { syncing = null; }); return syncing; }
+  function mergeDown(map, kind, rows, complete, startedAt) {        // the server's answer into the local map, keeping what this device still has to send
+    const seen = new Set();
+    for (const r of rows) {
+      seen.add(r.id); if (dirty.has(key(kind, r.id))) continue;
+      if (kind === "trainings" && (pendingMove.has(r.id) || pendingMiss.has(r.id))) continue;   // the client's decision still has to reach the server: keep ours
+      if ((confirmedAt.get(key(kind, r.id)) || 0) > startedAt) continue;   // written after this read began: keep ours
+      if (kind === "trainings" && templateDraft && templateDraft.dirty && templateDraft.id === r.id) continue;   // unsaved template edits
+      if (kind === "trainings" && renderedTraining === r.id && $("rows").contains(document.activeElement)) continue; // being edited right now: next sync, stamp and all
+      map.set(r.id, { ...r.data, id: r.id });
+      if (!clientMode && r.updated_at) seenAt.set(key(kind, r.id), r.updated_at);   // the stamp travels with the record it describes
+      if (kind === "trainings") trainerState.delete(r.id);
+    }
+    if (complete) for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id))) map.delete(id);   // only a full answer can say something is gone
+  }
   async function syncDownNow() {
     if (!sb || !signedIn || !backend || seeding) return false;
     const startedAt = Date.now();
@@ -1402,21 +1416,7 @@
       for (const id of clients.keys()) scheduleSave("clients", id, 0);
       for (const id of trainings.keys()) scheduleSave("trainings", id, 0);
     } else {
-      const merge = (map, kind, rows, complete) => {
-        const seen = new Set();
-        for (const r of rows) {
-          seen.add(r.id); if (dirty.has(key(kind, r.id))) continue;
-          if (kind === "trainings" && (pendingMove.has(r.id) || pendingMiss.has(r.id))) continue;   // the client's decision still has to reach the server: keep ours
-          if ((confirmedAt.get(key(kind, r.id)) || 0) > startedAt) continue;   // written after this read began: keep ours
-          if (kind === "trainings" && templateDraft && templateDraft.dirty && templateDraft.id === r.id) continue;   // unsaved template edits
-          if (kind === "trainings" && renderedTraining === r.id && $("rows").contains(document.activeElement)) continue; // being edited right now: next sync, stamp and all
-          map.set(r.id, { ...r.data, id: r.id });
-          if (!clientMode && r.updated_at) seenAt.set(key(kind, r.id), r.updated_at);   // the stamp travels with the record it describes
-          if (kind === "trainings") trainerState.delete(r.id);
-        }
-        if (complete) for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id))) map.delete(id);   // only a full answer can say something is gone
-      };
-      merge(clients, "clients", c.data, c.complete !== false); merge(trainings, "trainings", t.data, t.complete !== false);
+      mergeDown(clients, "clients", c.data, c.complete !== false, startedAt); mergeDown(trainings, "trainings", t.data, t.complete !== false, startedAt);
     }
     lsSet("fiala.trainings.migrated", true); syncedOnce = true;
     localBackend.save();
