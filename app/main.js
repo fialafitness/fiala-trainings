@@ -661,7 +661,8 @@ import { reportRange, buildReport } from "./report.js";
     if (reason) r.earlyReason = reason; else delete r.earlyReason;
     if (S.clientMode) { if (!pendingEarlyRows.has(t.id)) pendingEarlyRows.set(t.id, new Set()); pendingEarlyRows.get(t.id).add(r.id); }
   }
-  const openNotes = new Set();                                   // exercise rows whose note the client opened (this session)
+  const openNotes = new Set();                                   // exercise rows whose instructions the client opened (this session)
+  const openExNotes = new Set();                                 // cards whose session note is unfolded (this session)
   const noteDraft = new Map();                                   // clientId -> what is typed in the notes box and not saved yet
   const tNoteDraft = new Map(); let tNoteOpenFor = null;          // the same for the note box on a workout page
   const growBox = (ta) => { ta.style.height = "auto"; ta.style.height = Math.max(96, ta.scrollHeight) + "px"; };
@@ -1358,7 +1359,7 @@ import { reportRange, buildReport } from "./report.js";
         if (!isTpl) { sel = setSel.has(selKey) ? setSel.get(selKey) : doneSets; sel = clamp(sel, 0, total - 1); g.sel = sel; }
         const tr = document.createElement("div"); tr.className = "tracker"; tr.setAttribute("aria-label", "Sets");
         const head = document.createElement("div"); head.className = "tr-head"; const chips = document.createElement("div"); chips.className = "tr-chips"; tr.append(head, chips);
-        const lab = document.createElement("span"); lab.className = "tr-label"; lab.textContent = asClient ? (g.rows.length > 1 ? "Round" : "Set") : total + (total === 1 ? " set" : " sets"); head.appendChild(lab);   // coach: "4 sets" and the stepper; client: "Set" or "Round" beside the chips
+        const lab = document.createElement("span"); lab.className = "tr-label"; lab.textContent = asClient && g.rows.length > 1 ? total + (total === 1 ? " round" : " rounds") : total + (total === 1 ? " set" : " sets"); head.appendChild(lab);   // coach: "4 sets" and the stepper; client: "Set" or "Round" beside the chips
         if (asClient) tr.classList.add("inline");
         for (let i = 0; i < total; i++) {
           const b = document.createElement("button"); b.type = "button"; b.textContent = String(i + 1);
@@ -1436,41 +1437,46 @@ import { reportRange, buildReport } from "./report.js";
           for (const r of g.rows) { r.done = clamp(parseInt(r.setsDone, 10) || 0, 0, 20) >= setsOf(r); markEarly(t, r, ""); const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
           openBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); scrollToCard(g.key);
         });
+        const first = g.rows[0], noteKey = selKey;
         const addNote = document.createElement("button"); addNote.type = "button"; addNote.className = "add-note";
-        addNote.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h6l2.5 2.5v8.5a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5z"/><path d="M6 8h4M6 10.5h4"/></svg><span>Add note</span>';
+        const noteIcon = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h6l2.5 2.5v8.5a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5z"/><path d="M6 8h4M6 10.5h4"/></svg>';
         early.insertAdjacentHTML("afterbegin", '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 14V2.5"/><path d="M3.5 3h8l-2 2.5 2 2.5h-8"/></svg>');
         const noteBox = document.createElement("div"); noteBox.className = "exnote"; noteBox.hidden = true;
-        const ta = document.createElement("textarea"); ta.rows = 1; ta.placeholder = S.clientMode ? "Something you noticed, for your coach" : "A note about this exercise, for you only";
+        const ta = document.createElement("textarea"); ta.rows = 1; ta.placeholder = "Something noticed on this exercise";
         const acts = document.createElement("div"); acts.className = "note-actions";
         const saveN = document.createElement("button"); saveN.type = "button"; saveN.className = "btn sm"; saveN.textContent = "Save note";
         const dropN = document.createElement("button"); dropN.type = "button"; dropN.className = "btn quiet"; dropN.textContent = "Discard";
         acts.append(saveN, dropN); noteBox.append(ta, acts);
-        const first = g.rows[0];
-        addNote.addEventListener("click", () => { noteBox.hidden = !noteBox.hidden; if (!noteBox.hidden) { ta.value = S.clientMode ? String(first.clientNote || "") : ""; ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; ta.focus(); } });
+        const shown = document.createElement("div"); shown.className = "client-note"; shown.hidden = true;
+        const cap = document.createElement("div"); cap.className = "cap";
+        const capText = document.createElement("span"); capText.textContent = "Note";
+        const edit = document.createElement("button"); edit.type = "button"; edit.textContent = "Edit";
+        const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "Delete";
+        cap.append(capText, edit, del);
+        const txt = document.createElement("div"); txt.className = "text";
+        shown.append(cap, txt);
+        const writeNote = (text) => {                                          // the client's or the coach's note on this exercise, this session
+          if (text) first.clientNote = text; else delete first.clientNote;
+          if (S.clientMode) { if (!pendingNoteRows.has(t.id)) pendingNoteRows.set(t.id, new Set()); pendingNoteRows.get(t.id).add(first.id); }
+          else { if (!trainerTouched.has(t.id)) trainerTouched.set(t.id, new Set()); trainerTouched.get(t.id).add(first.id); }   // the coach's word on this row stands on a conflict
+          scheduleSave("trainings", t.id);
+        };
+        const paintNote = () => {
+          const has = !!first.clientNote, open = has && openExNotes.has(noteKey);
+          addNote.innerHTML = noteIcon + "<span>" + (!has ? "Add note" : open ? "Hide note" : "See note") + "</span>";
+          shown.hidden = !open; txt.textContent = first.clientNote || "";
+        };
+        const openComposer = () => { ta.value = String(first.clientNote || ""); noteBox.hidden = false; ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; ta.focus(); };
+        addNote.addEventListener("click", () => { if (!first.clientNote) { if (noteBox.hidden) openComposer(); else noteBox.hidden = true; return; } if (openExNotes.has(noteKey)) openExNotes.delete(noteKey); else openExNotes.add(noteKey); paintNote(); });
+        edit.addEventListener("click", openComposer);
+        del.addEventListener("click", () => { writeNote(""); openExNotes.delete(noteKey); paintNote(); });
         ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; });
         dropN.addEventListener("click", () => { noteBox.hidden = true; ta.value = ""; });
-        saveN.addEventListener("click", () => {
-          const text = ta.value.trim(); noteBox.hidden = true;
-          if (S.clientMode) {                                                     // the client's note rides on the exercise row and reaches the coach
-            if (text) first.clientNote = text; else delete first.clientNote;
-            if (!pendingNoteRows.has(t.id)) pendingNoteRows.set(t.id, new Set()); pendingNoteRows.get(t.id).add(first.id);
-            scheduleSave("trainings", t.id); S.renderedTraining = null; render(); return;
-          }
-          if (!text) return;                                                      // the coach's note files under the client's notes, named after the exercise
-          const c = clients.get(t.clientId); if (!c) return;
-          const names = g.rows.map((r) => String(r.name || "").trim()).filter(Boolean).join(" + ");
-          writeNotes(c, [...noteEntries(c), { id: uid(), at: now(), text: names ? names + ": " + text : text, workout: { id: t.id, title: String(t.title || ""), date: effDate(t) || String(t.date || "") } }]);
-          $("status").textContent = "Note saved";
-        });
+        saveN.addEventListener("click", () => { const text = ta.value.trim(); noteBox.hidden = true; writeNote(text); if (text) openExNotes.add(noteKey); paintNote(); });
+        paintNote();
         const actsRow = document.createElement("div"); actsRow.className = "foot-row"; actsRow.append(early, addNote);
         const moreRow = document.createElement("div"); moreRow.className = "foot-row center"; moreRow.append(undo, resume);
-        foot.append(complete, actsRow, moreRow, noteBox);
-        if (first.clientNote) {                                                   // what the client wrote on this exercise, for both to see
-          const shown = document.createElement("div"); shown.className = "client-note";
-          const cap = document.createElement("div"); cap.className = "cap"; cap.textContent = S.clientMode ? "Your note" : "Client\u2019s note";
-          const txt = document.createElement("div"); txt.className = "text"; txt.textContent = first.clientNote;
-          shown.append(cap, txt); foot.prepend(shown);
-        }
+        foot.append(shown, complete, actsRow, moreRow, noteBox);
       }
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
       const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold-btn";
@@ -1625,11 +1631,11 @@ import { reportRange, buildReport } from "./report.js";
         <div class="chip"><span class="val"></span><input class="rest tab" inputmode="decimal" placeholder="60 sec" aria-label="Rest"><span class="suffix rest-suffix">rest</span></div>
       </div>
       <div class="tempo-wrap"><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"><div class="tempo-tiles" hidden></div></div>
-      <div class="cnote" hidden><button class="cnote-btn" type="button" aria-expanded="false"><span class="cnote-lab">See note</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="cnote-text" hidden></div></div>
+      <div class="cnote" hidden><button class="cnote-btn" type="button" aria-expanded="false"><span class="cnote-lab">See instructions</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="cnote-text" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
-      <div class="setlog"><div class="pair"><div class="chip stack"><span class="lab">Weight</span><span class="valrow"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></span></div><div class="chip stack"><span class="lab">Reps</span><span class="valrow"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></span></div></div></div>
+      <div class="setlog"><div class="pair"><div class="chip"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></div><div class="chip"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></div></div></div>
       <div class="lifts" hidden><span class="lift last"><i>Last</i><b></b></span><span class="lift best"><i>Best</i><b></b></span></div>
-      <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Note"></textarea></div>`;
+      <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Instructions for the client"></textarea></div>`;
     const q = (s) => el.querySelector(s);
     let wText = false;                       // a row that already holds BW / 60 sec opens on the full keyboard (the bar above the keyboard switches it)
     const nonNum = (w) => !!w && !/^[\d.,\s]*$/.test(String(w));
@@ -1823,13 +1829,13 @@ import { reportRange, buildReport } from "./report.js";
     const paintClientNote = () => {
       const v = String(r.note || "").trim(), open = openNotes.has(r.id);
       cnote.hidden = !asClient || !v; cnoteText.textContent = v; cnoteText.hidden = !open;
-      cnoteLab.textContent = open ? "Hide note" : "See note"; cnoteBtn.classList.toggle("open", open); cnoteBtn.setAttribute("aria-expanded", String(open));
+      cnoteLab.textContent = open ? "Hide instructions" : "See instructions"; cnoteBtn.classList.toggle("open", open); cnoteBtn.setAttribute("aria-expanded", String(open));
     };
     cnoteBtn.addEventListener("click", () => { if (openNotes.has(r.id)) openNotes.delete(r.id); else openNotes.add(r.id); paintClientNote(); });
     paintClientNote();
     const noteBtn = q(".note-btn"), noteBox = q(".note"), noteField = q(".note-field");
     const growNote = () => { noteField.style.height = "auto"; noteField.style.height = noteField.scrollHeight + "px"; };
-    const showNote = () => { const v = (r.note || "").trim(); noteBtn.classList.toggle("has", !!v); noteBtn.title = v ? "Note" : "Add note"; noteBtn.setAttribute("aria-label", noteBtn.title); };
+    const showNote = () => { const v = (r.note || "").trim(); noteBtn.classList.toggle("has", !!v); noteBtn.title = v ? "Instructions" : "Add instructions"; noteBtn.setAttribute("aria-label", noteBtn.title); };
     noteBtn.addEventListener("click", () => { closeAlt(); noteBox.hidden = false; noteField.value = r.note || ""; growNote(); noteField.focus(); });
     noteField.addEventListener("input", (e) => { r.note = e.target.value; growNote(); save(); });
     noteField.addEventListener("blur", () => { noteBox.hidden = true; showNote(); });
@@ -1910,10 +1916,8 @@ import { reportRange, buildReport } from "./report.js";
       rp.addEventListener("input", (e) => { while (r.repsDone.length <= sel) r.repsDone.push(""); r.repsDone[sel] = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); e.target.value = r.repsDone[sel]; mark(); });
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.focus(); } });
       rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.blur(); } });
-      wireChip(w, { empty: "\u2013", suffix: (v) => weightWord(v, unit), show: showWeight });   // after the handlers above, so the words follow the tidied value
-      const perSide = /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || ""));             // "10 / side": the label says so, the box holds the number
-      q(".setlog .chip.stack:nth-child(2) .lab").textContent = perSide ? "Reps / side" : "Reps";
-      wireChip(rp, { empty: "\u2013", suffix: perSide ? () => "" : repsWord, show: perSide ? (v) => String(v || "").replace(/\s*(\/|each|per)\s*(side|leg|arm)\s*$/i, "") : showReps });
+      wireChip(w, { empty: "Weight", suffix: (v) => weightWord(v, unit), show: showWeight });   // after the handlers above, so the words follow the tidied value
+      wireChip(rp, { empty: "Reps", suffix: repsWord, show: showReps });
     }
     const chipText = (c) => c.querySelector(".val").textContent + (c.querySelector(".suffix").hidden ? "" : " " + c.querySelector(".suffix").textContent);
     const nSets = setsOf(r), sumEl = q(".sum"); sumEl.replaceChildren();   // "3 sets · 8–10 reps · 60 sec transition" (the open card hides the sets part: the chips above say it)
