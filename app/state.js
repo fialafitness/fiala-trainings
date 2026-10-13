@@ -10,7 +10,7 @@ export const initial = () => ({
   deviceFull: false,                     // the last write of the device copy failed (storage full or blocked)
   sb: null, signedIn: false, syncTimer: null, clientMode: false, myClientId: null, recovering: false,
   syncedOnce: false,                     // this session has had one full answer from the server
-  logSetMissing: false, earlyMissing: false, moveMissing: false, missMissing: false,   // server rules not installed yet (supabase/*.sql)
+  logSetMissing: false, earlyMissing: false, moveMissing: false, missMissing: false, noteMissing: false,   // server rules not installed yet (supabase/*.sql)
   syncing: null,                         // the sync in flight, if any
   offlineEntry: null, resuming: false, signingOut: null,
   sessionEmail: "", entering: false,
@@ -19,7 +19,7 @@ export const initial = () => ({
 });
 export const S = initial();
 export const ui = {};                       // the screen functions the sync layer may call ($, setStatus, render, showProblem, …), filled in by main.js
-export function resetState() { Object.assign(S, initial()); for (const m of [clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt]) m.clear(); }
+export function resetState() { Object.assign(S, initial()); for (const m of [clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingNoteRows, seenAt, trainerTouched, trainerNamed, confirmedAt]) m.clear(); }
 
 export const clients = new Map();            // id -> { id, name, notes, createdAt, … }
 export const trainings = new Map();          // id -> { id, clientId, title, date, createdAt, rows: [...] }
@@ -39,4 +39,5 @@ export const pendingSkip = new Set();        // client mode: trainings skipped /
 export const pendingMove = new Set();        // client mode: "Do it today" to send
 export const pendingMiss = new Set();        // client mode: filed as missed (or decided) to send
 export const pendingSwap = new Map();        // client mode: trainingId -> Map(rowId -> alternative tapped) to send
+export const pendingNoteRows = new Map();   // client mode: trainingId -> Set(rowId) with a note to send
 export const deletedNotes = new Set();       // note ids removed on this device: a merge must not bring them back        // client mode: trainingId -> Map(rowId -> alternative tapped) to send
