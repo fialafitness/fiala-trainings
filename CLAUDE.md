@@ -1,6 +1,6 @@
 # Fiala Trainings (webapp)
 
-Single-page PWA deployed by GitHub Pages at app.fialafitness.com. `index.html` holds the markup and CSS and boots the app with a module script; the app itself is `app/main.js` (state, sync, views) plus `app/catalog.js` (exercise data, built by `tools/embed.py`), `app/util.js`, `app/model.js`, `app/notes.js`, `app/pdf.js` and `app/report.js`. Supabase rules live in `supabase/*.sql` and are applied by hand in the SQL Editor.
+Single-page PWA deployed by GitHub Pages at app.fialafitness.com. `index.html` holds the markup and CSS and boots the app with a module script; the app itself is `app/main.js` (sign-in, templates, every screen, boot), `app/state.js` (the shared state object `S`, the shared collections and the `ui` hooks), `app/sync.js` (the device copy, the save queue, the cloud and client backends, the paged read and merge), plus `app/catalog.js` (exercise data, built by `tools/embed.py`), `app/util.js`, `app/model.js`, `app/notes.js`, `app/pdf.js` and `app/report.js`. Shared mutable values are always read and written as `S.name`; `tests/state.test.js` fails on a bare name. Supabase rules live in `supabase/*.sql` and are applied by hand in the SQL Editor.
 
 When `app/main.js` changes, bump the `?v=` on its import in `index.html`. When a file is added under `app/`, add it to the SHELL list in `sw.js` and bump its VERSION.
 
