@@ -314,7 +314,7 @@
     background: var(--field); color: var(--text-primary); font-size: 16px; font-weight: 500;
   }
   .numpick button.cur { box-shadow: inset 0 0 0 1.5px var(--ss); }
-  .row { padding: 16px; }
+  .row { padding: 14px 16px; }
   .group .row + .row { border-top: 1px solid var(--card-border); }
   .group .row .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
   .row .top { display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: stretch; }
@@ -355,7 +355,19 @@
   body.client .block.ahead .card-chev { top: 10px; }
   body.client .block.ahead .row .top .name { padding-right: 48px !important; }
   body.client .block.peek .card-chev { top: 6px; }
-  .card-foot { padding: 4px 16px 16px; display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card-foot { padding: 2px 16px 14px; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+  .card-foot .foot-row { display: flex; justify-content: space-between; align-items: center; min-height: 40px; }
+  .card-foot .foot-row.center { justify-content: center; min-height: 0; }
+  .card-foot .foot-row.center:empty { display: none; }
+  .add-note { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 4px; display: inline-flex; align-items: center; gap: 6px; }
+  .finish-early { display: inline-flex; align-items: center; gap: 6px; }
+  .finish-early svg { flex: 0 0 auto; }
+  .exnote { margin-top: 4px; }
+  .exnote[hidden] { display: none; }
+  .exnote textarea { width: 100%; box-sizing: border-box; min-height: 44px; }
+  .client-note { margin: 6px 0 8px; padding: 2px 0 2px 12px; border-left: 2px solid var(--brand); }                 /* what the client wrote on this exercise */
+  .client-note .cap { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-tertiary); }
+  .client-note .text { margin-top: 2px; font-size: 15px; line-height: 1.4; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
   .fold-btn {
     appearance: none; cursor: pointer; border-radius: 50px; min-height: 40px; padding: 10px 24px;
     font-size: 14px; font-weight: 400; letter-spacing: 0.01em;
@@ -468,7 +480,7 @@
   body.client .block.ahead .row .sum { margin-top: 2px; font-size: 13px; color: var(--text-tertiary); }
   body.client .block.ahead .row .sum .sum-rest { display: none; }                          /* folded: sets and reps are enough */
   body.client .block.done:not(.open) .row .sum { display: none; }
-  body.client .tempo-wrap { margin: 4px 0 0 var(--numw); }
+  body.client .tempo-wrap { margin: 2px 0 0 var(--numw); }
   body.client .tempo-tiles.words { display: flex; flex-wrap: wrap; align-items: center; background: none; border-radius: 0; padding: 0; font-size: 15px; color: var(--text-secondary); }
   body.client .tempo-tiles.words .si { font-size: 15px; line-height: 1.3; margin: 0; color: var(--text-secondary); letter-spacing: 0; }   /* not the tile-label size */
   body.client .tempo-tiles.words .si + .si::before { content: "\00b7"; margin: 0 6px; }   /* dots, so a long tempo can wrap cleanly */
@@ -519,8 +531,19 @@
   .tracker button.static { cursor: default; }                           /* a template just shows the count */
   .tracker .step { width: 36px; height: 30px; background: transparent; color: var(--text-secondary); font-size: 18px; font-weight: 400; }
   .tracker .step:disabled { opacity: 0.35; cursor: default; }
-  .setlog { margin-top: 14px; }
-  .lifts { display: flex; flex-wrap: wrap; gap: 4px 22px; margin: 10px 0 0 2px; font-size: 13px; line-height: 1.3; }   /* under the boxes: last lifted, best ever, on this exercise */
+  .setlog { margin-top: 12px; }
+  .setlog .chip.stack { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: 74px; padding: 10px 14px; text-align: left; }   /* a label on top, the number below */
+  .setlog .chip.stack .lab { font-size: 13px; line-height: 1.2; color: var(--text-secondary); }
+  .setlog .chip.stack .valrow { display: flex; align-items: baseline; gap: 5px; min-width: 0; max-width: 100%; font-size: 22px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .setlog .chip.stack .valrow .val { font-weight: 600; }
+  .setlog .chip.stack .valrow .suffix { font-size: 15px; font-weight: 500; }
+  .setlog .chip.stack.editing .valrow input { position: static; flex: 1 1 auto; width: 0; min-width: 3ch; height: auto; font-size: 22px; font-weight: 600; padding: 0; }
+  .setlog .chip.stack.editing .valrow .val { display: none; }
+  .tracker.inline { display: flex; align-items: center; gap: 12px; padding: 14px 0 0; }   /* client: "Set" beside the chips, inside the exercise */
+  .tracker.inline .tr-head { margin: 0; min-height: 0; }
+  .tracker.inline .tr-label { font-size: 15px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-secondary); margin: 0; }
+  .tracker.inline.top { padding: 14px 16px 0; }                                    /* a superset: "Round" and the chips above both exercises */
+  .lifts { display: flex; flex-wrap: wrap; gap: 4px 22px; margin: 8px 0 0 2px; font-size: 13px; line-height: 1.3; }   /* under the boxes: last lifted, best ever, on this exercise */
   .lifts[hidden] { display: none; }
   .lift { display: inline-flex; align-items: baseline; gap: 6px; }
   .lift i { font-style: normal; color: var(--text-tertiary); font-weight: 500; }
@@ -533,8 +556,8 @@
   .card-foot .done-btn { display: none; }
   .card-foot .complete { width: 100%; display: inline-flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
   .vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-  .finish-early { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 8px; }
-  .block.done:not(.open) .tracker, .block.done:not(.open) .row .setlog, .block.done:not(.open) .complete, .block.done .finish-early:not(.undo-set), .block.done:not(.open) .undo-set { display: none; }
+  .finish-early { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 4px; }
+  .block.done:not(.open) .tracker, .block.done:not(.open) .row .setlog, .block.done:not(.open) .complete, .block.done .finish-early:not(.undo-set), .block.done:not(.open) .undo-set, .block.done:not(.open) .add-note, .block.done:not(.open) .exnote { display: none; }
   .block.done .card-foot .complete { display: none; }                   /* a finished card logs nothing more until it is resumed */
   .resume { display: none; appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 8px; }
   .block.done.open .resume:not([hidden]) { display: inline-block; }     /* the undo for "Finish early": only on an opened, finished-early card */
@@ -1003,7 +1026,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=3";
+  import { boot } from "./app/main.js?v=4";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

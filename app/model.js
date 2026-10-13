@@ -4,7 +4,7 @@ import { uid, clamp, localIso } from "./util.js";
 export const TEMPLATES_ID = "00000000-0000-4000-8000-0000000000f1";
 export const isTemplateClient = (id) => id === TEMPLATES_ID;
 export const effDate = (t) => t.completedAt ? localIso(new Date(t.completedAt)) : (t.date || "");
-export const freshRow = (r) => { const x = { ...r, id: uid(), weights: [], repsDone: [], setsDone: 0, done: false, alts: [...(r.alts || [])] }; delete x.earlyReason; return x; };   // the plan, with nothing logged
+export const freshRow = (r) => { const x = { ...r, id: uid(), weights: [], repsDone: [], setsDone: 0, done: false, alts: [...(r.alts || [])] }; delete x.earlyReason; delete x.clientNote; return x; };   // the plan, with nothing logged
 export const isEmptyWorkout = (t) => !!t && !t.completedAt && !t.skippedAt && !(t.rows || []).length && !String(t.title || "").trim() && !isTemplateClient(t.clientId);
 export const setsOf = (r) => Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20));   // blank = the default 4; 0 still counts as one
 

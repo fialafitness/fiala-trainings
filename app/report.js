@@ -64,7 +64,7 @@ export function buildReport(kind, fonts, c, allTrainings) {                     
     if (x.completedAt) for (const row of x.rows || []) {
       const done = clamp(parseInt(row.setsDone, 10) || 0, 0, 20), sets = [];
       for (let i = 0; i < done; i++) { const w = String((row.weights || [])[i] || "").trim(), rp = String((row.repsDone || [])[i] || "").trim(); sets.push(w ? (/^\d+(?:[.,]\d+)?$/.test(w) ? w + " " + unit : w) + (rp ? " × " + rp : "") : (rp ? rp + " reps" : "–")); }
-      const lines = doc.wrap((done ? sets.join(", ") : "not started") + (row.earlyReason ? "  ·  finished early: " + row.earlyReason : ""), 9.5, false, R - (M + 252));
+      const lines = doc.wrap((done ? sets.join(", ") : "not started") + (row.earlyReason ? "  ·  finished early: " + row.earlyReason : "") + (row.clientNote ? "  ·  note: " + row.clientNote : ""), 9.5, false, R - (M + 252));
       doc.row([{ x: M + 92, text: row.name || "Exercise", color: soft, maxW: 150 }, { x: M + 252, text: lines[0], color: soft }], { size: 9.5, gap: 2 });
       for (const ln of lines.slice(1)) doc.text(ln, { size: 9.5, indent: 198, gap: 2, color: soft });
     }
