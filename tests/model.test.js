@@ -47,7 +47,7 @@ test("the app's own backup shape, with a client without a name and a template, i
   const d = { app: "fiala-trainings", exported: "x", clients: { c1: { id: "c1" }, tpl: { id: "00000000-0000-4000-8000-0000000000f1", name: "Templates", kind: "templates" } }, trainings: { t1: { id: "t1", clientId: "00000000-0000-4000-8000-0000000000f1", rows: [], date: "2026-01-01", title: "Upper A" } } };
   assert.doesNotThrow(() => fns.validateBackup(d));
 });
-test("notes: the old single note shows as Earlier, saving folds it in, merges keep both sides and honour a deletion", () => {
+test("notes: the old single note shows as Earlier, saving folds it in, merges keep both sides and honour a deletion", async () => {
   const c = { id: "c1", notes: "Bad knee" };
   const e = fns.noteEntries(c); assert.strictEqual(e.length, 1); assert.strictEqual(e[0].id, "legacy"); assert.strictEqual(e[0].at, null);
   const packed = fns.packNotes([...e, { id: "n1", at: "2026-10-13T10:00:00.000Z", text: "New" }]);
