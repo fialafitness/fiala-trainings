@@ -1434,10 +1434,11 @@ import { reportRange, buildReport } from "./report.js";
       const count = clientTrainings(t.clientId).filter((x) => x.completedAt).length;
       const pc = clients.get(t.clientId), sn = pc && pc.plan ? sessionNo(pc.plan, clientTrainings(t.clientId), t) : null;
       $("celeText").textContent = (sn ? "Session " + sn.n + " of " + sn.size + ". " : "") + "That\u2019s your " + ordinal(count) + " workout. Nice work.";
+      const canMsg = !S.clientMode && !document.body.classList.contains("client") && fillMsg($("celeMsg"), $("celeMsgText"), pc); $("celeMsg").hidden = !canMsg;   // the coach (not previewing as the client) can text the client right from here
       celebrating = true; render();
       window.scrollTo(0, 0);
       clearTimeout(celeTimer);
-      celeTimer = setTimeout(() => { if (celebrating) $("celeBack").click(); }, 4000);
+      if (!canMsg) celeTimer = setTimeout(() => { if (celebrating) $("celeBack").click(); }, 4000);   // with a Message button up, the screen waits for a tap instead of leaving after 4 s
     }
   }
   let celeTimer = null, celebrating = false;   // the "Nice work" screen is a state, not just a visible panel: a sync's redraw can't knock it off
@@ -2185,12 +2186,17 @@ import { reportRange, buildReport } from "./report.js";
     const tel = c ? phoneDigits(c.trainerPhone) : ""; const wa = c && (c.chat || "sms") === "whatsapp";
     for (const id of ["trainerBtn", "trainerBtn2"]) { const a = $(id); if (!tel || !S.clientMode) { a.hidden = true; if (id === "trainerBtn") $("trainerRow").hidden = true; continue; } a.hidden = false; if (id === "trainerBtn") $("trainerRow").hidden = false; a.href = wa ? "https://wa.me/" + tel : "sms:+" + tel; if (wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); } }
   }
-  function paintMsg(c) {
-    const tel = phoneDigits(c.phone); $("contactRow").hidden = !tel || S.clientMode; if (!tel) return;
-    const wa = (c.chat || "sms") === "whatsapp"; const a = $("msgBtn");
-    $("msgText").textContent = "Message " + ((c.name || "").trim().split(/\s+/)[0] || "client");
+  // the coach's "Message <first name>" link: sms: or WhatsApp, by the client's chat setting. Returns false when there is no number to reach.
+  function fillMsg(a, textEl, c) {
+    const tel = c ? phoneDigits(c.phone) : ""; if (!tel) return false;
+    const wa = (c.chat || "sms") === "whatsapp";
+    textEl.textContent = "Message " + ((c.name || "").trim().split(/\s+/)[0] || "client");
     a.href = wa ? "https://wa.me/" + tel : "sms:+" + tel;
     if (wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); }
+    return true;
+  }
+  function paintMsg(c) {
+    const ok = fillMsg($("msgBtn"), $("msgText"), c); $("contactRow").hidden = !ok || S.clientMode;
   }
   $("cPhone").addEventListener("blur", () => { const c = clients.get(S.view.id); if (c) paintMsg(c); });
   $("accessSeg").addEventListener("click", (e) => {
