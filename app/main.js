@@ -2054,6 +2054,7 @@ import { reportRange, buildReport } from "./report.js";
 
   window.addEventListener("pagehide", flushAll);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushAll(); });
+  for (const type of ["gesturestart", "gesturechange"]) document.addEventListener(type, (e) => e.preventDefault(), { passive: false });   // Safari: an accidental two-finger pinch leaves the page slightly zoomed in and drifting sideways; an app does not zoom
 
   // ---------- report PDF: one client's month (sessions, logged sets, your notes), set in Inter, to mail yourself ----------
   let reportFonts = null, reportFontsP = null;
