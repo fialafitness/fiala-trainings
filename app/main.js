@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, pendingNoteRows, ui } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, perHand } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, perHand, betterSet, topSet, sameSet } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -1667,7 +1667,7 @@ import { reportRange, buildReport } from "./report.js";
       <div class="cnote" hidden><button class="cnote-btn" type="button" aria-expanded="false"><span class="cnote-lab">See instructions</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="cnote-text" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="setlog"><div class="pair"><div class="chip stack"><span class="lab">Weight</span><span class="valrow"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></span></div><div class="chip stack"><span class="lab">Reps</span><span class="valrow"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></span></div></div></div>
-      <div class="lifts" hidden><span class="lift last" aria-label="Last time"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9"/><path d="M2.5 2.5v3h3M8 5.2V8l2 1.3"/></svg><b></b></span><span class="lift best" aria-label="Best ever"><svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 1.6l1.9 4 4.4.6-3.2 3.1.8 4.4L8 11.6l-3.9 2.1.8-4.4L1.7 6.2l4.4-.6z"/></svg><b></b></span></div>
+      <div class="lifts" hidden><span class="lift last"><span class="k">Last</span><b></b></span><span class="lift best"><span class="k">Best</span><b></b><span class="also" hidden>\u00b7 last time</span></span></div>
       <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Instructions for the client"></textarea></div>`;
     const q = (s) => el.querySelector(s);
     let wText = false;                       // a row that already holds BW / 60 sec opens on the full keyboard (the bar above the keyboard switches it)
@@ -1888,29 +1888,31 @@ import { reportRange, buildReport } from "./report.js";
       ul.hidden = hits.length === 0;
     }
 
-    const liftHistory = () => {                                      // this exercise, this client: the last session's top set and the best ever (by weight, then reps)
+    const liftHistory = () => {                                      // this exercise, this client, EARLIER sessions only: the last session's top set and the best ever
       const canon = (x) => squash(ALIASES[String(x || "").trim()] || x); const name = canon(r.name); if (!name) return null;
-      const num = (v) => { const str = String(v == null ? "" : v).trim(); return /^\d+(?:[.,]\d+)?$/.test(str) ? parseFloat(str.replace(",", ".")) : null; };
-      const timed = !!timedPlan(r.reps);                                         // a plank: the longest hold wins, weight breaks the tie
-      const heavier = timed ? (a, b) => !b || (a.rp || 0) > (b.rp || 0) || ((a.rp || 0) === (b.rp || 0) && (a.w || 0) > (b.w || 0)) : (a, b) => !b || a.w > b.w || (a.w === b.w && (a.rp || 0) > (b.rp || 0));
-      const top = (row) => { let b = null; const ws = row.weights || [], rs = row.repsDone || []; for (let i = 0; i < Math.max(ws.length, rs.length); i++) { const w = num(ws[i]), rp = num(rs[i]); if (timed ? rp == null : w == null) continue; const st = { w, rp }; if (heavier(st, b)) b = st; } return b; };
+      const timed = !!timedPlan(r.reps);
       let best = null, last = null;
       for (const other of clientTrainings(t.clientId)) {              // newest first
-        const earlier = other.id !== t.id && (effDate(other) < effDate(t) || (effDate(other) === effDate(t) && (other.createdAt || "") < (t.createdAt || "")));
+        if (other.id === t.id) continue;                               // today is what the line is compared against, never part of it
+        const earlier = effDate(other) < effDate(t) || (effDate(other) === effDate(t) && (other.createdAt || "") < (t.createdAt || ""));
+        if (!earlier) continue;
         for (const x of other.rows || []) {
-          if (canon(x.name) !== name) continue; const st = top(x); if (!st) continue;
-          if (heavier(st, best)) best = st;
-          if (!last && earlier) last = st;
+          if (canon(x.name) !== name) continue; const st = topSet(x, timed); if (!st) continue;
+          if (betterSet(st, best, timed)) best = st;
+          if (!last) last = st;
         }
       }
-      return best ? { best, last } : null;
+      return best ? { best, last, timed } : null;
     };
-    const paintLifts = () => {
+    const paintLifts = () => {                                       // LAST 215 lb × 4   BEST 225 lb × 5  ·  one entry when they are the same  ·  NEW BEST in gold while today beats it
       const box = q(".lifts"), h = isTemplateClient(t.clientId) ? null : liftHistory();
       box.hidden = !h; if (!h) return;
-      const unit = (clients.get(t.clientId) || {}).unit || "lb", tm = timedPlan(r.reps), fmt = tm ? (st) => (st.w != null ? st.w + " " + unit + " \u00d7 " : "") + st.rp + " " + tm.unit : (st) => st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "");   // "30 sec", "50 lb × 30 sec"
-      q(".lift.last").hidden = !h.last; if (h.last) q(".lift.last b").textContent = fmt(h.last);
-      q(".lift.best b").textContent = fmt(h.best);
+      const unit = (clients.get(t.clientId) || {}).unit || "lb", tm = timedPlan(r.reps);
+      const fmt = tm ? (st) => (st.w != null ? st.w + " " + unit + " \u00d7 " : "") + st.rp + " " + tm.unit : (st) => st.w != null ? st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps");
+      const now = topSet(r, h.timed), newBest = !!(now && betterSet(now, h.best, h.timed)), same = sameSet(h.last, h.best);
+      q(".lift.best").classList.toggle("new", newBest); q(".lift.best .k").textContent = newBest ? "New best" : "Best"; q(".lift.best b").textContent = fmt(newBest ? now : h.best);
+      q(".lift.best .also").hidden = !(same && !newBest);
+      q(".lift.last").hidden = !h.last || (same && !newBest); if (h.last) q(".lift.last b").textContent = fmt(h.last);
     };
     function renderWeights() {
       const n = setsOf(r);
@@ -1950,8 +1952,8 @@ import { reportRange, buildReport } from "./report.js";
       rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || (timed ? "" : (r.reps ? String(r.reps) : ""));   // a hold never logged before asks for its time; reps still show the plan
       w.inputMode = (wText || nonNum(r.weights[sel] || carry.w || "")) ? "text" : "decimal";
       const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
-      w.addEventListener("input", (e) => { while (r.weights.length <= sel) r.weights.push(""); r.weights[sel] = e.target.value; mark(); });
-      rp.addEventListener("input", (e) => { while (r.repsDone.length <= sel) r.repsDone.push(""); r.repsDone[sel] = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); e.target.value = r.repsDone[sel]; mark(); });
+      w.addEventListener("input", (e) => { while (r.weights.length <= sel) r.weights.push(""); r.weights[sel] = e.target.value; mark(); paintLifts(); });   // NEW BEST lights up as it is typed
+      rp.addEventListener("input", (e) => { while (r.repsDone.length <= sel) r.repsDone.push(""); r.repsDone[sel] = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); e.target.value = r.repsDone[sel]; mark(); paintLifts(); });
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.focus(); } });
       rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.blur(); } });
       const hand = perHand(r.name); q(".setlog .chip.stack:nth-child(1) .lab").textContent = hand ? "Weight / " + hand : "Weight";   // one dumbbell, one kettlebell: the label says what the number is per
