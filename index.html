@@ -674,6 +674,10 @@
   .lift b { overflow: hidden; text-overflow: ellipsis; }
   .lift.last:not([hidden]) + .lift.best { position: relative; }
   .lift.last:not([hidden]) + .lift.best::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 1px; background: var(--text-tertiary); opacity: 0.35; }   /* the hairline between the halves */
+  .lifts.tight { font-size: 14px; } .lifts.tight .lift { padding: 0 6px; gap: 5px; }
+  .lifts.stack { flex-direction: column; }                                   /* a tiny screen with long numbers: the halves stack, the hairline turns */
+  .lifts.stack .lift { min-height: 40px; }
+  .lifts.stack .lift.last:not([hidden]) + .lift.best::before { left: 14px; right: 14px; top: 0; bottom: auto; width: auto; height: 1px; }
   .lift .ic { width: 15px; height: 15px; flex: none; color: var(--text-tertiary); }
   .lift.best .ic { color: var(--gold); }                                     /* the crown is the gold; the numbers stay ink */
   .lift b { font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -682,6 +686,7 @@
   #whenBg[hidden] { display: none; }
   #whenPop { position: fixed; isolation: isolate; max-width: calc(100vw - 16px); padding: 10px 14px 11px; border-radius: 16px; background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); box-shadow: 0 10px 30px rgba(0,0,0,0.18), inset 0 0 0 0.5px var(--glass-edge); animation: popIn 160ms ease-out; }   /* frosted glass, like a system popover */
   #whenPop { display: grid; grid-template-columns: auto auto auto; column-gap: 8px; row-gap: 7px; align-items: baseline; }   /* three aligned columns: the word, the numbers, the day; a long day wraps, the numbers never do */
+  #whenPop.plain { grid-template-columns: auto auto; }                        /* no words (the overview tile): the numbers and the day */
   #whenPop .wrow { display: contents; }
   #whenPop .wk { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap; }
   #whenPop b { font-size: 15px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -1206,7 +1211,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=33";
+  import { boot } from "./app/main.js?v=34";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

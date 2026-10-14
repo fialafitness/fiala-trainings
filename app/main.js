@@ -1771,11 +1771,12 @@ import { reportRange, buildReport } from "./report.js";
   const whenDay = (iso, long) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || "")) return ""; const d = new Date(iso + "T12:00:00"), thisYear = d.getFullYear() === new Date().getFullYear(); return d.toLocaleDateString(undefined, { ...(long ? { weekday: "short" } : {}), month: "short", day: "numeric", ...(thisYear ? {} : { year: "numeric" }) }); };   // "Tue, Oct 6", "Jul 2, 2025"
   function showWhen(anchor, title, sub) {                            // a small frosted bubble under a tapped chip: in words. Any tap, a scroll or Escape closes it
     const bg = $("whenBg"), pop = $("whenPop"), rows = Array.isArray(title) ? title : [{ v: title, d: sub }];   // rows: [{ k: "Best", v: "225 lb × 8", d: "Wed, Oct 8" }]
-    pop.replaceChildren(...rows.map((row) => {
+    const words = rows.some((row) => row.k); pop.classList.toggle("plain", !words);                             // no words at all (the overview tile): two columns
+    pop.replaceChildren(...rows.map((row) => {                                                                  // every row fills every column, empty or not: the grid rows are display:contents
       const div = document.createElement("div"); div.className = "wrow";
-      if (row.k) { const k = document.createElement("span"); k.className = "wk"; k.textContent = row.k; div.appendChild(k); }
+      if (words) { const k = document.createElement("span"); k.className = "wk"; k.textContent = row.k || ""; div.appendChild(k); }
       const b = document.createElement("b"); b.textContent = row.v; div.appendChild(b);
-      if (row.d) { const d = document.createElement("span"); d.className = "wd"; d.textContent = row.d; div.appendChild(d); }
+      const d = document.createElement("span"); d.className = "wd"; d.textContent = row.d || ""; div.appendChild(d);
       return div;
     }));
     bg.hidden = false; pop.classList.remove("above");
@@ -1870,7 +1871,7 @@ import { reportRange, buildReport } from "./report.js";
       <div class="cnote" hidden><button class="cnote-btn" type="button" aria-expanded="false"><span class="cnote-lab">See instructions</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="cnote-text" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="setlog"><div class="pair"><div class="chip stack"><span class="lab">Weight</span><span class="valrow"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></span></div><div class="chip stack"><span class="lab">Reps</span><span class="valrow"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></span></div></div></div>
-      <div class="lifts" hidden><button type="button" class="lift last" aria-label="Last time"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.6V12l3.1 2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><b></b></button><button type="button" class="lift best" aria-label="Best"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.2 17.2 2.5 7.4l4.8 3.3L12 4.6l4.7 6.1 4.8-3.3-1.7 9.8z" fill="currentColor"/><path d="M4.6 18.8h14.8v1.9H4.6z" fill="currentColor"/></svg><b></b></button></div>
+      <div class="lifts" hidden><button type="button" class="lift last"><span class="vh">Last </span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.6V12l3.1 2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><b></b></button><button type="button" class="lift best"><span class="vh">Best </span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.2 17.2 2.5 7.4l4.8 3.3L12 4.6l4.7 6.1 4.8-3.3-1.7 9.8z" fill="currentColor"/><path d="M4.6 18.8h14.8v1.9H4.6z" fill="currentColor"/></svg><b></b></button></div>
       <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Instructions for the client"></textarea></div>`;
     const q = (s) => el.querySelector(s);
     let wText = false;                       // a row that already holds BW / 60 sec opens on the full keyboard (the bar above the keyboard switches it)
@@ -2116,12 +2117,18 @@ import { reportRange, buildReport } from "./report.js";
       q(".lift.best").classList.toggle("new", newBest); q(".lift.best b").textContent = fmt(newBest ? now : h.best);
       q(".lift.last").hidden = !h.last || (same && !newBest); if (h.last) q(".lift.last b").textContent = fmt(h.last);
       box._info = { last: h.last, best: h.best, now, newBest, same, fmt };
+      box.classList.remove("tight", "stack");
+      requestAnimationFrame(() => {                                     // the numbers are never cut: smaller type first, then the two halves stack
+        const cut = () => [...box.querySelectorAll(".lift b")].some((b) => b.scrollWidth > b.clientWidth + 1);
+        if (cut()) box.classList.add("tight");
+        if (cut()) box.classList.add("stack");
+      });
     };
     const liftRows = (i) => {                                          // the bubble, in words: every line that applies, best first
       const rows = [];
       if (i.newBest) rows.push({ k: "New best", v: i.fmt(i.now), d: "Today" });
-      rows.push({ k: "Best", v: i.fmt(i.best), d: whenDay(i.best.date, true) + (i.same ? " \u00b7 your last session too" : "") });
-      if (i.last && !i.same) rows.push({ k: "Last", v: i.fmt(i.last), d: whenDay(i.last.date, true) });
+      rows.push({ k: i.newBest ? "Before" : "Best", v: i.fmt(i.best), d: whenDay(i.best.date, true) });   // once today beats it, the old record is "Before", not a second "Best"
+      if (i.last) rows.push({ k: "Last", v: i.fmt(i.last), d: whenDay(i.last.date, true) });              // the same numbers twice when the best was the last session: honest, and short
       return rows;
     };
     for (const sel of [".lift.last", ".lift.best"]) q(sel).addEventListener("click", (e) => { e.stopPropagation(); const i = q(".lifts")._info; if (i && i.best) showWhen(q(".lifts"), liftRows(i)); });   // the bubble hangs under the cell, whichever half was tapped
