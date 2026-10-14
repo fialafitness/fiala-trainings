@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, pendingNoteRows, ui } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, perHand, betterSet, topSet, sameSet } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, perHand, betterSet, topSet, sameSet, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -110,7 +110,7 @@ import { reportRange, buildReport } from "./report.js";
     S.offlineEntry = "remembered"; settingsOpen = false; S.signedIn = true; S.sessionEmail = remembered.email || ""; S.clientMode = remembered.role !== "trainer";
     document.body.classList.toggle("client", S.clientMode); S.backend = S.clientMode ? clientBackend : cloudBackend; hideAllViews();
     if (S.clientMode) { $("clientFoot").hidden = false; if (!offlineFromMirror()) showLogin("You\u2019re offline. Connect once to sign in."); return; }
-    $("dataNote").textContent = "Synced to the cloud"; $("myExercises").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false;
+    $("dataNote").textContent = "Synced to the cloud"; $("myExercises").hidden = false; $("packagesBtn").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false;
     S.offline = true; render(); setStatus();
   }
   async function resumeOnline() {
@@ -135,11 +135,11 @@ import { reportRange, buildReport } from "./report.js";
   }
 
   function hideAllViews() {
-    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vSettings", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
+    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vPackages", "vSettings", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
   }
   function showLogin(msg) {
     S.signedIn = false; S.clientMode = false; S.myClientId = null; document.body.classList.remove("client");
-    $("clientFoot").hidden = true; $("localFoot").hidden = true; $("myExercises").hidden = true; $("settingsBtn").hidden = true; settingsOpen = false; fromSettings = false;
+    $("clientFoot").hidden = true; $("localFoot").hidden = true; $("myExercises").hidden = true; $("packagesBtn").hidden = true; $("settingsBtn").hidden = true; settingsOpen = false; fromSettings = false;
     hideAllViews(); $("vLogin").hidden = false;
     $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("loginMsg").textContent = msg || "";
@@ -148,7 +148,7 @@ import { reportRange, buildReport } from "./report.js";
     hideAllViews(); $("vSignup").hidden = false; $("suForm").hidden = false; $("suDone").hidden = true; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("suMsg").textContent = ""; $("suEmail").value = $("loginEmail").value.trim(); setTimeout(() => $("suName").focus(), 50);
   }
-  let settingsOpen = false;              // false | "settings" | "password" | "exercises" | "number"
+  let settingsOpen = false;              // false | "settings" | "password" | "exercises" | "packages" | "number"
   let fromSettings = false;              // number/password opened from the Settings list: Back returns there
   // ---- appearance: auto (follow the phone) | light | dark. Saved on this device only.
   const THEME_KEY = "fiala.theme";
@@ -180,6 +180,91 @@ import { reportRange, buildReport } from "./report.js";
     v = String(v || "").trim(); lsSet("fiala.trainer.phone", v);
     for (const c of clients.values()) { if (isTemplateClient(c.id)) continue; if ((c.trainerPhone || "") !== v) { c.trainerPhone = v; scheduleSave("clients", c.id); } }
   }
+  // ---------- packages: what he sells, kept on his own Templates record ----------
+  const tplClient = () => { if (!clients.has(TEMPLATES_ID)) clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); return clients.get(TEMPLATES_ID); };
+  const packagesList = () => ((clients.get(TEMPLATES_ID) || {}).packages || []).filter((pk) => pk && pk.id);
+  let packKind = "sessions";
+  function showPackages() {
+    settingsOpen = "packages"; hideAllViews(); $("vPackages").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
+    renderPackages();
+  }
+  function renderPackages() {
+    const ul = $("packList"); ul.replaceChildren();
+    for (const pk of packagesList()) {
+      const li = document.createElement("li"); li.className = "pack-row";
+      const left = document.createElement("div"); const name = document.createElement("div"); name.textContent = pk.name; const sub = document.createElement("div"); sub.className = "sub"; sub.textContent = pk.kind === "monthly" ? "Monthly plan" : pk.size + (pk.size === 1 ? " session" : " sessions"); left.append(name, sub);
+      const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "Delete";
+      del.addEventListener("click", async () => { if (!(await askFirst({ title: "Delete \u201c" + pk.name + "\u201d?", text: "Clients already on it keep their package. It just cannot be picked again." }))) return; const tc = tplClient(); tc.packages = packagesList().filter((x) => x.id !== pk.id); scheduleSave("clients", tc.id); renderPackages(); });
+      li.append(left, del); ul.appendChild(li);
+    }
+    $("packSizeRow").hidden = packKind !== "sessions";
+    for (const b of $("packKind").querySelectorAll("button")) b.classList.toggle("on", b.dataset.kind === packKind);
+  }
+  $("packagesBtn").addEventListener("click", showPackages);
+  $("packKind").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; packKind = b.dataset.kind; renderPackages(); });
+  $("packAdd").addEventListener("click", () => {
+    const size = clamp(parseInt($("packSize").value, 10) || 0, 0, 200);
+    if (packKind === "sessions" && !size) { $("packSize").focus(); return; }
+    const name = String($("packName").value || "").trim() || (packKind === "monthly" ? "Monthly plan" : size + " sessions");
+    const tc = tplClient(); tc.packages = [...packagesList(), { id: uid(), name, kind: packKind, size: packKind === "sessions" ? size : null }]; scheduleSave("clients", tc.id);
+    $("packName").value = ""; $("packSize").value = ""; renderPackages();
+  });
+  // a client's plan: picked in Details; the card on the page shows where it stands
+  const effPaused = (c) => !!c && (!!c.paused || !planActive(c.plan, today()));            // paused by hand, or a monthly plan past its day
+  const monthLater = (iso) => { const [y, m, d] = String(iso).split("-").map(Number); return localIso(new Date(y, m, d, 12)); };   // the same day next month
+  function paintPlanDetails(c) {
+    const sel = $("planSel"), cur = c.plan && c.plan.id ? c.plan.id : "";
+    const opts = [["", "None"], ...packagesList().map((pk) => [pk.id, pk.name])];
+    if (cur && !opts.some(([id]) => id === cur)) opts.push([cur, c.plan.name || "Package"]);      // a package deleted since: still named
+    sel.replaceChildren(...opts.map(([v, label]) => { const o = document.createElement("option"); o.value = v; o.textContent = label; return o; })); sel.value = cur;
+    const monthly = !!(c.plan && c.plan.kind === "monthly"); $("planUntilRow").hidden = !monthly;
+    if (monthly && document.activeElement !== $("planUntil")) $("planUntil").value = c.plan.until || "";
+  }
+  function renderPlanCard(c) {
+    const card = $("planCard"), plan = c.plan && c.plan.id ? c.plan : null; card.hidden = !plan; if (!plan) return;
+    const bar = $("planBar"), big = $("planBig"), small = $("planSmall"), adj = $("planAdjust"); big.classList.remove("over");
+    if (plan.kind === "monthly") {
+      const active = planActive(plan, today());
+      $("planName").textContent = plan.name || "Monthly plan"; $("planRight").textContent = ""; bar.hidden = true; adj.hidden = true;
+      big.textContent = plan.until ? (active ? "Until " + fmtDay(plan.until) : "Ended " + fmtDay(plan.until)) : "Active"; big.classList.toggle("over", !active);
+      small.textContent = active ? (S.clientMode ? "Your plan is active." : "Tap to change the date") : (S.clientMode ? "Message Michal to pick it up again." : "Their workouts are on hold until you extend it");
+      return;
+    }
+    const pr = planProgress(plan, clientTrainings(c.id)); if (!pr) { card.hidden = true; return; }
+    $("planName").textContent = plan.name || pr.size + " sessions"; $("planRight").textContent = pr.packNo > 1 ? "Package " + pr.packNo : "";
+    bar.hidden = false; bar.classList.toggle("cont", pr.size > 24); bar.replaceChildren();
+    if (pr.size > 24) { const i = document.createElement("i"); i.style.width = Math.round(100 * pr.inPack / pr.size) + "%"; bar.appendChild(i); }
+    else for (let k = 1; k <= pr.size; k++) { const i = document.createElement("i"); if (k <= pr.inPack) i.className = "on"; else if (k === pr.inPack + 1) i.className = "next"; bar.appendChild(i); }
+    big.textContent = pr.inPack + " of " + pr.size;
+    small.textContent = pr.complete ? "Package complete \u00b7 the next session starts a new one" : pr.left + (pr.left === 1 ? " session left" : " sessions left");
+    adj.hidden = S.clientMode;
+  }
+  $("planCard").addEventListener("click", (e) => {
+    const c = clients.get(S.view.id); if (!c || S.clientMode || !c.plan) return;
+    const step = e.target.closest(".step");
+    if (step) { c.plan.adjust = (parseInt(c.plan.adjust, 10) || 0) + (step.id === "planPlus" ? 1 : -1); scheduleSave("clients", c.id); renderClient(); return; }   // the one knob for mistakes
+    detailsOpen = true; renderClient(); $("detailsBody").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
+  $("planSel").addEventListener("change", (e) => {
+    const c = clients.get(S.view.id); if (!c || isTemplateClient(c.id)) return;
+    const id = e.target.value; if ((c.plan && c.plan.id ? c.plan.id : "") === id) return;
+    const pk = packagesList().find((x) => x.id === id);
+    if (c.plan && c.plan.id) c.planHistory = [...(c.planHistory || []), { ...c.plan, endedOn: today() }].slice(-20);   // what they were on before stays on record
+    c.plan = pk ? { id: pk.id, name: pk.name, kind: pk.kind, size: pk.size || null, startedOn: today(), adjust: 0, ...(pk.kind === "monthly" ? { until: monthLater(today()) } : {}) } : null;
+    scheduleSave("clients", c.id); renderClient();
+  });
+  $("planUntil").addEventListener("change", (e) => { const c = clients.get(S.view.id); if (!c || !c.plan || c.plan.kind !== "monthly" || !/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) return; c.plan.until = e.target.value; scheduleSave("clients", c.id); renderClient(); });
+  $("planMonth").addEventListener("click", () => { const c = clients.get(S.view.id); if (!c || !c.plan || c.plan.kind !== "monthly") return; c.plan.until = monthLater(c.plan.until && c.plan.until > today() ? c.plan.until : today()); scheduleSave("clients", c.id); renderClient(); });
+  // the workout: "In person" counts toward the package; the client reads "Session 3 of 10"
+  function paintSessionPill(t, asClient) {
+    const pill = $("sessionPill"), c = clients.get(t.clientId);
+    if (isTemplateClient(t.clientId)) { pill.hidden = true; return; }
+    const plan = c && c.plan && c.plan.kind === "sessions" ? c.plan : null, sn = plan ? sessionNo(plan, clientTrainings(t.clientId), t) : null;
+    if (asClient) { pill.hidden = !sn; pill.classList.add("on"); if (sn) pill.textContent = "Session " + sn.n + " of " + sn.size; return; }
+    pill.hidden = false; pill.classList.toggle("on", !!t.inPerson);
+    pill.innerHTML = "<i>\u2713</i><span></span>"; pill.lastChild.textContent = t.inPerson && sn ? "In person \u00b7 " + sn.n + " of " + sn.size : "In person";
+  }
+  $("sessionPill").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t || S.clientMode || isTemplateClient(t.clientId)) return; t.inPerson = !t.inPerson; if (!t.inPerson) delete t.inPerson; touchState(t.id, "inPerson"); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); });
   function showExercises() {
     settingsOpen = "exercises"; hideAllViews(); $("vExercises").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
     exShown = 80; exOpenKey = null; renderExercises();
@@ -334,7 +419,7 @@ import { reportRange, buildReport } from "./report.js";
       return;
     }
     $("dataNote").textContent = "Synced to the cloud";
-    $("myExercises").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false; $("clientFoot").hidden = true;
+    $("myExercises").hidden = false; $("packagesBtn").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false; $("clientFoot").hidden = true;
     render(); setStatus();
     await syncDown();                                         // a success flushes the queue itself
     seedTemplates().catch(() => {});
@@ -496,6 +581,7 @@ import { reportRange, buildReport } from "./report.js";
       rows: from ? from.rows.map((r) => freshRow(r)) : [],
     };
     if (from && from.fromTemplate) t.fromTemplate = from.fromTemplate;
+    if (from && from.inPerson) t.inPerson = true;
     trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
     go({ name: "training", id: t.id });
   }
@@ -920,7 +1006,7 @@ import { reportRange, buildReport } from "./report.js";
     if (celebrating) { hideAllViews(); $("vCelebrate").hidden = false; $("back").hidden = true; $("brand").hidden = false; return; }   // "Nice work" stays up until it hands over to the client page, whatever refreshes meanwhile
     $("vLogin").hidden = true; $("vRecovery").hidden = true; $("vWaiting").hidden = true; $("vCelebrate").hidden = true;
     if (S.clientMode && (S.view.name === "clients" || (S.view.name === "client" && S.view.id !== S.myClientId))) S.view = { name: "client", id: S.myClientId };
-    if (S.clientMode && clients.get(S.myClientId)?.paused) S.view = { name: "client", id: S.myClientId };
+    if (S.clientMode && effPaused(clients.get(S.myClientId))) S.view = { name: "client", id: S.myClientId };
     if (S.view.name === "client" && !clients.has(S.view.id)) S.view = S.clientMode ? { name: "client", id: S.myClientId } : { name: "clients" };
     if (S.view.name === "training" && !trainings.has(S.view.id)) S.view = S.clientMode ? { name: "client", id: S.myClientId } : { name: "clients" };
     if (S.view.name !== "training") previewClient = false;
@@ -1131,9 +1217,9 @@ import { reportRange, buildReport } from "./report.js";
     $("vClient").classList.toggle("tpl", isTpl);
     $("newTraining").textContent = isTpl ? "+ New template" : "+ New workout";
     if (!isTpl) { $("tplList").hidden = true; $("pickNote").hidden = true; }
-    $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !c.paused;
-    if (isTpl) { $("cName").readOnly = true; $("overview").hidden = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }
-    $("cName").value = c.name; $("cName").readOnly = true; renderOverview(c);
+    $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !effPaused(c); $("pausedKicker").textContent = c.paused ? "Access paused" : "Plan ended";
+    if (isTpl) { $("cName").readOnly = true; $("overview").hidden = true; $("planCard").hidden = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }
+    $("cName").value = c.name; $("cName").readOnly = true; renderPlanCard(c); renderOverview(c); paintPlanDetails(c);
     if (document.activeElement !== $("cNameField")) $("cNameField").value = c.name || "";
     if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
     if (document.activeElement !== $("cPhone")) $("cPhone").value = c.phone || "";
@@ -1145,9 +1231,10 @@ import { reportRange, buildReport } from "./report.js";
     paintMsg(c); paintTrainerMsg(c);
     for (const b of $("unitSeg").querySelectorAll("button")) b.classList.toggle("on", (c.unit || "lb") === b.dataset.unit);
     for (const b of $("accessSeg").querySelectorAll("button")) b.classList.toggle("on", (c.paused ? "paused" : "active") === b.dataset.access);
-    $("pausedCard").hidden = !(c.paused && S.clientMode);
+    $("pausedCard").hidden = !(effPaused(c) && S.clientMode);
     $("pausedText").textContent = phoneDigits(c.trainerPhone) ? "Your workouts are on hold for now. Message Michal when you’re ready to pick up again." : "Your workouts are on hold for now. Michal will switch them back on when you’re ready to pick up again.";
-    document.body.classList.toggle("paused", !!(c.paused && S.clientMode));
+    if (!c.paused && effPaused(c)) $("pausedText").textContent = "Your plan ended " + fmtDay(c.plan.until) + ". Message Michal to pick it up again.";
+    document.body.classList.toggle("paused", !!(effPaused(c) && S.clientMode));
     if (document.activeElement !== $("cNotes")) $("cNotes").value = noteDraft.get(c.id) || "";
     $("noteActions").hidden = !String($("cNotes").value).trim(); growNotesBox();
     renderNotes(c);
@@ -1332,7 +1419,8 @@ import { reportRange, buildReport } from "./report.js";
     scheduleSave("trainings", t.id); paintFinish(t);
     if (finished) {
       const count = clientTrainings(t.clientId).filter((x) => x.completedAt).length;
-      $("celeText").textContent = "That\u2019s your " + ordinal(count) + " workout. Nice work.";
+      const pc = clients.get(t.clientId), sn = pc && pc.plan ? sessionNo(pc.plan, clientTrainings(t.clientId), t) : null;
+      $("celeText").textContent = (sn ? "Session " + sn.n + " of " + sn.size + ". " : "") + "That\u2019s your " + ordinal(count) + " workout. Nice work.";
       celebrating = true; render();
       window.scrollTo(0, 0);
       clearTimeout(celeTimer);
@@ -1345,7 +1433,7 @@ import { reportRange, buildReport } from "./report.js";
   function renderTraining(t) {
     if (document.activeElement !== $("tTitle")) { $("tTitle").value = t.title || ""; requestAnimationFrame(() => { const el = $("tTitle"); el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); }
     $("tDate").textContent = fmtDay(t.date || today());
-    const asClient = S.clientMode || previewClient;
+    const asClient = S.clientMode || previewClient; paintSessionPill(t, asClient);
     $("tTitle").readOnly = asClient; $("tDate").disabled = asClient;
     const isTpl = isTemplateClient(t.clientId);
     if (isTpl) draftFor(t);

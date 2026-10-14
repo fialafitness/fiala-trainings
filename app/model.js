@@ -17,6 +17,23 @@ export const betterSet = (a, b, timed) => !b || (timed ? (a.rp || 0) > (b.rp || 
   : (a.w == null ? -1 : a.w) > (b.w == null ? -1 : b.w) || ((a.w == null ? -1 : a.w) === (b.w == null ? -1 : b.w) && (a.rp || 0) > (b.rp || 0)));
 export const topSet = (row, timed) => { let best = null; const ws = (row && row.weights) || [], rs = (row && row.repsDone) || []; for (let i = 0; i < Math.max(ws.length, rs.length); i++) { const w = num(ws[i]), rp = num(rs[i]); if (timed ? rp == null : (w == null && rp == null)) continue; const st = { w, rp }; if (betterSet(st, best, timed)) best = st; } return best; };
 export const sameSet = (a, b) => !!a && !!b && a.w === b.w && a.rp === b.rp;
+// Packages. A client's plan: { id, name, kind: "sessions" | "monthly", size, startedOn, adjust, until }.
+// A sessions package counts finished workouts marked "in person" since it started, plus the trainer's correction;
+// package 2 starts by itself once package 1 is full. A monthly plan is just a day it is active until.
+export const planProgress = (plan, list) => {
+  if (!plan || plan.kind !== "sessions" || !(plan.size > 0)) return null;
+  const used = Math.max(0, list.filter((t) => t.inPerson && t.completedAt && effDate(t) >= (plan.startedOn || "")).length + (parseInt(plan.adjust, 10) || 0));
+  const size = plan.size, packNo = used === 0 ? 1 : Math.floor((used - 1) / size) + 1, inPack = used === 0 ? 0 : ((used - 1) % size) + 1;
+  return { used, size, packNo, inPack, left: size - inPack, complete: used > 0 && used % size === 0 };
+};
+export const sessionNo = (plan, list, t) => {                      // "Session 3 of 10": this in-person workout's place since the plan started, planned ones included, in date order
+  if (!plan || plan.kind !== "sessions" || !(plan.size > 0) || !t || !t.inPerson || t.skippedAt || t.missed === true || effDate(t) < (plan.startedOn || "")) return null;
+  const order = list.filter((x) => x.inPerson && !x.skippedAt && x.missed !== true && effDate(x) >= (plan.startedOn || "")).sort((a, b) => effDate(a).localeCompare(effDate(b)) || (a.createdAt || "").localeCompare(b.createdAt || ""));
+  const p = order.findIndex((x) => x.id === t.id); if (p < 0) return null;
+  const n = p + 1 + (parseInt(plan.adjust, 10) || 0); if (n < 1) return null;
+  return { n: ((n - 1) % plan.size) + 1, size: plan.size, packNo: Math.floor((n - 1) / plan.size) + 1 };
+};
+export const planActive = (plan, day) => !plan || plan.kind !== "monthly" || !plan.until || plan.until >= day;   // a monthly plan past its day is over
 export const setsOf = (r) => Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20));   // blank = the default 4; 0 still counts as one
 
 export function groupKey(label, index) {

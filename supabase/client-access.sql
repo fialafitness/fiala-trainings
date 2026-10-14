@@ -44,7 +44,12 @@ returns jsonb language sql stable security definer set search_path = public as $
     'clients', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'data', data - 'notes')) from me), '[]'::jsonb),
     'trainings', coalesce((
       select jsonb_agg(jsonb_build_object('id', t.id, 'data', t.data))
-      from ft_trainings t where t.client_id in (select id from me where coalesce(data ->> 'paused', '') <> 'true')), '[]'::jsonb)
+      from ft_trainings t where t.client_id in (
+        select id from me
+        where coalesce(data ->> 'paused', '') <> 'true'
+          and (coalesce(data -> 'plan' ->> 'kind', '') <> 'monthly'                       -- a monthly plan past its day is a pause
+               or coalesce(data -> 'plan' ->> 'until', '') = ''
+               or (data -> 'plan' ->> 'until') >= to_char(now() at time zone 'America/Los_Angeles', 'YYYY-MM-DD')))), '[]'::jsonb)
   );
 $$;
 revoke execute on function client_my_data() from public, anon;
