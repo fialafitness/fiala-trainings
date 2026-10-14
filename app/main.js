@@ -1584,6 +1584,17 @@ import { reportRange, buildReport } from "./report.js";
   // what the set before (in this workout) was logged at: the next set starts from it, so nothing is retyped unless something changed
   // after Complete set: bring the card's Sets line back under the header (or on to the next card once this one is finished)
   const haptic = () => { try { if (navigator.vibrate) navigator.vibrate(10); } catch (_) {} };   // Android; iPhone ticks on its own through the switch the button is a label for
+  function showWhen(anchor, title, sub) {                            // a small bubble under a tapped number: when it was. Any tap, a scroll or Escape closes it
+    const bg = $("whenBg"), pop = $("whenPop"); $("whenTitle").textContent = title; $("whenSub").textContent = sub || ""; $("whenSub").hidden = !sub;
+    bg.hidden = false; pop.classList.remove("above");
+    const r = anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, pw = pop.offsetWidth, ph = pop.offsetHeight;
+    const left = Math.max(8, Math.min(r.left, vw - pw - 8)); let top = r.bottom + 8;
+    if (top + ph > vh - 8) { top = r.top - 8 - ph; pop.classList.add("above"); }
+    pop.style.left = left + "px"; pop.style.top = top + "px"; pop.style.setProperty("--caret", Math.max(12, Math.min(r.left + r.width / 2 - left, pw - 12)) + "px");
+    const close = () => { bg.hidden = true; bg.removeEventListener("click", close); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", close, true); };
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    bg.addEventListener("click", close); document.addEventListener("keydown", onKey); window.addEventListener("scroll", close, true);
+  }
   function followRow(id, field) {                                   // a card that just moved (a new label): keep it under the finger, and the keyboard on the field he was heading for
     const row = $("rows").querySelector('.row[data-id="' + id + '"]'); if (!row) return;
     const inp = field && row.querySelector("." + field); if (inp) inp.focus({ preventScroll: true });
@@ -1667,7 +1678,7 @@ import { reportRange, buildReport } from "./report.js";
       <div class="cnote" hidden><button class="cnote-btn" type="button" aria-expanded="false"><span class="cnote-lab">See instructions</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="cnote-text" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="setlog"><div class="pair"><div class="chip stack"><span class="lab">Weight</span><span class="valrow"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></span></div><div class="chip stack"><span class="lab">Reps</span><span class="valrow"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></span></div></div></div>
-      <div class="lifts" hidden><span class="lift last"><span class="k">Last</span><b></b></span><span class="lift best"><span class="k">Best</span><b></b><span class="also" hidden>\u00b7 last time</span></span></div>
+      <div class="lifts" hidden><button type="button" class="lift last"><span class="k">Last</span><b></b></button><button type="button" class="lift best"><span class="k">Best</span><b></b></button></div>
       <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Instructions for the client"></textarea></div>`;
     const q = (s) => el.querySelector(s);
     let wText = false;                       // a row that already holds BW / 60 sec opens on the full keyboard (the bar above the keyboard switches it)
@@ -1897,23 +1908,32 @@ import { reportRange, buildReport } from "./report.js";
         const earlier = effDate(other) < effDate(t) || (effDate(other) === effDate(t) && (other.createdAt || "") < (t.createdAt || ""));
         if (!earlier) continue;
         for (const x of other.rows || []) {
-          if (canon(x.name) !== name) continue; const st = topSet(x, timed); if (!st) continue;
-          if (betterSet(st, best, timed)) best = st;
+          if (canon(x.name) !== name) continue; const st = topSet(x, timed); if (!st) continue; st.date = effDate(other); st.title = String(other.title || "").trim();
+          if (betterSet(st, best, timed)) best = st;                   // equal numbers: the newest session keeps the title
           if (!last) last = st;
         }
       }
       return best ? { best, last, timed } : null;
     };
-    const paintLifts = () => {                                       // LAST 215 lb × 4   BEST 225 lb × 5  ·  one entry when they are the same  ·  NEW BEST in gold while today beats it
+    const paintLifts = () => {                                       // LAST 215 lb × 4   BEST 230 lb × 3  ·  one entry when the best was the last session  ·  NEW BEST in gold while today beats it  ·  a tap on a number tells when
       const box = q(".lifts"), h = isTemplateClient(t.clientId) ? null : liftHistory();
       box.hidden = !h; if (!h) return;
       const unit = (clients.get(t.clientId) || {}).unit || "lb", tm = timedPlan(r.reps);
       const fmt = tm ? (st) => (st.w != null ? st.w + " " + unit + " \u00d7 " : "") + st.rp + " " + tm.unit : (st) => st.w != null ? st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps");
       const now = topSet(r, h.timed), newBest = !!(now && betterSet(now, h.best, h.timed)), same = sameSet(h.last, h.best);
       q(".lift.best").classList.toggle("new", newBest); q(".lift.best .k").textContent = newBest ? "New best" : "Best"; q(".lift.best b").textContent = fmt(newBest ? now : h.best);
-      q(".lift.best .also").hidden = !(same && !newBest);
       q(".lift.last").hidden = !h.last || (same && !newBest); if (h.last) q(".lift.last b").textContent = fmt(h.last);
+      box._info = { last: h.last, best: h.best, newBest, same, fmt };
+      box.classList.remove("tight", "wrap");
+      requestAnimationFrame(() => {                                     // one line: tighter type first; only a tiny screen gets a second line
+        const over = () => box.scrollWidth > box.clientWidth + 1;
+        if (over()) box.classList.add("tight");
+        if (over()) box.classList.add("wrap");
+      });
     };
+    const whenDay = (iso, long) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || "")) return ""; const d = new Date(iso + "T12:00:00"), thisYear = d.getFullYear() === new Date().getFullYear(); return d.toLocaleDateString(undefined, { ...(long ? { weekday: "short" } : {}), month: "short", day: "numeric", ...(thisYear ? {} : { year: "numeric" }) }); };
+    q(".lift.last").addEventListener("click", (e) => { e.stopPropagation(); const i = q(".lifts")._info; if (i && i.last) showWhen(e.currentTarget, whenDay(i.last.date, true), i.last.title || "Workout"); });
+    q(".lift.best").addEventListener("click", (e) => { e.stopPropagation(); const i = q(".lifts")._info; if (!i) return; if (i.newBest) showWhen(e.currentTarget, "Today", "Beats " + i.fmt(i.best) + " from " + whenDay(i.best.date)); else showWhen(e.currentTarget, whenDay(i.best.date, true), (i.best.title || "Workout") + (i.same ? " \u00b7 your last session too" : "")); });
     function renderWeights() {
       const n = setsOf(r);
       const boxes = q(".boxes"); const last = lastWeights(t, r);
