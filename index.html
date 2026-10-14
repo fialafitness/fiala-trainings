@@ -41,6 +41,7 @@
     --header-border: rgba(0,0,0,0.04);  /* border-on-light-subtle */
     --field: #ffffff;                   /* a field on the grouped page is a white cell */
     --field-in: #f5f5f7;                /* a field inside a white card is grey */
+    --glyph-fill: rgba(120,120,128,0.14); /* the circle behind a small symbol (secondary system fill) */
     --placeholder: #d2d2d7;
     --brand: #6f6b99;                   /* app-purple — structure / interactive, EXACT */
     --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
@@ -75,6 +76,7 @@
       --header-border: rgba(255,255,255,0.06);
       --field: rgba(255,255,255,0.08);
       --field-in: rgba(255,255,255,0.08);
+      --glyph-fill: rgba(255,255,255,0.12);
       --placeholder: rgba(255,255,255,0.35);
       --brand: #6f6b99;                 /* app-purple — the brand, exact in both modes */
       --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
@@ -109,6 +111,7 @@
     --header-border: rgba(255,255,255,0.06);
     --field: rgba(255,255,255,0.08);
     --field-in: rgba(255,255,255,0.08);
+    --glyph-fill: rgba(255,255,255,0.12);
     --placeholder: rgba(255,255,255,0.35);
     --brand: #6f6b99;                 /* app-purple — the brand, exact in both modes */
     --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
@@ -483,13 +486,12 @@
   body.client .block.ahead .row .sum { margin-top: 2px; font-size: 13px; color: var(--text-tertiary); }
   body.client .block.ahead .row .sum .sum-rest { display: none; }                          /* folded: sets and reps are enough */
   body.client .block.done:not(.open) .row .sum { display: none; }
-  body.client .tempo-wrap { margin: 4px 0 0 var(--numw); }
-  body.client .tempo-tiles.words { display: flex; flex-wrap: wrap; align-items: center; background: none; border-radius: 0; padding: 0; font-size: 15px; color: var(--text-secondary); }
-  body.client .tempo-tiles.words .si { font-size: 15px; line-height: 1.3; margin: 0; color: var(--text-secondary); letter-spacing: 0; }   /* not the tile-label size */
-  body.client .tempo-tiles.words .si + .si::before { content: "\00b7"; margin: 0 8px; }   /* dots, so a long tempo can wrap cleanly */
-  body.client .tempo-tiles.words .si { display: inline-flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; }
+  body.client .tempo-wrap { margin: 6px 0 0 var(--numw); }
+  body.client .tempo-tiles.words { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; background: none; border-radius: 0; padding: 0; font-size: 15px; color: var(--text-secondary); }   /* space, not dots, between the parts: the circles already set them apart */
+  body.client .tempo-tiles.words .si { font-size: 15px; line-height: 22px; margin: 0; color: var(--text-secondary); letter-spacing: 0; }   /* not the tile-label size */
+  body.client .tempo-tiles.words .si { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
   body.client .tempo-tiles.words .si span { font-size: 15px; line-height: inherit; letter-spacing: 0; margin: 0; color: inherit; }   /* not the coach's tiny tile label */
-  body.client .tempo-tiles.words .si svg { width: 15px; height: 15px; color: var(--text-tertiary); }
+  body.client .tempo-tiles.words .si svg { width: 22px; height: 22px; padding: 5px; box-sizing: border-box; border-radius: 50%; background: var(--glyph-fill); color: var(--text-secondary); stroke-width: 2; flex: none; }   /* the symbol in a filled circle, the way SF Symbols' circle variants sit in a list */
   body.client .tempo-tiles .word { align-items: flex-start; text-align: left; padding: 0; min-height: 0; font-size: 15px; font-weight: 400; color: var(--text-secondary); }
   body.client .tempo-tiles:not(.words) { background: none; padding: 0; }
   body.client .ex-icons .vid-btn { width: 36px; height: 36px; margin-right: 2px; border-radius: 50%; background: var(--field-in); color: var(--text-primary); opacity: 1; }   /* a soft round play, like a TV app */
