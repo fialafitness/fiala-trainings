@@ -562,12 +562,12 @@
   .setlog .chip.stack .valrow .suffix { font-size: 15px; font-weight: 500; }
   .setlog .chip.stack.editing .valrow input { position: static; flex: 1 1 auto; width: 0; min-width: 3ch; height: auto; font-size: 22px; font-weight: 600; padding: 0; }
   .setlog .chip.stack.editing .valrow .val { display: none; }
-  .lifts { display: flex; flex-wrap: nowrap; gap: 0 18px; margin: 10px 0 0 2px; font-size: 13px; line-height: 1.3; }   /* under the boxes: LAST and BEST on this exercise, in words; a tap on a number says when */
+  .lifts { display: flex; flex-wrap: nowrap; gap: 0 18px; margin: 14px 0 -6px 2px; font-size: 15px; line-height: 1.3; }   /* under the boxes: LAST and BEST on this exercise, in words; a tap on a number says when. 14px above and below, the card's rhythm (the row's own padding supplies 20 below, hence the -6) */
   .lifts[hidden] { display: none; }
-  .lifts.tight { font-size: 12px; gap: 0 12px; } .lifts.tight .lift .k { font-size: 10px; letter-spacing: 0.06em; }
+  .lifts.tight { font-size: 13px; gap: 0 12px; } .lifts.tight .lift .k { font-size: 10px; letter-spacing: 0.06em; }
   .lifts.wrap { flex-wrap: wrap; gap: 2px 14px; }                                   /* only a tiny screen gets a second line */
   .lift { appearance: none; border: 0; background: none; padding: 2px 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; flex: 0 0 auto; }
-  .lift .k { font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .lift .k { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
   .lift b { font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
   .lift.best b { color: var(--gold); }
   .lift.best.new .k { color: var(--gold); }                                  /* today beats it: NEW BEST, while it lasts */
