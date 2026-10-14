@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, pendingNoteRows, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, perHand, betterSet, topSet, sameSet, planProgress, sessionNo, planActive } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, perHand, betterSet, topSet, sameSet, setCounts, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -615,7 +615,7 @@ import { reportRange, buildReport } from "./report.js";
       if (effDate(other) > effDate(t)) continue;
       if (effDate(other) === effDate(t) && (other.createdAt || "") >= (t.createdAt || "")) continue;
       const r = other.rows.find((x) => canon(x.name) === name && [...(x.weights || []), ...(x.repsDone || [])].some((w) => String(w || "").trim() !== ""));   // a plank has no weight: its time counts
-      if (r) return { date: other.date, weights: r.weights, reps: r.repsDone || [] };
+      if (r) { const only = (arr) => (arr || []).map((v, i) => (setCounts(r, i) ? v : "")); return { date: other.date, weights: only(r.weights), reps: only(r.repsDone) }; }   // a weight typed into a set that never happened does not carry forward
     }
     return null;
   }
@@ -2164,7 +2164,7 @@ import { reportRange, buildReport } from "./report.js";
       box.hidden = !h; if (!h) return;
       const unit = (clients.get(t.clientId) || {}).unit || "lb", tm = timedPlan(r.reps);
       const fmt = tm ? (st) => (st.w != null ? st.w + " " + unit + " \u00d7 " : "") + st.rp + " " + tm.unit : (st) => st.w != null ? st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps");
-      const now = topSet(r, h.timed), newBest = !!(now && betterSet(now, h.best, h.timed)), same = sameSet(h.last, h.best);
+      const now = topSet(r, h.timed, (group.sel | 0) + 1), newBest = !!(now && betterSet(now, h.best, h.timed)), same = sameSet(h.last, h.best);   // the set under the finger counts for the gold preview as it is typed
       q(".lift.best").classList.toggle("new", newBest); q(".lift.best b").textContent = fmt(newBest ? now : h.best); q(".lift.best .vh").textContent = newBest ? "New best " : "Best ";   // the read-out word follows the state
       q(".lift.last").hidden = !h.last || (same && !newBest); if (h.last) q(".lift.last b").textContent = fmt(h.last);
       box._info = { last: h.last, best: h.best, now, newBest, same, fmt };

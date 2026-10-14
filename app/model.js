@@ -15,7 +15,12 @@ export const perHand = (name) => { const n = String(name || ""); return /\b(dumb
 const num = (v) => { const str = String(v == null ? "" : v).trim(); return /^\d+(?:[.,]\d+)?$/.test(str) ? parseFloat(str.replace(",", ".")) : null; };
 export const betterSet = (a, b, timed) => !b || (timed ? (a.rp || 0) > (b.rp || 0) || ((a.rp || 0) === (b.rp || 0) && (a.w || 0) > (b.w || 0))
   : (a.w == null ? -1 : a.w) > (b.w == null ? -1 : b.w) || ((a.w == null ? -1 : a.w) === (b.w == null ? -1 : b.w) && (a.rp || 0) > (b.rp || 0)));
-export const topSet = (row, timed) => { let best = null; const ws = (row && row.weights) || [], rs = (row && row.repsDone) || []; for (let i = 0; i < Math.max(ws.length, rs.length); i++) { const w = num(ws[i]), rp = num(rs[i]); if (timed ? rp == null : (w == null && rp == null)) continue; const st = { w, rp }; if (betterSet(st, best, timed)) best = st; } return best; };
+// How many sets of a row were completed (the Complete set button). Rows from before the count existed: finished = all of them.
+export const doneCount = (row) => { const n = parseInt(row && row.setsDone, 10); return Number.isFinite(n) ? clamp(n, 0, 20) : (row && row.done ? 20 : 0); };
+// A set is a lift once it was completed, or once its reps (or seconds) were logged. A weight typed into a set that never happened is not a lift:
+// it used to become a phantom "best" (Aly's 58 lb curl, Oct 2026) and then carried itself into the next session.
+export const setCounts = (row, i) => i < doneCount(row) || num(((row && row.repsDone) || [])[i]) != null;
+export const topSet = (row, timed, upTo) => { let best = null; const ws = (row && row.weights) || [], rs = (row && row.repsDone) || []; for (let i = 0; i < Math.max(ws.length, rs.length); i++) { if (!setCounts(row, i) && !(upTo != null && i < upTo)) continue; const w = num(ws[i]), rp = num(rs[i]); if (timed ? rp == null : (w == null && rp == null)) continue; const st = { w, rp }; if (betterSet(st, best, timed)) best = st; } return best; };   // upTo: the card being logged may preview the set under the finger
 export const sameSet = (a, b) => !!a && !!b && a.w === b.w && a.rp === b.rp;
 // Packages. A client's plan: { id, name, kind: "sessions" | "monthly", size, startedOn, adjust, until }.
 // A sessions package counts finished workouts marked "in person" since it started, plus the trainer's correction;
