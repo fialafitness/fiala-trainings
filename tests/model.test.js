@@ -1,6 +1,6 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
-import { timedPlan } from "../app/model.js";
+import { timedPlan, perHand } from "../app/model.js";
 const app = await load();
 const { fns, maps } = app;
 const day = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return fns.localIso(d); };
@@ -68,4 +68,7 @@ test("a plan written in time is logged as time; one in reps is not", () => {
   assert.deepStrictEqual(timedPlan("30 sec"), { n: "30", unit: "sec" }); assert.deepStrictEqual(timedPlan("45s"), { n: "45", unit: "sec" });
   assert.deepStrictEqual(timedPlan("1 min"), { n: "1", unit: "min" }); assert.deepStrictEqual(timedPlan("30-45 seconds / side"), { n: "30", unit: "sec" });
   for (const reps of ["10", "6, 6, 4", "8-10 reps", "10 / side", "", "max", "AMRAP", "seconds"]) assert.strictEqual(timedPlan(reps), null, reps);
+});
+test("a dumbbell or kettlebell exercise is logged per hand, everything else as loaded", () => {
+  for (const [n, v] of [["Dumbbell bicep curl", "dumbbell"], ["DB bench press", "dumbbell"], ["Goblet squat (dumbell)", "dumbbell"], ["Kettlebell swing", "kettlebell"], ["KB goblet squat", "kettlebell"], ["Barbell row", null], ["Deadbug", null], ["Cable curl", null], ["", null]]) assert.strictEqual(perHand(n), v, n);
 });
