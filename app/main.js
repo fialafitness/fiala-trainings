@@ -1769,8 +1769,15 @@ import { reportRange, buildReport } from "./report.js";
   // after Complete set: bring the card's Sets line back under the header (or on to the next card once this one is finished)
   const haptic = () => { try { if (navigator.vibrate) navigator.vibrate(10); } catch (_) {} };   // Android; iPhone ticks on its own through the switch the button is a label for
   const whenDay = (iso, long) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || "")) return ""; const d = new Date(iso + "T12:00:00"), thisYear = d.getFullYear() === new Date().getFullYear(); return d.toLocaleDateString(undefined, { ...(long ? { weekday: "short" } : {}), month: "short", day: "numeric", ...(thisYear ? {} : { year: "numeric" }) }); };   // "Tue, Oct 6", "Jul 2, 2025"
-  function showWhen(anchor, title, sub) {                            // a small bubble under a tapped number: when it was. Any tap, a scroll or Escape closes it
-    const bg = $("whenBg"), pop = $("whenPop"); $("whenTitle").textContent = title; $("whenSub").textContent = sub || ""; $("whenSub").hidden = !sub;
+  function showWhen(anchor, title, sub) {                            // a small frosted bubble under a tapped chip: in words. Any tap, a scroll or Escape closes it
+    const bg = $("whenBg"), pop = $("whenPop"), rows = Array.isArray(title) ? title : [{ v: title, d: sub }];   // rows: [{ k: "Best", v: "225 lb × 8", d: "Wed, Oct 8" }]
+    pop.replaceChildren(...rows.map((row) => {
+      const div = document.createElement("div"); div.className = "wrow";
+      if (row.k) { const k = document.createElement("span"); k.className = "wk"; k.textContent = row.k; div.appendChild(k); }
+      const b = document.createElement("b"); b.textContent = row.v; div.appendChild(b);
+      if (row.d) { const d = document.createElement("span"); d.className = "wd"; d.textContent = row.d; div.appendChild(d); }
+      return div;
+    }));
     bg.hidden = false; pop.classList.remove("above");
     const r = anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, pw = pop.offsetWidth, ph = pop.offsetHeight;
     const left = Math.max(8, Math.min(r.left, vw - pw - 8)); let top = r.bottom + 8;
@@ -1863,7 +1870,7 @@ import { reportRange, buildReport } from "./report.js";
       <div class="cnote" hidden><button class="cnote-btn" type="button" aria-expanded="false"><span class="cnote-lab">See instructions</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="cnote-text" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="setlog"><div class="pair"><div class="chip stack"><span class="lab">Weight</span><span class="valrow"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></span></div><div class="chip stack"><span class="lab">Reps</span><span class="valrow"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></span></div></div></div>
-      <div class="lifts" hidden><button type="button" class="lift last"><span class="k">Last</span><b></b></button><button type="button" class="lift best"><span class="k">Best</span><b></b></button></div>
+      <div class="lifts" hidden><button type="button" class="lift last" aria-label="Last time"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.6V12l3.1 2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><b></b></button><button type="button" class="lift best" aria-label="Best"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.2 17.2 2.5 7.4l4.8 3.3L12 4.6l4.7 6.1 4.8-3.3-1.7 9.8z" fill="currentColor"/><path d="M4.6 18.8h14.8v1.9H4.6z" fill="currentColor"/></svg><b></b></button></div>
       <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Instructions for the client"></textarea></div>`;
     const q = (s) => el.querySelector(s);
     let wText = false;                       // a row that already holds BW / 60 sec opens on the full keyboard (the bar above the keyboard switches it)
@@ -2106,18 +2113,18 @@ import { reportRange, buildReport } from "./report.js";
       const unit = (clients.get(t.clientId) || {}).unit || "lb", tm = timedPlan(r.reps);
       const fmt = tm ? (st) => (st.w != null ? st.w + " " + unit + " \u00d7 " : "") + st.rp + " " + tm.unit : (st) => st.w != null ? st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps");
       const now = topSet(r, h.timed), newBest = !!(now && betterSet(now, h.best, h.timed)), same = sameSet(h.last, h.best);
-      q(".lift.best").classList.toggle("new", newBest); q(".lift.best .k").textContent = newBest ? "New best" : "Best"; q(".lift.best b").textContent = fmt(newBest ? now : h.best);
+      q(".lift.best").classList.toggle("new", newBest); q(".lift.best b").textContent = fmt(newBest ? now : h.best);
       q(".lift.last").hidden = !h.last || (same && !newBest); if (h.last) q(".lift.last b").textContent = fmt(h.last);
-      box._info = { last: h.last, best: h.best, newBest, same, fmt };
-      box.classList.remove("tight", "wrap");
-      requestAnimationFrame(() => {                                     // one line: tighter type first; only a tiny screen gets a second line
-        const over = () => box.scrollWidth > box.clientWidth + 1;
-        if (over()) box.classList.add("tight");
-        if (over()) box.classList.add("wrap");
-      });
+      box._info = { last: h.last, best: h.best, now, newBest, same, fmt };
     };
-    q(".lift.last").addEventListener("click", (e) => { e.stopPropagation(); const i = q(".lifts")._info; if (i && i.last) showWhen(e.currentTarget, whenDay(i.last.date, true), i.last.title || "Workout"); });
-    q(".lift.best").addEventListener("click", (e) => { e.stopPropagation(); const i = q(".lifts")._info; if (!i) return; if (i.newBest) showWhen(e.currentTarget, "Today", "Beats " + i.fmt(i.best) + " from " + whenDay(i.best.date)); else showWhen(e.currentTarget, whenDay(i.best.date, true), (i.best.title || "Workout") + (i.same ? " \u00b7 your last session too" : "")); });
+    const liftRows = (i) => {                                          // the bubble, in words: every line that applies, best first
+      const rows = [];
+      if (i.newBest) rows.push({ k: "New best", v: i.fmt(i.now), d: "Today" });
+      rows.push({ k: "Best", v: i.fmt(i.best), d: whenDay(i.best.date, true) + (i.same ? " \u00b7 your last session too" : "") });
+      if (i.last && !i.same) rows.push({ k: "Last", v: i.fmt(i.last), d: whenDay(i.last.date, true) });
+      return rows;
+    };
+    for (const sel of [".lift.last", ".lift.best"]) q(sel).addEventListener("click", (e) => { e.stopPropagation(); const i = q(".lifts")._info; if (i && i.best) showWhen(q(".lifts"), liftRows(i)); });   // the bubble hangs under the cell, whichever half was tapped
     function renderWeights() {
       const n = setsOf(r);
       const boxes = q(".boxes"); const last = lastWeights(t, r);
