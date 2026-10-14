@@ -2114,7 +2114,7 @@ import { reportRange, buildReport } from "./report.js";
       const unit = (clients.get(t.clientId) || {}).unit || "lb", tm = timedPlan(r.reps);
       const fmt = tm ? (st) => (st.w != null ? st.w + " " + unit + " \u00d7 " : "") + st.rp + " " + tm.unit : (st) => st.w != null ? st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps");
       const now = topSet(r, h.timed), newBest = !!(now && betterSet(now, h.best, h.timed)), same = sameSet(h.last, h.best);
-      q(".lift.best").classList.toggle("new", newBest); q(".lift.best b").textContent = fmt(newBest ? now : h.best);
+      q(".lift.best").classList.toggle("new", newBest); q(".lift.best b").textContent = fmt(newBest ? now : h.best); q(".lift.best .vh").textContent = newBest ? "New best " : "Best ";   // the read-out word follows the state
       q(".lift.last").hidden = !h.last || (same && !newBest); if (h.last) q(".lift.last b").textContent = fmt(h.last);
       box._info = { last: h.last, best: h.best, now, newBest, same, fmt };
       box.classList.remove("tight", "stack");
@@ -2127,8 +2127,8 @@ import { reportRange, buildReport } from "./report.js";
     const liftRows = (i) => {                                          // the bubble, in words: every line that applies, best first
       const rows = [];
       if (i.newBest) rows.push({ k: "New best", v: i.fmt(i.now), d: "Today" });
-      rows.push({ k: i.newBest ? "Before" : "Best", v: i.fmt(i.best), d: whenDay(i.best.date, true) });   // once today beats it, the old record is "Before", not a second "Best"
-      if (i.last) rows.push({ k: "Last", v: i.fmt(i.last), d: whenDay(i.last.date, true) });              // the same numbers twice when the best was the last session: honest, and short
+      rows.push({ k: i.newBest ? "Before" : "Best", v: i.fmt(i.best), d: whenDay(i.best.date, true) || "Earlier" });   // once today beats it, the old record is "Before", not a second "Best"; a session without a date still gets a word
+      if (i.last) rows.push({ k: "Last", v: i.fmt(i.last), d: whenDay(i.last.date, true) || "Earlier" });              // the same numbers twice when the best was the last session: honest, and short
       return rows;
     };
     for (const sel of [".lift.last", ".lift.best"]) q(sel).addEventListener("click", (e) => { e.stopPropagation(); const i = q(".lifts")._info; if (i && i.best) showWhen(q(".lifts"), liftRows(i)); });   // the bubble hangs under the cell, whichever half was tapped
