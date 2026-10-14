@@ -1092,6 +1092,39 @@ import { reportRange, buildReport } from "./report.js";
     view_.addEventListener("click", (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
   }
 
+  // ---------- the client page overview: workouts done, and the heaviest set ever on any exercise they have logged ----------
+  const overviewCounts = (list, month) => { const done = list.filter((t) => t.completedAt); return { total: done.length, month: done.filter((t) => effDate(t).slice(0, 7) === month).length }; };
+  function loggedExercises(c) {                                      // canon key -> { name, count, best, timed }, from every session of this client
+    const canon = (x) => squash(ALIASES[String(x || "").trim()] || x); const map = new Map();
+    for (const t of clientTrainings(c.id)) for (const r of t.rows || []) {   // newest first: the name keeps its latest spelling
+      const k = canon(r.name); if (!k) continue;
+      const e = map.get(k) || { name: String(r.name || "").trim(), count: 0, best: null, timed: !!timedPlan(r.reps) };
+      const st = topSet(r, e.timed); if (!st) continue;
+      st.date = effDate(t); st.title = String(t.title || "").trim(); e.count++; if (betterSet(st, e.best, e.timed)) e.best = st; map.set(k, e);
+    }
+    return map;
+  }
+  let ovFor = null, ovPick = "";                                     // the exercise looked up, kept while the page stays open
+  const fmtSetFor = (c, e) => { const u = c.unit || "lb", st = e.best; return e.timed ? (st.w != null ? st.w + " " + u + " \u00d7 " : "") + st.rp + " sec" : st.w != null ? st.w + " " + u + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps"); };
+  function paintOvBest() {
+    const c = clients.get(S.view.id); const box = $("ovBest"); if (!c || !ovPick) { box.hidden = true; return; }
+    const e = loggedExercises(c).get(ovPick); box.hidden = false;
+    $("ovBestBtn").hidden = !e; $("ovNone").hidden = !!e; if (!e) { $("ovNone").textContent = "Nothing logged yet"; return; }
+    $("ovBestVal").textContent = fmtSetFor(c, e); box._e = e;
+  }
+  function suggestOv(v) {
+    const c = clients.get(S.view.id), ul = $("ovSugg"); if (!c) { ul.hidden = true; return; }
+    const s = squash(v), all = [...loggedExercises(c).entries()];
+    const hits = (s ? all.filter(([k]) => k.includes(s)).sort((a, b) => (b[0].startsWith(s) - a[0].startsWith(s)) || b[1].count - a[1].count) : all.sort((a, b) => b[1].count - a[1].count)).slice(0, 8);   // nothing typed: what they do most
+    ul.replaceChildren(...hits.map(([k, e]) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = e.name; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { ovPick = k; $("ovEx").value = e.name; $("ovClear").hidden = false; ul.hidden = true; $("ovEx").blur(); paintOvBest(); }); li.appendChild(b); return li; }));
+    ul.hidden = hits.length === 0;
+  }
+  function renderOverview(c) {
+    const n = overviewCounts(clientTrainings(c.id), today().slice(0, 7));
+    $("ovTotal").textContent = String(n.total); $("ovMonth").textContent = String(n.month);
+    if (ovFor !== c.id) { ovFor = c.id; ovPick = ""; $("ovEx").value = ""; $("ovClear").hidden = true; $("ovSugg").hidden = true; }
+    $("overview").hidden = false; paintOvBest();
+  }
   function renderClient() {
     const c = clients.get(S.view.id);
     const isTpl = isTemplateClient(c.id);
@@ -1099,8 +1132,8 @@ import { reportRange, buildReport } from "./report.js";
     $("newTraining").textContent = isTpl ? "+ New template" : "+ New workout";
     if (!isTpl) { $("tplList").hidden = true; $("pickNote").hidden = true; }
     $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !c.paused;
-    if (isTpl) { $("cName").readOnly = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }
-    $("cName").value = c.name; $("cName").readOnly = true;
+    if (isTpl) { $("cName").readOnly = true; $("overview").hidden = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }
+    $("cName").value = c.name; $("cName").readOnly = true; renderOverview(c);
     if (document.activeElement !== $("cNameField")) $("cNameField").value = c.name || "";
     if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
     if (document.activeElement !== $("cPhone")) $("cPhone").value = c.phone || "";
@@ -1584,6 +1617,7 @@ import { reportRange, buildReport } from "./report.js";
   // what the set before (in this workout) was logged at: the next set starts from it, so nothing is retyped unless something changed
   // after Complete set: bring the card's Sets line back under the header (or on to the next card once this one is finished)
   const haptic = () => { try { if (navigator.vibrate) navigator.vibrate(10); } catch (_) {} };   // Android; iPhone ticks on its own through the switch the button is a label for
+  const whenDay = (iso, long) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || "")) return ""; const d = new Date(iso + "T12:00:00"), thisYear = d.getFullYear() === new Date().getFullYear(); return d.toLocaleDateString(undefined, { ...(long ? { weekday: "short" } : {}), month: "short", day: "numeric", ...(thisYear ? {} : { year: "numeric" }) }); };   // "Tue, Oct 6", "Jul 2, 2025"
   function showWhen(anchor, title, sub) {                            // a small bubble under a tapped number: when it was. Any tap, a scroll or Escape closes it
     const bg = $("whenBg"), pop = $("whenPop"); $("whenTitle").textContent = title; $("whenSub").textContent = sub || ""; $("whenSub").hidden = !sub;
     bg.hidden = false; pop.classList.remove("above");
@@ -1931,7 +1965,6 @@ import { reportRange, buildReport } from "./report.js";
         if (over()) box.classList.add("wrap");
       });
     };
-    const whenDay = (iso, long) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || "")) return ""; const d = new Date(iso + "T12:00:00"), thisYear = d.getFullYear() === new Date().getFullYear(); return d.toLocaleDateString(undefined, { ...(long ? { weekday: "short" } : {}), month: "short", day: "numeric", ...(thisYear ? {} : { year: "numeric" }) }); };
     q(".lift.last").addEventListener("click", (e) => { e.stopPropagation(); const i = q(".lifts")._info; if (i && i.last) showWhen(e.currentTarget, whenDay(i.last.date, true), i.last.title || "Workout"); });
     q(".lift.best").addEventListener("click", (e) => { e.stopPropagation(); const i = q(".lifts")._info; if (!i) return; if (i.newBest) showWhen(e.currentTarget, "Today", "Beats " + i.fmt(i.best) + " from " + whenDay(i.best.date)); else showWhen(e.currentTarget, whenDay(i.best.date, true), (i.best.title || "Workout") + (i.same ? " \u00b7 your last session too" : "")); });
     function renderWeights() {
@@ -2030,6 +2063,11 @@ import { reportRange, buildReport } from "./report.js";
     noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox();
     writeNotes(c, [...noteEntries(c), { id: uid(), at: now(), text }]); renderNotes(c);
   });
+  $("ovEx").addEventListener("input", (e) => { ovPick = ""; $("ovClear").hidden = !e.target.value; suggestOv(e.target.value); paintOvBest(); });
+  $("ovEx").addEventListener("focus", (e) => suggestOv(e.target.value));
+  $("ovEx").addEventListener("blur", () => setTimeout(() => { $("ovSugg").hidden = true; }, 120));
+  $("ovClear").addEventListener("click", () => { ovPick = ""; $("ovEx").value = ""; $("ovClear").hidden = true; $("ovSugg").hidden = true; paintOvBest(); });
+  $("ovBestBtn").addEventListener("click", (e) => { const x = $("ovBest")._e; if (x && x.best) showWhen(e.currentTarget, whenDay(x.best.date, true), x.best.title || "Workout"); });
   $("noteDiscard").addEventListener("click", async () => { if ($("cNotes").value.trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; const c = clients.get(S.view.id); if (c) noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox(); });
   $("unitSeg").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-unit]"); const c = clients.get(S.view.id); if (!b || !c) return;
@@ -2198,7 +2236,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { overviewCounts, loggedExercises, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
