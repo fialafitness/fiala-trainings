@@ -1,6 +1,6 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
-import { timedPlan, perHand } from "../app/model.js";
+import { timedPlan, perHand, topSet, betterSet, sameSet } from "../app/model.js";
 const app = await load();
 const { fns, maps } = app;
 const day = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return fns.localIso(d); };
@@ -71,4 +71,14 @@ test("a plan written in time is logged as time; one in reps is not", () => {
 });
 test("a dumbbell or kettlebell exercise is logged per hand, everything else as loaded", () => {
   for (const [n, v] of [["Dumbbell bicep curl", "dumbbell"], ["DB bench press", "dumbbell"], ["Goblet squat (dumbell)", "dumbbell"], ["Kettlebell swing", "kettlebell"], ["KB goblet squat", "kettlebell"], ["Barbell row", null], ["Deadbug", null], ["Cable curl", null], ["", null]]) assert.strictEqual(perHand(n), v, n);
+});
+
+test("the top set of a row: heaviest then most reps; a hold: longest then heaviest; bodyweight reps count below any weight", () => {
+  assert.deepStrictEqual(topSet({ weights: ["100", "105", "105"], repsDone: ["8", "6", "7"] }, false), { w: 105, rp: 7 });
+  assert.deepStrictEqual(topSet({ weights: ["", "25"], repsDone: ["45", "30"] }, true), { w: null, rp: 45 });
+  assert.deepStrictEqual(topSet({ weights: ["", ""], repsDone: ["10", "12"] }, false), { w: null, rp: 12 });
+  assert.deepStrictEqual(topSet({ weights: ["bw", "20"], repsDone: ["15", "8"] }, false), { w: 20, rp: 8 });
+  assert.strictEqual(topSet({ weights: [], repsDone: [] }, false), null); assert.strictEqual(topSet({ weights: ["", ""], repsDone: ["", ""] }, true), null);
+  assert.ok(betterSet({ w: 225, rp: 5 }, { w: 215, rp: 4 }, false)); assert.ok(!betterSet({ w: 215, rp: 4 }, { w: 215, rp: 4 }, false), "equal is not better");
+  assert.ok(betterSet({ w: null, rp: 45 }, { w: 25, rp: 30 }, true), "a longer hold beats a heavier shorter one"); assert.ok(sameSet({ w: 1, rp: 2 }, { w: 1, rp: 2 }) && !sameSet({ w: 1, rp: 2 }, null));
 });
