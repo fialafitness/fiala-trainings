@@ -667,21 +667,24 @@
   .ov-tile.best[hidden] { display: none; }
   .ov-none { font-size: 15px; color: var(--text-secondary); }
   .ov-none[hidden] { display: none; }
-  .lifts { display: flex; flex-wrap: nowrap; gap: 0 18px; margin: 10px 0 -6px 2px; font-size: 15px; line-height: 1.3; }   /* under the boxes: LAST and BEST on this exercise, in words; a tap on a number says when. 10px above (it belongs to the boxes), 14 below before the button (the row's own padding supplies 20, hence the -6) */
+  .lifts { display: inline-flex; align-items: center; max-width: 100%; margin: 10px 0 -6px 0; padding: 0 2px; min-height: 32px; border-radius: 50px; background: var(--glyph-fill); font-size: 15px; line-height: 1.3; }   /* under the boxes: ONE grey cell — a clock + the last session, a hairline, a gold crown + the best; a tap opens the bubble in words */
   .lifts[hidden] { display: none; }
-  .lifts.tight { font-size: 13px; gap: 0 12px; } .lifts.tight .lift .k { font-size: 10px; letter-spacing: 0.06em; }
-  .lifts.wrap { flex-wrap: wrap; gap: 2px 14px; }                                   /* only a tiny screen gets a second line */
-  .lift { appearance: none; border: 0; background: none; padding: 2px 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; flex: 0 0 auto; }
-  .lift .k { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
-  .lift b { font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
-  .lift.best b { color: var(--gold); }
-  .lift.best.new .k { color: var(--gold); }                                  /* today beats it: NEW BEST, while it lasts */
+  .lift { appearance: none; border: 0; background: none; padding: 0 9px; min-height: 32px; font: inherit; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex: 0 1 auto; min-width: 0; transition: opacity 300ms ease; }
+  .lift:active { opacity: 0.7; }
+  .lift b { overflow: hidden; text-overflow: ellipsis; }
+  .lift.last:not([hidden]) + .lift.best::before { content: ""; width: 1px; height: 14px; margin-right: 3px; background: var(--text-tertiary); opacity: 0.45; flex: none; }   /* the hairline between the two */
+  .lift .ic { width: 15px; height: 15px; flex: none; color: var(--text-tertiary); }
+  .lift.best .ic { color: var(--gold); }                                     /* the crown is the gold; the numbers stay ink */
+  .lift b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .lift.best.new b { color: var(--gold); }                                   /* today beats it: the number turns gold, while it lasts */
   #whenBg { position: fixed; inset: 0; z-index: 55; }                       /* catches the closing tap */
   #whenBg[hidden] { display: none; }
   #whenPop { position: fixed; isolation: isolate; max-width: calc(100vw - 16px); padding: 10px 14px 11px; border-radius: 16px; background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); box-shadow: 0 10px 30px rgba(0,0,0,0.18), inset 0 0 0 0.5px var(--glass-edge); animation: popIn 160ms ease-out; }   /* frosted glass, like a system popover */
-  #whenPop b { display: block; font-size: 15px; font-weight: 600; color: var(--text-primary); }
-  #whenPop span { display: block; margin-top: 2px; font-size: 13px; color: var(--text-secondary); }
-  #whenPop span[hidden] { display: none; }
+  #whenPop { display: grid; grid-template-columns: auto auto auto; column-gap: 8px; row-gap: 7px; align-items: baseline; }   /* three aligned columns: the word, the numbers, the day; a long day wraps, the numbers never do */
+  #whenPop .wrow { display: contents; }
+  #whenPop .wk { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap; }
+  #whenPop b { font-size: 15px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #whenPop .wd { font-size: 13px; color: var(--text-secondary); }
   #whenPop::before { content: ""; position: absolute; z-index: -1; top: -6px; left: var(--caret, 16px); width: 12px; height: 12px; background: inherit; -webkit-backdrop-filter: inherit; backdrop-filter: inherit; transform: translateX(-50%) rotate(45deg); box-shadow: inset 0.5px 0.5px 0 var(--glass-edge); }
   #whenPop.above::before { top: auto; bottom: -6px; box-shadow: inset -0.5px -0.5px 0 var(--glass-edge); }
   @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
@@ -1178,7 +1181,7 @@
   <button type="button" data-tab="workouts" class="on"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7.5v9M17.5 7.5v9M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg><span>Workouts</span></button>
   <button type="button" data-tab="profile"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-3.8 4-5.6 7.5-5.6s6.5 1.8 7.5 5.6"/></svg><span>Profile</span></button>
 </nav>
-<div id="whenBg" hidden><div id="whenPop" role="dialog" aria-live="polite"><b id="whenTitle"></b><span id="whenSub"></span></div></div>
+<div id="whenBg" hidden><div id="whenPop" role="dialog" aria-live="polite"></div></div>
 <div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="pickSheet" hidden><div class="sheet ask confirm-sheet pick-sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle"><h3 id="pickTitle"></h3><ul class="list" id="pickList"></ul><div class="ask-actions"><button class="btn quiet" id="pickNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="earlySheet" hidden>
@@ -1202,7 +1205,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=32";
+  import { boot } from "./app/main.js?v=33";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
