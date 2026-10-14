@@ -1281,7 +1281,7 @@ import { reportRange, buildReport } from "./report.js";
       const left = document.createElement("span"); left.style.minWidth = "0";
       const overdue = next && !skipped && !t.completedAt && !!effDate(t) && effDate(t) < today();
       const whenText = next ? (overdue ? "Missed \u00b7 " : "") + relDay(effDate(t)) : "";
-      if (whenText) { const when = document.createElement("span"); when.className = "when"; when.textContent = whenText; left.append(when); }
+      if (whenText) { const when = document.createElement("span"); when.className = "when" + (overdue ? " missed" : ""); when.textContent = whenText; left.append(when); }
       let acts = null;
       if (overdue) {                                                       // the missed workout is the first thing to decide
         acts = document.createElement("div"); acts.className = "missed-actions";
