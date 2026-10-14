@@ -691,9 +691,8 @@
   .lifts.stack .lift { min-height: 34px; }
   .lifts.stack .lift.last:not([hidden]) + .lift.best::before { left: 14px; right: 14px; top: 0; bottom: auto; width: auto; height: 1px; }
   .lift .ic { width: 15px; height: 15px; flex: none; color: var(--text-tertiary); }
-  .lift.best .ic { color: var(--gold); }                                     /* the crown is the gold; the numbers stay ink */
   .lift b { font-weight: 600; font-variant-numeric: tabular-nums; }
-  .lift.best.new b { color: var(--gold); }                                   /* today beats it: the number turns gold, while it lasts */
+  .lift.best .ic, .lift.best b { color: var(--gold); }                       /* the best: gold crown, gold numbers (his call) */
   #whenBg { position: fixed; inset: 0; z-index: 55; }                       /* catches the closing tap */
   #whenBg[hidden] { display: none; }
   #whenPop { position: fixed; isolation: isolate; max-width: calc(100vw - 16px); padding: 10px 14px 11px; border-radius: 16px; background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); box-shadow: 0 10px 30px rgba(0,0,0,0.18), inset 0 0 0 0.5px var(--glass-edge); animation: popIn 160ms ease-out; }   /* frosted glass, like a system popover */
@@ -1224,7 +1223,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=38";
+  import { boot } from "./app/main.js?v=39";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

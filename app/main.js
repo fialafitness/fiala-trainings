@@ -2166,7 +2166,7 @@ import { reportRange, buildReport } from "./report.js";
       const fmt = tm ? (st) => (st.w != null ? st.w + " " + unit + " \u00d7 " : "") + st.rp + " " + tm.unit : (st) => st.w != null ? st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps");
       const now = topSet(r, h.timed, (group.sel | 0) + 1), newBest = !!(now && betterSet(now, h.best, h.timed)), same = sameSet(h.last, h.best);   // the set under the finger counts for the gold preview as it is typed
       q(".lift.best").classList.toggle("new", newBest); q(".lift.best b").textContent = fmt(newBest ? now : h.best); q(".lift.best .vh").textContent = newBest ? "New best " : "Best ";   // the read-out word follows the state
-      q(".lift.last").hidden = !h.last || (same && !newBest); if (h.last) q(".lift.last b").textContent = fmt(h.last);
+      q(".lift.last").hidden = !h.last; if (h.last) q(".lift.last b").textContent = fmt(h.last);   // both halves always, even when the best was the last session (his call)
       box._info = { last: h.last, best: h.best, now, newBest, same, fmt };
       box.classList.remove("tight", "stack");
       requestAnimationFrame(() => {                                     // the numbers are never cut: smaller type first, then the two halves stack
