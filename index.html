@@ -400,6 +400,9 @@
   .block.done .done-btn { background: var(--done); border-color: var(--done); color: var(--done-ink); }
   .block.done .group-cap b { color: var(--done); }
   .row .top input.label { text-align: center; font-weight: 500; padding: 0 8px; height: 100%; min-height: 44px; }
+  .group .row .top input.label { background: var(--ss); color: var(--ss-ink); border-color: transparent; box-shadow: none; font-weight: 600; }   /* filled like the client's badges: the coach sees at a glance which card he is in */
+  .group .row .top input.label::placeholder { color: var(--ss-ink); opacity: 0.5; }
+  .group .row .top input.label:focus { box-shadow: 0 0 0 2px var(--brand); border-color: transparent; }
   .row .top .exwrap { position: relative; }
   .row .top .name { font-weight: 500; resize: none; overflow: hidden; min-height: 44px; padding: 10px 16px; line-height: 22px; display: block; }
   .row .x {
@@ -1042,7 +1045,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=14";
+  import { boot } from "./app/main.js?v=15";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

@@ -1584,6 +1584,14 @@ import { reportRange, buildReport } from "./report.js";
   // what the set before (in this workout) was logged at: the next set starts from it, so nothing is retyped unless something changed
   // after Complete set: bring the card's Sets line back under the header (or on to the next card once this one is finished)
   const haptic = () => { try { if (navigator.vibrate) navigator.vibrate(10); } catch (_) {} };   // Android; iPhone ticks on its own through the switch the button is a label for
+  function followRow(id, field) {                                   // a card that just moved (a new label): keep it under the finger, and the keyboard on the field he was heading for
+    const row = $("rows").querySelector('.row[data-id="' + id + '"]'); if (!row) return;
+    const inp = field && row.querySelector("." + field); if (inp) inp.focus({ preventScroll: true });
+    glide(() => {
+      const el = row.closest(".block") || row, head = document.querySelector("header"), off = Math.max(0, head ? head.getBoundingClientRect().bottom : 0) + 12, sc = document.scrollingElement || document.documentElement;   // the header may be scrolled away: never a negative offset
+      return Math.max(0, Math.min(sc.scrollTop + el.getBoundingClientRect().top - off, sc.scrollHeight - sc.clientHeight));
+    });
+  }
   function scrollToCard(key) {
     if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();   // the keyboard leaves first; the glide follows the page as it settles
     const target = () => {
@@ -1802,7 +1810,7 @@ import { reportRange, buildReport } from "./report.js";
         const b = document.createElement("button"); b.type = "button"; b.textContent = n; if (n === "W") b.title = "Warmup";
         if (n === cur) b.classList.add("cur");
         b.addEventListener("mousedown", (ev) => ev.preventDefault());
-        b.addEventListener("click", () => { r.label = n; lastEditedId = r.id; q(".label").value = n; numpick.hidden = true; save(); S.renderedTraining = null; render(); });
+        b.addEventListener("click", () => { r.label = n; lastEditedId = r.id; q(".label").value = n; numpick.hidden = true; save(); S.renderedTraining = null; render(); followRow(r.id, String(r.name || "").trim() ? null : "name"); });   // the card moves to its place; he goes with it, straight into the name if it is still empty
         return b;
       }));
       numpick.hidden = false;
@@ -1810,7 +1818,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!asClient) {
       let labelAtFocus = "";
       q(".label").addEventListener("focus", (e) => { labelAtFocus = e.target.value; showNumbers(); });
-      q(".label").addEventListener("blur", () => { numpick.hidden = true; if (q(".label").value !== labelAtFocus) { S.renderedTraining = null; render(); } });
+      q(".label").addEventListener("blur", (e) => { numpick.hidden = true; if (q(".label").value !== labelAtFocus) { const to = e.relatedTarget, field = to && el.contains(to) && /^(INPUT|TEXTAREA)$/.test(to.tagName) ? [...to.classList].find((c) => /^(name|reps|rest|tempo|w|rp)$/.test(c)) : null; S.renderedTraining = null; render(); followRow(r.id, field || null); } });   // the card moves to its place; the field he tapped next is focused again in the moved card
       q(".name").addEventListener("input", (e) => { closeAlt(); r.name = e.target.value.replace(/\n/g, " "); markNamed(); dropAltNamed(); growName(); save(); suggest(e.target.value); renderWeights(); paintVideo(); paintNewName(); });
       q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
       q(".name").addEventListener("focus", (e) => { closeAlt(); suggest(e.target.value); });
