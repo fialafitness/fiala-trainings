@@ -1438,7 +1438,7 @@ import { reportRange, buildReport } from "./report.js";
       celebrating = true; render();
       window.scrollTo(0, 0);
       clearTimeout(celeTimer);
-      if (!canMsg) celeTimer = setTimeout(() => { if (celebrating) $("celeBack").click(); }, 4000);   // with a Message button up, the screen waits for a tap instead of leaving after 4 s
+      celeTimer = setTimeout(() => { if (celebrating) $("celeBack").click(); }, 4000);   // 4 s, then back to the client page by itself (his call: the timer stays even with Message up)
     }
   }
   let celeTimer = null, celebrating = false;   // the "Nice work" screen is a state, not just a visible panel: a sync's redraw can't knock it off
