@@ -82,3 +82,16 @@ test("the top set of a row: heaviest then most reps; a hold: longest then heavie
   assert.ok(betterSet({ w: 225, rp: 5 }, { w: 215, rp: 4 }, false)); assert.ok(!betterSet({ w: 215, rp: 4 }, { w: 215, rp: 4 }, false), "equal is not better");
   assert.ok(betterSet({ w: null, rp: 45 }, { w: 25, rp: 30 }, true), "a longer hold beats a heavier shorter one"); assert.ok(sameSet({ w: 1, rp: 2 }, { w: 1, rp: 2 }) && !sameSet({ w: 1, rp: 2 }, null));
 });
+
+test("the client overview counts finished workouts and finds the heaviest set per exercise", () => {
+  app.reset(); maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" });
+  const tr = (id, date, rows, done) => ({ id, clientId: "c1", title: "Legs", date, createdAt: date + "T10:00:00.000Z", completedAt: done ? date + "T18:00:00.000Z" : null, skippedAt: null, rows });
+  const row = (name, reps, w, rp) => ({ id: name + reps, label: "1", name, reps, weights: w, repsDone: rp, setsDone: w.length });
+  maps.trainings.set("a", tr("a", "2026-09-29", [row("Bench press", "5", ["230"], ["3"])], true));
+  maps.trainings.set("b", tr("b", "2026-10-06", [row("Bench Press", "5", ["215"], ["4"]), row("Plank", "30 sec", ["", ""], ["30", "45"])], true));
+  maps.trainings.set("c", tr("c", "2026-10-13", [row("Bench press", "5", ["240"], ["1"])], false));
+  const n = fns.overviewCounts([...maps.trainings.values()], "2026-10"); assert.deepStrictEqual(n, { total: 2, month: 1 });
+  const ex = fns.loggedExercises(maps.clients.get("c1"));
+  const bench = [...ex.values()].find((e) => /bench/i.test(e.name)); assert.strictEqual(bench.count, 3, "spellings merge"); assert.deepStrictEqual([bench.best.w, bench.best.rp, bench.best.date], [240, 1, "2026-10-13"], "an unfinished session's set still counts as a lift");
+  const plank = ex.get("plank"); assert.ok(plank.timed); assert.deepStrictEqual([plank.best.rp, plank.best.w], [45, null]);
+});
