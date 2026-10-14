@@ -673,7 +673,11 @@ import { reportRange, buildReport } from "./report.js";
   const writeNotes = (c, list) => { c.notes = packNotes(list); scheduleSave("clients", c.id); };   // only ever from Save / Delete: a redraw never writes
   function renderNotes(c) {
     const wrap = $("noteList"); wrap.replaceChildren(); if (S.clientMode) return;
-    const entries = noteEntries(c).sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
+    const onCards = [];                                                          // notes written on the exercise cards (by the client or by him), shown here with his own
+    for (const tr of clientTrainings(c.id)) for (const r of tr.rows || []) if (r.clientNote) onCards.push({ id: "row/" + tr.id + "/" + r.id, at: r.clientNoteAt || (tr.date ? tr.date + "T12:00:00" : null), text: r.clientNote, by: r.clientNoteBy || "client", exercise: String(r.name || ""), workout: { id: tr.id, title: String(tr.title || ""), date: effDate(tr) || String(tr.date || "") }, row: r, training: tr });
+    const entries = [...noteEntries(c).map((n) => ({ ...n, by: "coach" })), ...onCards].sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
+    const firstName = String(c.name || "").trim().split(/\s+/)[0] || "Client";
+    const dropCardNote = (n) => { delete n.row.clientNote; delete n.row.clientNoteBy; delete n.row.clientNoteAt; if (!trainerTouched.has(n.training.id)) trainerTouched.set(n.training.id, new Set()); trainerTouched.get(n.training.id).add(n.row.id); scheduleSave("trainings", n.training.id); };
     const t = today(), base = new Date(t + "T12:00:00"), monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
     const mondayIso = localIso(monday), yIso = localIso(new Date(base.getTime() - 86400000));
     const groups = new Map();                                                    // "This week", then this year's months, then years, then "Earlier"
@@ -703,12 +707,12 @@ import { reportRange, buildReport } from "./report.js";
       for (const n of g.items) {
         const row = document.createElement("div"); row.className = "entry";
         const top = document.createElement("div"); top.className = "when";
-        const stamp = document.createElement("span"); stamp.textContent = when(n);
+        const stamp = document.createElement("span"); stamp.innerHTML = "<b></b> \u00b7 "; stamp.firstChild.textContent = n.by === "coach" ? "Coach" : firstName; stamp.append(when(n));   // who wrote it, then when
         const ask = document.createElement("span"); ask.className = "ask";
         if (armedNotes.has(n.id)) {
           const q = document.createElement("span"); q.textContent = "Delete this note?";
           const go = document.createElement("button"); go.type = "button"; go.className = "go"; go.textContent = "Delete";
-          go.addEventListener("click", () => { deletedNotes.add(n.id); armedNotes.delete(n.id); writeNotes(c, noteEntries(c).filter((x) => x.id !== n.id)); renderNotes(c); });
+          go.addEventListener("click", () => { armedNotes.delete(n.id); if (n.row) dropCardNote(n); else { deletedNotes.add(n.id); writeNotes(c, noteEntries(c).filter((x) => x.id !== n.id)); } renderNotes(c); });
           const keep = document.createElement("button"); keep.type = "button"; keep.className = "keep"; keep.textContent = "Keep";
           keep.addEventListener("click", () => { armedNotes.delete(n.id); renderNotes(c); });
           ask.append(q, go, keep);
@@ -722,7 +726,7 @@ import { reportRange, buildReport } from "./report.js";
         if (n.workout) {                                                       // written with a session: say which, and open it on a tap
           ref = document.createElement("button"); ref.type = "button"; ref.className = "ref";
           const d = /^\d{4}-\d{2}-\d{2}$/.test(n.workout.date) ? new Date(n.workout.date + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "";
-          ref.textContent = [n.workout.title || "Workout", d].filter(Boolean).join(" \u00b7 ") + " \u203a";
+          ref.textContent = [n.exercise, n.workout.title || "Workout", d].filter(Boolean).join(" \u00b7 ") + " \u203a";   // a card note names its exercise too
           ref.addEventListener("click", () => { if (trainings.has(n.workout.id)) go({ name: "training", id: n.workout.id }); });
         }
         const text = document.createElement("div"); text.className = "text"; text.textContent = n.text;
@@ -1452,15 +1456,22 @@ import { reportRange, buildReport } from "./report.js";
         const txt = document.createElement("div"); txt.className = "text";
         shown.append(cap, txt);
         const writeNote = (text) => {                                          // the client's or the coach's note on this exercise, this session
-          if (text) first.clientNote = text; else delete first.clientNote;
+          if (text) { first.clientNote = text; first.clientNoteBy = S.clientMode ? "client" : "coach"; first.clientNoteAt = new Date().toISOString(); }   // who wrote it, and when (the server stamps a client's the same way)
+          else { delete first.clientNote; delete first.clientNoteBy; delete first.clientNoteAt; }
           if (S.clientMode) { if (!pendingNoteRows.has(t.id)) pendingNoteRows.set(t.id, new Set()); pendingNoteRows.get(t.id).add(first.id); }
           else { if (!trainerTouched.has(t.id)) trainerTouched.set(t.id, new Set()); trainerTouched.get(t.id).add(first.id); }   // the coach's word on this row stands on a conflict
           scheduleSave("trainings", t.id);
         };
+        const whose = () => {                                                  // the caption says who wrote it
+          const by = first.clientNoteBy || "client", c = clients.get(t.clientId), name = String((c && c.name) || "").trim().split(/\s+/)[0];
+          if (by === "coach") return "Coach note";
+          return S.clientMode ? "Your note" : (name ? name + "\u2019s note" : "Client note");
+        };
         const paintNote = () => {
           const has = !!first.clientNote, open = has && openExNotes.has(noteKey);
-          addNote.innerHTML = noteIcon + "<span>" + (!has ? "Add note" : open ? "Hide note" : "See note") + "</span>";
-          shown.hidden = !open; txt.textContent = first.clientNote || "";
+          addNote.innerHTML = '<span class="ico">' + noteIcon + (has ? '<i class="badge"></i>' : "") + "</span><span>" + (!has ? "Add note" : open ? "Hide note" : "See note") + "</span>";   // a red dot: there is a note here
+          addNote.classList.toggle("has", has);
+          shown.hidden = !open; txt.textContent = first.clientNote || ""; capText.textContent = whose();
         };
         const openComposer = () => { ta.value = String(first.clientNote || ""); noteBox.hidden = false; ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; ta.focus(); };
         addNote.addEventListener("click", () => { if (!first.clientNote) { if (noteBox.hidden) openComposer(); else noteBox.hidden = true; return; } if (openExNotes.has(noteKey)) openExNotes.delete(noteKey); else openExNotes.add(noteKey); paintNote(); });
@@ -1468,7 +1479,7 @@ import { reportRange, buildReport } from "./report.js";
         del.addEventListener("click", () => { writeNote(""); openExNotes.delete(noteKey); paintNote(); });
         ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; });
         dropN.addEventListener("click", () => { noteBox.hidden = true; ta.value = ""; });
-        saveN.addEventListener("click", () => { const text = ta.value.trim(); noteBox.hidden = true; writeNote(text); if (text) openExNotes.add(noteKey); paintNote(); });
+        saveN.addEventListener("click", () => { const text = ta.value.trim(); noteBox.hidden = true; writeNote(text); openExNotes.delete(noteKey); paintNote(); });   // saved and folded away: the dot says it is there
         paintNote();
         const actsRow = document.createElement("div"); actsRow.className = "foot-row"; actsRow.append(early, addNote);
         const moreRow = document.createElement("div"); moreRow.className = "foot-row center"; moreRow.append(undo, resume);

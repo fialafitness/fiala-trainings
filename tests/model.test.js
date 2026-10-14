@@ -6,9 +6,9 @@ const { fns, maps } = app;
 const day = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return fns.localIso(d); };
 
 test("a fresh copy of an exercise carries the plan and nothing that was logged", () => {
-  const r = fns.freshRow({ id: "a", name: "Squat", sets: 4, reps: "5", weights: ["100"], repsDone: ["5"], setsDone: 1, done: true, earlyReason: "Pain", alts: ["Leg press"], note: "slow" });
+  const r = fns.freshRow({ id: "a", name: "Squat", sets: 4, reps: "5", weights: ["100"], repsDone: ["5"], setsDone: 1, done: true, earlyReason: "Pain", alts: ["Leg press"], note: "slow", clientNote: "ouch", clientNoteBy: "client", clientNoteAt: "2026-10-13T10:00:00.000Z" });
   assert.notStrictEqual(r.id, "a"); assert.strictEqual(r.name, "Squat"); assert.strictEqual(r.sets, 4); assert.strictEqual(r.note, "slow");
-  assert.deepStrictEqual([r.weights, r.repsDone, r.setsDone, r.done], [[], [], 0, false]); assert.ok(!("earlyReason" in r)); assert.deepStrictEqual(r.alts, ["Leg press"]);
+  assert.deepStrictEqual([r.weights, r.repsDone, r.setsDone, r.done], [[], [], 0, false]); assert.ok(!("earlyReason" in r)); assert.ok(!("clientNoteBy" in r) && !("clientNoteAt" in r)); assert.deepStrictEqual(r.alts, ["Leg press"]);
 });
 test("an empty workout is one with no exercises, no title and nothing done", () => {
   app.reset(); maps.clients.set("c1", { id: "c1", name: "Jane" });

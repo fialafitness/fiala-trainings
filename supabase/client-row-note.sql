@@ -20,8 +20,8 @@ begin
   select coalesce(data -> 'rows', '[]'::jsonb) into v_rows from ft_trainings where id = p_training for update;
   for r in select * from jsonb_array_elements(v_rows) loop
     if r ->> 'id' = p_row then
-      if p_note is null or p_note = '' then r := r - 'clientNote';
-      else r := jsonb_set(r, '{clientNote}', to_jsonb(p_note)); end if;
+      if p_note is null or p_note = '' then r := r - 'clientNote' - 'clientNoteBy' - 'clientNoteAt';
+      else r := jsonb_set(jsonb_set(jsonb_set(r, '{clientNote}', to_jsonb(p_note)), '{clientNoteBy}', '"client"'::jsonb), '{clientNoteAt}', to_jsonb(now())); end if;   -- who wrote it (always the client here) and when
       v_found := true;
     end if;
     v_new := v_new || jsonb_build_array(r);
