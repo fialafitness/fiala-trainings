@@ -593,9 +593,16 @@
   .plan-foot b { display: block; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text-primary); }
   .plan-foot b.over { color: var(--danger); }
   .plan-foot span { display: block; margin-top: 4px; font-size: 13px; color: var(--text-secondary); }
-  .plan-adjust { display: flex; gap: 8px; }
+  .plan-adjust { display: flex; align-items: center; gap: 8px; }
+  .plan-change { appearance: none; border: 0; background: none; padding: 6px 2px; font: inherit; font-size: 15px; font-weight: 500; color: var(--brand); cursor: pointer; -webkit-tap-highlight-color: transparent; }   /* one tap first, then the steps: nothing changes by accident */
+  .plan-change[hidden] { display: none; }
+  .plan-steps { display: flex; gap: 8px; }
+  .plan-steps[hidden] { display: none; }
+  .plan-steps .step svg { width: 16px; height: 16px; display: block; }
+  .plan-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--card-border); }
+  .plan-actions[hidden] { display: none; }
   .plan-adjust[hidden] { display: none; }
-  .plan-adjust .step { appearance: none; border: 0; background: none; padding: 0; font: inherit; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--card-border); color: var(--text-secondary); font-size: 20px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .plan-adjust .step { appearance: none; border: 0; background: none; padding: 0; margin: 0; font: inherit; line-height: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--card-border); color: var(--text-secondary); font-size: 20px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .session-row { margin-top: 10px; }
   .session-row[hidden] { display: none; }
   #vTraining.tpl .session-row { display: none; }
@@ -1051,7 +1058,8 @@
     <div data-tab="workouts" class="plan-card" id="planCard" role="button" tabindex="0" hidden>
       <div class="plan-head"><span id="planName"></span><span id="planRight"></span></div>
       <div class="plan-bar" id="planBar" hidden></div>
-      <div class="plan-foot"><div><b id="planBig"></b><span id="planSmall"></span></div><div class="plan-adjust trainer-only" id="planAdjust" hidden><button class="step" id="planMinus" type="button" aria-label="One session fewer">&minus;</button><button class="step" id="planPlus" type="button" aria-label="One session more">+</button></div></div>
+      <div class="plan-foot"><div><b id="planBig"></b><span id="planSmall"></span></div><div class="plan-adjust trainer-only" id="planAdjust" hidden><button class="plan-change" id="planChange" type="button">Change</button><div class="plan-steps" id="planSteps" hidden><button class="step" id="planMinus" type="button" aria-label="One session fewer"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button><button class="step" id="planPlus" type="button" aria-label="One session more"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div></div>
+      <div class="plan-actions" id="planActions" hidden><button class="btn quiet" id="planCancel" type="button">Cancel</button><button class="btn sm" id="planSave" type="button">Save</button></div>
     </div>
     <div data-tab="profile" class="overview" id="overview" hidden>
       <div class="ov-tiles"><div class="ov-tile"><b id="ovTotal">0</b><span>Total workouts</span></div><div class="ov-tile"><b id="ovMonth">0</b><span>This month</span></div></div>
@@ -1161,7 +1169,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=23";
+  import { boot } from "./app/main.js?v=24";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
