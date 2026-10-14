@@ -80,6 +80,13 @@ test("the top set of a row: heaviest then most reps; a hold: longest then heavie
   assert.deepStrictEqual(topSet({ weights: ["", ""], repsDone: ["10", "12"] }, false), { w: null, rp: 12 });
   assert.deepStrictEqual(topSet({ weights: ["bw", "20"], repsDone: ["15", "8"] }, false), { w: 20, rp: 8 });
   assert.strictEqual(topSet({ weights: [], repsDone: [] }, false), null); assert.strictEqual(topSet({ weights: ["", ""], repsDone: ["", ""] }, true), null);
+  // a weight typed into a set that was never completed is not a lift (Aly's phantom 58 lb curl)
+  assert.deepStrictEqual(topSet({ weights: ["50", "58"], repsDone: ["10", ""], setsDone: 1 }, false), { w: 50, rp: 10 });
+  assert.deepStrictEqual(topSet({ weights: ["50", "58"], repsDone: ["10", ""], setsDone: 2 }, false), { w: 58, rp: null });     // completed without reps: it happened
+  assert.deepStrictEqual(topSet({ weights: ["50", "58"], repsDone: ["10", "8"], setsDone: 1 }, false), { w: 58, rp: 8 });       // reps typed: a deliberate log
+  assert.deepStrictEqual(topSet({ weights: ["50", "58"], repsDone: ["10", ""], setsDone: 1 }, false, 2), { w: 58, rp: null });  // the card previews the set under the finger
+  assert.strictEqual(topSet({ weights: ["58"], repsDone: [""], setsDone: 0 }, false), null);
+  assert.deepStrictEqual(topSet({ weights: ["58"], repsDone: [""], done: true }, false), { w: 58, rp: null });                 // an old row without a count: finished = it counts
   assert.ok(betterSet({ w: 225, rp: 5 }, { w: 215, rp: 4 }, false)); assert.ok(!betterSet({ w: 215, rp: 4 }, { w: 215, rp: 4 }, false), "equal is not better");
   assert.ok(betterSet({ w: null, rp: 45 }, { w: 25, rp: 30 }, true), "a longer hold beats a heavier shorter one"); assert.ok(sameSet({ w: 1, rp: 2 }, { w: 1, rp: 2 }) && !sameSet({ w: 1, rp: 2 }, null));
 });
