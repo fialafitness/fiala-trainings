@@ -218,8 +218,9 @@
   .btn.danger { background: transparent; color: var(--danger); padding: 0 8px; }
   .btn.quiet:hover, .btn.danger:hover { opacity: 0.7; }
   /* in-page actions take a shape, as Apple's do: the tinted capsule, brand at a breath of opacity; red for the destructive ones. Bare text stays only in list rows, sheets and the top bar */
-  .btn.tint { background: var(--brand-soft); color: var(--brand); width: auto; min-height: 40px; padding: 0 16px; font-size: 15px; font-weight: 500; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; }
-  .btn.tint.danger { background: var(--danger-soft); color: var(--danger); }
+  .btn.tint { background: var(--glyph-fill); color: var(--brand); width: auto; min-height: 40px; padding: 0 16px; font-size: 15px; font-weight: 500; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; }
+  .btn.tint.danger { color: var(--danger); }                                   /* the same grey, red ink */
+  .btn.tint.wide { width: 100%; min-height: 50px; font-size: 17px; font-weight: 600; }   /* Finish workout: Apple's big grey capsule with accent text, so Complete set stays the one filled button */
   .btn.tint:hover, .btn.tint:active { opacity: 0.8; }
   .btn.tint svg { width: 16px; height: 16px; flex: none; }
   .btn.tint.addname { min-height: 32px; padding: 0 12px; font-size: 13px; }
@@ -390,7 +391,7 @@
   .add-note { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 4px; display: inline-flex; align-items: center; gap: 6px; }
   .finish-early { display: inline-flex; align-items: center; gap: 6px; }
   .finish-early svg { flex: 0 0 auto; }
-  .card-foot .finish-early, .card-foot .add-note, .card-foot .resume, .card-foot .undo-set { background: var(--brand-soft); color: var(--brand); border-radius: 50px; min-height: 38px; padding: 0 14px; font-size: 14px; font-weight: 500; align-items: center; gap: 7px; }   /* the card's own actions: capsules too */
+  .card-foot .finish-early, .card-foot .add-note, .card-foot .resume, .card-foot .undo-set { background: var(--glyph-fill); color: var(--brand); border-radius: 50px; min-height: 38px; padding: 0 14px; font-size: 14px; font-weight: 500; align-items: center; gap: 7px; }   /* the card's own actions: capsules too */
   .card-foot .finish-early, .card-foot .add-note { display: inline-flex; }
   .add-note .ico { position: relative; display: inline-flex; }
   .add-note .badge { position: absolute; top: -3px; right: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--card); }   /* the red dot: there is a note on this exercise */
@@ -624,7 +625,7 @@
   .session-pill { appearance: none; border: 0; cursor: pointer; border-radius: 50px; min-height: 36px; padding: 0 14px; font-size: 14px; font-weight: 500; white-space: nowrap; background: var(--field); color: var(--text-secondary); display: inline-flex; align-items: center; gap: 7px; -webkit-tap-highlight-color: transparent; }
   .session-pill[hidden] { display: none; }
   .session-pill i { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--text-tertiary); display: inline-flex; align-items: center; justify-content: center; font-style: normal; font-size: 11px; line-height: 1; color: transparent; }
-  .session-pill.on { background: var(--brand-soft, var(--field)); color: var(--brand); font-weight: 600; }
+  .session-pill.on { background: var(--glyph-fill); color: var(--brand); font-weight: 600; }
   .session-pill.on i { background: var(--brand); border-color: var(--brand); color: #fff; }
   body.client .session-pill { pointer-events: none; cursor: default; }
   body.client .session-pill i { display: none; }
@@ -787,8 +788,8 @@
   .details { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 8px; max-width: 420px; }
   .contact-row { display: flex; align-items: center; margin-top: 12px; }
   .contact-row[hidden] { display: none; }
-  .msg-pill { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; min-height: 40px; border-radius: 50px; text-decoration: none; font-size: 15px; font-weight: 500; letter-spacing: 0; color: #fff;
-    background: linear-gradient(135deg, var(--brand-fill) 0%, var(--brand-deep) 100%); box-shadow: 0 6px 16px rgba(73, 70, 100, 0.24), inset 0 1px 0 rgba(255,255,255,0.12); transition: opacity 300ms ease, transform 300ms ease; }
+  .msg-pill { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; min-height: 40px; border-radius: 50px; text-decoration: none; font-size: 15px; font-weight: 500; letter-spacing: 0; color: var(--brand);
+    background: var(--glyph-fill); transition: opacity 300ms ease, transform 300ms ease; }   /* monochrome fill, brand ink: the pill is not the primary action of the page */
   .msg-pill:hover { opacity: 0.92; }
   .msg-pill.small { min-height: 34px; padding: 0 14px; font-size: 14px; gap: 6px; }
   .msg-pill[hidden] { display: none; }
@@ -823,13 +824,12 @@
   #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
-  .tpl-pill { justify-self: start; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 34px; border-radius: 50px;
-    font-size: 14px; font-weight: 500; letter-spacing: 0; color: #fff; background: linear-gradient(135deg, var(--brand-fill) 0%, var(--brand-deep) 100%);
-    box-shadow: 0 4px 12px rgba(73, 70, 100, 0.22), inset 0 1px 0 rgba(255,255,255,0.12); transition: opacity 300ms ease; }
+  .tpl-pill { justify-self: start; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 34px; border-radius: 50px;
+    font-size: 14px; font-weight: 500; letter-spacing: 0; color: var(--brand); background: var(--glyph-fill); transition: opacity 300ms ease; }   /* a link to the template: grey, brand ink */
   .tpl-pill:hover { opacity: 0.92; }
   .tpl-pill[hidden] { display: none; }
-  .tpl-pill span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tpl-pill .chev { color: rgba(255,255,255,0.72); flex: none; font-size: 16px; line-height: 1; }
+  .tpl-pill span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 0 1 auto; }   /* a long template name ends in an ellipsis, never pushes the page wider */
+  .tpl-pill .chev { color: var(--text-tertiary); flex: none; font-size: 16px; line-height: 1; }
   .list li.last-used button .pri::after { content: " \00b7  last used"; font-size: 13px; color: var(--text-tertiary); font-weight: 400; }
   .list li.flash { animation: flash 1200ms ease; }
   @keyframes flash { 0% { background: rgba(111,107,153,0.28); } 100% { background: transparent; } }
@@ -843,6 +843,7 @@
   .list .sec { display: block; font-size: 13px; color: var(--text-tertiary); letter-spacing: 0; margin-top: 2px; }
   .list li.next button { padding: 16px 20px; }                                   /* the very next workout stands out: when, then the day, bigger */
   .list li.next .when { display: block; margin-bottom: 3px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand); }
+  .list li.next .when.missed { color: var(--danger); }                       /* a missed session: the one red caption */
   .list li.next .pri { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
   .list li.next .sec { font-size: 15px; color: var(--text-secondary); margin-top: 3px; }
   .list li.next .missed-actions { display: flex; gap: 10px; padding: 4px 20px 14px; margin-top: -4px; }   /* a missed workout: decide right here */
@@ -1123,7 +1124,7 @@
     <div class="rows" id="rows"></div>
     <div class="start-row"><button class="pill big trainer-only" id="addRow" type="button">+ Add exercise</button><button class="pill big trainer-only" id="tplFill" type="button" hidden>From template</button></div>
     <div class="finish" id="finishWrap" hidden>
-      <button class="btn" id="finishBtn" style="width:100%">Finish workout</button>
+      <button class="btn tint wide" id="finishBtn">Finish workout</button>
       <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn tint" id="unfinishBtn" type="button">Undo</button></div>
       <div class="finished" id="skipLine"><button class="btn tint" id="skipBtn" type="button">Skip workout</button></div>
       <div class="finished" id="skippedLine" hidden><span class="muted" id="skippedText" style="font-size:17px"></span><button class="btn tint" id="unskipBtn" type="button">Undo</button></div>
@@ -1183,7 +1184,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=25";
+  import { boot } from "./app/main.js?v=26";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
