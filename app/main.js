@@ -299,8 +299,8 @@ import { reportRange, buildReport } from "./report.js";
     const canAdd = s.length >= 2 && !hits.some(([, k]) => k === s) && (hits.length === 0 || q.trim().split(/\s+/).length >= 2);
     $("exEmpty").hidden = !canAdd;
     const near = canAdd ? nearName(q) : null;
-    if (near) { $("exEmpty").innerHTML = ""; const b = document.createElement("button"); b.type = "button"; b.className = "btn quiet link"; b.textContent = "Did you mean “" + near + "”?"; b.addEventListener("click", () => { $("exSearch").value = near; exShown = 80; exOpenKey = null; renderExercises(); }); $("exEmpty").appendChild(b); }
-    else if (canAdd) { $("exEmpty").innerHTML = ""; const b = document.createElement("button"); b.type = "button"; b.className = "btn quiet link"; b.textContent = "Add “" + tidyName(q) + "” to the database"; b.addEventListener("click", async () => { b.disabled = true; const ok = await addCustomName(q); if (!ok) { b.disabled = false; $("status").textContent = "Couldn’t add · run supabase/exercises.sql, or try again online"; return; } $("exSearch").value = tidyName(q); renderExercises(); }); $("exEmpty").appendChild(b); }
+    if (near) { $("exEmpty").innerHTML = ""; const b = document.createElement("button"); b.type = "button"; b.className = "btn tint"; b.textContent = "Did you mean “" + near + "”?"; b.addEventListener("click", () => { $("exSearch").value = near; exShown = 80; exOpenKey = null; renderExercises(); }); $("exEmpty").appendChild(b); }
+    else if (canAdd) { $("exEmpty").innerHTML = ""; const b = document.createElement("button"); b.type = "button"; b.className = "btn tint"; b.textContent = "Add “" + tidyName(q) + "” to the database"; b.addEventListener("click", async () => { b.disabled = true; const ok = await addCustomName(q); if (!ok) { b.disabled = false; $("status").textContent = "Couldn’t add · run supabase/exercises.sql, or try again online"; return; } $("exSearch").value = tidyName(q); renderExercises(); }); $("exEmpty").appendChild(b); }
   }
   function exerciseRow(name, key) {
     const li = document.createElement("li"); li.dataset.key = key;
@@ -334,7 +334,7 @@ import { reportRange, buildReport } from "./report.js";
     const player = document.createElement("div"); player.className = "player"; player.hidden = true;
     const actions = document.createElement("div"); actions.className = "row-actions";
     const mk = (text, cls, fn) => { const x = document.createElement("button"); x.type = "button"; x.className = cls; x.textContent = text; x.addEventListener("click", fn); return x; };
-    if (vid) actions.appendChild(mk("▶ Watch video", "btn quiet link", () => { if (!player.hidden) { player.hidden = true; player.replaceChildren(); return; } player.replaceChildren(); const f = document.createElement("iframe"); f.src = "https://www.youtube-nocookie.com/embed/" + vid + "?playsinline=1&rel=0&modestbranding=1"; f.allow = "accelerometer; encrypted-media; picture-in-picture"; f.allowFullscreen = true; player.appendChild(f); player.hidden = false; }));
+    if (vid) actions.appendChild(mk("▶ Watch video", "btn tint", () => { if (!player.hidden) { player.hidden = true; player.replaceChildren(); return; } player.replaceChildren(); const f = document.createElement("iframe"); f.src = "https://www.youtube-nocookie.com/embed/" + vid + "?playsinline=1&rel=0&modestbranding=1"; f.allow = "accelerometer; encrypted-media; picture-in-picture"; f.allowFullscreen = true; player.appendChild(f); player.hidden = false; }));
     const form = document.createElement("div"); form.className = "vid-form"; form.hidden = true;
     const url = document.createElement("input"); url.type = "url"; url.placeholder = "Paste a YouTube link"; url.setAttribute("autocomplete", "off"); url.setAttribute("autocapitalize", "none"); url.inputMode = "url";
     const fa = document.createElement("div"); fa.className = "vid-actions";
@@ -346,9 +346,9 @@ import { reportRange, buildReport } from "./report.js";
     }));
     fa.appendChild(mk("Cancel", "btn quiet", () => { form.hidden = true; }));
     form.append(url, fa);
-    actions.appendChild(mk(vid ? "Change video" : "Add video", "btn quiet link", () => { form.hidden = !form.hidden; if (!form.hidden) { url.value = ""; url.focus(); } }));
-    if (customVideos.has(vkey)) actions.appendChild(mk("Remove video", "btn quiet danger-link", async () => { if (!(await askFirst({ title: "Remove the video for " + name + "?", yes: "Remove" }))) return; const error = await deleteVideo(vkey); if (error) { $("status").textContent = "Couldn’t remove the video"; return; } setStatus(); renderExercises(); }));
-    if (mine) { const rm = mk("Remove exercise", "btn quiet danger-link", async () => { if (!(await askFirst({ title: "Remove \u201c" + name + "\u201d from the database?", text: (customVideos.has(looseKey(name)) ? "Its video goes with it. " : "") + "Workouts that use it keep the name.", yes: "Remove" }))) { if (box._nameInput && box._typed != null && box._typed !== name) { box._nameInput.value = box._typed; box._nameInput.focus(); } return; } const ok = await removeCustom(key); if (!ok) { $("status").textContent = "Couldn’t remove · try again online"; return; } exOpenKey = null; renderExercises(); }); rm.addEventListener("pointerdown", () => { if (box._nameInput) { box._typed = box._nameInput.value; box._nameInput.value = name; } }); actions.appendChild(rm); }   // leaving the box must not rename on the way to the button; a Cancel puts the typing back
+    actions.appendChild(mk(vid ? "Change video" : "Add video", "btn tint", () => { form.hidden = !form.hidden; if (!form.hidden) { url.value = ""; url.focus(); } }));
+    if (customVideos.has(vkey)) actions.appendChild(mk("Remove video", "btn tint danger", async () => { if (!(await askFirst({ title: "Remove the video for " + name + "?", yes: "Remove" }))) return; const error = await deleteVideo(vkey); if (error) { $("status").textContent = "Couldn’t remove the video"; return; } setStatus(); renderExercises(); }));
+    if (mine) { const rm = mk("Remove exercise", "btn tint danger", async () => { if (!(await askFirst({ title: "Remove \u201c" + name + "\u201d from the database?", text: (customVideos.has(looseKey(name)) ? "Its video goes with it. " : "") + "Workouts that use it keep the name.", yes: "Remove" }))) { if (box._nameInput && box._typed != null && box._typed !== name) { box._nameInput.value = box._typed; box._nameInput.focus(); } return; } const ok = await removeCustom(key); if (!ok) { $("status").textContent = "Couldn’t remove · try again online"; return; } exOpenKey = null; renderExercises(); }); rm.addEventListener("pointerdown", () => { if (box._nameInput) { box._typed = box._nameInput.value; box._nameInput.value = name; } }); actions.appendChild(rm); }   // leaving the box must not rename on the way to the button; a Cancel puts the typing back
     box.append(player, actions, form);
   }
   $("exSearch").addEventListener("input", () => { exShown = 80; exOpenKey = null; renderExercises(); });
@@ -1285,9 +1285,9 @@ import { reportRange, buildReport } from "./report.js";
       let acts = null;
       if (overdue) {                                                       // the missed workout is the first thing to decide
         acts = document.createElement("div"); acts.className = "missed-actions";
-        const doToday = document.createElement("button"); doToday.type = "button"; doToday.textContent = "Do it today";
+        const doToday = document.createElement("button"); doToday.type = "button"; doToday.className = "btn tint"; doToday.textContent = "Do it today";
         doToday.addEventListener("click", () => { t.date = today(); t.missed = false; t.skippedAt = null; touchState(t.id, "date", "missed", "skippedAt"); if (S.clientMode) { pendingMove.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
-        const skip = document.createElement("button"); skip.type = "button"; skip.textContent = "Skip";
+        const skip = document.createElement("button"); skip.type = "button"; skip.className = "btn tint"; skip.textContent = "Skip";
         skip.addEventListener("click", () => { t.skippedAt = now(); t.missed = false; touchState(t.id, "skippedAt", "missed"); if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
         acts.append(doToday, skip);
       }
@@ -1801,7 +1801,7 @@ import { reportRange, buildReport } from "./report.js";
         <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg class="i-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg><svg class="i-up" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="alt-btn" type="button" hidden aria-label="Options" title="Options"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
       </div>
       <div class="sum"></div>
-      <div class="newname trainer-only" hidden><span>New exercise</span><button class="btn quiet link addname" type="button">Add to database</button></div>
+      <div class="newname trainer-only" hidden><span>New exercise</span><button class="btn tint addname" type="button">Add to database</button></div>
       <div class="player" hidden></div>
       <div class="vidrow trainer-only" hidden><button class="vid-edit" type="button">Change video</button></div>
       <div class="vid-form" hidden><input class="vid-url" type="url" placeholder="Paste a YouTube link" autocomplete="off" autocapitalize="none" inputmode="url"><div class="vid-actions"><button class="btn sm vid-save" type="button">Save</button><button class="btn danger vid-remove" type="button" hidden>Remove</button><button class="btn quiet vid-cancel" type="button">Cancel</button></div></div>
