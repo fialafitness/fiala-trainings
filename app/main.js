@@ -624,7 +624,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---- the screen stays on during a workout (Screen Wake Lock: iPhone/iPad from iOS 16.4, Android). Held while a workout page is open
   // and on screen; the system lets it go when the app leaves the screen, and we ask for it again on return. Leaving the workout drops it,
   // and so does WAKE_MINUTES without a touch, so a phone left on a workout page still locks eventually.
-  const WAKE_MINUTES = 90;
+  const WAKE_MINUTES = 5;
   let wake = null, wakePending = false, wakeTimer = null;
   const wakeWanted = () => { if (S.view.name !== "training" || document.visibilityState !== "visible") return false; const t = trainings.get(S.view.id); return !!t && !isTemplateClient(t.clientId); };
   async function holdWake(renew = true) {
