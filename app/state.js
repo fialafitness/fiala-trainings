@@ -15,6 +15,7 @@ export const initial = () => ({
   offlineEntry: null, resuming: false, signingOut: null,
   sessionEmail: "", entering: false,
   renderedTraining: null,                // the workout whose rows are on screen
+  tab: "workouts",                       // the client page's tab: "workouts" | "profile"
   asking: false,                         // a confirm sheet is up: no sync may swap the workout under it, no redraw may rebuild its rows
   seeding: false,                        // a sync must not run while the templates are being written
 });

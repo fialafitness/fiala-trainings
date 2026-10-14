@@ -562,6 +562,16 @@
   .setlog .chip.stack .valrow .suffix { font-size: 15px; font-weight: 500; }
   .setlog .chip.stack.editing .valrow input { position: static; flex: 1 1 auto; width: 0; min-width: 3ch; height: auto; font-size: 22px; font-weight: 600; padding: 0; }
   .setlog .chip.stack.editing .valrow .val { display: none; }
+  /* the bar: two tabs on a client's page, floating like Apple's, the glass of the date bubble */
+  #tabbar { position: fixed; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 45; display: flex; gap: 4px; padding: 5px; border-radius: 50px; background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); box-shadow: 0 10px 30px rgba(0,0,0,0.18), inset 0 0 0 0.5px var(--glass-edge); }
+  #tabbar[hidden] { display: none; }
+  #tabbar button { appearance: none; border: 0; background: none; min-width: 124px; height: 54px; padding: 0 18px; border-radius: 50px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0; color: var(--text-secondary); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 160ms ease, color 160ms ease; }
+  #tabbar button svg { width: 22px; height: 22px; }
+  #tabbar button.on { background: var(--card); color: var(--brand); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  body.tabs #vClient { padding-bottom: 100px; }                                   /* the last thing on the page clears the bar */
+  body.typing #tabbar { display: none; }                                          /* the keyboard has the bottom */
+  #vClient:not(.tpl)[data-tab="workouts"] [data-tab="profile"], #vClient:not(.tpl)[data-tab="profile"] [data-tab="workouts"] { display: none !important; }
+  #vClient:not(.tpl)[data-tab="workouts"] #detailsBtn { display: none; }         /* details live on the Profile tab */
   /* packages: the plan card on the client page, the In person pill on a workout, the Packages page */
   .plan-card { display: block; width: 100%; text-align: left; appearance: none; border: 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; background: var(--card); border-radius: var(--r-card); padding: 14px 16px 12px; margin-top: 16px; }
   .plan-card[hidden] { display: none; }
@@ -1021,7 +1031,7 @@
     </div>
     <div class="contact-row client-only" id="trainerRow" hidden><a class="msg-pill" id="trainerBtn" href="#"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
     <div class="contact-row trainer-only" id="contactRow" hidden><a class="msg-pill" id="msgBtn" href="#"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="msgText">Message</span></a></div>
-    <div class="trainer-only" id="cEmailWrap">
+    <div data-tab="profile" class="trainer-only" id="cEmailWrap">
       <div class="details" id="detailsBody" hidden>
         <input id="cNameField" placeholder="Name" autocomplete="off" autocapitalize="words">
         <input id="cEmail" type="email" placeholder="Sign-in email" autocomplete="off" inputmode="email" autocapitalize="none">
@@ -1035,41 +1045,41 @@
       </div>
     </div>
     <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
-    <div class="plan-card" id="planCard" role="button" tabindex="0" hidden>
+    <div data-tab="profile" class="plan-card" id="planCard" role="button" tabindex="0" hidden>
       <div class="plan-head"><span id="planName"></span><span id="planRight"></span></div>
       <div class="plan-bar" id="planBar" hidden></div>
       <div class="plan-foot"><div><b id="planBig"></b><span id="planSmall"></span></div><div class="plan-adjust trainer-only" id="planAdjust" hidden><button class="step" id="planMinus" type="button" aria-label="One session fewer">&minus;</button><button class="step" id="planPlus" type="button" aria-label="One session more">+</button></div></div>
     </div>
-    <div class="overview" id="overview" hidden>
+    <div data-tab="profile" class="overview" id="overview" hidden>
       <div class="ov-tiles"><div class="ov-tile"><b id="ovTotal">0</b><span>Total workouts</span></div><div class="ov-tile"><b id="ovMonth">0</b><span>This month</span></div></div>
       <div class="ov-pick"><input id="ovEx" placeholder="Look up an exercise" autocomplete="off" autocapitalize="sentences" aria-label="Look up an exercise"><button class="ov-clear" id="ovClear" type="button" aria-label="Clear" hidden>&times;</button><ul class="sugg" id="ovSugg" hidden></ul></div>
       <div class="ov-best" id="ovBest" hidden><button type="button" class="ov-tile best" id="ovBestBtn"><b id="ovBestVal"></b><span>Best</span></button><span class="ov-none" id="ovNone" hidden></span></div>
     </div>
-    <div class="listbar week-bar" id="weekBar"><h2 id="weekHead">Schedule</h2><button class="cal-disc" id="calToggle" type="button" aria-expanded="false"><span id="calToggleText">Month</span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5.5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-    <div class="week" id="week"></div>
-    <div id="calWrap" hidden>
+    <div data-tab="workouts" class="listbar week-bar" id="weekBar"><h2 id="weekHead">Schedule</h2><button class="cal-disc" id="calToggle" type="button" aria-expanded="false"><span id="calToggleText">Month</span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5.5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+    <div data-tab="workouts" class="week" id="week"></div>
+    <div data-tab="workouts" id="calWrap" hidden>
       <div class="cal-head"><button class="mnav" id="calPrev" type="button" aria-label="Previous month">&lsaquo;</button><span class="cal-title" id="calTitle"></span><span class="cal-right"><button class="cal-today" id="calToday" type="button" hidden>Today</button><button class="mnav" id="calNext" type="button" aria-label="Next month">&rsaquo;</button></span></div>
       <div class="cal-wd" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
       <div class="cal-view" id="calView"><div class="cal-track" id="calTrack"></div></div>
     </div>
-    <button class="btn trainer-only" id="newTraining" style="width:100%;margin-top:16px">+ New workout</button>
-    <div class="trainer-only" id="fromWrap"><button class="btn quiet add" id="fromTemplate" type="button">From template</button></div>
-    <div class="pick-note trainer-only" id="pickNote" hidden></div>
-    <div id="tplList" hidden></div>
-    <h2 id="nextHead" hidden>Up next</h2>
-    <ul class="list" id="nextList" hidden></ul>
-    <h2 id="histHead" hidden>History</h2>
-    <div id="histList"></div>
-    <div class="empty" id="trainingEmpty" hidden>No workouts yet.</div>
-    <div class="foot-pills reports trainer-only" id="reportWrap"><span class="rep-cap">Report PDF</span><button class="pill" type="button" id="reportNow">This month</button><select class="pill" id="reportMonth" aria-label="Pick a month"><option value="">Pick a month</option></select></div>
-    <div class="trainer-only" id="notesWrap">
+    <button data-tab="workouts" class="btn trainer-only" id="newTraining" style="width:100%;margin-top:16px">+ New workout</button>
+    <div data-tab="workouts" class="trainer-only" id="fromWrap"><button class="btn quiet add" id="fromTemplate" type="button">From template</button></div>
+    <div data-tab="workouts" class="pick-note trainer-only" id="pickNote" hidden></div>
+    <div data-tab="workouts" id="tplList" hidden></div>
+    <h2 data-tab="workouts" id="nextHead" hidden>Up next</h2>
+    <ul data-tab="workouts" class="list" id="nextList" hidden></ul>
+    <h2 data-tab="workouts" id="histHead" hidden>History</h2>
+    <div data-tab="workouts" id="histList"></div>
+    <div data-tab="workouts" class="empty" id="trainingEmpty" hidden>No workouts yet.</div>
+    <div data-tab="profile" class="foot-pills reports trainer-only" id="reportWrap"><span class="rep-cap">Report PDF</span><button class="pill" type="button" id="reportNow">This month</button><select class="pill" id="reportMonth" aria-label="Pick a month"><option value="">Pick a month</option></select></div>
+    <div data-tab="profile" class="trainer-only" id="notesWrap">
       <h2>Notes</h2>
       <textarea id="cNotes" placeholder="Injuries, preferences, anything to remember"></textarea>
       <div class="note-actions" id="noteActions" hidden><button class="btn sm" id="noteSave" type="button">Save note</button><button class="btn quiet" id="noteDiscard" type="button">Discard</button></div>
       <div id="noteList"></div>
     </div>
-    <div class="foot foot-col" id="clientFoot" hidden><div class="foot-pills"><button class="pill" id="settingsBtn2" type="button">Settings</button></div></div>
-    <div class="foot trainer-only" id="delWrap">
+    <div data-tab="profile" class="foot foot-col" id="clientFoot" hidden><div class="foot-pills"><button class="pill" id="settingsBtn2" type="button">Settings</button></div></div>
+    <div data-tab="profile" class="foot trainer-only" id="delWrap">
       <button class="btn danger" id="delClient">Delete client</button>
       <span class="confirm" id="delClientConfirm" hidden>Deletes all their trainings too. <button class="btn danger" id="delClientYes">Delete</button> <button class="btn quiet" id="delClientNo">Keep</button></span>
     </div>
@@ -1121,6 +1131,10 @@
     <div class="cal" id="dpGrid"></div>
   </div>
 </div>
+<nav id="tabbar" aria-label="Sections" hidden>
+  <button type="button" data-tab="workouts" class="on"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7.5v9M17.5 7.5v9M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg><span>Workouts</span></button>
+  <button type="button" data-tab="profile"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-3.8 4-5.6 7.5-5.6s6.5 1.8 7.5 5.6"/></svg><span>Profile</span></button>
+</nav>
 <div id="whenBg" hidden><div id="whenPop" role="dialog" aria-live="polite"><b id="whenTitle"></b><span id="whenSub"></span></div></div>
 <div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="earlySheet" hidden>
@@ -1144,7 +1158,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=22";
+  import { boot } from "./app/main.js?v=23";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

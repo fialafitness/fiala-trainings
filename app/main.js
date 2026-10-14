@@ -135,6 +135,7 @@ import { reportRange, buildReport } from "./report.js";
   }
 
   function hideAllViews() {
+    $("tabbar").hidden = true; document.body.classList.remove("tabs");
     for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vPackages", "vSettings", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
   }
   function showLogin(msg) {
@@ -244,7 +245,7 @@ import { reportRange, buildReport } from "./report.js";
     const c = clients.get(S.view.id); if (!c || S.clientMode || !c.plan) return;
     const step = e.target.closest(".step");
     if (step) { c.plan.adjust = (parseInt(c.plan.adjust, 10) || 0) + (step.id === "planPlus" ? 1 : -1); planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); return; }   // the one knob for mistakes
-    detailsOpen = true; renderClient(); $("detailsBody").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    detailsOpen = true; S.tab = "profile"; render(); $("detailsBody").scrollIntoView({ block: "nearest", behavior: "smooth" });
   });
   $("planSel").addEventListener("change", (e) => {
     const c = clients.get(S.view.id); if (!c || isTemplateClient(c.id)) return;
@@ -1015,6 +1016,8 @@ import { reportRange, buildReport } from "./report.js";
     if (!S.clientMode) document.body.classList.toggle("client", previewClient && S.view.name === "training" && !isTemplateClient(trainings.get(S.view.id).clientId));
     $("vClients").hidden = S.view.name !== "clients";
     $("vClient").hidden = S.view.name !== "client";
+    const tabs = S.view.name === "client" && !isTemplateClient(S.view.id); $("tabbar").hidden = !tabs; document.body.classList.toggle("tabs", tabs);
+    for (const b of $("tabbar").querySelectorAll("button")) b.classList.toggle("on", b.dataset.tab === S.tab);
     $("vTraining").hidden = S.view.name !== "training";
     $("back").hidden = S.view.name === "clients" || (S.clientMode && S.view.name === "client");
     $("brand").hidden = !(S.view.name === "clients" || (S.clientMode && S.view.name === "client"));
@@ -1087,7 +1090,7 @@ import { reportRange, buildReport } from "./report.js";
         const n = clientTrainings(c.id).length;
         b.innerHTML = `<span></span><span class="sub"></span>`;
         b.firstChild.textContent = c.name; b.lastChild.textContent = (n ? n + (n === 1 ? " workout" : " workouts") : "") + (!c.paused && effPaused(c) ? (n ? " \u00b7 " : "") + "Plan ended" : ""); b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
-        b.addEventListener("click", () => go({ name: "client", id: c.id }));
+        b.addEventListener("click", () => { S.tab = "workouts"; go({ name: "client", id: c.id }); });
         li.appendChild(b);
       }
       ul.appendChild(li);
@@ -1098,7 +1101,7 @@ import { reportRange, buildReport } from "./report.js";
     $("inactiveList").replaceChildren(...inactive.map((c) => {
       const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
       b.innerHTML = `<span></span><span class="sub">Paused<span class="chev">&rsaquo;</span></span>`; b.firstChild.textContent = c.name;
-      b.addEventListener("click", () => go({ name: "client", id: c.id })); li.appendChild(b); return li;
+      b.addEventListener("click", () => { S.tab = "workouts"; go({ name: "client", id: c.id }); }); li.appendChild(b); return li;
     }));
   }
   $("tplCard").addEventListener("click", () => go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }));
@@ -1216,7 +1219,7 @@ import { reportRange, buildReport } from "./report.js";
   function renderClient() {
     const c = clients.get(S.view.id);
     const isTpl = isTemplateClient(c.id);
-    $("vClient").classList.toggle("tpl", isTpl);
+    $("vClient").classList.toggle("tpl", isTpl); $("vClient").dataset.tab = S.tab;
     $("newTraining").textContent = isTpl ? "+ New template" : "+ New workout";
     if (!isTpl) { $("tplList").hidden = true; $("pickNote").hidden = true; }
     $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !effPaused(c); $("pausedKicker").textContent = c.paused ? "Access paused" : "Plan ended";
@@ -2196,6 +2199,9 @@ import { reportRange, buildReport } from "./report.js";
     paintMsg(c);
   });
   let detailsOpen = false, detailsFor = null;
+  $("tabbar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b || b.dataset.tab === S.tab) return; S.tab = b.dataset.tab; render(); window.scrollTo(0, 0); });
+  document.addEventListener("focusin", (e) => { if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) document.body.classList.add("typing"); });
+  document.addEventListener("focusout", () => { setTimeout(() => { const a = document.activeElement; if (!a || !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) document.body.classList.remove("typing"); }, 80); });
   $("detailsBtn").addEventListener("click", () => { detailsOpen = !detailsOpen; $("detailsBody").hidden = !detailsOpen; $("detailsBtn").classList.toggle("open", detailsOpen); $("detailsBtn").setAttribute("aria-expanded", String(detailsOpen)); });
   $("newTraining").addEventListener("click", () => addTraining(S.view.id, null, today()));
   $("delClient").addEventListener("click", () => { $("delClient").hidden = true; $("delClientConfirm").hidden = false; });
