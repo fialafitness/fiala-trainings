@@ -42,6 +42,7 @@
     --field: #ffffff;                   /* a field on the grouped page is a white cell */
     --field-in: #f5f5f7;                /* a field inside a white card is grey */
     --glyph-fill: rgba(120,120,128,0.14); /* the circle behind a small symbol (secondary system fill) */
+    --brand-soft: rgba(111,107,153,0.14); --danger-soft: rgba(166,58,70,0.11);   /* tinted capsules: the colour at a breath of opacity behind text in that colour */
     --glass: rgba(255,255,255,0.78); --glass-edge: rgba(0,0,0,0.08);   /* a floating bubble: frosted, the page showing through */
     --glass-bar: rgba(255,255,255,0.5); --glass-bar-rim: rgba(255,255,255,0.9); --glass-bar-edge: rgba(0,0,0,0.07); --glass-bar-on: rgba(0,0,0,0.07);   /* the tab bar: liquid glass, the page through it, a bright rim */
     --placeholder: #d2d2d7;
@@ -79,6 +80,7 @@
       --field: rgba(255,255,255,0.08);
       --field-in: rgba(255,255,255,0.08);
       --glyph-fill: rgba(255,255,255,0.12);
+      --brand-soft: rgba(111,107,153,0.28); --danger-soft: rgba(224,100,112,0.2);
       --glass: rgba(44,44,46,0.72); --glass-edge: rgba(255,255,255,0.10);
       --glass-bar: rgba(70,70,76,0.42); --glass-bar-rim: rgba(255,255,255,0.24); --glass-bar-edge: rgba(255,255,255,0.1); --glass-bar-on: rgba(255,255,255,0.13);
       --placeholder: rgba(255,255,255,0.35);
@@ -116,6 +118,7 @@
     --field: rgba(255,255,255,0.08);
     --field-in: rgba(255,255,255,0.08);
     --glyph-fill: rgba(255,255,255,0.12);
+    --brand-soft: rgba(111,107,153,0.28); --danger-soft: rgba(224,100,112,0.2);
     --glass: rgba(44,44,46,0.72); --glass-edge: rgba(255,255,255,0.10);
     --glass-bar: rgba(70,70,76,0.42); --glass-bar-rim: rgba(255,255,255,0.24); --glass-bar-edge: rgba(255,255,255,0.1); --glass-bar-on: rgba(255,255,255,0.13);
     --placeholder: rgba(255,255,255,0.35);
@@ -214,6 +217,15 @@
   .btn.quiet { background: transparent; color: var(--brand); padding: 0 8px; }      /* tertiary: plain text in the tint */
   .btn.danger { background: transparent; color: var(--danger); padding: 0 8px; }
   .btn.quiet:hover, .btn.danger:hover { opacity: 0.7; }
+  /* in-page actions take a shape, as Apple's do: the tinted capsule, brand at a breath of opacity; red for the destructive ones. Bare text stays only in list rows, sheets and the top bar */
+  .btn.tint { background: var(--brand-soft); color: var(--brand); width: auto; min-height: 40px; padding: 0 16px; font-size: 15px; font-weight: 500; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; }
+  .btn.tint.danger { background: var(--danger-soft); color: var(--danger); }
+  .btn.tint:hover, .btn.tint:active { opacity: 0.8; }
+  .btn.tint svg { width: 16px; height: 16px; flex: none; }
+  .btn.tint.addname { min-height: 32px; padding: 0 12px; font-size: 13px; }
+  .start-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }   /* the two ways to start a workout, side by side, the same pill */
+  .start-row { align-items: center; }
+  .start-row .pill, .start-row #addRow, .start-row #tplFill { display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 22px; font-size: 16px; margin: 0; }
   .btn:disabled { opacity: 0.5; cursor: default; }
   .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible, .datefield:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   .cal button:focus-visible { outline-offset: -2px; }
@@ -378,6 +390,8 @@
   .add-note { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 4px; display: inline-flex; align-items: center; gap: 6px; }
   .finish-early { display: inline-flex; align-items: center; gap: 6px; }
   .finish-early svg { flex: 0 0 auto; }
+  .card-foot .finish-early, .card-foot .add-note, .card-foot .resume, .card-foot .undo-set { background: var(--brand-soft); color: var(--brand); border-radius: 50px; min-height: 38px; padding: 0 14px; font-size: 14px; font-weight: 500; align-items: center; gap: 7px; }   /* the card's own actions: capsules too */
+  .card-foot .finish-early, .card-foot .add-note { display: inline-flex; }
   .add-note .ico { position: relative; display: inline-flex; }
   .add-note .badge { position: absolute; top: -3px; right: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--card); }   /* the red dot: there is a note on this exercise */
   .exnote { margin-top: 4px; }
@@ -831,8 +845,8 @@
   .list li.next .when { display: block; margin-bottom: 3px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand); }
   .list li.next .pri { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
   .list li.next .sec { font-size: 15px; color: var(--text-secondary); margin-top: 3px; }
-  .list li.next .missed-actions { display: flex; gap: 4px 22px; padding: 0 20px 10px; margin-top: -8px; }   /* a missed workout: decide right here */
-  .list li.next .missed-actions button { width: auto; min-height: 40px; padding: 0; font-size: 15px; color: var(--brand); }
+  .list li.next .missed-actions { display: flex; gap: 10px; padding: 4px 20px 14px; margin-top: -4px; }   /* a missed workout: decide right here */
+  .list li.next .missed-actions button { width: auto; min-height: 38px; padding: 0 14px; font-size: 14px; }
   .finish { margin-top: 32px; }
   .cele { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 24px; padding: 40px 0; }
   .cele h1 { margin: 0; }
@@ -842,7 +856,7 @@
   @media (prefers-reduced-motion: reduce) { .cele-check { animation: none; } .cal-view, .cal-track { transition: none !important; } }
   .finished { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 17px; }
   .finished span { color: var(--done); font-weight: 500; }
-  .tnote { margin-top: 8px; display: flex; flex-direction: column; align-items: center; }   /* the coach's note on this session */
+  .tnote { margin-top: 8px; display: flex; flex-direction: column; align-items: flex-start; }   /* the coach's note on this session, starting at the left like every action */
   .tnote[hidden] { display: none; }
   #tNoteBox { width: 100%; margin-top: 4px; }
   #tNoteBox[hidden] { display: none; }
@@ -968,7 +982,7 @@
       <li><div class="srow wrap"><span>Appearance</span><div class="seg" id="themeSeg" role="radiogroup" aria-label="Appearance"><button type="button" role="radio" data-theme="auto" class="on">Auto</button><button type="button" role="radio" data-theme="light">Light</button><button type="button" role="radio" data-theme="dark">Dark</button></div></div></li>
       <li><button type="button" id="changePw"><span>Change password</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
     </ul>
-    <div class="foot"><button class="btn quiet" id="signout" type="button">Sign out</button></div>
+    <div class="foot"><button class="btn tint" id="signout" type="button">Sign out</button></div>
   </section>
 
   <section id="vNumber" hidden>
@@ -1012,7 +1026,7 @@
   <section id="vWaiting" hidden>
     <h1>Almost there</h1>
     <p id="waitingText" style="max-width:420px"></p>
-    <div class="foot"><button class="btn quiet" id="retryBtn" type="button">Try again</button><button class="btn quiet" id="signout3" type="button">Sign out</button></div>
+    <div class="foot"><button class="btn tint" id="retryBtn" type="button">Try again</button><button class="btn tint" id="signout3" type="button">Sign out</button></div>
   </section>
 
   <section id="vClients">
@@ -1052,7 +1066,7 @@
         <div class="field-row"><span class="muted">Messages via</span><div class="seg" id="chatSeg" role="radiogroup" aria-label="Messaging app"><button type="button" data-chat="sms" class="on">Messages</button><button type="button" data-chat="whatsapp">WhatsApp</button></div></div>
         <div class="field-row"><span class="muted">Access</span><div class="seg" id="accessSeg" role="radiogroup" aria-label="Access"><button type="button" data-access="active" class="on">Active</button><button type="button" data-access="paused">Paused</button></div></div>
         <div class="field-row"><span class="muted">Plan</span><select id="planSel"><option value="">None</option></select></div>
-        <div class="field-row" id="planUntilRow" hidden><span class="muted">Active until</span><div class="until-row"><input id="planUntil" type="date"><button class="btn quiet" id="planMonth" type="button">+4 weeks</button></div></div>
+        <div class="field-row" id="planUntilRow" hidden><span class="muted">Active until</span><div class="until-row"><input id="planUntil" type="date"><button class="btn tint" id="planMonth" type="button">+4 weeks</button></div></div>
       </div>
     </div>
     <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
@@ -1075,7 +1089,7 @@
       <div class="cal-view" id="calView"><div class="cal-track" id="calTrack"></div></div>
     </div>
     <button data-tab="workouts" class="btn trainer-only" id="newTraining" style="width:100%;margin-top:16px">+ New workout</button>
-    <div data-tab="workouts" class="trainer-only" id="fromWrap"><button class="btn quiet add" id="fromTemplate" type="button">From template</button></div>
+    <div data-tab="workouts" class="trainer-only" id="fromWrap"><button class="btn tint add" id="fromTemplate" type="button">From template</button></div>
     <div data-tab="workouts" class="pick-note trainer-only" id="pickNote" hidden></div>
     <div data-tab="workouts" id="tplList" hidden></div>
     <h2 data-tab="workouts" id="nextHead" hidden>Up next</h2>
@@ -1092,8 +1106,8 @@
     </div>
     <div data-tab="profile" class="foot foot-col" id="clientFoot" hidden><div class="foot-pills"><button class="pill" id="settingsBtn2" type="button">Settings</button></div></div>
     <div data-tab="profile" class="foot trainer-only" id="delWrap">
-      <button class="btn danger" id="delClient">Delete client</button>
-      <span class="confirm" id="delClientConfirm" hidden>Deletes all their trainings too. <button class="btn danger" id="delClientYes">Delete</button> <button class="btn quiet" id="delClientNo">Keep</button></span>
+      <button class="btn tint danger" id="delClient">Delete client</button>
+      <span class="confirm" id="delClientConfirm" hidden>Deletes all their trainings too. <button class="btn tint danger" id="delClientYes">Delete</button> <button class="btn tint" id="delClientNo">Keep</button></span>
     </div>
   </section>
 
@@ -1107,16 +1121,15 @@
     </div>
     <input type="checkbox" switch id="hapticSwitch" class="vh" tabindex="-1" aria-hidden="true">
     <div class="rows" id="rows"></div>
-    <button class="pill big add trainer-only" id="addRow" type="button">+ Add exercise</button>
-    <button class="btn quiet add trainer-only" id="tplFill" type="button" hidden>From template</button>
+    <div class="start-row"><button class="pill big trainer-only" id="addRow" type="button">+ Add exercise</button><button class="pill big trainer-only" id="tplFill" type="button" hidden>From template</button></div>
     <div class="finish" id="finishWrap" hidden>
       <button class="btn" id="finishBtn" style="width:100%">Finish workout</button>
-      <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn quiet" id="unfinishBtn" type="button">Undo</button></div>
-      <div class="finished" id="skipLine"><button class="btn quiet" id="skipBtn" type="button">Skip workout</button></div>
-      <div class="finished" id="skippedLine" hidden><span class="muted" id="skippedText" style="font-size:17px"></span><button class="btn quiet" id="unskipBtn" type="button">Undo</button></div>
+      <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn tint" id="unfinishBtn" type="button">Undo</button></div>
+      <div class="finished" id="skipLine"><button class="btn tint" id="skipBtn" type="button">Skip workout</button></div>
+      <div class="finished" id="skippedLine" hidden><span class="muted" id="skippedText" style="font-size:17px"></span><button class="btn tint" id="unskipBtn" type="button">Undo</button></div>
     </div>
     <div class="tnote" id="tNoteWrap" hidden>
-      <button class="btn quiet" id="tNoteOpen" type="button">Add a note</button>
+      <button class="btn tint" id="tNoteOpen" type="button">Add a note</button>
       <div id="tNoteBox" hidden>
         <textarea id="tNote" placeholder="A note about this session, for you only"></textarea>
         <div class="note-actions"><button class="btn sm" id="tNoteSave" type="button">Save note</button><button class="btn quiet" id="tNoteDiscard" type="button">Discard</button></div>
@@ -1127,10 +1140,10 @@
       <ul class="list" id="usePick" hidden style="margin-top:12px"></ul>
     </div>
     <div class="foot trainer-only">
-      <button class="btn quiet" id="copyTraining">Copy workout</button>
-      <button class="btn quiet" id="saveTemplate">Save as template</button>
-      <button class="btn danger" id="delTraining">Delete workout</button>
-      <span class="confirm" id="delTrainingConfirm" hidden><button class="btn danger" id="delTrainingYes">Delete</button> <button class="btn quiet" id="delTrainingNo">Keep</button></span>
+      <button class="btn tint" id="copyTraining">Copy workout</button>
+      <button class="btn tint" id="saveTemplate">Save as template</button>
+      <button class="btn tint danger" id="delTraining">Delete workout</button>
+      <span class="confirm" id="delTrainingConfirm" hidden><button class="btn tint danger" id="delTrainingYes">Delete</button> <button class="btn tint" id="delTrainingNo">Keep</button></span>
     </div>
   </section>
 </main>
@@ -1170,7 +1183,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=24";
+  import { boot } from "./app/main.js?v=25";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
