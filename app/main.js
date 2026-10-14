@@ -1,7 +1,7 @@
 // Fiala Trainings — the app. Loaded by index.html as an ES module; boot() starts it.
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
-import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, pendingNoteRows, ui } from "./state.js";
-import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet } from "./util.js";
+import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, pendingNoteRows, ui, planTouched } from "./state.js";
+import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
 import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, perHand, betterSet, topSet, sameSet, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
@@ -192,9 +192,9 @@ import { reportRange, buildReport } from "./report.js";
     const ul = $("packList"); ul.replaceChildren();
     for (const pk of packagesList()) {
       const li = document.createElement("li"); li.className = "pack-row";
-      const left = document.createElement("div"); const name = document.createElement("div"); name.textContent = pk.name; const sub = document.createElement("div"); sub.className = "sub"; sub.textContent = pk.kind === "monthly" ? "Monthly plan" : pk.size + (pk.size === 1 ? " session" : " sessions"); left.append(name, sub);
+      const left = document.createElement("div"); const name = document.createElement("div"); name.textContent = pk.name; const sub = document.createElement("div"); sub.className = "sub"; sub.textContent = pk.kind === "monthly" ? "4-week plan" : pk.size + (pk.size === 1 ? " session" : " sessions"); sub.hidden = sub.textContent.toLowerCase() === String(pk.name).toLowerCase(); left.append(name, sub);
       const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "Delete";
-      del.addEventListener("click", async () => { if (!(await askFirst({ title: "Delete \u201c" + pk.name + "\u201d?", text: "Clients already on it keep their package. It just cannot be picked again." }))) return; const tc = tplClient(); tc.packages = packagesList().filter((x) => x.id !== pk.id); scheduleSave("clients", tc.id); renderPackages(); });
+      del.addEventListener("click", async () => { if (!(await askFirst({ title: "Delete \u201c" + pk.name + "\u201d?", text: "Clients already on it keep their package. It just cannot be picked again." }))) return; const tc = tplClient(); tc.packages = packagesList().filter((x) => x.id !== pk.id); planTouched.add(tc.id); scheduleSave("clients", tc.id); renderPackages(); });
       li.append(left, del); ul.appendChild(li);
     }
     $("packSizeRow").hidden = packKind !== "sessions";
@@ -205,13 +205,13 @@ import { reportRange, buildReport } from "./report.js";
   $("packAdd").addEventListener("click", () => {
     const size = clamp(parseInt($("packSize").value, 10) || 0, 0, 200);
     if (packKind === "sessions" && !size) { $("packSize").focus(); return; }
-    const name = String($("packName").value || "").trim() || (packKind === "monthly" ? "Monthly plan" : size + " sessions");
-    const tc = tplClient(); tc.packages = [...packagesList(), { id: uid(), name, kind: packKind, size: packKind === "sessions" ? size : null }]; scheduleSave("clients", tc.id);
+    const name = String($("packName").value || "").trim() || (packKind === "monthly" ? "4-week plan" : size + " sessions");
+    if (packagesList().some((pk) => pk.name.toLowerCase() === name.toLowerCase())) { $("packName").value = name; $("packName").focus(); $("packName").select(); return; }   // one of each name
+    const tc = tplClient(); tc.packages = [...packagesList(), { id: uid(), name, kind: packKind, size: packKind === "sessions" ? size : null }]; planTouched.add(tc.id); scheduleSave("clients", tc.id);
     $("packName").value = ""; $("packSize").value = ""; renderPackages();
   });
   // a client's plan: picked in Details; the card on the page shows where it stands
   const effPaused = (c) => !!c && (!!c.paused || !planActive(c.plan, today()));            // paused by hand, or a monthly plan past its day
-  const monthLater = (iso) => { const [y, m, d] = String(iso).split("-").map(Number); return localIso(new Date(y, m, d, 12)); };   // the same day next month
   function paintPlanDetails(c) {
     const sel = $("planSel"), cur = c.plan && c.plan.id ? c.plan.id : "";
     const opts = [["", "None"], ...packagesList().map((pk) => [pk.id, pk.name])];
@@ -225,9 +225,9 @@ import { reportRange, buildReport } from "./report.js";
     const bar = $("planBar"), big = $("planBig"), small = $("planSmall"), adj = $("planAdjust"); big.classList.remove("over");
     if (plan.kind === "monthly") {
       const active = planActive(plan, today());
-      $("planName").textContent = plan.name || "Monthly plan"; $("planRight").textContent = ""; bar.hidden = true; adj.hidden = true;
+      $("planName").textContent = plan.name || "4-week plan"; $("planRight").textContent = ""; bar.hidden = true; adj.hidden = true;
       big.textContent = plan.until ? (active ? "Until " + fmtDay(plan.until) : "Ended " + fmtDay(plan.until)) : "Active"; big.classList.toggle("over", !active);
-      small.textContent = active ? (S.clientMode ? "Your plan is active." : "Tap to change the date") : (S.clientMode ? "Message Michal to pick it up again." : "Their workouts are on hold until you extend it");
+      small.textContent = active ? (S.clientMode ? "Your plan is active." : "Tap to change the date") : (S.clientMode ? "" : "Their workouts are on hold until you extend it");
       return;
     }
     const pr = planProgress(plan, clientTrainings(c.id)); if (!pr) { card.hidden = true; return; }
@@ -239,29 +239,31 @@ import { reportRange, buildReport } from "./report.js";
     small.textContent = pr.complete ? "Package complete \u00b7 the next session starts a new one" : pr.left + (pr.left === 1 ? " session left" : " sessions left");
     adj.hidden = S.clientMode;
   }
+  $("planCard").addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); e.currentTarget.click(); } });
   $("planCard").addEventListener("click", (e) => {
     const c = clients.get(S.view.id); if (!c || S.clientMode || !c.plan) return;
     const step = e.target.closest(".step");
-    if (step) { c.plan.adjust = (parseInt(c.plan.adjust, 10) || 0) + (step.id === "planPlus" ? 1 : -1); scheduleSave("clients", c.id); renderClient(); return; }   // the one knob for mistakes
+    if (step) { c.plan.adjust = (parseInt(c.plan.adjust, 10) || 0) + (step.id === "planPlus" ? 1 : -1); planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); return; }   // the one knob for mistakes
     detailsOpen = true; renderClient(); $("detailsBody").scrollIntoView({ block: "nearest", behavior: "smooth" });
   });
   $("planSel").addEventListener("change", (e) => {
     const c = clients.get(S.view.id); if (!c || isTemplateClient(c.id)) return;
     const id = e.target.value; if ((c.plan && c.plan.id ? c.plan.id : "") === id) return;
-    const pk = packagesList().find((x) => x.id === id);
-    if (c.plan && c.plan.id) c.planHistory = [...(c.planHistory || []), { ...c.plan, endedOn: today() }].slice(-20);   // what they were on before stays on record
-    c.plan = pk ? { id: pk.id, name: pk.name, kind: pk.kind, size: pk.size || null, startedOn: today(), adjust: 0, ...(pk.kind === "monthly" ? { until: monthLater(today()) } : {}) } : null;
-    scheduleSave("clients", c.id); renderClient();
+    const pk = packagesList().find((x) => x.id === id), carry = !!(pk && c.plan && c.plan.kind === "sessions" && pk.kind === "sessions");   // 10 -> 20, or a mis-pick put right: the sessions already used carry over
+    if (c.plan && c.plan.id && !carry) c.planHistory = [...(c.planHistory || []), { ...c.plan, endedOn: today() }].slice(-20);   // what they were on before stays on record
+    c.plan = pk ? { id: pk.id, name: pk.name, kind: pk.kind, size: pk.size || null, startedOn: carry ? c.plan.startedOn : today(), adjust: carry ? (parseInt(c.plan.adjust, 10) || 0) : 0, ...(pk.kind === "monthly" ? { until: daysLater(today(), 28) } : {}) } : null;
+    planTouched.add(c.id); scheduleSave("clients", c.id); renderClient();
   });
-  $("planUntil").addEventListener("change", (e) => { const c = clients.get(S.view.id); if (!c || !c.plan || c.plan.kind !== "monthly" || !/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) return; c.plan.until = e.target.value; scheduleSave("clients", c.id); renderClient(); });
-  $("planMonth").addEventListener("click", () => { const c = clients.get(S.view.id); if (!c || !c.plan || c.plan.kind !== "monthly") return; c.plan.until = monthLater(c.plan.until && c.plan.until > today() ? c.plan.until : today()); scheduleSave("clients", c.id); renderClient(); });
+  $("planUntil").addEventListener("change", (e) => { const c = clients.get(S.view.id); if (!c || !c.plan || c.plan.kind !== "monthly" || !/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) return; c.plan.until = e.target.value; planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); });
+  $("planMonth").addEventListener("click", () => { const c = clients.get(S.view.id); if (!c || !c.plan || c.plan.kind !== "monthly") return; c.plan.until = daysLater(c.plan.until && c.plan.until > today() ? c.plan.until : today(), 28); planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); });
   // the workout: "In person" counts toward the package; the client reads "Session 3 of 10"
   function paintSessionPill(t, asClient) {
     const pill = $("sessionPill"), c = clients.get(t.clientId);
-    if (isTemplateClient(t.clientId)) { pill.hidden = true; return; }
+    const row = $("sessionRow"); const show = (v) => { pill.hidden = !v; row.hidden = !v; };
+    if (isTemplateClient(t.clientId)) { show(false); return; }
     const plan = c && c.plan && c.plan.kind === "sessions" ? c.plan : null, sn = plan ? sessionNo(plan, clientTrainings(t.clientId), t) : null;
-    if (asClient) { pill.hidden = !sn; pill.classList.add("on"); if (sn) pill.textContent = "Session " + sn.n + " of " + sn.size; return; }
-    pill.hidden = false; pill.classList.toggle("on", !!t.inPerson);
+    if (asClient) { show(!!sn); pill.classList.add("on"); if (sn) pill.textContent = "Session " + sn.n + " of " + sn.size; return; }
+    show(true); pill.classList.toggle("on", !!t.inPerson);
     pill.innerHTML = "<i>\u2713</i><span></span>"; pill.lastChild.textContent = t.inPerson && sn ? "In person \u00b7 " + sn.n + " of " + sn.size : "In person";
   }
   $("sessionPill").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t || S.clientMode || isTemplateClient(t.clientId)) return; t.inPerson = !t.inPerson; if (!t.inPerson) delete t.inPerson; touchState(t.id, "inPerson"); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); });
@@ -1000,7 +1002,7 @@ import { reportRange, buildReport } from "./report.js";
   const templateHome = (t) => { const m = templateMeta(t); return m.program === MY_TEMPLATES ? { name: "client", id: TEMPLATES_ID } : { name: "client", id: TEMPLATES_ID, program: m.program, phase: m.phase, stage: m.stage }; };
   function render() {
     if (S.recovering) { showRecovery(); return; }
-    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : "vPassword").hidden = false; $("back").hidden = false; $("brand").hidden = true; } return; }
+    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : "vPassword").hidden = false; if (settingsOpen === "packages") renderPackages(); $("back").hidden = false; $("brand").hidden = true; } return; }
     if (S.sb && !S.signedIn) { showLogin($("loginMsg").textContent); return; }
     if (S.clientMode && !S.myClientId) { showWaiting(); return; }
     if (celebrating) { hideAllViews(); $("vCelebrate").hidden = false; $("back").hidden = true; $("brand").hidden = false; return; }   // "Nice work" stays up until it hands over to the client page, whatever refreshes meanwhile
@@ -1084,7 +1086,7 @@ import { reportRange, buildReport } from "./report.js";
         const b = document.createElement("button"); b.type = "button";
         const n = clientTrainings(c.id).length;
         b.innerHTML = `<span></span><span class="sub"></span>`;
-        b.firstChild.textContent = c.name; b.lastChild.textContent = (n ? n + (n === 1 ? " workout" : " workouts") : ""); b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
+        b.firstChild.textContent = c.name; b.lastChild.textContent = (n ? n + (n === 1 ? " workout" : " workouts") : "") + (!c.paused && effPaused(c) ? (n ? " \u00b7 " : "") + "Plan ended" : ""); b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
         b.addEventListener("click", () => go({ name: "client", id: c.id }));
         li.appendChild(b);
       }
@@ -1233,6 +1235,7 @@ import { reportRange, buildReport } from "./report.js";
     for (const b of $("accessSeg").querySelectorAll("button")) b.classList.toggle("on", (c.paused ? "paused" : "active") === b.dataset.access);
     $("pausedCard").hidden = !(effPaused(c) && S.clientMode);
     $("pausedText").textContent = phoneDigits(c.trainerPhone) ? "Your workouts are on hold for now. Message Michal when you’re ready to pick up again." : "Your workouts are on hold for now. Michal will switch them back on when you’re ready to pick up again.";
+    $("pausedCard").firstElementChild.textContent = !c.paused && effPaused(c) ? "Plan ended" : "Access paused";
     if (!c.paused && effPaused(c)) $("pausedText").textContent = "Your plan ended " + fmtDay(c.plan.until) + ". Message Michal to pick it up again.";
     document.body.classList.toggle("paused", !!(effPaused(c) && S.clientMode));
     if (document.activeElement !== $("cNotes")) $("cNotes").value = noteDraft.get(c.id) || "";
@@ -2324,7 +2327,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { overviewCounts, loggedExercises, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },

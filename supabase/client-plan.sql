@@ -1,4 +1,4 @@
--- Monthly plans: a client whose monthly plan is past its day gets no workouts, exactly like a paused client,
+-- 4-week plans (kind 'monthly' in the data): a client whose plan is past its day gets no workouts, exactly like a paused client,
 -- until the trainer extends the date. Session packages do not touch access (the trainer pauses by hand).
 -- Paste into Supabase: SQL Editor -> New query -> Run. Safe to run more than once.
 -- client-access.sql, client-pause.sql and client-instructions.sql carry the same body; keep them identical.

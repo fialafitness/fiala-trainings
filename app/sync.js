@@ -1,9 +1,9 @@
 // Saving and syncing: the device copy, the debounced save queue, the cloud backend (coach), the client backend (RPCs),
 // the paged read of the server and the merge back into the local maps. Screens are reached only through `ui`.
-import { lsGet, lsSet, norm, clamp } from "./util.js";
-import { isTemplateClient } from "./model.js";
+import { lsGet, lsSet, norm, clamp, today } from "./util.js";
+import { isTemplateClient, planActive } from "./model.js";
 import { mergeNotes } from "./notes.js";
-import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, pendingNoteRows } from "./state.js";
+import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, planTouched, confirmedAt, deletedNotes, pendingNoteRows } from "./state.js";
 
 // ---------- persistence ----------
 const isNetwork = (error) => /load failed|failed to fetch|network|fetch/i.test((error && error.message) || "");
@@ -75,7 +75,7 @@ function flushOne(kind, id) {
       try {
         if (data) await S.backend.set(kind, id, data); else await S.backend.del(kind, id);
         S.failed = false;
-        if (dirty.get(k) === version) { dirty.delete(k); if (kind === "trainings") trainerState.delete(id); }   // the coach's state changes went with this save; a later touch keeps its flag
+        if (dirty.get(k) === version) { dirty.delete(k); if (kind === "trainings") trainerState.delete(id); if (kind === "clients") planTouched.delete(id); }   // the coach's state changes went with this save; a later touch keeps its flag
         confirmedAt.set(k, Date.now());
         return;
       } catch (e) {
@@ -121,11 +121,16 @@ const cloudBackend = {
       const takeState = (serverData) => {                      // the client may have finished, skipped or moved it meanwhile: keep that, field by field, unless the coach changed that field
         if (kind !== "trainings" || !serverData) return;
         const mine = trainerState.get(id) || new Set();
-        for (const f of ["completedAt", "skippedAt", "missed", "date"]) { if (mine.has(f)) continue; for (const target of [data, trainings.get(id)]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; } }
+        for (const f of ["completedAt", "skippedAt", "missed", "date", "inPerson"]) { if (mine.has(f)) continue; for (const target of [data, trainings.get(id)]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; } }
       };
       const takeNotes = (serverData) => {                      // another device may have written notes: keep both
         if (kind !== "clients" || !serverData) return;
         const merged = mergeNotes(data.notes, serverData.notes, deletedNotes); data.notes = merged; const live = clients.get(id); if (live) live.notes = merged;
+        if (Array.isArray(serverData.packages) || Array.isArray(data.packages)) {                  // packages added on two devices: keep both
+          const have = new Set((data.packages || []).map((x) => x && x.id)), union = [...(data.packages || []), ...(serverData.packages || []).filter((x) => x && x.id && !have.has(x.id))];
+          data.packages = union; if (live) live.packages = union;
+        }
+        if (!planTouched.has(id)) for (const f of ["plan", "planHistory"]) for (const target of [data, live]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; }   // a plan set on another device stands, unless this one changed it
       };
       if (!seen && attempt === 0) {                               // no stamp (edited offline, app relaunched): read first, never write over the other side blind
         const existing = await S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle();
@@ -273,7 +278,7 @@ async function syncDownNow() {
       ui.showProblem("Couldn\u2019t load your workouts \u00b7 " + (res.error.message || "server error") + " \u00b7 tap Try again"); return false;
     }
     c = { data: res.data.clients || [] }; t = { data: res.data.trainings || [] };
-    const me = c.data[0], authoritative = !!me && !(me.data && me.data.paused);
+    const me = c.data[0], authoritative = !!me && !(me.data && me.data.paused) && planActive(me.data && me.data.plan, today());   // paused, or a monthly plan past its day: the server hides the workouts, it has not deleted them, so nothing queued is dropped
     if (authoritative) {                                                   // a training the trainer deleted: nothing queued for it can land
       const serverIds = new Set(t.data.map((r) => r.id));
       for (const k of [...dirty.keys()]) { const [kind, id] = k.split("/"); if (kind === "trainings" && !serverIds.has(id)) { dirty.delete(k); pendingWeightRows.delete(id); pendingDoneRows.delete(id); pendingEarlyRows.delete(id); pendingNoteRows.delete(id); pendingFinish.delete(id); pendingSkip.delete(id); pendingMove.delete(id); pendingMiss.delete(id); pendingSwap.delete(id); } }

@@ -121,3 +121,12 @@ test("the device copy reports when it cannot be written", () => {
   try { fns.localBackend.save(); assert.strictEqual(app.get().deviceFull, true); fns.setStatus(); assert.ok(/Not saved on this device/.test(document.getElementById("status").textContent)); }
   finally { env.storage.fail = false; fns.localBackend.save(); assert.strictEqual(app.get().deviceFull, false); }
 });
+test("a client whose monthly plan has ended keeps everything still queued: the server hid the workouts, it did not delete them", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend });
+  maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb", plan: { id: "m", name: "Monthly plan", kind: "monthly", until: "2000-01-01" } });
+  sb.rpcs.client_my_data = async () => ({ clients: [{ id: "c1", data: { name: "Jane", unit: "lb", plan: { id: "m", name: "Monthly plan", kind: "monthly", until: "2000-01-01" } } }], trainings: [] });
+  const t = training("T", { completedAt: "2026-10-13T10:00:00.000Z", date: day(-1), missed: false, rows: [row("r1", ["225"], ["5"], 1)] }); maps.trainings.set("T", t);
+  maps.dirty.set("trainings/T", 1); maps.pendingFinish.add("T"); maps.pendingWeightRows.set("T", new Set(["r1"]));
+  await fns.syncDownNow();
+  assert.ok(maps.dirty.has("trainings/T") && maps.pendingFinish.has("T") && maps.pendingWeightRows.has("T"), "the queue survives"); assert.ok(maps.trainings.has("T"), "and so does the device copy");
+});
