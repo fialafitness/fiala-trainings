@@ -295,6 +295,11 @@
   .sheet.ask .fine { margin: 0; font-size: 15px; line-height: 1.4; color: var(--text-secondary); }
   .sheet.ask hr { border: 0; border-top: 1px solid var(--card-border); margin: 16px 0 14px; }
   .sheet.ask .cap { margin: 0 0 10px; font-size: 15px; color: var(--text-secondary); }
+  /* the confirm sheet: nothing is deleted or discarded by accident; only its red button does it */
+  .sheet.confirm-sheet h3 { font-size: 22px; line-height: 28px; }
+  .sheet.confirm-sheet .lead[hidden] { display: none; }
+  .ask-actions { display: grid; gap: 10px; margin-top: 18px; }
+  .ask-actions .btn { min-height: 50px; font-size: 17px; }
   .sheet.ask .reasons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .sheet.ask .reasons button { appearance: none; cursor: pointer; min-height: 44px; padding: 0 12px; border-radius: var(--r-field); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-primary); font-size: 15px; transition: opacity 300ms ease; }
   .sheet.ask .reasons button.on { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; font-weight: 600; }   /* the chosen one, like the current set */
@@ -1015,6 +1020,7 @@
     <div class="cal" id="dpGrid"></div>
   </div>
 </div>
+<div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="earlySheet" hidden>
   <div class="sheet ask" role="dialog" aria-modal="true" aria-labelledby="esTitle">
     <h3 id="esTitle">Finish this exercise?</h3>
@@ -1036,7 +1042,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=13";
+  import { boot } from "./app/main.js?v=14";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
