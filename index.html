@@ -222,13 +222,13 @@
   .btn.tint.danger { color: var(--danger); }                                   /* the same grey, red ink */
   .btn.tint.accent { color: var(--brand); }                                    /* the one accent capsule of a screen, like Apple's green on grey */
   .btn.ink { background: var(--ink); color: var(--ink-on); }                   /* Apple's strong monochrome button: black on light, white on dark */
+  .btn.outline { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }   /* its outlined partner, like Pre-order next to Learn more */
   .btn.tint.wide { width: 100%; min-height: 50px; font-size: 17px; font-weight: 600; }   /* Finish workout: Apple's big grey capsule with accent text, so Complete set stays the one filled button */
   .btn.tint:hover, .btn.tint:active { opacity: 0.8; }
   .btn.tint svg { width: 16px; height: 16px; flex: none; }
   .btn.tint.addname { min-height: 32px; padding: 0 12px; font-size: 13px; }
-  .start-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }   /* the two ways to start a workout, side by side, the same pill */
-  .start-row { align-items: center; }
-  .start-row .pill, .start-row #addRow, .start-row #tplFill { display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 22px; font-size: 16px; margin: 0; }
+  .start-row { display: flex; gap: 10px; margin-top: 16px; align-items: stretch; }   /* Apple's pair: one filled, one outlined, edge to edge; alone, the filled one takes the whole width */
+  .start-row #addRow, .start-row #tplFill { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 16px; font-size: 16px; font-weight: 600; margin: 0; white-space: nowrap; }
   .btn:disabled { opacity: 0.5; cursor: default; }
   .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible, .datefield:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   .cal button:focus-visible { outline-offset: -2px; }
@@ -859,7 +859,7 @@
   @media (prefers-reduced-motion: reduce) { .cele-check { animation: none; } .cal-view, .cal-track { transition: none !important; } }
   .finish .finished { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin-top: 12px; font-size: 17px; }   /* Skip / Undo under Finish workout: air between a capsule and the button. Scoped: a finished day in the week strip carries the same class */
   .finished span { color: var(--done); font-weight: 500; }
-  .tnote { margin-top: 16px; display: flex; flex-direction: column; align-items: flex-start; }   /* the coach's note on this session, starting at the left like every action */
+  .tnote { margin-top: 16px; display: flex; flex-direction: column; align-items: center; }   /* the session note sits centred under the finish area */   /* the coach's note on this session, starting at the left like every action */
   .tnote[hidden] { display: none; }
   #tNoteBox { width: 100%; margin-top: 4px; }
   #tNoteBox[hidden] { display: none; }
@@ -1124,7 +1124,7 @@
     </div>
     <input type="checkbox" switch id="hapticSwitch" class="vh" tabindex="-1" aria-hidden="true">
     <div class="rows" id="rows"></div>
-    <div class="start-row"><button class="pill big trainer-only" id="addRow" type="button">+ Add exercise</button><button class="pill big trainer-only" id="tplFill" type="button" hidden>From template</button></div>
+    <div class="start-row"><button class="btn ink trainer-only" id="addRow" type="button">+ Add exercise</button><button class="btn outline trainer-only" id="tplFill" type="button" hidden>From template</button></div>
     <div class="finish" id="finishWrap" hidden>
       <button class="btn tint wide accent" id="finishBtn">Finish workout</button>
       <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn tint" id="unfinishBtn" type="button">Undo</button></div>
