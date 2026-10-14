@@ -559,15 +559,24 @@
   .setlog .chip.stack .valrow .suffix { font-size: 15px; font-weight: 500; }
   .setlog .chip.stack.editing .valrow input { position: static; flex: 1 1 auto; width: 0; min-width: 3ch; height: auto; font-size: 22px; font-weight: 600; padding: 0; }
   .setlog .chip.stack.editing .valrow .val { display: none; }
-  .lifts { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 10px 0 0 2px; font-size: 14px; line-height: 1.3; }   /* under the boxes: LAST and BEST on this exercise, in words, no icons */
+  .lifts { display: flex; flex-wrap: nowrap; gap: 0 18px; margin: 10px 0 0 2px; font-size: 13px; line-height: 1.3; }   /* under the boxes: LAST and BEST on this exercise, in words; a tap on a number says when */
   .lifts[hidden] { display: none; }
-  .lift { display: inline-flex; align-items: baseline; gap: 7px; }
-  .lift .k { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .lifts.tight { font-size: 12px; gap: 0 12px; } .lifts.tight .lift .k { font-size: 10px; letter-spacing: 0.06em; }
+  .lifts.wrap { flex-wrap: wrap; gap: 2px 14px; }                                   /* only a tiny screen gets a second line */
+  .lift { appearance: none; border: 0; background: none; padding: 2px 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; flex: 0 0 auto; }
+  .lift .k { font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
   .lift b { font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
   .lift.best b { color: var(--gold); }
   .lift.best.new .k { color: var(--gold); }                                  /* today beats it: NEW BEST, while it lasts */
-  .lift .also { font-size: 13px; color: var(--text-tertiary); }
-  .lift .also[hidden] { display: none; }
+  #whenBg { position: fixed; inset: 0; z-index: 55; }                       /* catches the closing tap */
+  #whenBg[hidden] { display: none; }
+  #whenPop { position: fixed; max-width: calc(100vw - 16px); padding: 10px 14px 11px; border-radius: 14px; background: var(--elevated); box-shadow: 0 8px 30px rgba(0,0,0,0.22), 0 0 0 1px var(--card-border); animation: popIn 160ms ease-out; }
+  #whenPop b { display: block; font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  #whenPop span { display: block; margin-top: 2px; font-size: 13px; color: var(--text-secondary); }
+  #whenPop span[hidden] { display: none; }
+  #whenPop::before { content: ""; position: absolute; top: -6px; left: var(--caret, 16px); width: 12px; height: 12px; background: inherit; transform: translateX(-50%) rotate(45deg); box-shadow: -1px -1px 0 var(--card-border); }
+  #whenPop.above::before { top: auto; bottom: -6px; box-shadow: 1px 1px 0 var(--card-border); }
+  @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
   .block.done:not(.open) .row .lifts, body.client .block.ahead .row .lifts { display: none; }
   .setlog .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .setlog.timed .pair .chip.stack:nth-child(2) { order: -1; }   /* a hold: Time first, Weight beside it */
@@ -1026,6 +1035,7 @@
     <div class="cal" id="dpGrid"></div>
   </div>
 </div>
+<div id="whenBg" hidden><div id="whenPop" role="dialog" aria-live="polite"><b id="whenTitle"></b><span id="whenSub"></span></div></div>
 <div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="earlySheet" hidden>
   <div class="sheet ask" role="dialog" aria-modal="true" aria-labelledby="esTitle">
@@ -1048,7 +1058,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=18";
+  import { boot } from "./app/main.js?v=19";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
