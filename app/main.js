@@ -1594,7 +1594,7 @@ import { reportRange, buildReport } from "./report.js";
     const fit = () => {
       const raw = inp.value || inp.placeholder || "", nothing = !raw, editing = chip.classList.contains("editing");
       val.textContent = nothing ? (o.empty || "") : (o.show ? o.show(raw) : raw);
-      val.classList.toggle("ph", !inp.value); chip.classList.toggle("filled", !!inp.value);
+      val.classList.toggle("ph", !inp.value); val.classList.toggle("hint", nothing && !!o.hint); chip.classList.toggle("filled", !!inp.value);   // "Log weight": an ask, not a number
       if (o.suffix !== undefined) sfx.textContent = typeof o.suffix === "function" ? o.suffix(raw) : o.suffix;
       sfx.hidden = !sfx.textContent || (nothing && !editing);               // "Weight" alone until the box is tapped, then "lbs" waits for the number
     };
@@ -1909,17 +1909,17 @@ import { reportRange, buildReport } from "./report.js";
       const carry = carried(r, sel);   // the set before (else last time) shows in grey: type over it, or leave it and Complete set writes it down
       w.value = r.weights[sel] || ""; w.placeholder = carry.w || lw || "";           // nothing to suggest: the chip just says "lb"
       const timed = timedPlan(r.reps); q(".setlog").classList.toggle("timed", !!timed);   // a plank: the box says Time and comes first, Weight waits beside it
-      rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || (timed ? timed.n : (r.reps ? String(r.reps) : ""));
+      rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || (timed ? "" : (r.reps ? String(r.reps) : ""));   // a hold never logged before asks for its time; reps still show the plan
       w.inputMode = (wText || nonNum(r.weights[sel] || carry.w || "")) ? "text" : "decimal";
       const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
       w.addEventListener("input", (e) => { while (r.weights.length <= sel) r.weights.push(""); r.weights[sel] = e.target.value; mark(); });
       rp.addEventListener("input", (e) => { while (r.repsDone.length <= sel) r.repsDone.push(""); r.repsDone[sel] = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); e.target.value = r.repsDone[sel]; mark(); });
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.focus(); } });
       rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.blur(); } });
-      wireChip(w, { empty: "\u2013", suffix: (v) => weightWord(v, unit), show: showWeight });   // after the handlers above, so the words follow the tidied value
+      wireChip(w, { empty: "Log weight", hint: true, suffix: (v) => weightWord(v, unit), show: showWeight });   // after the handlers above, so the words follow the tidied value; never logged before = the box asks
       const perSide = /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || ""));             // "10 / side": the label says so, the box holds the number
       q(".setlog .chip.stack:nth-child(2) .lab").textContent = (timed ? "Time" : "Reps") + (perSide ? " / side" : "");
-      if (timed) wireChip(rp, { empty: "\u2013", suffix: () => timed.unit, show: (v) => v });
+      if (timed) wireChip(rp, { empty: "Log time", hint: true, suffix: () => timed.unit, show: (v) => v });
       else wireChip(rp, { empty: "\u2013", suffix: perSide ? () => "" : repsWord, show: perSide ? (v) => String(v || "").replace(/\s*(\/|each|per)\s*(side|leg|arm)\s*$/i, "") : showReps });
     }
     const chipText = (c) => c.querySelector(".val").textContent + (c.querySelector(".suffix").hidden ? "" : " " + c.querySelector(".suffix").textContent);
