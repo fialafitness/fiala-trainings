@@ -42,6 +42,7 @@
     --field: #ffffff;                   /* a field on the grouped page is a white cell */
     --field-in: #f5f5f7;                /* a field inside a white card is grey */
     --glyph-fill: rgba(120,120,128,0.14); /* the circle behind a small symbol (secondary system fill) */
+    --glass: rgba(255,255,255,0.78); --glass-edge: rgba(0,0,0,0.08);   /* a floating bubble: frosted, the page showing through */
     --placeholder: #d2d2d7;
     --brand: #6f6b99;                   /* app-purple — structure / interactive, EXACT */
     --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
@@ -77,6 +78,7 @@
       --field: rgba(255,255,255,0.08);
       --field-in: rgba(255,255,255,0.08);
       --glyph-fill: rgba(255,255,255,0.12);
+      --glass: rgba(44,44,46,0.72); --glass-edge: rgba(255,255,255,0.10);
       --placeholder: rgba(255,255,255,0.35);
       --brand: #6f6b99;                 /* app-purple — the brand, exact in both modes */
       --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
@@ -112,6 +114,7 @@
     --field: rgba(255,255,255,0.08);
     --field-in: rgba(255,255,255,0.08);
     --glyph-fill: rgba(255,255,255,0.12);
+    --glass: rgba(44,44,46,0.72); --glass-edge: rgba(255,255,255,0.10);
     --placeholder: rgba(255,255,255,0.35);
     --brand: #6f6b99;                 /* app-purple — the brand, exact in both modes */
     --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
@@ -570,12 +573,12 @@
   .lift.best.new .k { color: var(--gold); }                                  /* today beats it: NEW BEST, while it lasts */
   #whenBg { position: fixed; inset: 0; z-index: 55; }                       /* catches the closing tap */
   #whenBg[hidden] { display: none; }
-  #whenPop { position: fixed; max-width: calc(100vw - 16px); padding: 10px 14px 11px; border-radius: 14px; background: var(--elevated); box-shadow: 0 8px 30px rgba(0,0,0,0.22), 0 0 0 1px var(--card-border); animation: popIn 160ms ease-out; }
+  #whenPop { position: fixed; isolation: isolate; max-width: calc(100vw - 16px); padding: 10px 14px 11px; border-radius: 16px; background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); box-shadow: 0 10px 30px rgba(0,0,0,0.18), inset 0 0 0 0.5px var(--glass-edge); animation: popIn 160ms ease-out; }   /* frosted glass, like a system popover */
   #whenPop b { display: block; font-size: 15px; font-weight: 600; color: var(--text-primary); }
   #whenPop span { display: block; margin-top: 2px; font-size: 13px; color: var(--text-secondary); }
   #whenPop span[hidden] { display: none; }
-  #whenPop::before { content: ""; position: absolute; top: -6px; left: var(--caret, 16px); width: 12px; height: 12px; background: inherit; transform: translateX(-50%) rotate(45deg); box-shadow: -1px -1px 0 var(--card-border); }
-  #whenPop.above::before { top: auto; bottom: -6px; box-shadow: 1px 1px 0 var(--card-border); }
+  #whenPop::before { content: ""; position: absolute; z-index: -1; top: -6px; left: var(--caret, 16px); width: 12px; height: 12px; background: inherit; -webkit-backdrop-filter: inherit; backdrop-filter: inherit; transform: translateX(-50%) rotate(45deg); box-shadow: inset 0.5px 0.5px 0 var(--glass-edge); }
+  #whenPop.above::before { top: auto; bottom: -6px; box-shadow: inset -0.5px -0.5px 0 var(--glass-edge); }
   @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
   .block.done:not(.open) .row .lifts, body.client .block.ahead .row .lifts { display: none; }
   .setlog .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
