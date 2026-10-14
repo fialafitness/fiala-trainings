@@ -557,6 +557,7 @@
   .setlog .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .setlog.timed .pair .chip.stack:nth-child(2) { order: -1; }   /* a hold: Time first, Weight beside it */
   .setlog .chip .val.ph { color: var(--text-secondary); }                 /* last time's or the set before's numbers, until they are written down */
+  .setlog .chip.stack .valrow .val.hint { font-size: 17px; font-weight: 500; color: var(--text-tertiary); letter-spacing: 0; }   /* "Log weight" / "Log time": the first time ever, the box asks instead of suggesting */
   .row .weights { display: none; }                  /* the per-set grid is replaced by logging one set at a time */
   .card-foot .done-btn { display: none; }
   .card-foot .complete { width: 100%; display: inline-flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
@@ -1031,7 +1032,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=10";
+  import { boot } from "./app/main.js?v=11";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
