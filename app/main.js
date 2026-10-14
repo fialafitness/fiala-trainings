@@ -1958,7 +1958,7 @@ import { reportRange, buildReport } from "./report.js";
       const perSide = /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || ""));             // "10 / side": the label says so, the box holds the number
       q(".setlog .chip.stack:nth-child(2) .lab").textContent = (timed ? "Time" : "Reps") + (perSide ? " / side" : "");
       if (timed) wireChip(rp, { empty: "Log time", hint: true, suffix: () => timed.unit, show: (v) => v });
-      else wireChip(rp, { empty: "\u2013", suffix: perSide ? () => "" : repsWord, show: perSide ? (v) => String(v || "").replace(/\s*(\/|each|per)\s*(side|leg|arm)\s*$/i, "") : showReps });
+      else wireChip(rp, { empty: "\u2013", suffix: () => "", show: (v) => String(v || "").replace(/\s*(\/|each|per)\s*(side|leg|arm)\s*$/i, "").replace(/\s*reps?\s*$/i, "") });   // the label above already says Reps: the box holds the number alone (lbs and sec are units, "reps" would only repeat the label)
     }
     const chipText = (c) => c.querySelector(".val").textContent + (c.querySelector(".suffix").hidden ? "" : " " + c.querySelector(".suffix").textContent);
     const nSets = setsOf(r), sumEl = q(".sum"); sumEl.replaceChildren();   // "3 sets · 8–10 reps · 60 sec transition" (the open card hides the sets part: the chips above say it)
