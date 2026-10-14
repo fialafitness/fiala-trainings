@@ -791,8 +791,8 @@
   .details { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 8px; max-width: 420px; }
   .contact-row { display: flex; align-items: center; margin-top: 12px; }
   .contact-row[hidden] { display: none; }
-  .msg-pill { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; min-height: 40px; border-radius: 50px; text-decoration: none; font-size: 15px; font-weight: 600; letter-spacing: 0; color: var(--btn-fg);
-    background: var(--btn-bg); transition: opacity 300ms ease, transform 300ms ease; }   /* filled purple, like Complete set: the one way to reach a person is the screen's purple act */
+  .msg-pill { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; min-height: 40px; border-radius: 50px; text-decoration: none; font-size: 15px; font-weight: 600; letter-spacing: 0; color: var(--ink-on);
+    background: var(--ink); transition: opacity 300ms ease, transform 300ms ease; }   /* the strong monochrome pill, like the Add button: prominent without spending purple */
   .msg-pill:hover { opacity: 0.92; }
   .msg-pill.small { min-height: 34px; padding: 0 14px; font-size: 14px; gap: 6px; }
   .msg-pill[hidden] { display: none; }
@@ -854,7 +854,7 @@
   .finish { margin-top: 32px; }
   .cele { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 24px; padding: 40px 0; }
   .cele h1 { margin: 0; }
-  .cele-actions { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; max-width: 280px; }   /* Back (ink) over Message (the screen's one purple act, coach only), one width */
+  .cele-actions { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; max-width: 280px; }   /* Back (ink-filled) over Message (ink-outlined, coach only), one width: the Pre-order / Learn more pair */
   a.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
   a.btn[hidden] { display: none; }
   .cele p { margin: 0; font-size: 17px; color: var(--text-secondary); max-width: 320px; }
@@ -1028,7 +1028,7 @@
       <p id="celeText"></p>
       <div class="cele-actions">
         <button class="btn ink" id="celeBack" type="button">Back to workouts</button>
-        <a class="btn trainer-only" id="celeMsg" href="#" hidden><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="celeMsgText">Message</span></a>
+        <a class="btn outline trainer-only" id="celeMsg" href="#" hidden><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="celeMsgText">Message</span></a>
       </div>
     </div>
   </section>
