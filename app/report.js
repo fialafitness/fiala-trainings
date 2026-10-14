@@ -1,6 +1,6 @@
 // The monthly client report: overview, progress, sessions, notes, laid out on US Letter.
 import { today, localIso, fmtDay, clamp } from "./util.js";
-import { effDate } from "./model.js";
+import { effDate, timedPlan } from "./model.js";
 import { noteEntries } from "./notes.js";
 import { pdfDoc } from "./pdf.js";
 
@@ -34,15 +34,17 @@ export function buildReport(kind, fonts, c, allTrainings) {                     
   if (totals.planned) doc.text(totals.planned + (totals.planned === 1 ? " session" : " sessions") + " still planned this month.", { size: 10, color: grey });
   // progress: per exercise, the top set at the first and the last session of the month, and the best
   const num = (v) => { const str = String(v == null ? "" : v).trim(); return /^\d+(?:[.,]\d+)?$/.test(str) ? parseFloat(str.replace(",", ".")) : null; };
-  const better = (a, b) => !b || (a.w != null && (b.w == null || a.w > b.w || (a.w === b.w && (a.rp || 0) > (b.rp || 0)))) || (a.w == null && b.w == null && (a.rp || 0) > (b.rp || 0));
-  const topSet = (row) => { let best = null; const done = clamp(parseInt(row.setsDone, 10) || 0, 0, 20); for (let i = 0; i < done; i++) { const st = { w: num((row.weights || [])[i]), rp: num((row.repsDone || [])[i]) }; if (st.w == null && st.rp == null) continue; if (better(st, best)) best = st; } return best; };
-  const fmtSet = (st) => st.w != null ? st.w + " " + unit + (st.rp != null ? " × " + st.rp : "") : (st.rp != null ? st.rp + (st.rp === 1 ? " rep" : " reps") : "–");
+  const better = (a, b, timed) => !b || (timed ? (a.rp || 0) > (b.rp || 0) || ((a.rp || 0) === (b.rp || 0) && (a.w || 0) > (b.w || 0))   // a hold: longer wins, then heavier
+    : (a.w != null && (b.w == null || a.w > b.w || (a.w === b.w && (a.rp || 0) > (b.rp || 0)))) || (a.w == null && b.w == null && (a.rp || 0) > (b.rp || 0)));
+  const topSet = (row) => { let best = null; const timed = !!timedPlan(row.reps), done = clamp(parseInt(row.setsDone, 10) || 0, 0, 20); for (let i = 0; i < done; i++) { const st = { w: num((row.weights || [])[i]), rp: num((row.repsDone || [])[i]) }; if (st.w == null && st.rp == null) continue; if (better(st, best, timed)) best = st; } return best; };
+  const fmtSet = (st, tm) => tm ? (st.w != null ? st.w + " " + unit + " × " : "") + (st.rp != null ? st.rp + " " + tm.unit : "–")   // "30 sec", "50 lb × 30 sec"
+    : (st.w != null ? st.w + " " + unit + (st.rp != null ? " × " + st.rp : "") : (st.rp != null ? st.rp + (st.rp === 1 ? " rep" : " reps") : "–"));
   const same = (a, b) => a.w === b.w && a.rp === b.rp;
   const prog = new Map();
   for (const x of sessions) if (x.completedAt) for (const row of x.rows || []) {
     const top = topSet(row), name = String(row.name || "").trim(); if (!top || !name) continue;
-    const k = name.toLowerCase(); if (!prog.has(k)) prog.set(k, { name, first: top, last: top, best: top, n: 0 });
-    const e = prog.get(k); e.n++; e.last = top; e.name = name; if (better(top, e.best)) e.best = top;
+    const k = name.toLowerCase(), tm = timedPlan(row.reps); if (!prog.has(k)) prog.set(k, { name, first: top, last: top, best: top, n: 0, tm });
+    const e = prog.get(k); e.n++; e.last = top; e.name = name; e.tm = tm; if (better(top, e.best, !!tm)) e.best = top;
   }
   doc.section("Progress");
   if (!prog.size) doc.text("No sets logged this month.", { size: 10.5, color: grey });
@@ -51,8 +53,8 @@ export function buildReport(kind, fonts, c, allTrainings) {                     
     doc.row([{ x: col.name, text: "EXERCISE" }, { x: col.n, text: "SESSIONS" }, { x: col.start, text: "START" }, { x: col.end, text: "END" }, { x: col.best, text: "BEST" }].map((h) => ({ ...h, size: 8, color: grey })), { size: 8, gap: 2 });
     doc.rule();
     for (const e of [...prog.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name))) {
-      const up = e.n > 1 && !same(e.first, e.last) && better(e.last, e.first);
-      doc.row([{ x: col.name, text: e.name, bold: true, maxW: 196 }, { x: col.n, text: String(e.n), color: soft }, { x: col.start, text: fmtSet(e.first), color: soft, maxW: 78 }, { x: col.end, text: e.n > 1 ? fmtSet(e.last) : "–", color: up ? fern : soft, bold: up, maxW: 78 }, { x: col.best, text: fmtSet(e.best), color: soft, maxW: 78 }], { size: 10, gap: 7 });
+      const up = e.n > 1 && !same(e.first, e.last) && better(e.last, e.first, !!e.tm);
+      doc.row([{ x: col.name, text: e.name, bold: true, maxW: 196 }, { x: col.n, text: String(e.n), color: soft }, { x: col.start, text: fmtSet(e.first, e.tm), color: soft, maxW: 78 }, { x: col.end, text: e.n > 1 ? fmtSet(e.last, e.tm) : "–", color: up ? fern : soft, bold: up, maxW: 78 }, { x: col.best, text: fmtSet(e.best, e.tm), color: soft, maxW: 78 }], { size: 10, gap: 7 });
     }
   }
   // sessions: one line each, logged sets underneath
@@ -62,8 +64,8 @@ export function buildReport(kind, fonts, c, allTrainings) {                     
     const st = status(x); doc.keep(42);                                      // a session's line stays with its first logged sets
     doc.row([{ x: M, text: fmtDay(effDate(x)), bold: true }, { x: M + 92, text: x.title || "Workout", bold: true, maxW: 290 }, { right: R, text: st, color: st === "Finished" ? fern : st === "Missed" || st === "Not done" ? warn : grey }], { size: 10.5, gap: 3 });
     if (x.completedAt) for (const row of x.rows || []) {
-      const done = clamp(parseInt(row.setsDone, 10) || 0, 0, 20), sets = [];
-      for (let i = 0; i < done; i++) { const w = String((row.weights || [])[i] || "").trim(), rp = String((row.repsDone || [])[i] || "").trim(); sets.push(w ? (/^\d+(?:[.,]\d+)?$/.test(w) ? w + " " + unit : w) + (rp ? " × " + rp : "") : (rp ? rp + " reps" : "–")); }
+      const done = clamp(parseInt(row.setsDone, 10) || 0, 0, 20), sets = [], tm = timedPlan(row.reps);
+      for (let i = 0; i < done; i++) { const w = String((row.weights || [])[i] || "").trim(), rp = String((row.repsDone || [])[i] || "").trim(); const wt = w ? (/^\d+(?:[.,]\d+)?$/.test(w) ? w + " " + unit : w) : ""; sets.push(tm ? (wt ? wt + " × " : "") + (rp ? rp + " " + tm.unit : "–") : (wt ? wt + (rp ? " × " + rp : "") : (rp ? rp + " reps" : "–"))); }
       const lines = doc.wrap((done ? sets.join(", ") : "not started") + (row.earlyReason ? "  ·  finished early: " + row.earlyReason : "") + (row.clientNote ? "  ·  note: " + row.clientNote : ""), 9.5, false, R - (M + 252));
       doc.row([{ x: M + 92, text: row.name || "Exercise", color: soft, maxW: 150 }, { x: M + 252, text: lines[0], color: soft }], { size: 9.5, gap: 2 });
       for (const ln of lines.slice(1)) doc.text(ln, { size: 9.5, indent: 198, gap: 2, color: soft });

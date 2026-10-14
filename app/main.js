@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, pendingNoteRows, ui } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -518,7 +518,7 @@ import { reportRange, buildReport } from "./report.js";
       if (other.id === t.id) continue;
       if (effDate(other) > effDate(t)) continue;
       if (effDate(other) === effDate(t) && (other.createdAt || "") >= (t.createdAt || "")) continue;
-      const r = other.rows.find((x) => canon(x.name) === name && (x.weights || []).some((w) => String(w || "").trim() !== ""));
+      const r = other.rows.find((x) => canon(x.name) === name && [...(x.weights || []), ...(x.repsDone || [])].some((w) => String(w || "").trim() !== ""));   // a plank has no weight: its time counts
       if (r) return { date: other.date, weights: r.weights, reps: r.repsDone || [] };
     }
     return null;
@@ -1853,8 +1853,9 @@ import { reportRange, buildReport } from "./report.js";
     const liftHistory = () => {                                      // this exercise, this client: the last session's top set and the best ever (by weight, then reps)
       const canon = (x) => squash(ALIASES[String(x || "").trim()] || x); const name = canon(r.name); if (!name) return null;
       const num = (v) => { const str = String(v == null ? "" : v).trim(); return /^\d+(?:[.,]\d+)?$/.test(str) ? parseFloat(str.replace(",", ".")) : null; };
-      const heavier = (a, b) => !b || a.w > b.w || (a.w === b.w && (a.rp || 0) > (b.rp || 0));
-      const top = (row) => { let b = null; const ws = row.weights || [], rs = row.repsDone || []; for (let i = 0; i < ws.length; i++) { const w = num(ws[i]); if (w == null) continue; const st = { w, rp: num(rs[i]) }; if (heavier(st, b)) b = st; } return b; };
+      const timed = !!timedPlan(r.reps);                                         // a plank: the longest hold wins, weight breaks the tie
+      const heavier = timed ? (a, b) => !b || (a.rp || 0) > (b.rp || 0) || ((a.rp || 0) === (b.rp || 0) && (a.w || 0) > (b.w || 0)) : (a, b) => !b || a.w > b.w || (a.w === b.w && (a.rp || 0) > (b.rp || 0));
+      const top = (row) => { let b = null; const ws = row.weights || [], rs = row.repsDone || []; for (let i = 0; i < Math.max(ws.length, rs.length); i++) { const w = num(ws[i]), rp = num(rs[i]); if (timed ? rp == null : w == null) continue; const st = { w, rp }; if (heavier(st, b)) b = st; } return b; };
       let best = null, last = null;
       for (const other of clientTrainings(t.clientId)) {              // newest first
         const earlier = other.id !== t.id && (effDate(other) < effDate(t) || (effDate(other) === effDate(t) && (other.createdAt || "") < (t.createdAt || "")));
@@ -1869,7 +1870,7 @@ import { reportRange, buildReport } from "./report.js";
     const paintLifts = () => {
       const box = q(".lifts"), h = isTemplateClient(t.clientId) ? null : liftHistory();
       box.hidden = !h; if (!h) return;
-      const unit = (clients.get(t.clientId) || {}).unit || "lb", fmt = (st) => st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "");
+      const unit = (clients.get(t.clientId) || {}).unit || "lb", tm = timedPlan(r.reps), fmt = tm ? (st) => (st.w != null ? st.w + " " + unit + " \u00d7 " : "") + st.rp + " " + tm.unit : (st) => st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "");   // "30 sec", "50 lb × 30 sec"
       q(".lift.last").hidden = !h.last; if (h.last) q(".lift.last b").textContent = fmt(h.last);
       q(".lift.best b").textContent = fmt(h.best);
     };
@@ -1907,7 +1908,8 @@ import { reportRange, buildReport } from "./report.js";
       const lw = last && last.weights[sel] ? String(last.weights[sel]) : "", lr = last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "";
       const carry = carried(r, sel);   // the set before (else last time) shows in grey: type over it, or leave it and Complete set writes it down
       w.value = r.weights[sel] || ""; w.placeholder = carry.w || lw || "";           // nothing to suggest: the chip just says "lb"
-      rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || (r.reps ? String(r.reps) : "");
+      const timed = timedPlan(r.reps); q(".setlog").classList.toggle("timed", !!timed);   // a plank: the box says Time and comes first, Weight waits beside it
+      rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || (timed ? timed.n : (r.reps ? String(r.reps) : ""));
       w.inputMode = (wText || nonNum(r.weights[sel] || carry.w || "")) ? "text" : "decimal";
       const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
       w.addEventListener("input", (e) => { while (r.weights.length <= sel) r.weights.push(""); r.weights[sel] = e.target.value; mark(); });
@@ -1916,8 +1918,9 @@ import { reportRange, buildReport } from "./report.js";
       rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.blur(); } });
       wireChip(w, { empty: "\u2013", suffix: (v) => weightWord(v, unit), show: showWeight });   // after the handlers above, so the words follow the tidied value
       const perSide = /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || ""));             // "10 / side": the label says so, the box holds the number
-      q(".setlog .chip.stack:nth-child(2) .lab").textContent = perSide ? "Reps / side" : "Reps";
-      wireChip(rp, { empty: "\u2013", suffix: perSide ? () => "" : repsWord, show: perSide ? (v) => String(v || "").replace(/\s*(\/|each|per)\s*(side|leg|arm)\s*$/i, "") : showReps });
+      q(".setlog .chip.stack:nth-child(2) .lab").textContent = (timed ? "Time" : "Reps") + (perSide ? " / side" : "");
+      if (timed) wireChip(rp, { empty: "\u2013", suffix: () => timed.unit, show: (v) => v });
+      else wireChip(rp, { empty: "\u2013", suffix: perSide ? () => "" : repsWord, show: perSide ? (v) => String(v || "").replace(/\s*(\/|each|per)\s*(side|leg|arm)\s*$/i, "") : showReps });
     }
     const chipText = (c) => c.querySelector(".val").textContent + (c.querySelector(".suffix").hidden ? "" : " " + c.querySelector(".suffix").textContent);
     const nSets = setsOf(r), sumEl = q(".sum"); sumEl.replaceChildren();   // "3 sets · 8–10 reps · 60 sec transition" (the open card hides the sets part: the chips above say it)

@@ -30,6 +30,13 @@ test("the report is a valid PDF with the built-in font, and a timed entry is not
   assert.ok(text.includes("(60 sec)") || text.includes("60 sec"), "the timed entry prints as typed"); assert.ok(!text.includes("60 lb"), "and never as pounds");
   assert.ok(text.includes("140 lb"), "a real weight prints with its unit");
 });
+test("a hold logged as time prints as seconds, with the weight only when there was one", () => {
+  const c = seed(); const a = maps.trainings.get("a");
+  a.rows[1] = { id: "r2", name: "Plank", reps: "30 sec", setsDone: 2, weights: ["", "25"], repsDone: ["30", "45"] };
+  const { text } = checkPdf(fns.buildReport("month", null, c).bytes);
+  assert.ok(text.includes("30 sec"), "a plain hold"); assert.ok(text.includes("25 lb × 45 sec") || text.includes("25 lb \u00d7 45 sec") || /25 lb.{1,4}45 sec/.test(text), "a weighted hold");
+  assert.ok(!text.includes("30 reps") && !text.includes("45 reps"), "never as reps");
+});
 test("the report embeds Inter when the font files are there, keeping Czech letters", () => {
   const c = seed(); const dir = path.join(__dirname, "..", "fonts");
   const load = (f) => { const b = fs.readFileSync(path.join(dir, f)); return fns.parseTtf(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)); };
