@@ -249,7 +249,7 @@ function mergeDown(map, kind, rows, complete, startedAt) {        // the server'
     if (kind === "trainings" && (pendingMove.has(r.id) || pendingMiss.has(r.id))) continue;   // the client's decision still has to reach the server: keep ours
     if ((confirmedAt.get(key(kind, r.id)) || 0) > startedAt) continue;   // written after this read began: keep ours
     if (kind === "trainings" && S.templateDraft && S.templateDraft.dirty && S.templateDraft.id === r.id) continue;   // unsaved template edits
-    if (kind === "trainings" && S.renderedTraining === r.id && ui.$("rows").contains(document.activeElement)) continue; // being edited right now: next sync, stamp and all
+    if (kind === "trainings" && S.renderedTraining === r.id && (S.asking || ui.$("rows").contains(document.activeElement))) continue; // being edited right now, or a confirm sheet is up over it: next sync, stamp and all
     map.set(r.id, { ...r.data, id: r.id });
     if (!S.clientMode && r.updated_at) seenAt.set(key(kind, r.id), r.updated_at);   // the stamp travels with the record it describes
     if (kind === "trainings") trainerState.delete(r.id);

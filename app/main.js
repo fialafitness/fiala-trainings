@@ -65,7 +65,7 @@ import { reportRange, buildReport } from "./report.js";
     const n = S.pendingGo; S.pendingGo = null; if (n) go(n); else render();
   }
   $("draftSave").addEventListener("click", saveDraft);
-  $("draftDiscard").addEventListener("click", discardDraft);
+  $("draftDiscard").addEventListener("click", async () => { if (await askFirst({ title: "Discard the unsaved changes?", text: "The template stays as it was.", yes: "Discard" })) discardDraft(); });
 
 
   function setStatus() {
@@ -252,8 +252,8 @@ import { reportRange, buildReport } from "./report.js";
     fa.appendChild(mk("Cancel", "btn quiet", () => { form.hidden = true; }));
     form.append(url, fa);
     actions.appendChild(mk(vid ? "Change video" : "Add video", "btn quiet link", () => { form.hidden = !form.hidden; if (!form.hidden) { url.value = ""; url.focus(); } }));
-    if (customVideos.has(vkey)) actions.appendChild(mk("Remove video", "btn quiet danger-link", async () => { const error = await deleteVideo(vkey); if (error) { $("status").textContent = "Couldn’t remove the video"; return; } setStatus(); renderExercises(); }));
-    if (mine) { const rm = mk("Remove exercise", "btn quiet danger-link", async () => { const ok = await removeCustom(key); if (!ok) { $("status").textContent = "Couldn’t remove · try again online"; return; } exOpenKey = null; renderExercises(); }); rm.addEventListener("pointerdown", () => { if (box._nameInput) box._nameInput.value = name; }); actions.appendChild(rm); }
+    if (customVideos.has(vkey)) actions.appendChild(mk("Remove video", "btn quiet danger-link", async () => { if (!(await askFirst({ title: "Remove the video for " + name + "?", yes: "Remove" }))) return; const error = await deleteVideo(vkey); if (error) { $("status").textContent = "Couldn’t remove the video"; return; } setStatus(); renderExercises(); }));
+    if (mine) { const rm = mk("Remove exercise", "btn quiet danger-link", async () => { if (!(await askFirst({ title: "Remove \u201c" + name + "\u201d from the database?", text: (customVideos.has(looseKey(name)) ? "Its video goes with it. " : "") + "Workouts that use it keep the name.", yes: "Remove" }))) { if (box._nameInput && box._typed != null && box._typed !== name) { box._nameInput.value = box._typed; box._nameInput.focus(); } return; } const ok = await removeCustom(key); if (!ok) { $("status").textContent = "Couldn’t remove · try again online"; return; } exOpenKey = null; renderExercises(); }); rm.addEventListener("pointerdown", () => { if (box._nameInput) { box._typed = box._nameInput.value; box._nameInput.value = name; } }); actions.appendChild(rm); }   // leaving the box must not rename on the way to the button; a Cancel puts the typing back
     box.append(player, actions, form);
   }
   $("exSearch").addEventListener("input", () => { exShown = 80; exOpenKey = null; renderExercises(); });
@@ -759,6 +759,22 @@ import { reportRange, buildReport } from "./report.js";
     setTimeout(() => { if (es) $("esGo").focus({ preventScroll: true }); }, 0);
   }
   function closeFinishEarly() { $("earlySheet").hidden = true; es = null; }
+  let askOpen = null;                                               // the sheet that is up, if any: a second ask closes it as "no" first
+  function askFirst({ title, text, yes = "Delete" }) {               // nothing is deleted or discarded by accident: a sheet asks, and only its red button does it
+    return new Promise((resolve) => {
+      if (askOpen) askOpen(false);
+      const bg = $("askSheet"), y = $("askYes"), n = $("askNo"), behind = [...document.body.children].filter((el) => el !== bg);
+      $("askTitle").textContent = title; $("askText").textContent = text || ""; $("askText").hidden = !text; y.textContent = yes;
+      let armed = false; y.disabled = true;                                                  // the second tap of a double tap must not land on the red button
+      const settle = setTimeout(() => { armed = true; y.disabled = false; }, 350);
+      const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = false; bg.hidden = true; y.disabled = false; for (const el of behind) el.inert = false; y.removeEventListener("click", onYes); n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); document.removeEventListener("keydown", onKey); resolve(v); };
+      const onYes = () => { if (armed) done(true); }, onNo = () => done(false), onBg = (e) => { if (armed && e.target === bg) done(false); }, onKey = (e) => { if (e.key === "Escape") done(false); };
+      askOpen = done; S.asking = true;
+      y.addEventListener("click", onYes); n.addEventListener("click", onNo); bg.addEventListener("click", onBg); document.addEventListener("keydown", onKey);
+      for (const el of behind) el.inert = true;                                              // the page behind is out of reach until the question is answered
+      bg.hidden = false; n.focus({ preventScroll: true });
+    });
+  }
   function finishEarlyNow() {
     if (!es) return;
     const { t, g, selKey, reason } = es; closeFinishEarly();
@@ -1315,7 +1331,7 @@ import { reportRange, buildReport } from "./report.js";
     paintFinish(t);
     const rowsEl = $("rows");
     const active = document.activeElement;
-    if (S.renderedTraining === t.id && rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return; // never rebuild under a typing finger
+    if (S.renderedTraining === t.id && (S.asking || (rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")))) return; // never rebuild under a typing finger, nor under a confirm sheet
     S.renderedTraining = t.id;
     if (!S.clientMode && normalizeLabels(t)) scheduleSave("trainings", t.id);
     t.rows.sort((a, b) => cmpLabel(a.label, b.label));
@@ -1376,8 +1392,10 @@ import { reportRange, buildReport } from "./report.js";
           chips.appendChild(b);
         }
         if (!asClient) {                                     // the trainer changes the number of sets right here, for every exercise in the card
-          const setCount = (n) => {
+          const setCount = async (n) => {
             n = clamp(n, 1, 20); if (n === total) return;
+            const logged = n < total && g.rows.some((r) => [r.weights, r.repsDone].some((a) => String((a || [])[n] || "").trim()) || (parseInt(r.setsDone, 10) || 0) > n);
+            if (logged && !(await askFirst({ title: "Drop set " + total + "?", text: "What was logged on it goes with it.", yes: "Drop" }))) return;
             for (const r of g.rows) {
               const was = setsOf(r), sd = clamp(parseInt(r.setsDone, 10) || 0, 0, 20), wasDone = !!r.done;
               r.sets = n;
@@ -1476,10 +1494,10 @@ import { reportRange, buildReport } from "./report.js";
         const openComposer = () => { ta.value = String(first.clientNote || ""); noteBox.hidden = false; ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; ta.focus(); };
         addNote.addEventListener("click", () => { if (!first.clientNote) { if (noteBox.hidden) openComposer(); else noteBox.hidden = true; return; } if (openExNotes.has(noteKey)) openExNotes.delete(noteKey); else openExNotes.add(noteKey); paintNote(); });
         edit.addEventListener("click", openComposer);
-        del.addEventListener("click", () => { writeNote(""); openExNotes.delete(noteKey); paintNote(); });
+        del.addEventListener("click", async () => { if (!(await askFirst({ title: "Delete this note?", text: S.clientMode ? "" : "It goes from this exercise and from the notes list." }))) return; writeNote(""); openExNotes.delete(noteKey); paintNote(); });
         ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; });
-        dropN.addEventListener("click", () => { noteBox.hidden = true; ta.value = ""; });
-        saveN.addEventListener("click", () => { const text = ta.value.trim(); noteBox.hidden = true; writeNote(text); openExNotes.delete(noteKey); paintNote(); });   // saved and folded away: the dot says it is there
+        dropN.addEventListener("click", async () => { const typed = ta.value.trim(); if (typed && typed !== String(first.clientNote || "").trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; noteBox.hidden = true; ta.value = ""; });
+        saveN.addEventListener("click", async () => { const text = ta.value.trim(); if (!text && first.clientNote && !(await askFirst({ title: "Delete this note?", text: S.clientMode ? "" : "It goes from this exercise and from the notes list." }))) return; noteBox.hidden = true; writeNote(text); openExNotes.delete(noteKey); paintNote(); });   // saved and folded away: the dot says it is there; an emptied box is a delete and asks like one
         paintNote();
         const actsRow = document.createElement("div"); actsRow.className = "foot-row"; actsRow.append(early, addNote);
         const moreRow = document.createElement("div"); moreRow.className = "foot-row center"; moreRow.append(undo, resume);
@@ -1670,7 +1688,7 @@ import { reportRange, buildReport } from "./report.js";
     }
     const addAlt = (name) => { name = String(name || "").trim(); name = ALIASES[name] || name; if (!name) return; if (name === r.name || altList().includes(name)) { paintAltList(); return; } r.alts = [...altList(), name].slice(0, 2); markNamed(); save(); paintAltBtn(); paintAltList(); };
     const dropAltNamed = () => { if (altList().includes(r.name)) { r.alts = altList().filter((v) => v !== r.name); paintAltBtn(); } };
-    const removeAlt = (a) => { r.alts = altList().filter((v) => v !== a); markNamed(); save(); paintAltBtn(); paintAltList(); };
+    const removeAlt = async (a) => { closeAlt(); if (!(await askFirst({ title: "Remove \u201c" + a + "\u201d as an alternative?", yes: "Remove" }))) return; r.alts = altList().filter((v) => v !== a); markNamed(); save(); paintAltBtn(); };
     const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
     const menuItem = (text, cls, onPick, onRemove) => {
       const d = mk("div", "item"); const b = mk("button", "pick" + (cls ? " " + cls : ""), text); b.type = "button";
@@ -1684,7 +1702,7 @@ import { reportRange, buildReport } from "./report.js";
       if (String(r.name || "").trim()) { const c = mk("div", "cur"); c.appendChild(mk("span", "ck", "\u2713")); c.appendChild(mk("span", null, r.name)); altMenu.appendChild(c); }
       for (const a of alts) altMenu.appendChild(menuItem(a, "", () => { closeAlt(); swapTo(a); }, asClient ? null : () => removeAlt(a)));
       if (!asClient && alts.length < 2) altMenu.appendChild(menuItem("+ Add alternative", "add", paintAltAdd));
-      if (!asClient) { const d = menuItem("Remove exercise", "remove", () => { closeAlt(); t.rows = t.rows.filter((x) => x.id !== r.id); save(); S.renderedTraining = null; render(); }); d.classList.add("last"); altMenu.appendChild(d); }
+      if (!asClient) { const d = menuItem("Remove exercise", "remove", async () => { closeAlt(); const nm = String(r.name || "").trim() || "this exercise", tpl = isTemplateClient(t.clientId); if (!(await askFirst({ title: tpl ? "Remove " + nm + " from this template?" : "Remove " + nm + "?", text: tpl ? "Nothing changes until you tap Save template." : "It comes off this workout, with anything logged on it.", yes: "Remove" }))) return; t.rows = t.rows.filter((x) => x.id !== r.id); save(); S.renderedTraining = null; render(); }); d.classList.add("last"); altMenu.appendChild(d); }
       altMenu.hidden = false;
     }
     function paintAltAdd() {
@@ -1741,6 +1759,7 @@ import { reportRange, buildReport } from "./report.js";
       q(".vid-form").hidden = true; paintVideo(); setStatus();
     });
     q(".vid-remove").addEventListener("click", async () => {
+      if (!(await askFirst({ title: "Remove the video for " + (String(r.name || "").trim() || "this exercise") + "?", text: "Every workout with this exercise loses it.", yes: "Remove" }))) return;
       const keyName = loose(r.name);
       const error = await deleteVideo(keyName);
       if (error) { $("status").textContent = "Couldn\u2019t remove the video"; return; }
@@ -1965,7 +1984,7 @@ import { reportRange, buildReport } from "./report.js";
   $("wNoteBtn").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t) return; if (wNoteOpen.has(t.id)) wNoteOpen.delete(t.id); else wNoteOpen.add(t.id); paintWorkoutNotes(t); });
   $("tNoteOpen").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t) return; tNoteOpenFor = t.id; $("tNoteBox").hidden = false; $("tNoteOpen").hidden = true; $("tNote").focus(); });
   $("tNote").addEventListener("input", (e) => { tNoteDraft.set(S.view.id, e.target.value); growBox(e.target); });
-  $("tNoteDiscard").addEventListener("click", () => { tNoteDraft.delete(S.view.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false; });
+  $("tNoteDiscard").addEventListener("click", async () => { if ($("tNote").value.trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; tNoteDraft.delete(S.view.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false; });
   $("tNoteSave").addEventListener("click", () => {
     const t = trainings.get(S.view.id), c = t && clients.get(t.clientId); if (!t || !c) return;
     const text = String($("tNote").value || "").trim(); if (!text) return;
@@ -1980,7 +1999,7 @@ import { reportRange, buildReport } from "./report.js";
     noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox();
     writeNotes(c, [...noteEntries(c), { id: uid(), at: now(), text }]); renderNotes(c);
   });
-  $("noteDiscard").addEventListener("click", () => { const c = clients.get(S.view.id); if (c) noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox(); });
+  $("noteDiscard").addEventListener("click", async () => { if ($("cNotes").value.trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; const c = clients.get(S.view.id); if (c) noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox(); });
   $("unitSeg").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-unit]"); const c = clients.get(S.view.id); if (!b || !c) return;
     c.unit = b.dataset.unit; scheduleSave("clients", c.id);
@@ -2097,6 +2116,9 @@ import { reportRange, buildReport } from "./report.js";
     const f = e.target.files && e.target.files[0]; if (!f) return;
     try {
       const { cs, ts } = validateBackup(JSON.parse(await f.text()), (id) => clients.has(id));        // the whole file first; nothing is touched if any part is wrong
+      const nC = cs.filter((c) => !isTemplateClient(c.id)).length, nT = ts.filter((t) => !isTemplateClient(t.clientId)).length, nTpl = ts.length - nT;
+      const whats = [nC + (nC === 1 ? " client" : " clients"), nT + (nT === 1 ? " workout" : " workouts")]; if (nTpl) whats.push(nTpl + (nTpl === 1 ? " template" : " templates"));
+      if (!(await askFirst({ title: "Restore this backup?", text: whats.join(", ") + " from the file go into the app. Where the app already has one of them, the file\u2019s copy wins; everything else stays.", yes: "Restore" }))) { e.target.value = ""; return; }
       for (const c of cs) { clients.set(c.id, c); scheduleSave("clients", c.id, 0); }
       for (const t of ts) { trainings.set(t.id, t); scheduleSave("trainings", t.id, 0); }
       render();
