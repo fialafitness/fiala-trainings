@@ -221,8 +221,12 @@ import { reportRange, buildReport } from "./report.js";
     const monthly = !!(c.plan && c.plan.kind === "monthly"); $("planUntilRow").hidden = !monthly;
     if (monthly && document.activeElement !== $("planUntil")) $("planUntil").value = c.plan.until || "";
   }
+  let planEdit = null;                                               // { clientId, adjust }: the correction being tried on the card, until Save
   function renderPlanCard(c) {
-    const card = $("planCard"), plan = c.plan && c.plan.id ? c.plan : null; card.hidden = !plan; if (!plan) return;
+    const card = $("planCard"), plan0 = c.plan && c.plan.id ? c.plan : null; card.hidden = !plan0; if (!plan0) { planEdit = null; return; }
+    if (planEdit && planEdit.clientId !== c.id) planEdit = null;
+    const plan = planEdit ? { ...plan0, adjust: planEdit.adjust } : plan0;
+    $("planChange").hidden = !!planEdit; $("planSteps").hidden = !planEdit; $("planActions").hidden = !planEdit || S.clientMode;
     const bar = $("planBar"), big = $("planBig"), small = $("planSmall"), adj = $("planAdjust"); big.classList.remove("over");
     if (plan.kind === "monthly") {
       const active = planActive(plan, today());
@@ -243,8 +247,11 @@ import { reportRange, buildReport } from "./report.js";
   $("planCard").addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); e.currentTarget.click(); } });
   $("planCard").addEventListener("click", (e) => {
     const c = clients.get(S.view.id); if (!c || S.clientMode || !c.plan) return;
-    const step = e.target.closest(".step");
-    if (step) { c.plan.adjust = (parseInt(c.plan.adjust, 10) || 0) + (step.id === "planPlus" ? 1 : -1); planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); return; }   // the one knob for mistakes
+    if (e.target.closest("#planChange")) { planEdit = { clientId: c.id, adjust: parseInt(c.plan.adjust, 10) || 0 }; renderClient(); return; }           // the one knob for mistakes: shown on request, kept only on Save
+    const step = e.target.closest(".step"); if (step && planEdit) { planEdit.adjust += step.id === "planPlus" ? 1 : -1; renderClient(); return; }
+    if (e.target.closest("#planCancel")) { planEdit = null; renderClient(); return; }
+    if (e.target.closest("#planSave")) { c.plan.adjust = planEdit ? planEdit.adjust : c.plan.adjust; planEdit = null; planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); return; }
+    if (e.target.closest(".plan-adjust, .plan-actions")) return;
     detailsOpen = true; S.tab = "profile"; render(); $("detailsBody").scrollIntoView({ block: "nearest", behavior: "smooth" });
   });
   $("planSel").addEventListener("change", (e) => {
