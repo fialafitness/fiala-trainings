@@ -563,7 +563,7 @@
   .setlog .chip.stack.editing .valrow input { position: static; flex: 1 1 auto; width: 0; min-width: 3ch; height: auto; font-size: 22px; font-weight: 600; padding: 0; }
   .setlog .chip.stack.editing .valrow .val { display: none; }
   /* the client page overview: two numbers and an exercise lookup that shows the heaviest set ever */
-  .overview { margin: 4px 0 18px; }
+  .overview { margin: 16px 0 18px; }                                        /* room after the name or the message pill */
   .overview[hidden] { display: none; }
   .ov-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .ov-tile { background: var(--card); border-radius: var(--r-card); padding: 14px 16px 12px; }
@@ -573,9 +573,11 @@
   .ov-pick input { width: 100%; box-sizing: border-box; padding-right: 44px; }
   .ov-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border: 0; background: none; color: var(--text-tertiary); font-size: 22px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .ov-clear[hidden] { display: none; }
-  .ov-best { margin: 10px 0 0 4px; }
+  .ov-best { margin-top: 10px; }
   .ov-best[hidden] { display: none; }
-  .ov-best .lifts { margin: 0; }
+  .ov-tile.best { display: block; width: 100%; text-align: left; appearance: none; border: 0; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }   /* the heaviest set ever, a tile like the two above; a tap says when */
+  .ov-tile.best b { color: var(--gold); }
+  .ov-tile.best[hidden] { display: none; }
   .ov-none { font-size: 15px; color: var(--text-secondary); }
   .ov-none[hidden] { display: none; }
   .lifts { display: flex; flex-wrap: nowrap; gap: 0 18px; margin: 10px 0 -6px 2px; font-size: 15px; line-height: 1.3; }   /* under the boxes: LAST and BEST on this exercise, in words; a tap on a number says when. 10px above (it belongs to the boxes), 14 below before the button (the row's own padding supplies 20, hence the -6) */
@@ -980,9 +982,9 @@
     </div>
     <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
     <div class="overview" id="overview" hidden>
-      <div class="ov-tiles"><div class="ov-tile"><b id="ovTotal">0</b><span>Workouts</span></div><div class="ov-tile"><b id="ovMonth">0</b><span>This month</span></div></div>
+      <div class="ov-tiles"><div class="ov-tile"><b id="ovTotal">0</b><span>Total workouts</span></div><div class="ov-tile"><b id="ovMonth">0</b><span>This month</span></div></div>
       <div class="ov-pick"><input id="ovEx" placeholder="Look up an exercise" autocomplete="off" autocapitalize="sentences" aria-label="Look up an exercise"><button class="ov-clear" id="ovClear" type="button" aria-label="Clear" hidden>&times;</button><ul class="sugg" id="ovSugg" hidden></ul></div>
-      <div class="ov-best" id="ovBest" hidden><div class="lifts"><button type="button" class="lift best" id="ovBestBtn"><span class="k">Best</span><b id="ovBestVal"></b></button></div><span class="ov-none" id="ovNone" hidden></span></div>
+      <div class="ov-best" id="ovBest" hidden><button type="button" class="ov-tile best" id="ovBestBtn"><b id="ovBestVal"></b><span>Best</span></button><span class="ov-none" id="ovNone" hidden></span></div>
     </div>
     <div class="listbar week-bar" id="weekBar"><h2 id="weekHead">Schedule</h2><button class="cal-disc" id="calToggle" type="button" aria-expanded="false"><span id="calToggleText">Month</span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5.5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="week" id="week"></div>
