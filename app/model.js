@@ -22,6 +22,9 @@ export const doneCount = (row) => { const n = parseInt(row && row.setsDone, 10);
 export const setCounts = (row, i) => i < doneCount(row) || num(((row && row.repsDone) || [])[i]) != null;
 export const topSet = (row, timed, upTo) => { let best = null; const ws = (row && row.weights) || [], rs = (row && row.repsDone) || []; for (let i = 0; i < Math.max(ws.length, rs.length); i++) { if (!setCounts(row, i) && !(upTo != null && i < upTo)) continue; const w = num(ws[i]), rp = num(rs[i]); if (timed ? rp == null : (w == null && rp == null)) continue; const st = { w, rp }; if (betterSet(st, best, timed)) best = st; } return best; };   // upTo: the card being logged may preview the set under the finger
 export const sameSet = (a, b) => !!a && !!b && a.w === b.w && a.rp === b.rp;
+// Correcting a logged number: the sets after it that still show the old number were copied from it ("untouched box = same as the set
+// before"), so they follow the correction. A later set with a different number was typed on purpose and stays.
+export const correctFrom = (arr, i, value) => { const out = [...(arr || [])]; while (out.length <= i) out.push(""); const old = String(out[i] == null ? "" : out[i]).trim(); out[i] = value; if (old) for (let j = i + 1; j < out.length; j++) if (String(out[j] == null ? "" : out[j]).trim() === old) out[j] = value; return out; };
 // Packages. A client's plan: { id, name, kind: "sessions" | "monthly", size, startedOn, adjust, until }.
 // A sessions package counts finished workouts marked "in person" since it started, plus the trainer's correction;
 // package 2 starts by itself once package 1 is full. A monthly plan is just a day it is active until.

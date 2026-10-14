@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, pendingNoteRows, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, perHand, betterSet, topSet, sameSet, setCounts, planProgress, sessionNo, planActive } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -2221,8 +2221,8 @@ import { reportRange, buildReport } from "./report.js";
       rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || (timed ? "" : (r.reps ? String(r.reps) : ""));   // a hold never logged before asks for its time; reps still show the plan
       w.inputMode = (wText || nonNum(r.weights[sel] || carry.w || "")) ? "text" : "decimal";
       const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
-      w.addEventListener("input", (e) => { while (r.weights.length <= sel) r.weights.push(""); r.weights[sel] = e.target.value; mark(); paintLifts(); });   // NEW BEST lights up as it is typed
-      rp.addEventListener("input", (e) => { while (r.repsDone.length <= sel) r.repsDone.push(""); r.repsDone[sel] = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); e.target.value = r.repsDone[sel]; mark(); paintLifts(); });
+      w.addEventListener("input", (e) => { r.weights = correctFrom(r.weights, sel, e.target.value); mark(); paintLifts(); });   // NEW BEST lights up as it is typed; later sets that copied this number follow the correction
+      rp.addEventListener("input", (e) => { const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); r.repsDone = correctFrom(r.repsDone, sel, v); e.target.value = v; mark(); paintLifts(); });
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.focus(); } });
       rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.blur(); } });
       const hand = perHand(r.name); q(".setlog .chip.stack:nth-child(1) .lab").textContent = hand ? "Weight / " + hand : "Weight";   // one dumbbell, one kettlebell: the label says what the number is per

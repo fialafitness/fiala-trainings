@@ -1,6 +1,6 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
-import { timedPlan, perHand, topSet, betterSet, sameSet, planProgress, sessionNo, planActive } from "../app/model.js";
+import { timedPlan, perHand, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
 import { monthLater, daysLater } from "../app/util.js";
 const app = await load();
 const { fns, maps } = app;
@@ -87,6 +87,12 @@ test("the top set of a row: heaviest then most reps; a hold: longest then heavie
   assert.deepStrictEqual(topSet({ weights: ["50", "58"], repsDone: ["10", ""], setsDone: 1 }, false, 2), { w: 58, rp: null });  // the card previews the set under the finger
   assert.strictEqual(topSet({ weights: ["58"], repsDone: [""], setsDone: 0 }, false), null);
   assert.deepStrictEqual(topSet({ weights: ["58"], repsDone: [""], done: true }, false), { w: 58, rp: null });                 // an old row without a count: finished = it counts
+  // correcting a wrong number: the later sets that copied it follow; a set typed differently stays; typing char by char keeps the chain
+  assert.deepStrictEqual(correctFrom(["58", "58", "58", "60"], 0, "50"), ["50", "50", "50", "60"]);
+  assert.deepStrictEqual(correctFrom(["58", "58"], 1, "50"), ["58", "50"]);
+  assert.deepStrictEqual(correctFrom(correctFrom(["58", "58"], 0, "5"), 0, "50"), ["50", "50"]);
+  assert.deepStrictEqual(correctFrom(["", "58"], 0, "50"), ["50", "58"]);                                                       // an empty box corrected: nothing was copied from it
+  assert.deepStrictEqual(correctFrom([], 2, "40"), ["", "", "40"]);
   assert.ok(betterSet({ w: 225, rp: 5 }, { w: 215, rp: 4 }, false)); assert.ok(!betterSet({ w: 215, rp: 4 }, { w: 215, rp: 4 }, false), "equal is not better");
   assert.ok(betterSet({ w: null, rp: 45 }, { w: 25, rp: 30 }, true), "a longer hold beats a heavier shorter one"); assert.ok(sameSet({ w: 1, rp: 2 }, { w: 1, rp: 2 }) && !sameSet({ w: 1, rp: 2 }, null));
 });
