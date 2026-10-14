@@ -218,8 +218,9 @@
   .btn.danger { background: transparent; color: var(--danger); padding: 0 8px; }
   .btn.quiet:hover, .btn.danger:hover { opacity: 0.7; }
   /* in-page actions take a shape, as Apple's do: the tinted capsule, brand at a breath of opacity; red for the destructive ones. Bare text stays only in list rows, sheets and the top bar */
-  .btn.tint { background: var(--glyph-fill); color: var(--brand); width: auto; min-height: 40px; padding: 0 16px; font-size: 15px; font-weight: 500; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; }
+  .btn.tint { background: var(--glyph-fill); color: var(--text-primary); width: auto; min-height: 40px; padding: 0 16px; font-size: 15px; font-weight: 500; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; }
   .btn.tint.danger { color: var(--danger); }                                   /* the same grey, red ink */
+  .btn.tint.accent { color: var(--brand); }                                    /* the one accent capsule of a screen, like Apple's green on grey */
   .btn.tint.wide { width: 100%; min-height: 50px; font-size: 17px; font-weight: 600; }   /* Finish workout: Apple's big grey capsule with accent text, so Complete set stays the one filled button */
   .btn.tint:hover, .btn.tint:active { opacity: 0.8; }
   .btn.tint svg { width: 16px; height: 16px; flex: none; }
@@ -391,7 +392,7 @@
   .add-note { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 4px; display: inline-flex; align-items: center; gap: 6px; }
   .finish-early { display: inline-flex; align-items: center; gap: 6px; }
   .finish-early svg { flex: 0 0 auto; }
-  .card-foot .finish-early, .card-foot .add-note, .card-foot .resume, .card-foot .undo-set { background: var(--glyph-fill); color: var(--brand); border-radius: 50px; min-height: 38px; padding: 0 14px; font-size: 14px; font-weight: 500; align-items: center; gap: 7px; }   /* the card's own actions: capsules too */
+  .card-foot .finish-early, .card-foot .add-note, .card-foot .resume, .card-foot .undo-set { background: var(--glyph-fill); color: var(--text-primary); border-radius: 50px; min-height: 38px; padding: 0 14px; font-size: 14px; font-weight: 500; align-items: center; gap: 7px; }   /* the card's own actions: capsules too */
   .card-foot .finish-early, .card-foot .add-note { display: inline-flex; }
   .add-note .ico { position: relative; display: inline-flex; }
   .add-note .badge { position: absolute; top: -3px; right: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--card); }   /* the red dot: there is a note on this exercise */
@@ -825,7 +826,7 @@
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
   .tpl-pill { justify-self: start; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 34px; border-radius: 50px;
-    font-size: 14px; font-weight: 500; letter-spacing: 0; color: var(--brand); background: var(--glyph-fill); transition: opacity 300ms ease; }   /* a link to the template: grey, brand ink */
+    font-size: 14px; font-weight: 500; letter-spacing: 0; color: var(--text-primary); background: var(--glyph-fill); transition: opacity 300ms ease; }   /* a link to the template: grey, plain ink; the chevron says it opens */
   .tpl-pill:hover { opacity: 0.92; }
   .tpl-pill[hidden] { display: none; }
   .tpl-pill span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 0 1 auto; }   /* a long template name ends in an ellipsis, never pushes the page wider */
@@ -847,7 +848,7 @@
   .list li.next .pri { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
   .list li.next .sec { font-size: 15px; color: var(--text-secondary); margin-top: 3px; }
   .list li.next .missed-actions { display: flex; gap: 10px; padding: 4px 20px 14px; margin-top: -4px; }   /* a missed workout: decide right here */
-  .list li.next .missed-actions button { width: auto; min-height: 38px; padding: 0 14px; font-size: 14px; }
+  .list li.next .missed-actions button { width: auto; min-height: 38px; padding: 0 14px; font-size: 14px; color: var(--text-primary); }
   .finish { margin-top: 32px; }
   .cele { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 24px; padding: 40px 0; }
   .cele h1 { margin: 0; }
@@ -855,7 +856,7 @@
   .cele-check { width: 96px; height: 96px; border-radius: 50%; background: var(--done); color: var(--done-ink); font-size: 48px; display: flex; align-items: center; justify-content: center; animation: pop 600ms cubic-bezier(0.22, 1, 0.36, 1); }
   @keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .cele-check { animation: none; } .cal-view, .cal-track { transition: none !important; } }
-  .finished { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin-top: 12px; font-size: 17px; }   /* Skip / Undo under Finish workout: air between a capsule and the button */
+  .finish .finished { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin-top: 12px; font-size: 17px; }   /* Skip / Undo under Finish workout: air between a capsule and the button. Scoped: a finished day in the week strip carries the same class */
   .finished span { color: var(--done); font-weight: 500; }
   .tnote { margin-top: 16px; display: flex; flex-direction: column; align-items: flex-start; }   /* the coach's note on this session, starting at the left like every action */
   .tnote[hidden] { display: none; }
@@ -877,7 +878,7 @@
   .rep-cap { font-size: 13px; color: var(--text-tertiary); margin-right: 2px; }   /* "Report PDF": this client's month, to mail yourself */
   select.pill { -webkit-appearance: none; appearance: none; padding-right: 30px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%236f6b99' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
   .pill { appearance: none; border: 0; cursor: pointer; border-radius: 50px; min-height: 36px; padding: 0 16px; font-size: 14px; font-weight: 500; letter-spacing: 0; white-space: nowrap;
-    background: var(--field); color: var(--brand); transition: opacity 300ms ease, transform 120ms ease; }   /* secondary: a grey pill with the brand as its text */
+    background: var(--field); color: var(--text-primary); transition: opacity 300ms ease, transform 120ms ease; }   /* secondary: a grey pill with the brand as its text */
   .pill:hover { opacity: 0.85; }
   .pill:active { transform: scale(0.98); }
   .pill[hidden] { display: none; }
@@ -1124,7 +1125,7 @@
     <div class="rows" id="rows"></div>
     <div class="start-row"><button class="pill big trainer-only" id="addRow" type="button">+ Add exercise</button><button class="pill big trainer-only" id="tplFill" type="button" hidden>From template</button></div>
     <div class="finish" id="finishWrap" hidden>
-      <button class="btn tint wide" id="finishBtn">Finish workout</button>
+      <button class="btn tint wide accent" id="finishBtn">Finish workout</button>
       <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn tint" id="unfinishBtn" type="button">Undo</button></div>
       <div class="finished" id="skipLine"><button class="btn tint" id="skipBtn" type="button">Skip workout</button></div>
       <div class="finished" id="skippedLine" hidden><span class="muted" id="skippedText" style="font-size:17px"></span><button class="btn tint" id="unskipBtn" type="button">Undo</button></div>
