@@ -1,5 +1,6 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
+import { timedPlan } from "../app/model.js";
 const app = await load();
 const { fns, maps } = app;
 const day = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return fns.localIso(d); };
@@ -62,4 +63,9 @@ test("a workout tagged on a note keeps its tag through pack and merge", () => {
   const list = [{ id: "n1", at: "2026-10-13T10:00:00.000Z", text: "Twinge", workout: { id: "t1", title: "Back", date: "2026-10-12" } }];
   const packed = fns.packNotes(list); assert.deepStrictEqual(packed.log[0].workout, list[0].workout);
   const again = fns.noteEntries({ notes: packed }); assert.deepStrictEqual(again[0].workout, list[0].workout);
+});
+test("a plan written in time is logged as time; one in reps is not", () => {
+  assert.deepStrictEqual(timedPlan("30 sec"), { n: "30", unit: "sec" }); assert.deepStrictEqual(timedPlan("45s"), { n: "45", unit: "sec" });
+  assert.deepStrictEqual(timedPlan("1 min"), { n: "1", unit: "min" }); assert.deepStrictEqual(timedPlan("30-45 seconds / side"), { n: "30", unit: "sec" });
+  for (const reps of ["10", "6, 6, 4", "8-10 reps", "10 / side", "", "max", "AMRAP", "seconds"]) assert.strictEqual(timedPlan(reps), null, reps);
 });

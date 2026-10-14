@@ -95,7 +95,7 @@ self.addEventListener("fetch", (event) => {
   if (isBundleFile(url)) {                                  // the scripts and the templates: from the bundle this open brought along
     event.respondWith((async () => {
       const client = event.clientId ? await self.clients.get(event.clientId).catch(() => null) : null;
-      if (client && !isShellPage(new URL(client.url))) return fetch(req);   // asked for by another page on this origin (a test copy): plain network
+      if (client && !isShellPage(new URL(client.url))) return fetch(new Request(req, { cache: "no-cache" }));   // asked for by another page on this origin (a test copy): the network, checked with the server
       return (await (await caches.open(VERSION)).match(url.origin + url.pathname)) || fetch(req);
     })());
     return;
