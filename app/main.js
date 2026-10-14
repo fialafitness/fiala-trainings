@@ -621,6 +621,28 @@ import { reportRange, buildReport } from "./report.js";
   }
 
   // ---------- navigation ----------
+  // ---- the screen stays on during a workout (Screen Wake Lock: iPhone/iPad from iOS 16.4, Android). Held while a workout page is open
+  // and on screen; the system lets it go when the app leaves the screen, and we ask for it again on return. Leaving the workout drops it,
+  // and so does WAKE_MINUTES without a touch, so a phone left on a workout page still locks eventually.
+  const WAKE_MINUTES = 90;
+  let wake = null, wakePending = false, wakeTimer = null;
+  const wakeWanted = () => { if (S.view.name !== "training" || document.visibilityState !== "visible") return false; const t = trainings.get(S.view.id); return !!t && !isTemplateClient(t.clientId); };
+  async function holdWake(renew = true) {
+    if (typeof navigator === "undefined" || !("wakeLock" in navigator) || !wakeWanted()) return;
+    if (renew) { clearTimeout(wakeTimer); wakeTimer = setTimeout(dropWake, WAKE_MINUTES * 60000); }
+    else if (!wakeTimer) return;                                    // the budget ran out: only a touch starts it again
+    if (wake || wakePending) return;
+    wakePending = true;
+    try {
+      const w = await navigator.wakeLock.request("screen");
+      if (!wakeWanted() || !wakeTimer) { w.release().catch(() => {}); return; }   // the page moved on while we waited
+      wake = w; w.addEventListener("release", () => { if (wake === w) wake = null; });
+    } catch { wake = null; }                                        // refused (low power mode, old browser): the workout works the same, the screen just locks as usual
+    finally { wakePending = false; }
+  }
+  function dropWake() { clearTimeout(wakeTimer); wakeTimer = null; const w = wake; wake = null; if (w) w.release().catch(() => {}); }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") holdWake(false); });
+  document.addEventListener("pointerdown", () => { if (S.view.name === "training") holdWake(true); }, { passive: true });
   function go(next) {
     if (S.templateDraft && S.templateDraft.dirty && S.view.name === "training" && S.view.id === S.templateDraft.id) {
       S.pendingGo = next; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
@@ -629,7 +651,8 @@ import { reportRange, buildReport } from "./report.js";
     if (!S.clientMode && (!S.sb || S.syncedOnce) && S.view.name === "training" && !(next.name === "training" && next.id === S.view.id) && fillFor !== S.view.id) {   // leaving an empty workout behind discards it, like an empty note (not while it waits for a template, not before the first sync)
       const t = trainings.get(S.view.id); if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
     }
-    reordering = false; S.view = next; lsSet("fiala.trainings.view", S.view); render(); window.scrollTo(0, 0); }
+    reordering = false; S.view = next; lsSet("fiala.trainings.view", S.view); render(); window.scrollTo(0, 0);
+    if (next.name === "training") holdWake(true); else dropWake(); }
   $("back").addEventListener("click", () => {
     if (settingsOpen) {
       if (fromSettings && settingsOpen !== "settings") { showSettings(); window.scrollTo(0, 0); return; }
@@ -2343,6 +2366,7 @@ import { reportRange, buildReport } from "./report.js";
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) S.view = saved;
     localBackend.load();                       // instant start from the device copy
     restorePending();                          // and whatever was still waiting to reach the server
+    holdWake(true);                            // opened straight onto a workout: keep the screen on from the first moment
     if (window.supabase && window.supabase.createClient) {
       S.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" } });
       $("status").textContent = "Loading\u2026";
@@ -2383,6 +2407,7 @@ import { reportRange, buildReport } from "./report.js";
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
       reset: () => { resetState(); localStorage.clear(); },
+      wake: () => ({ held: !!wake, timer: !!wakeTimer }),
     };
   }
   export { boot };
