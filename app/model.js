@@ -26,11 +26,13 @@ export const planProgress = (plan, list) => {
   const size = plan.size, packNo = used === 0 ? 1 : Math.floor((used - 1) / size) + 1, inPack = used === 0 ? 0 : ((used - 1) % size) + 1;
   return { used, size, packNo, inPack, left: size - inPack, complete: used > 0 && used % size === 0 };
 };
-export const sessionNo = (plan, list, t) => {                      // "Session 3 of 10": this in-person workout's place since the plan started, planned ones included, in date order
+export const sessionNo = (plan, list, t) => {                      // "Session 3 of 10": finished in-person workouts rank by the day they were finished (the card's count); a planned one comes after them, in date order
   if (!plan || plan.kind !== "sessions" || !(plan.size > 0) || !t || !t.inPerson || t.skippedAt || t.missed === true || effDate(t) < (plan.startedOn || "")) return null;
-  const order = list.filter((x) => x.inPerson && !x.skippedAt && x.missed !== true && effDate(x) >= (plan.startedOn || "")).sort((a, b) => effDate(a).localeCompare(effDate(b)) || (a.createdAt || "").localeCompare(b.createdAt || ""));
-  const p = order.findIndex((x) => x.id === t.id); if (p < 0) return null;
-  const n = p + 1 + (parseInt(plan.adjust, 10) || 0); if (n < 1) return null;
+  const by = (a, b) => effDate(a).localeCompare(effDate(b)) || (a.createdAt || "").localeCompare(b.createdAt || "");
+  const since = list.filter((x) => x.inPerson && !x.skippedAt && x.missed !== true && effDate(x) >= (plan.startedOn || ""));
+  const done = since.filter((x) => x.completedAt).sort(by), planned = since.filter((x) => !x.completedAt).sort(by);
+  const p = t.completedAt ? done.findIndex((x) => x.id === t.id) + 1 : done.length + planned.findIndex((x) => x.id === t.id) + 1;
+  const n = p + (parseInt(plan.adjust, 10) || 0); if (p < 1 || n < 1) return null;
   return { n: ((n - 1) % plan.size) + 1, size: plan.size, packNo: Math.floor((n - 1) / plan.size) + 1 };
 };
 export const planActive = (plan, day) => !plan || plan.kind !== "monthly" || !plan.until || plan.until >= day;   // a monthly plan past its day is over

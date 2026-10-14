@@ -20,7 +20,7 @@ export const initial = () => ({
 });
 export const S = initial();
 export const ui = {};                       // the screen functions the sync layer may call ($, setStatus, render, showProblem, …), filled in by main.js
-export function resetState() { Object.assign(S, initial()); for (const m of [clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingNoteRows, seenAt, trainerTouched, trainerNamed, confirmedAt]) m.clear(); }
+export function resetState() { Object.assign(S, initial()); for (const m of [clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingNoteRows, seenAt, trainerTouched, trainerNamed, confirmedAt, planTouched]) m.clear(); }
 
 export const clients = new Map();            // id -> { id, name, notes, createdAt, … }
 export const trainings = new Map();          // id -> { id, clientId, title, date, createdAt, rows: [...] }
@@ -31,6 +31,7 @@ export const seenAt = new Map();             // "kind/id" -> updated_at last rec
 export const confirmedAt = new Map();        // "kind/id" -> when the server last confirmed our write
 export const trainerState = new Map();       // trainingId -> Set(field): finished / skipped / date / missed the coach changed and not yet saved
 export const trainerTouched = new Map();     // trainingId -> Set(rowId) whose weights the trainer edited since the last sync
+export const planTouched = new Set();        // clientId whose plan / packages this device changed since the last sync: a stale save must not lose them
 export const trainerNamed = new Map();       // trainingId -> Set(rowId) whose name / alternatives the trainer edited since the last sync
 export const pendingWeightRows = new Map();  // client mode: trainingId -> Set(rowId) with sets to send
 export const pendingDoneRows = new Map();    // client mode: trainingId -> Set(rowId) with a done flag to send

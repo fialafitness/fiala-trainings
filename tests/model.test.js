@@ -1,6 +1,7 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
 import { timedPlan, perHand, topSet, betterSet, sameSet, planProgress, sessionNo, planActive } from "../app/model.js";
+import { monthLater, daysLater } from "../app/util.js";
 const app = await load();
 const { fns, maps } = app;
 const day = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return fns.localIso(d); };
@@ -102,6 +103,7 @@ test("a sessions package counts finished in-person workouts since it started, ro
   const list = [tr("a", "2026-09-28", true, true), tr("b", "2026-10-02", true, true), tr("c", "2026-10-04", false, true), tr("d", "2026-10-06", true, true), tr("e", "2026-10-08", true, false), tr("f", "2026-10-10", true, false, { skippedAt: "x" })];
   assert.deepStrictEqual(planProgress(plan, list), { used: 2, size: 10, packNo: 1, inPack: 2, left: 8, complete: false }, "before the start and solo workouts do not count; unfinished ones not yet");
   assert.deepStrictEqual(sessionNo(plan, list, list[1]), { n: 1, size: 10, packNo: 1 }); assert.deepStrictEqual(sessionNo(plan, list, list[4]), { n: 3, size: 10, packNo: 1 }, "a planned session gets the next number");
+  const stale = tr("z", "2026-10-03", true, false); assert.deepStrictEqual(sessionNo(plan, [...list, stale], list[3]).n, 2, "a planned session dated earlier never shifts a finished one"); assert.deepStrictEqual(sessionNo(plan, [...list, stale], stale).n, 3, "it queues after the finished ones");
   assert.strictEqual(sessionNo(plan, list, list[2]), null, "a solo workout has no number"); assert.strictEqual(sessionNo(plan, list, list[5]), null, "a skipped one neither");
   assert.deepStrictEqual(planProgress({ ...plan, adjust: 1 }, list).inPack, 3, "a session outside the app, added by hand");
   assert.deepStrictEqual(planProgress({ ...plan, adjust: -5 }, list).used, 0, "never below zero");
@@ -113,4 +115,9 @@ test("a sessions package counts finished in-person workouts since it started, ro
 test("a monthly plan is active until its day; everything else is always active", () => {
   assert.ok(planActive({ kind: "monthly", until: "2026-10-14" }, "2026-10-14")); assert.ok(!planActive({ kind: "monthly", until: "2026-10-13" }, "2026-10-14"));
   assert.ok(planActive({ kind: "monthly" }, "2026-10-14")); assert.ok(planActive({ kind: "sessions", size: 10 }, "2026-10-14")); assert.ok(planActive(null, "2026-10-14"));
+});
+test("a month later lands on the same day, or the last day of a short month", () => {
+  assert.strictEqual(monthLater("2026-10-14"), "2026-11-14"); assert.strictEqual(monthLater("2026-01-31"), "2026-02-28"); assert.strictEqual(monthLater("2028-01-31"), "2028-02-29");
+  assert.strictEqual(monthLater("2026-10-31"), "2026-11-30"); assert.strictEqual(monthLater("2026-12-05"), "2027-01-05");
+  assert.strictEqual(daysLater("2026-10-14", 28), "2026-11-11"); assert.strictEqual(daysLater("2026-12-20", 28), "2027-01-17");
 });

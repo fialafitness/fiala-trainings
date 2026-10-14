@@ -14,6 +14,7 @@ test("every copy of client_my_data sends the coach's instructions and keeps the 
     assert.ok(!/\bnote\b/.test(body), f + " takes the exercise instructions off the client's copy (only the plural 'notes' list is private)");
     assert.ok(/data\s*-\s*'notes'/.test(body), f + " must keep the trainer's private notes off the client's copy");
     assert.ok(/->>\s*'paused'[^)]*\)\s*<>\s*'true'/.test(body), f + " must still hold back a paused client's workouts");
+    assert.ok(/'until'[\s\S]*America\/Los_Angeles/.test(body), f + " must hold back a monthly plan past its day, in Los Angeles time");
   }
 });
 test("the copies of client_my_data are identical, so re-running any file gives the same server", () => {
