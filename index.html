@@ -221,6 +221,7 @@
   .btn.tint { background: var(--glyph-fill); color: var(--text-primary); width: auto; min-height: 40px; padding: 0 16px; font-size: 15px; font-weight: 500; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; }
   .btn.tint.danger { color: var(--danger); }                                   /* the same grey, red ink */
   .btn.tint.accent { color: var(--brand); }                                    /* the one accent capsule of a screen, like Apple's green on grey */
+  .btn.ink { background: var(--ink); color: var(--ink-on); }                   /* Apple's strong monochrome button: black on light, white on dark */
   .btn.tint.wide { width: 100%; min-height: 50px; font-size: 17px; font-weight: 600; }   /* Finish workout: Apple's big grey capsule with accent text, so Complete set stays the one filled button */
   .btn.tint:hover, .btn.tint:active { opacity: 0.8; }
   .btn.tint svg { width: 16px; height: 16px; flex: none; }
@@ -262,9 +263,9 @@
   .tplcard {
     appearance: none; border: 0; cursor: pointer; margin-top: 16px; width: 100%;
     display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 32px; min-height: 44px; border-radius: 50px;
-    font-size: 17px; font-weight: 400; letter-spacing: 0.01em; color: #fff;
-    background: linear-gradient(135deg, var(--brand-fill) 0%, var(--brand-deep) 100%);
-    box-shadow: 0 6px 16px rgba(73, 70, 100, 0.24), inset 0 1px 0 rgba(255,255,255,0.12); transition: opacity 300ms ease, transform 300ms ease;   /* the brand gradient: his signature, kept */
+    font-size: 17px; font-weight: 400; letter-spacing: 0.01em; color: var(--text-primary);
+    background: var(--card);
+    box-shadow: 0 0 0 1px var(--card-border); transition: opacity 300ms ease, transform 300ms ease;   /* the brand gradient: his signature, kept */
   }
   .tplcard:hover { opacity: 0.94; }
   .tplcard:active { transform: scale(0.99); }
@@ -789,8 +790,8 @@
   .details { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 8px; max-width: 420px; }
   .contact-row { display: flex; align-items: center; margin-top: 12px; }
   .contact-row[hidden] { display: none; }
-  .msg-pill { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; min-height: 40px; border-radius: 50px; text-decoration: none; font-size: 15px; font-weight: 500; letter-spacing: 0; color: var(--brand);
-    background: var(--glyph-fill); transition: opacity 300ms ease, transform 300ms ease; }   /* monochrome fill, brand ink: the pill is not the primary action of the page */
+  .msg-pill { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; min-height: 40px; border-radius: 50px; text-decoration: none; font-size: 15px; font-weight: 600; letter-spacing: 0; color: var(--ink-on);
+    background: var(--ink); transition: opacity 300ms ease, transform 300ms ease; }   /* the strong monochrome pill, like the Add button: prominent without spending purple */
   .msg-pill:hover { opacity: 0.92; }
   .msg-pill.small { min-height: 34px; padding: 0 14px; font-size: 14px; gap: 6px; }
   .msg-pill[hidden] { display: none; }
@@ -1035,7 +1036,7 @@
     <h1>Clients</h1>
     <form class="addrow" id="clientForm">
       <input id="clientName" placeholder="New client" autocomplete="off" autocapitalize="words">
-      <button class="btn sm" type="submit">Add</button>
+      <button class="btn sm ink" type="submit">Add</button>
     </form>
     <div><button class="tplcard" id="tplCard" type="button" hidden><span>Templates</span><span class="tc-chev">&rsaquo;</span></button></div>
     <div class="listbar" id="clientBar"><span class="muted" id="clientCount"></span><button class="btn quiet" id="reorderBtn" type="button" hidden>Reorder</button></div>
