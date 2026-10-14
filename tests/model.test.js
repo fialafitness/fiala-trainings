@@ -1,6 +1,6 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
-import { timedPlan, perHand, topSet, betterSet, sameSet } from "../app/model.js";
+import { timedPlan, perHand, topSet, betterSet, sameSet, planProgress, sessionNo, planActive } from "../app/model.js";
 const app = await load();
 const { fns, maps } = app;
 const day = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return fns.localIso(d); };
@@ -94,4 +94,23 @@ test("the client overview counts finished workouts and finds the heaviest set pe
   const ex = fns.loggedExercises(maps.clients.get("c1"));
   const bench = [...ex.values()].find((e) => /bench/i.test(e.name)); assert.strictEqual(bench.count, 3, "spellings merge"); assert.deepStrictEqual([bench.best.w, bench.best.rp, bench.best.date], [240, 1, "2026-10-13"], "an unfinished session's set still counts as a lift");
   const plank = ex.get("plank"); assert.ok(plank.timed); assert.deepStrictEqual([plank.best.rp, plank.best.w], [45, null]);
+});
+
+test("a sessions package counts finished in-person workouts since it started, rolls into the next package, and takes the trainer's correction", () => {
+  const tr = (id, date, inPerson, done, extra) => ({ id, clientId: "c1", date, createdAt: date + "T10:00:00.000Z", completedAt: done ? date + "T18:00:00.000Z" : null, skippedAt: null, inPerson, rows: [], ...(extra || {}) });
+  const plan = { id: "p", name: "10 sessions", kind: "sessions", size: 10, startedOn: "2026-10-01", adjust: 0 };
+  const list = [tr("a", "2026-09-28", true, true), tr("b", "2026-10-02", true, true), tr("c", "2026-10-04", false, true), tr("d", "2026-10-06", true, true), tr("e", "2026-10-08", true, false), tr("f", "2026-10-10", true, false, { skippedAt: "x" })];
+  assert.deepStrictEqual(planProgress(plan, list), { used: 2, size: 10, packNo: 1, inPack: 2, left: 8, complete: false }, "before the start and solo workouts do not count; unfinished ones not yet");
+  assert.deepStrictEqual(sessionNo(plan, list, list[1]), { n: 1, size: 10, packNo: 1 }); assert.deepStrictEqual(sessionNo(plan, list, list[4]), { n: 3, size: 10, packNo: 1 }, "a planned session gets the next number");
+  assert.strictEqual(sessionNo(plan, list, list[2]), null, "a solo workout has no number"); assert.strictEqual(sessionNo(plan, list, list[5]), null, "a skipped one neither");
+  assert.deepStrictEqual(planProgress({ ...plan, adjust: 1 }, list).inPack, 3, "a session outside the app, added by hand");
+  assert.deepStrictEqual(planProgress({ ...plan, adjust: -5 }, list).used, 0, "never below zero");
+  const ten = Array.from({ length: 10 }, (_, i) => tr("s" + i, "2026-10-" + String(11 + i).padStart(2, "0"), true, true));
+  const full = planProgress(plan, [...list, ...ten]); assert.deepStrictEqual([full.used, full.inPack, full.complete, full.packNo], [12, 2, false, 2], "12 done: package 2, session 2");
+  const exact = planProgress(plan, [...list, ...ten.slice(0, 8)]); assert.deepStrictEqual([exact.inPack, exact.complete, exact.packNo], [10, true, 1], "exactly full reads 10 of 10, complete");
+  assert.strictEqual(planProgress({ ...plan, kind: "monthly" }, list), null); assert.strictEqual(planProgress(null, list), null);
+});
+test("a monthly plan is active until its day; everything else is always active", () => {
+  assert.ok(planActive({ kind: "monthly", until: "2026-10-14" }, "2026-10-14")); assert.ok(!planActive({ kind: "monthly", until: "2026-10-13" }, "2026-10-14"));
+  assert.ok(planActive({ kind: "monthly" }, "2026-10-14")); assert.ok(planActive({ kind: "sessions", size: 10 }, "2026-10-14")); assert.ok(planActive(null, "2026-10-14"));
 });

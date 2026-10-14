@@ -562,6 +562,43 @@
   .setlog .chip.stack .valrow .suffix { font-size: 15px; font-weight: 500; }
   .setlog .chip.stack.editing .valrow input { position: static; flex: 1 1 auto; width: 0; min-width: 3ch; height: auto; font-size: 22px; font-weight: 600; padding: 0; }
   .setlog .chip.stack.editing .valrow .val { display: none; }
+  /* packages: the plan card on the client page, the In person pill on a workout, the Packages page */
+  .plan-card { display: block; width: 100%; text-align: left; appearance: none; border: 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; background: var(--card); border-radius: var(--r-card); padding: 14px 16px 12px; margin-top: 16px; }
+  .plan-card[hidden] { display: none; }
+  body.client .plan-card { cursor: default; }
+  .plan-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .plan-head #planRight { color: var(--text-tertiary); letter-spacing: 0.04em; }
+  .plan-bar { display: flex; gap: 4px; margin: 12px 0 10px; height: 8px; }
+  .plan-bar[hidden] { display: none; }
+  .plan-bar i { flex: 1 1 0; border-radius: 4px; background: var(--glyph-fill); transition: background 200ms ease; }
+  .plan-bar i.on { background: var(--brand); }
+  .plan-bar i.next { box-shadow: inset 0 0 0 1.5px var(--brand); }
+  .plan-bar.cont { gap: 0; background: var(--glyph-fill); border-radius: 4px; overflow: hidden; }
+  .plan-bar.cont i { flex: none; border-radius: 0; background: var(--brand); }
+  .plan-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-top: 2px; }
+  .plan-foot b { display: block; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .plan-foot b.over { color: var(--danger); }
+  .plan-foot span { display: block; margin-top: 4px; font-size: 13px; color: var(--text-secondary); }
+  .plan-adjust { display: flex; gap: 8px; }
+  .plan-adjust[hidden] { display: none; }
+  .plan-adjust .step { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--card-border); color: var(--text-secondary); font-size: 20px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .date-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .session-pill { appearance: none; border: 0; cursor: pointer; border-radius: 50px; min-height: 36px; padding: 0 14px; font-size: 14px; font-weight: 500; white-space: nowrap; background: var(--field); color: var(--text-secondary); display: inline-flex; align-items: center; gap: 7px; -webkit-tap-highlight-color: transparent; }
+  .session-pill[hidden] { display: none; }
+  .session-pill i { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--text-tertiary); display: inline-flex; align-items: center; justify-content: center; font-style: normal; font-size: 11px; line-height: 1; color: transparent; }
+  .session-pill.on { background: var(--brand-soft, var(--field)); color: var(--brand); font-weight: 600; }
+  .session-pill.on i { background: var(--brand); border-color: var(--brand); color: #fff; }
+  body.client .session-pill { pointer-events: none; cursor: default; }
+  body.client .session-pill i { display: none; }
+  .details select { width: 100%; max-width: 220px; appearance: none; -webkit-appearance: none; border: 1.5px solid var(--card-border); border-radius: var(--r-field); background: var(--field); color: var(--text-primary); padding: 8px 32px 8px 12px; font: inherit; font-size: 15px; background-image: linear-gradient(45deg, transparent 50%, var(--text-tertiary) 50%), linear-gradient(135deg, var(--text-tertiary) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  .until-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .until-row input { max-width: 170px; }
+  .pack-form { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .list li.pack-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; }
+  .list .pack-row > div:first-child { flex: 1 1 auto; min-width: 0; font-size: 16px; }
+  .list .pack-row .sub { margin-top: 2px; }
+  .list .pack-row .sub { color: var(--text-secondary); font-size: 14px; }
+  .list .pack-row .del { appearance: none; border: 0; background: none; color: var(--danger); font: inherit; font-size: 14px; cursor: pointer; width: auto; flex: none; min-height: 44px; padding: 0; display: inline-flex; align-items: center; }   /* not the full-width list button */
   /* the client page overview: two numbers and an exercise lookup that shows the heaviest set ever */
   .overview { margin: 16px 0 18px; }                                        /* room after the name or the message pill */
   .overview[hidden] { display: none; }
@@ -887,6 +924,18 @@
     <div class="empty" id="exEmpty" hidden></div>
   </section>
 
+  <section id="vPackages" hidden>
+    <h1>Packages</h1>
+    <p class="muted" style="margin:0 0 14px;max-width:420px">What you sell. A package is a number of in-person sessions, or a monthly plan for clients who follow the app on their own.</p>
+    <ul class="list" id="packList"></ul>
+    <div class="pack-form" id="packForm">
+      <input id="packName" placeholder="Name, e.g. 10 sessions" autocomplete="off" autocapitalize="sentences">
+      <div class="field-row"><span class="muted">Type</span><div class="seg" id="packKind" role="radiogroup" aria-label="Type"><button type="button" data-kind="sessions" class="on">Sessions</button><button type="button" data-kind="monthly">Monthly</button></div></div>
+      <div class="field-row" id="packSizeRow"><span class="muted">Sessions</span><input id="packSize" type="number" inputmode="numeric" min="1" max="200" placeholder="10" style="max-width:120px"></div>
+      <button class="btn" id="packAdd" type="button" style="width:100%;margin-top:4px">Add package</button>
+    </div>
+  </section>
+
   <section id="vSettings" hidden>
     <h1>Settings</h1>
     <ul class="list settings-list">
@@ -956,7 +1005,7 @@
     <ul class="list inactive" id="inactiveList" hidden></ul>
     <div class="foot foot-col" id="localFoot" hidden>
       <span class="muted" id="dataNote">Saved on this device</span>
-      <div class="foot-pills"><button class="pill" id="backup" type="button">Back up</button><button class="pill" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="pill" id="myExercises" type="button" hidden>Exercises</button><button class="pill" id="settingsBtn" type="button" hidden>Settings</button></div>
+      <div class="foot-pills"><button class="pill" id="backup" type="button">Back up</button><button class="pill" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="pill" id="myExercises" type="button" hidden>Exercises</button><button class="pill" id="packagesBtn" type="button" hidden>Packages</button><button class="pill" id="settingsBtn" type="button" hidden>Settings</button></div>
     </div>
   </section>
 
@@ -978,9 +1027,16 @@
         <div class="field-row"><span class="muted">Weights</span><div class="seg" id="unitSeg" role="radiogroup" aria-label="Weight unit"><button type="button" data-unit="lb" class="on">lb</button><button type="button" data-unit="kg">kg</button></div></div>
         <div class="field-row"><span class="muted">Messages via</span><div class="seg" id="chatSeg" role="radiogroup" aria-label="Messaging app"><button type="button" data-chat="sms" class="on">Messages</button><button type="button" data-chat="whatsapp">WhatsApp</button></div></div>
         <div class="field-row"><span class="muted">Access</span><div class="seg" id="accessSeg" role="radiogroup" aria-label="Access"><button type="button" data-access="active" class="on">Active</button><button type="button" data-access="paused">Paused</button></div></div>
+        <div class="field-row"><span class="muted">Plan</span><select id="planSel"><option value="">None</option></select></div>
+        <div class="field-row" id="planUntilRow" hidden><span class="muted">Active until</span><div class="until-row"><input id="planUntil" type="date"><button class="btn quiet" id="planMonth" type="button">+1 month</button></div></div>
       </div>
     </div>
     <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
+    <button class="plan-card" id="planCard" type="button" hidden>
+      <div class="plan-head"><span id="planName"></span><span id="planRight"></span></div>
+      <div class="plan-bar" id="planBar" hidden></div>
+      <div class="plan-foot"><div><b id="planBig"></b><span id="planSmall"></span></div><div class="plan-adjust trainer-only" id="planAdjust" hidden><span class="step" id="planMinus" role="button" aria-label="One session fewer">&minus;</span><span class="step" id="planPlus" role="button" aria-label="One session more">+</span></div></div>
+    </button>
     <div class="overview" id="overview" hidden>
       <div class="ov-tiles"><div class="ov-tile"><b id="ovTotal">0</b><span>Total workouts</span></div><div class="ov-tile"><b id="ovMonth">0</b><span>This month</span></div></div>
       <div class="ov-pick"><input id="ovEx" placeholder="Look up an exercise" autocomplete="off" autocapitalize="sentences" aria-label="Look up an exercise"><button class="ov-clear" id="ovClear" type="button" aria-label="Clear" hidden>&times;</button><ul class="sugg" id="ovSugg" hidden></ul></div>
@@ -1019,7 +1075,7 @@
   <section id="vTraining" hidden>
     <div class="ttl">
       <textarea id="tTitle" class="title" rows="1" placeholder="Focus, e.g. Bench-press and back" autocapitalize="sentences"></textarea>
-      <div class="date-row"><button class="datefield" id="tDate" type="button"></button><div class="seg view-seg" id="viewSeg" role="radiogroup" aria-label="See it as" hidden><button type="button" role="radio" data-view="coach" class="on">Coach</button><button type="button" role="radio" data-view="client">Client</button></div><a class="msg-pill small client-only" id="trainerBtn2" href="#" hidden><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
+      <div class="date-row"><div class="date-group"><button class="datefield" id="tDate" type="button"></button><button class="session-pill" id="sessionPill" type="button" hidden></button></div><div class="seg view-seg" id="viewSeg" role="radiogroup" aria-label="See it as" hidden><button type="button" role="radio" data-view="coach" class="on">Coach</button><button type="button" role="radio" data-view="client">Client</button></div><a class="msg-pill small client-only" id="trainerBtn2" href="#" hidden><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
       <button class="tpl-pill trainer-only" id="fromTpl" type="button" hidden><span id="fromTplText"></span><span class="chev">&rsaquo;</span></button>
       <div class="wnote" id="wNote" hidden><button class="cnote-btn" id="wNoteBtn" type="button" aria-expanded="false"><span id="wNoteLab">Read note</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="list notes" id="wNoteList" hidden></div></div>
     </div>
@@ -1084,7 +1140,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=20";
+  import { boot } from "./app/main.js?v=21";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
