@@ -1143,9 +1143,10 @@ import { reportRange, buildReport } from "./report.js";
         row.append(name, grip); li.appendChild(row); dragRow(li, c.id);
       } else {
         const b = document.createElement("button"); b.type = "button";
-        const n = clientTrainings(c.id).length;
-        b.innerHTML = `<span></span><span class="sub"></span>`;
-        b.firstChild.textContent = c.name; b.lastChild.textContent = (n ? n + (n === 1 ? " workout" : " workouts") : "") + (!c.paused && effPaused(c) ? (n ? " \u00b7 " : "") + "Plan ended" : ""); b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
+        const words = [newsWords(clientNews(c)), !c.paused && effPaused(c) ? "Plan ended" : ""].filter(Boolean).join(" \u00b7 ");   // what the client did on their own; a quiet row otherwise
+        b.innerHTML = `<span class="nm"><span></span><span class="n2"></span></span><span class="sub"><span class="chev">&rsaquo;</span></span>`;
+        b.firstChild.firstChild.textContent = c.name; b.firstChild.lastChild.textContent = words; b.firstChild.lastChild.hidden = !words;
+        b.classList.toggle("news", !!newsWords(clientNews(c)));
         b.addEventListener("click", () => { S.tab = "workouts"; go({ name: "client", id: c.id }); });
         li.appendChild(b);
       }
@@ -1272,6 +1273,54 @@ import { reportRange, buildReport } from "./report.js";
     if (ovFor !== c.id) { ovFor = c.id; ovPick = ""; $("ovEx").value = ""; $("ovClear").hidden = true; $("ovSugg").hidden = true; }
     $("overview").hidden = false; paintOvBest();
   }
+  // ---- what a client did on their own that the coach has not seen: finished workouts (cleared when the profile opens) and notes (each cleared when tapped).
+  // "Seen" lives on the client's record (seenDoneAt, seenNotes), so every device of the coach agrees.
+  const noteId = (t, r) => "row/" + t.id + "/" + r.id;
+  function clientNews(c) {
+    if (!c || isTemplateClient(c.id)) return { done: 0, notes: [] };
+    const since = Date.parse(c.seenDoneAt || "") || 0, seen = new Set(c.seenNotes || []);
+    let done = 0; const notes = [];
+    for (const t of clientTrainings(c.id)) {
+      if (t.completedBy === "client" && t.completedAt && (Date.parse(t.completedAt) || 0) > since) done++;
+      for (const r of t.rows || []) if (r.clientNote && r.clientNoteBy === "client" && !seen.has(noteId(t, r))) notes.push({ id: noteId(t, r), t, r, at: r.clientNoteAt || "" });
+    }
+    notes.sort((a, b) => (b.at > a.at ? 1 : b.at < a.at ? -1 : 0));   // newest first
+    return { done, notes };
+  }
+  function newsWords(n) {
+    const parts = [];
+    if (n.done) parts.push(n.done === 1 ? "Finished a workout" : "Finished " + n.done + " workouts");
+    if (n.notes.length) parts.push(n.notes.length === 1 ? "1 note" : n.notes.length + " notes");
+    return parts.join(" \u00b7 ");
+  }
+  function markWorkoutsSeen(c) { if (!clientNews(c).done) return; c.seenDoneAt = now(); scheduleSave("clients", c.id); }
+  function markNoteSeen(c, id) {
+    const all = new Set(); for (const t of clientTrainings(c.id)) for (const r of t.rows || []) if (r.clientNote && r.clientNoteBy === "client") all.add(noteId(t, r));
+    const seen = (c.seenNotes || []).filter((x) => all.has(x));           // forget notes that are gone
+    if (!seen.includes(id)) seen.push(id);
+    c.seenNotes = seen; scheduleSave("clients", c.id);
+  }
+  function openClientNote(c, x) {                                          // the tap on a new note: it counts as seen, and the workout opens on that card with the note unfolded
+    markNoteSeen(c, x.id);
+    const t = x.t, rows = [...(t.rows || [])].sort((a, b) => cmpLabel(a.label, b.label)), i = rows.indexOf(x.r);
+    if (i >= 0) { const selKey = t.id + "/" + groupKey(x.r.label, i); openBlocks.add(selKey); openExNotes.add(selKey); }
+    go({ name: "training", id: t.id }); followRow(x.r.id);
+  }
+  function renderNews(c) {
+    const wrap = $("newNotes"), ul = $("newNotesList"), n = clientNews(c);
+    wrap.hidden = !n.notes.length; if (!n.notes.length) { ul.replaceChildren(); return; }
+    $("newNotesTitle").textContent = "New from " + (String(c.name || "").trim().split(/\s+/)[0] || "your client");
+    ul.replaceChildren(...n.notes.map((x) => {
+      const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; b.className = "nn";
+      b.innerHTML = '<span class="nn-top"><span class="nn-ex"></span><span class="sub"></span></span><span class="nn-text"></span>';
+      b.querySelector(".nn-ex").textContent = String(x.r.name || "").trim() || "Exercise";
+      const day = whenDay(effDate(x.t) || String(x.t.date || ""), true); b.querySelector(".sub").textContent = [day, String(x.t.title || "").trim()].filter(Boolean).join(" \u00b7 ");
+      b.querySelector(".sub").insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
+      b.querySelector(".nn-text").textContent = x.r.clientNote;
+      b.addEventListener("click", () => openClientNote(c, x));
+      li.appendChild(b); return li;
+    }));
+  }
   function renderClient() {
     const c = clients.get(S.view.id);
     const isTpl = isTemplateClient(c.id);
@@ -1281,6 +1330,7 @@ import { reportRange, buildReport } from "./report.js";
     $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !effPaused(c); $("pausedKicker").textContent = c.paused ? "Access paused" : "Plan ended";
     if (isTpl) { $("cName").readOnly = true; $("overview").hidden = true; $("planCard").hidden = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }
     $("cName").value = c.name; $("cName").readOnly = true; renderPlanCard(c); renderOverview(c); paintPlanDetails(c);
+    if (!S.clientMode) { markWorkoutsSeen(c); renderNews(c); } else $("newNotes").hidden = true;
     if (document.activeElement !== $("cNameField")) $("cNameField").value = c.name || "";
     if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
     if (document.activeElement !== $("cPhone")) $("cPhone").value = c.phone || "";
@@ -1472,6 +1522,7 @@ import { reportRange, buildReport } from "./report.js";
       t.missed = false; touchState(t.id, "missed"); if (S.clientMode) pendingMiss.add(t.id);
     }
     t.completedAt = finished ? now() : null; touchState(t.id, "completedAt");
+    if (finished && S.clientMode) t.completedBy = "client"; else delete t.completedBy; touchState(t.id, "completedBy");   // a client's own finish is news for the coach; one the coach logs is not
     if (finished && t.skippedAt) { t.skippedAt = null; t.missed = false; touchState(t.id, "skippedAt", "missed"); if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } }   // finished beats skipped
     if (finished && !S.clientMode && /^\d{4}-\d{2}-\d{2}$/.test(t.date || "") && t.date < today()) {   // the coach logging a past session: it was done on that day
       const d = new Date(); const [y, m, dd] = t.date.split("-").map(Number); d.setFullYear(y, m - 1, dd);

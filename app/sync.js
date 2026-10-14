@@ -121,7 +121,7 @@ const cloudBackend = {
       const takeState = (serverData) => {                      // the client may have finished, skipped or moved it meanwhile: keep that, field by field, unless the coach changed that field
         if (kind !== "trainings" || !serverData) return;
         const mine = trainerState.get(id) || new Set();
-        for (const f of ["completedAt", "skippedAt", "missed", "date", "inPerson"]) { if (mine.has(f)) continue; for (const target of [data, trainings.get(id)]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; } }
+        for (const f of ["completedAt", "completedBy", "skippedAt", "missed", "date", "inPerson"]) { if (mine.has(f)) continue; for (const target of [data, trainings.get(id)]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; } }
       };
       const takeNotes = (serverData) => {                      // another device may have written notes: keep both
         if (kind !== "clients" || !serverData) return;

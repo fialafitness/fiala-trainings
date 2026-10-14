@@ -258,6 +258,18 @@
   }
   .list button:hover { opacity: 0.85; }
   .list .sub { color: var(--text-tertiary); font-size: 13px; letter-spacing: 0; white-space: nowrap; }
+  .list button.news { position: relative; }                                   /* a client did something on their own: the unread dot, and words on the right */
+  .list button.news::before { content: ""; position: absolute; left: 7px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--brand); }
+  .list .nm { display: flex; flex-direction: column; gap: 3px; min-width: 0; }  /* the name, and under it what is new */
+  .list .nm > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .list .n2 { font-size: 13px; line-height: 1.2; font-weight: 500; color: var(--text-secondary); }
+  .list .n2[hidden] { display: none; }
+  .list button.news .n2 { color: var(--text-primary); }
+  .news { margin-top: 20px; }
+  .news .kicker { margin-bottom: 8px; }
+  .list button.nn { flex-direction: column; align-items: stretch; gap: 4px; }   /* a new note: exercise and day on top, the note underneath */
+  .nn-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .nn-text { font-size: 15px; line-height: 1.35; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .list .chev { color: var(--text-tertiary); margin-left: 8px; }
   .list li.more > div { min-height: 56px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .list li.more button { width: auto; min-height: 44px; padding: 0; color: var(--brand); gap: 10px; }   /* "Show more" / "Show less": tertiary actions inside the group */
@@ -1097,6 +1109,7 @@
       </div>
     </div>
     <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
+    <div data-tab="workouts" class="trainer-only news" id="newNotes" hidden><div class="kicker" id="newNotesTitle">New from</div><ul class="list" id="newNotesList"></ul></div>
     <div data-tab="workouts" class="plan-card" id="planCard" role="button" tabindex="0" hidden>
       <div class="plan-head"><span id="planName"></span><span id="planRight"></span></div>
       <div class="plan-bar" id="planBar" hidden></div>
@@ -1211,7 +1224,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=35";
+  import { boot } from "./app/main.js?v=36";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
