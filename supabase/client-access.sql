@@ -2,8 +2,8 @@
 -- Fiala Trainings — client accounts (step 3)
 -- Paste into Supabase: SQL Editor → New query → Run. Safe to re-run.
 -- A client signs in with the email on their profile (must be a confirmed
--- email). They receive their profile and trainings WITHOUT the trainer's
--- notes, and can change only the weights of their own exercise rows.
+-- email). They receive their profile without the trainer's private notes, their
+-- trainings with the coach's instructions, and can change only their own logged rows.
 -- ============================================================
 
 -- confirmed email of the caller, or '' (never trust an unconfirmed sign-up)
@@ -31,8 +31,8 @@ create trigger ft_clients_touch before update on ft_clients for each row execute
 drop trigger if exists ft_trainings_touch on ft_trainings;
 create trigger ft_trainings_touch before update on ft_trainings for each row execute function ft_touch();
 
--- what a client may see: their profile without notes, their trainings without per-exercise notes
--- (paused clients get no trainings; keep this body identical to client-pause.sql)
+-- what a client may see: their profile without the trainer's notes, their trainings as they are
+-- (paused clients get no trainings; keep this body identical to client-pause.sql and client-instructions.sql)
 create or replace function client_my_data()
 returns jsonb language sql stable security definer set search_path = public as $$
   with me as (
@@ -43,8 +43,7 @@ returns jsonb language sql stable security definer set search_path = public as $
   select jsonb_build_object(
     'clients', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'data', data - 'notes')) from me), '[]'::jsonb),
     'trainings', coalesce((
-      select jsonb_agg(jsonb_build_object('id', t.id, 'data',
-        jsonb_set(t.data, '{rows}', coalesce((select jsonb_agg(r - 'note') from jsonb_array_elements(coalesce(t.data -> 'rows', '[]'::jsonb)) r), '[]'::jsonb))))
+      select jsonb_agg(jsonb_build_object('id', t.id, 'data', t.data))
       from ft_trainings t where t.client_id in (select id from me where coalesce(data ->> 'paused', '') <> 'true')), '[]'::jsonb)
   );
 $$;
