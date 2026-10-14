@@ -871,6 +871,28 @@ import { reportRange, buildReport } from "./report.js";
       bg.hidden = false; n.focus({ preventScroll: true });
     });
   }
+  // a list to choose from, in the same sheet language as askFirst; resolves with the chosen id, or null for Cancel / tap outside / Escape
+  function pickOne({ title, items }) {
+    return new Promise((resolve) => {
+      if (askOpen) askOpen(false);
+      const bg = $("pickSheet"), ul = $("pickList"), n = $("pickNo"), behind = [...document.body.children].filter((el) => el !== bg);
+      $("pickTitle").textContent = title;
+      ul.replaceChildren(...items.map((it) => {
+        const li = document.createElement("li"), b = document.createElement("button"); b.type = "button";
+        b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = it.label; b.lastChild.textContent = it.sub || "";
+        b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>');
+        b.addEventListener("click", () => { if (armed) done(it.id); }); li.appendChild(b); return li;
+      }));
+      let armed = false;                                                                      // the second tap of a double tap must not pick a row
+      const settle = setTimeout(() => { armed = true; }, 350);
+      const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = false; bg.hidden = true; for (const el of behind) el.inert = false; n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); document.removeEventListener("keydown", onKey); resolve(v); };
+      const onNo = () => done(null), onBg = (e) => { if (armed && e.target === bg) done(null); }, onKey = (e) => { if (e.key === "Escape") done(null); };
+      askOpen = done; S.asking = true;
+      n.addEventListener("click", onNo); bg.addEventListener("click", onBg); document.addEventListener("keydown", onKey);
+      for (const el of behind) el.inert = true;
+      bg.hidden = false; ul.scrollTop = 0; n.focus({ preventScroll: true });
+    });
+  }
   function finishEarlyNow() {
     if (!es) return;
     const { t, g, selKey, reason } = es; closeFinishEarly();
@@ -2249,7 +2271,13 @@ import { reportRange, buildReport } from "./report.js";
   $("unskipBtn").addEventListener("click", () => setSkipped(false));
   $("finishBtn").addEventListener("click", () => setFinished(true));
   $("unfinishBtn").addEventListener("click", () => setFinished(false));
-  $("copyTraining").addEventListener("click", () => { const t = trainings.get(S.view.id); if (t) addTraining(t.clientId, t); });
+  $("copyTraining").addEventListener("click", async () => {                 // "Copy workout" asks which client gets the copy; this client is the first row
+    const t = trainings.get(S.view.id); if (!t) return;
+    const me = clients.get(t.clientId), others = peopleList().filter((c) => c.id !== t.clientId);
+    const items = [me, ...others].filter(Boolean).map((c) => ({ id: c.id, label: c.name || "Unnamed", sub: c.id === t.clientId ? "this client" : (c.paused ? "Paused" : "") }));
+    const id = await pickOne({ title: "Copy workout to", items });
+    if (id && clients.has(id)) addTraining(id, t);
+  });
   $("saveTemplate").addEventListener("click", () => { const t = trainings.get(S.view.id); if (t) saveAsTemplate(t); });
   $("tplFill").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t) return; fillFor = t.id; pickFor = t.clientId; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });
   $("fromTemplate").addEventListener("click", () => { pickFor = S.view.id; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });

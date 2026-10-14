@@ -31,6 +31,7 @@
     --r-chip: 12px;                     /* small chips and day cells */
     --surface: #f5f5f7;                 /* the page: iOS grouped background */
     --sheet: #ffffff;                   /* bottom sheet (the day picker) */
+    --sheet-list: #f5f5f7;              /* a grouped list inside a sheet: the page grey on the white sheet */
     --elevated: #ffffff;                /* anything that floats: menus, keyboard bar, sheet */
     --seg-on: #ffffff;                  /* the chosen segment: a raised white key */
     --seg-shadow: rgba(0,0,0,0.12);
@@ -69,6 +70,7 @@
       --text-tertiary: rgba(255,255,255,0.55);
       --surface: #000000;               /* Apple's dark background: one black, no gradient */               /* surface-black — night mode */
       --sheet: #2c2c2e;
+      --sheet-list: rgba(255,255,255,0.08);
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
       --seg-on: rgba(255,255,255,0.16);
       --seg-shadow: transparent;
@@ -107,6 +109,7 @@
     --text-tertiary: rgba(255,255,255,0.55);
     --surface: #000000;               /* Apple's dark background: one black, no gradient */
     --sheet: #2c2c2e;
+    --sheet-list: rgba(255,255,255,0.08);
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
       --seg-on: rgba(255,255,255,0.16);
       --seg-shadow: transparent;
@@ -321,6 +324,9 @@
   /* the confirm sheet: nothing is deleted or discarded by accident; only its red button does it */
   .sheet.confirm-sheet h3 { font-size: 22px; line-height: 28px; }
   .sheet.confirm-sheet .lead[hidden] { display: none; }
+  .pick-sheet .list { margin-top: 14px; max-height: 50vh; overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }   /* "Copy workout to": a grouped list of clients inside the sheet */
+  .pick-sheet .list { background: var(--sheet-list); border-color: transparent; }
+  .pick-sheet .ask-actions { margin-top: 10px; }
   .ask-actions { display: grid; gap: 10px; margin-top: 18px; }
   .ask-actions .btn { min-height: 50px; font-size: 17px; }
   .sheet.ask .reasons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -1174,6 +1180,7 @@
 </nav>
 <div id="whenBg" hidden><div id="whenPop" role="dialog" aria-live="polite"><b id="whenTitle"></b><span id="whenSub"></span></div></div>
 <div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
+<div class="sheet-bg" id="pickSheet" hidden><div class="sheet ask confirm-sheet pick-sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle"><h3 id="pickTitle"></h3><ul class="list" id="pickList"></ul><div class="ask-actions"><button class="btn quiet" id="pickNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="earlySheet" hidden>
   <div class="sheet ask" role="dialog" aria-modal="true" aria-labelledby="esTitle">
     <h3 id="esTitle">Finish this exercise?</h3>
@@ -1195,7 +1202,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=29";
+  import { boot } from "./app/main.js?v=30";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
