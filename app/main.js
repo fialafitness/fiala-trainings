@@ -1047,10 +1047,12 @@ import { reportRange, buildReport } from "./report.js";
     list.forEach((x, k) => { if (x.sort !== k) { x.sort = k; scheduleSave("clients", x.id); } });
     renderClients();
   }
-  // drag a row with the finger; the others slide out of the way; the order is saved on release
+  // drag a row by its grip (the three lines, like Apple's reorder handle); the others slide out of the way; the order is saved on release.
+  // Only the grip starts a drag, so a finger anywhere else on the card still scrolls the list.
   function dragRow(li, id) {
     li.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 && e.pointerType === "mouse") return;
+      if (!e.target.closest(".grip")) return;
       const ul = li.parentElement, rows = [...ul.children], i = rows.indexOf(li);
       const rect = rows.map((r) => r.getBoundingClientRect()), h0 = rect[i].height, c0 = rect[i].top + h0 / 2;
       const minDy = rect[0].top - rect[i].top, maxDy = rect[rows.length - 1].bottom - rect[i].bottom;
@@ -1062,8 +1064,10 @@ import { reportRange, buildReport } from "./report.js";
         rows.forEach((r, k) => {
           if (k === i) return;
           const ck = rect[k].top + rect[k].height / 2;
-          if (k > i && c > ck) { r.style.transform = "translateY(" + (-h0) + "px)"; up++; }
-          else if (k < i && c < ck) { r.style.transform = "translateY(" + h0 + "px)"; down++; }
+          // past a row once the dragged centre crosses its centre; at either clamped end of the list every row on that side counts,
+          // so a drag to the very top or bottom always takes (row heights differ by fractions of a pixel, exact compares missed the last one)
+          if (k > i && (c >= ck || dy >= maxDy)) { r.style.transform = "translateY(" + (-h0) + "px)"; up++; }
+          else if (k < i && (c <= ck || dy <= minDy)) { r.style.transform = "translateY(" + h0 + "px)"; down++; }
           else r.style.transform = "";
         });
         target = i + up - down;
