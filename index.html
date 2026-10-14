@@ -626,9 +626,10 @@
   #vTraining.tpl .session-row { display: none; }
   .session-pill { appearance: none; border: 0; cursor: pointer; border-radius: 50px; min-height: 36px; padding: 0 14px; font-size: 14px; font-weight: 500; white-space: nowrap; background: var(--field); color: var(--text-secondary); display: inline-flex; align-items: center; gap: 7px; -webkit-tap-highlight-color: transparent; }
   .session-pill[hidden] { display: none; }
-  .session-pill i { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--text-tertiary); display: inline-flex; align-items: center; justify-content: center; font-style: normal; font-size: 11px; line-height: 1; color: transparent; }
-  .session-pill.on { background: var(--glyph-fill); color: var(--brand); font-weight: 600; }
-  .session-pill.on i { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .session-pill i { display: none; font-style: normal; font-size: 12px; line-height: 1; }           /* the check appears only once it is on */
+  .session-pill.on { background: var(--ink); color: var(--ink-on); font-weight: 600; }             /* on: the ink chip, like a chosen filter in Apple's apps */
+  .session-pill.on i { display: inline; }
+  body.client .session-pill.on { background: var(--glyph-fill); color: var(--text-primary); }    /* the client reads it; it is not a switch for them */
   body.client .session-pill { pointer-events: none; cursor: default; }
   body.client .session-pill i { display: none; }
   .details select { width: 100%; max-width: 220px; appearance: none; -webkit-appearance: none; border: 1.5px solid var(--card-border); border-radius: var(--r-field); background: var(--field); color: var(--text-primary); padding: 8px 32px 8px 12px; font: inherit; font-size: 15px; background-image: linear-gradient(45deg, transparent 50%, var(--text-tertiary) 50%), linear-gradient(135deg, var(--text-tertiary) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
@@ -1128,7 +1129,7 @@
     <div class="finish" id="finishWrap" hidden>
       <button class="btn tint wide accent" id="finishBtn">Finish workout</button>
       <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn tint" id="unfinishBtn" type="button">Undo</button></div>
-      <div class="finished" id="skipLine"><button class="btn tint" id="skipBtn" type="button">Skip workout</button></div>
+      <div class="finished" id="skipLine"><button class="btn tint wide" id="skipBtn" type="button">Skip workout</button></div>
       <div class="finished" id="skippedLine" hidden><span class="muted" id="skippedText" style="font-size:17px"></span><button class="btn tint" id="unskipBtn" type="button">Undo</button></div>
     </div>
     <div class="tnote" id="tNoteWrap" hidden>
