@@ -111,7 +111,7 @@ const cloudBackend = {
       for (const sr of (serverData && serverData.rows) || []) {
         for (const target of [data, live]) {
           const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (!lr) continue;
-          if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; lr.setsDone = sr.setsDone || 0; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; if (sr.clientNote) lr.clientNote = String(sr.clientNote); else delete lr.clientNote; }
+          if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; lr.setsDone = sr.setsDone || 0; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; if (sr.clientNote) { lr.clientNote = String(sr.clientNote); if (sr.clientNoteBy) lr.clientNoteBy = String(sr.clientNoteBy); else delete lr.clientNoteBy; if (sr.clientNoteAt) lr.clientNoteAt = String(sr.clientNoteAt); else delete lr.clientNoteAt; } else { delete lr.clientNote; delete lr.clientNoteBy; delete lr.clientNoteAt; } }
           if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
         }
       }

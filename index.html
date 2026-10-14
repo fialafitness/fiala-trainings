@@ -367,6 +367,8 @@
   .add-note { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 4px; display: inline-flex; align-items: center; gap: 6px; }
   .finish-early { display: inline-flex; align-items: center; gap: 6px; }
   .finish-early svg { flex: 0 0 auto; }
+  .add-note .ico { position: relative; display: inline-flex; }
+  .add-note .badge { position: absolute; top: -3px; right: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--card); }   /* the red dot: there is a note on this exercise */
   .exnote { margin-top: 4px; }
   .exnote[hidden] { display: none; }
   .exnote textarea { width: 100%; box-sizing: border-box; min-height: 44px; }
@@ -1034,7 +1036,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=12";
+  import { boot } from "./app/main.js?v=13";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
