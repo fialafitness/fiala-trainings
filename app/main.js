@@ -18,8 +18,24 @@ import { reportRange, buildReport } from "./report.js";
   const customNames = new Map();          // key -> name (his own exercises, table ft_exercises)
   let ALL_NAMES = NAMES, ALL_KEYS = NAME_KEYS;
   const builtinKeys = new Set(NAME_KEYS);
-  function refreshNames() { const extra = [...customNames.values()].sort((a, b) => a.localeCompare(b)); ALL_NAMES = extra.length ? NAMES.concat(extra) : NAMES; ALL_KEYS = extra.length ? NAME_KEYS.concat(extra.map(squash)) : NAME_KEYS; }
-  const knownName = (n) => { const k = squash(n); return !!k && (builtinKeys.has(k) || customNames.has(k)); };
+  const ALIAS_PAIRS = Object.entries(ALIASES).map(([a, b]) => [squash(a), b]);
+  const aliasFinds = (s, have) => { const out = []; if (!s) return out; const seen = new Set(have); for (const [k, n] of ALIAS_PAIRS) { if (!k.includes(s) || seen.has(n)) continue; if (ALL_NAMES.indexOf(n) < 0) continue; seen.add(n); out.push(n); } return out; };   // "triceps" still finds the tricep exercises: old spellings are aliases
+  const hiddenKeys = new Set();           // built-in exercises he removed or renamed away (table ft_exercise_hidden)
+  function refreshNames() {
+    const names = [], keys = [];
+    for (let i = 0; i < NAMES.length; i++) { const k = NAME_KEYS[i]; if (hiddenKeys.has(k) || customNames.has(k)) continue; names.push(NAMES[i]); keys.push(k); }   // a custom entry with the same key is his spelling of it
+    for (const [k, n] of [...customNames.entries()].sort((a, b) => a[1].localeCompare(b[1]))) { names.push(n); keys.push(k); }
+    ALL_NAMES = names; ALL_KEYS = keys;
+  }
+  const knownName = (n) => { const k = squash(n); return !!k && ((builtinKeys.has(k) && !hiddenKeys.has(k)) || customNames.has(k)); };
+  async function loadHidden() {
+    if (!S.sb || !S.signedIn) return;
+    const { data, error } = await S.sb.from("ft_exercise_hidden").select("name_key");
+    if (error || !data) return;
+    hiddenKeys.clear(); for (const r of data) hiddenKeys.add(r.name_key); refreshNames();
+  }
+  async function hideBuiltin(k) { const { error } = await S.sb.from("ft_exercise_hidden").upsert({ name_key: k }); if (error) return false; hiddenKeys.add(k); refreshNames(); return true; }
+  async function unhideBuiltin(k) { if (!hiddenKeys.has(k)) return true; const { error } = await S.sb.from("ft_exercise_hidden").delete().eq("name_key", k); if (error) return false; hiddenKeys.delete(k); refreshNames(); return true; }
   const nearName = (n) => { const k = squash(n); if (!k) return null; const cands = [k.replace(/(es|s)$/, ""), k + "s", k + "es"].filter((c) => c && c !== k); for (const c of cands) { const i = ALL_KEYS.indexOf(c); if (i >= 0) return ALL_NAMES[i]; } return null; };
   const tidyName = (n) => { n = String(n || "").replace(/\s+/g, " ").trim(); return n ? n[0].toUpperCase() + n.slice(1) : ""; };
   async function loadCustomNames() {
@@ -31,6 +47,7 @@ import { reportRange, buildReport } from "./report.js";
   async function addCustomName(name) {
     name = tidyName(name); const k = squash(name); if (!k || knownName(name)) return true;
     if (!S.sb || !S.signedIn) return false;
+    if (builtinKeys.has(k)) return unhideBuiltin(k);                 // a removed built-in added back
     const { error } = await S.sb.from("ft_exercises").upsert({ name_key: k, name });
     if (error) return false;
     customNames.set(k, name); refreshNames(); return true;
@@ -288,7 +305,8 @@ import { reportRange, buildReport } from "./report.js";
     const exact = [], starts = [], contains = [];
     for (const [n, k] of all) { if (k === s) exact.push([n, k]); else if (k.startsWith(s)) starts.push([n, k]); else if (k.includes(s)) contains.push([n, k]); }
     starts.sort((x, y) => x[0].length - y[0].length || x[0].localeCompare(y[0])); contains.sort((x, y) => x[0].localeCompare(y[0]));
-    return exact.concat(starts, contains);
+    const extra = aliasFinds(s, [...exact, ...starts, ...contains].map((x) => x[0])).map((n) => [n, squash(n)]);
+    return exact.concat(starts, contains, extra);
   }
   function renderExercises() {
     const q = $("exSearch").value; const hits = exerciseMatches(q); const s = squash(q);
@@ -322,34 +340,50 @@ import { reportRange, buildReport } from "./report.js";
     });
     li.append(b, detail); return li;
   }
-  function buildExerciseDetail(box, name, key) {
-    box.replaceChildren();
-    const mine = customNames.has(key); const vid = videoForName(name); const vkey = looseKey(name);
-    if (mine) {
-      const inp = document.createElement("input"); inp.value = name; inp.setAttribute("autocapitalize", "sentences"); inp.setAttribute("autocomplete", "off"); inp.placeholder = "Name";
-      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
-      inp.addEventListener("blur", async () => { const nn = tidyName(inp.value); if (!nn || !squash(nn) || nn === name) { inp.value = name; return; } const ok = await renameCustom(key, nn); if (!ok) { inp.value = name; $("status").textContent = "Couldn’t rename · try again online"; return; } exOpenKey = squash(nn); renderExercises(); });
-      box._nameInput = inp; box.appendChild(inp);
-    }
+  const mkBtn = (text, cls, fn) => { const x = document.createElement("button"); x.type = "button"; x.className = cls; x.textContent = text; x.addEventListener("click", fn); return x; };
+  function buildExerciseDetail(box, name, key) {                               // tapped open: watch the video, or Edit
+    box.replaceChildren(); box.classList.remove("editing");
+    const vid = videoForName(name);
     const player = document.createElement("div"); player.className = "player"; player.hidden = true;
     const actions = document.createElement("div"); actions.className = "row-actions";
-    const mk = (text, cls, fn) => { const x = document.createElement("button"); x.type = "button"; x.className = cls; x.textContent = text; x.addEventListener("click", fn); return x; };
-    if (vid) actions.appendChild(mk("▶ Watch video", "btn tint", () => { if (!player.hidden) { player.hidden = true; player.replaceChildren(); return; } player.replaceChildren(); const f = document.createElement("iframe"); f.src = "https://www.youtube-nocookie.com/embed/" + vid + "?playsinline=1&rel=0&modestbranding=1"; f.allow = "accelerometer; encrypted-media; picture-in-picture"; f.allowFullscreen = true; player.appendChild(f); player.hidden = false; }));
-    const form = document.createElement("div"); form.className = "vid-form"; form.hidden = true;
-    const url = document.createElement("input"); url.type = "url"; url.placeholder = "Paste a YouTube link"; url.setAttribute("autocomplete", "off"); url.setAttribute("autocapitalize", "none"); url.inputMode = "url";
-    const fa = document.createElement("div"); fa.className = "vid-actions";
-    fa.appendChild(mk("Save", "btn sm", async () => {
-      const id = youtubeId(url.value.trim()); if (!id) { $("status").textContent = "That doesn’t look like a YouTube link"; return; }
-      const error = await saveVideo(vkey, url.value.trim(), id);
-      if (error) { $("status").textContent = /ft_exercise_videos/.test(error.message) ? "Run supabase/exercise-videos.sql first" : "Couldn’t save the video"; return; }
-      setStatus(); renderExercises();
-    }));
-    fa.appendChild(mk("Cancel", "btn quiet", () => { form.hidden = true; }));
-    form.append(url, fa);
-    actions.appendChild(mk(vid ? "Change video" : "Add video", "btn tint", () => { form.hidden = !form.hidden; if (!form.hidden) { url.value = ""; url.focus(); } }));
-    if (customVideos.has(vkey)) actions.appendChild(mk("Remove video", "btn tint danger", async () => { if (!(await askFirst({ title: "Remove the video for " + name + "?", yes: "Remove" }))) return; const error = await deleteVideo(vkey); if (error) { $("status").textContent = "Couldn’t remove the video"; return; } setStatus(); renderExercises(); }));
-    if (mine) { const rm = mk("Remove exercise", "btn tint danger", async () => { if (!(await askFirst({ title: "Remove \u201c" + name + "\u201d from the database?", text: (customVideos.has(looseKey(name)) ? "Its video goes with it. " : "") + "Workouts that use it keep the name.", yes: "Remove" }))) { if (box._nameInput && box._typed != null && box._typed !== name) { box._nameInput.value = box._typed; box._nameInput.focus(); } return; } const ok = await removeCustom(key); if (!ok) { $("status").textContent = "Couldn’t remove · try again online"; return; } exOpenKey = null; renderExercises(); }); rm.addEventListener("pointerdown", () => { if (box._nameInput) { box._typed = box._nameInput.value; box._nameInput.value = name; } }); actions.appendChild(rm); }   // leaving the box must not rename on the way to the button; a Cancel puts the typing back
-    box.append(player, actions, form);
+    if (vid) actions.appendChild(mkBtn("\u25b6 Watch video", "btn tint", () => { if (!player.hidden) { player.hidden = true; player.replaceChildren(); return; } player.replaceChildren(); const f = document.createElement("iframe"); f.src = "https://www.youtube-nocookie.com/embed/" + vid + "?playsinline=1&rel=0&modestbranding=1"; f.allow = "accelerometer; encrypted-media; picture-in-picture"; f.allowFullscreen = true; player.appendChild(f); player.hidden = false; }));
+    actions.appendChild(mkBtn("Edit", "btn tint", () => buildExerciseEditor(box, name, key)));
+    box.append(player, actions);
+  }
+  function buildExerciseEditor(box, name, key) {                               // everything about one exercise, then Save changes or Discard
+    box.replaceChildren(); box.classList.add("editing");
+    const vid = videoForName(name);
+    const field = (label, inp) => { const w = document.createElement("div"); w.className = "edit-field"; const c = document.createElement("span"); c.className = "cap"; c.textContent = label; w.append(c, inp); return w; };
+    const nameInp = document.createElement("input"); nameInp.value = name; nameInp.placeholder = "Name"; nameInp.setAttribute("autocapitalize", "sentences"); nameInp.setAttribute("autocomplete", "off");
+    const url = document.createElement("input"); url.type = "url"; url.placeholder = "Paste a YouTube link"; url.value = vid ? "https://youtu.be/" + vid : ""; url.setAttribute("autocomplete", "off"); url.setAttribute("autocapitalize", "none"); url.inputMode = "url";
+    for (const i of [nameInp, url]) i.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); i.blur(); } });
+    const vidRow = document.createElement("div"); vidRow.className = "row-actions";
+    const rmVid = mkBtn("Remove video", "btn tint danger", () => { url.value = ""; rmVid.hidden = true; }); rmVid.hidden = !vid;
+    url.addEventListener("input", () => { rmVid.hidden = !url.value.trim(); });
+    vidRow.appendChild(rmVid);
+    const del = mkBtn("Delete exercise", "btn tint danger", async () => {
+      if (!(await askFirst({ title: "Delete \u201c" + name + "\u201d from the database?", text: (videoForName(name) ? "Its video goes with it. " : "") + "Workouts that use it keep the name.", yes: "Delete" }))) return;
+      const ok = await deleteExercise(key, name); if (!ok) { $("status").textContent = "Couldn\u2019t delete \u00b7 try again online"; return; }
+      exOpenKey = null; setStatus(); renderExercises();
+    });
+    const delRow = document.createElement("div"); delRow.className = "row-actions"; delRow.appendChild(del);
+    const foot = document.createElement("div"); foot.className = "edit-foot";
+    const save = mkBtn("Save changes", "btn sm", async () => {
+      const nn = tidyName(nameInp.value), link = url.value.trim();
+      if (!nn || !squash(nn)) { $("status").textContent = "Give it a name"; return; }
+      if (link && !youtubeId(link)) { $("status").textContent = "That doesn\u2019t look like a YouTube link"; return; }
+      if (nn !== name && squash(nn) !== key && knownName(nn)) { $("status").textContent = "There is already an exercise called \u201c" + nn + "\u201d"; return; }
+      save.disabled = true;
+      let cur = name;
+      if (nn !== name) { const ok = await renameExercise(key, name, nn); if (!ok) { save.disabled = false; $("status").textContent = "Couldn\u2019t rename \u00b7 try again online"; return; } cur = nn; }
+      const vkey = looseKey(cur), had = videoForName(cur), id = link ? youtubeId(link) : null;
+      if (!link && had) { const e = await saveVideo(vkey, "", ""); if (e) { save.disabled = false; $("status").textContent = "Couldn\u2019t remove the video"; return; } }       // an empty link stored = no video, the built-in one included
+      else if (id && id !== had) { const e = await saveVideo(vkey, link, id); if (e) { save.disabled = false; $("status").textContent = /ft_exercise_videos/.test(e.message) ? "Run the Supabase script first" : "Couldn\u2019t save the video"; return; } }
+      setStatus(); exOpenKey = squash(cur); renderExercises();
+    });
+    foot.append(save, mkBtn("Discard", "btn quiet", () => buildExerciseDetail(box, name, key)));
+    box.append(field("Name", nameInp), field("Video", url), vidRow, delRow, foot);
+    nameInp.focus({ preventScroll: true });
   }
   $("exSearch").addEventListener("input", () => { exShown = 80; exOpenKey = null; renderExercises(); });
   $("exMore").addEventListener("click", () => { const hits = exerciseMatches($("exSearch").value); const ul = $("exList"); for (const [name, key] of hits.slice(exShown, exShown + 80)) ul.appendChild(exerciseRow(name, key)); exShown += 80; $("exMore").hidden = hits.length <= exShown; });
@@ -362,6 +396,37 @@ import { reportRange, buildReport } from "./report.js";
     if (old && customVideos.has(looseKey(old))) await deleteVideo(looseKey(old));
     return true;
   }
+  const renameInWorkouts = (old, newName) => {                                 // workouts and templates that use the old spelling follow the rename
+    for (const t of trainings.values()) {
+      let touched = false;
+      for (const r of t.rows || []) { if (r.name === old) { r.name = newName; touched = true; } if (Array.isArray(r.alts) && r.alts.includes(old)) { r.alts = r.alts.map((a) => (a === old ? newName : a)); touched = true; } }
+      if (touched) scheduleSave("trainings", t.id);
+    }
+  };
+  async function moveVideo(oldName, newName) {                                 // the video follows the name: his link, or the built-in one
+    const ov = looseKey(oldName), nv = looseKey(newName); if (ov === nv) return null;
+    const id = customVideos.has(ov) ? customVideos.get(ov) : (VIDEOS[oldName] || VIDEO_LOOSE.get(looseKey(ALIASES[oldName] || oldName)) || null);
+    if (id == null) return null;
+    const e = await saveVideo(nv, id ? "https://youtu.be/" + id : "", id); if (e) return e;
+    if (customVideos.has(ov)) await deleteVideo(ov);
+    return null;
+  }
+  async function renameExercise(key, oldName, newName) {
+    const nk = squash(newName); if (!nk || !S.sb || !S.signedIn) return false;
+    if (customNames.has(key)) { const ok = await renameCustom(key, newName); if (ok && builtinKeys.has(nk)) await unhideBuiltin(nk); return ok; }
+    const e = await moveVideo(oldName, newName); if (e) return false;
+    if (nk !== key && !(await hideBuiltin(key))) return false;                 // the built-in spelling steps aside
+    if (nk !== key && builtinKeys.has(nk)) { if (!(await unhideBuiltin(nk))) return false; }   // onto another built-in's spelling: merge into it
+    else { const { error } = await S.sb.from("ft_exercises").upsert({ name_key: nk, name: newName }); if (error) return false; customNames.set(nk, newName); refreshNames(); }   // his spelling (same key or a new one) is a custom row
+    renameInWorkouts(oldName, newName); return true;
+  }
+  async function deleteExercise(key, name) {
+    if (!S.sb || !S.signedIn) return false;
+    if (customNames.has(key)) { const ok = await removeCustom(key); if (ok && builtinKeys.has(key)) await hideBuiltin(key); return ok; }
+    if (!(await hideBuiltin(key))) return false;
+    if (customVideos.has(looseKey(name))) await deleteVideo(looseKey(name));
+    return true;
+  }
   async function renameCustom(k, newName) {
     const old = customNames.get(k); const nk = squash(newName);
     if (!nk || !S.sb || !S.signedIn) return false;
@@ -370,13 +435,7 @@ import { reportRange, buildReport } from "./report.js";
     if (nk !== k && !builtinKeys.has(nk) && !customNames.has(nk)) { const { error } = await S.sb.from("ft_exercises").upsert({ name_key: nk, name: newName }); if (error) return false; customNames.set(nk, newName); }
     else if (nk === k) { const { error } = await S.sb.from("ft_exercises").update({ name: newName }).eq("name_key", k); if (error) return false; customNames.set(k, newName); }
     if (nk !== k) { const ok = await removeCustom(k); if (!ok) return false; }
-    refreshNames();
-    // workouts and templates that use the old spelling follow the rename
-    for (const t of trainings.values()) {
-      let touched = false;
-      for (const r of t.rows || []) { if (r.name === old) { r.name = newName; touched = true; } if (Array.isArray(r.alts) && r.alts.includes(old)) { r.alts = r.alts.map((a) => (a === old ? newName : a)); touched = true; } }
-      if (touched) scheduleSave("trainings", t.id);
-    }
+    refreshNames(); renameInWorkouts(old, newName);
     return true;
   }
   let pwTimer = 0;
@@ -1977,7 +2036,7 @@ import { reportRange, buildReport } from "./report.js";
         const taken = new Set([squash(r.name), ...altList().map(squash)]); const starts = [], contains = [];
         ALL_NAMES.forEach((n, i) => { const k = ALL_KEYS[i]; if (taken.has(k)) return; if (k.startsWith(s)) starts.push(n); else if (k.includes(s)) contains.push(n); });
         starts.sort((a, b) => a.length - b.length || a.localeCompare(b));
-        for (const n of [...starts, ...contains]) hits.appendChild(menuItem(n, "", () => addAlt(n)));
+        for (const n of [...starts, ...contains, ...aliasFinds(s, [...starts, ...contains]).filter((n) => !taken.has(squash(n)))]) hits.appendChild(menuItem(n, "", () => addAlt(n)));
       };
       inp.addEventListener("input", paintHits);
       inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); if (inp.value.trim()) addAlt(inp.value); else paintAltList(); } else if (e.key === "Escape") paintAltList(); });
@@ -2138,7 +2197,7 @@ import { reportRange, buildReport } from "./report.js";
       const exact = [], starts = [], contains = [], typed = norm(v);
       ALL_NAMES.forEach((n, i) => { const k = ALL_KEYS[i]; if (k === s) { if (n.toLowerCase() !== typed) exact.push(n); } else if (k.startsWith(s)) starts.push(n); else if (k.includes(s)) contains.push(n); }); // "push up" offers "Push-up" first
       starts.sort((a, b) => a.length - b.length || a.localeCompare(b));
-      const hits = [...exact, ...starts, ...contains].slice(0, 20);   // enough to pick from; the library page lists everything
+      const hits = [...exact, ...starts, ...contains, ...aliasFinds(s, [...exact, ...starts, ...contains])].slice(0, 20);   // enough to pick from; the library page lists everything
       ul.replaceChildren(...hits.map((n) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { r.name = n; markNamed(); dropAltNamed(); q(".name").value = n; growName(); ul.hidden = true; save(); renderWeights(); paintVideo(); paintNewName(); }); li.appendChild(b); return li; }));
       ul.hidden = hits.length === 0;
     }
@@ -2426,7 +2485,7 @@ import { reportRange, buildReport } from "./report.js";
   });
 
   // ---------- boot ----------
-  Object.assign(ui, { $, setStatus, render, showProblem, showWaiting, loadCustomVideos, loadCustomNames, offlineFromMirror, resumeOnline, paintDraftBar });   // what the sync layer may call on the screens
+  Object.assign(ui, { $, setStatus, render, showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar });   // what the sync layer may call on the screens
   async function boot() {
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) S.view = saved;
     localBackend.load();                       // instant start from the device copy
@@ -2467,8 +2526,8 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
-      maps: { clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap },
+      fns: { renameExercise, deleteExercise, addCustomName, loadHidden, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      maps: { hiddenKeys, customNames, customVideos, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
       reset: () => { resetState(); localStorage.clear(); },

@@ -266,7 +266,7 @@ async function syncDownNow() {
   const startedAt = Date.now();
   const sess = await S.sb.auth.getSession().catch(() => null);           // no usable token (refresh failed, cooldown): don't sync as a stranger
   if (!(sess && sess.data && sess.data.session)) { S.offline = true; ui.setStatus(); return false; }
-  ui.loadCustomVideos().catch(() => {}); ui.loadCustomNames().catch(() => {});
+  ui.loadCustomVideos().catch(() => {}); ui.loadHidden().catch(() => {}); ui.loadCustomNames().catch(() => {});
   let c, t;
   if (S.clientMode) {
     const res = await withTimeout(S.sb.rpc("client_my_data"), 8000);
