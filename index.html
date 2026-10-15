@@ -301,6 +301,11 @@
   .list .exdetail button { width: auto; min-height: 40px; padding: 0 8px; display: inline-flex; justify-content: center; font-size: 15px; letter-spacing: 0; }
   .list .exdetail button.btn.sm { padding: 0 20px; background: var(--btn-bg); color: var(--btn-fg); }
   .list .exdetail .danger-link { color: var(--danger); }
+  .list .exdetail.editing { padding-top: 12px; gap: 12px; }                  /* one exercise, everything about it */
+  .list .exdetail .edit-field { display: flex; flex-direction: column; gap: 5px; }
+  .list .exdetail .edit-field .cap { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin-left: 2px; }
+  .list .exdetail .edit-field input { width: 100%; }
+  .list .exdetail .edit-foot { display: flex; align-items: center; gap: 12px; margin-top: 2px; }
   .list li.open > button { background: var(--elevated); }
   .list .sec .dot { color: var(--text-tertiary); }     /* metadata, not a control */
   .list .rowline .grip { color: var(--text-tertiary); font-size: 22px; line-height: 1; min-width: 44px; min-height: 44px; margin: -6px -8px -6px 0; display: inline-flex; align-items: center; justify-content: center; touch-action: none; cursor: grab; }   /* the one drag handle, 44px to the finger */
@@ -1223,7 +1228,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=40";
+  import { boot } from "./app/main.js?v=41";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
