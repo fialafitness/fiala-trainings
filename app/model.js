@@ -18,6 +18,26 @@ export const timedPlan = (reps) => {
   if (/\b(hold|max\s*time|as long as possible|alap|for time)\b/i.test(s)) { const n = /\d+/.exec(s); return { n: n ? n[0] : "", unit: "sec" }; }   // "max hold": the box asks for the seconds
   return null;
 };
+// Before the Time box existed, a plank's seconds were typed into the weight box ("45 sec"). On a timed exercise a weight that reads as a
+// time is the time: it moves to the time column (in the plan's unit) and the weight is bodyweight again. Idempotent: runs on every load and pull.
+export const timeAsWeight = (v) => { const tm = timedPlan(v); return tm && tm.n !== "" ? tm : null; };
+export const repairTimed = (t) => {
+  let changed = false;
+  for (const r of (t && t.rows) || []) {
+    const tm = timedPlan(r.reps); if (!tm || !Array.isArray(r.weights)) continue;
+    for (let i = 0; i < r.weights.length; i++) {
+      const tw = timeAsWeight(r.weights[i]); if (!tw) continue;
+      if (!Array.isArray(r.repsDone)) r.repsDone = []; while (r.repsDone.length <= i) r.repsDone.push("");
+      if (!String(r.repsDone[i] == null ? "" : r.repsDone[i]).trim()) {
+        const n = parseFloat(String(tw.n).replace(",", ".")), v = tw.unit === tm.unit ? n : tw.unit === "min" ? n * 60 : n / 60;   // "1 min" on a seconds plan = 60
+        if (!Number.isFinite(v) || v !== Math.round(v)) continue;                                                              // 90 sec on a minutes plan: left alone
+        r.repsDone[i] = String(v);
+      }
+      r.weights[i] = ""; changed = true;                                                                                       // the time is already logged: the weight was a copy of it
+    }
+  }
+  return changed;
+};
 // A dumbbell or kettlebell exercise is logged per hand: the Weight label says so ("Weight / dumbbell"), the number stays a number.
 export const perHand = (name) => { const n = String(name || ""); return /\b(dumb?bells?|dbs?)\b/i.test(n) ? "dumbbell" : /\b(kettlebells?|kbs?)\b/i.test(n) ? "kettlebell" : null; };
 // Ranking logged sets. A hold: the longest, then the heaviest. Anything else: the heaviest, then the most reps; a set with

@@ -1,6 +1,6 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
-import { timedPlan, perHand, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
+import { timedPlan, timeAsWeight, repairTimed, perHand, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
 import { monthLater, daysLater } from "../app/util.js";
 const app = await load();
 const { fns, maps } = app;
@@ -138,4 +138,23 @@ test("a month later lands on the same day, or the last day of a short month", ()
   assert.strictEqual(monthLater("2026-10-14"), "2026-11-14"); assert.strictEqual(monthLater("2026-01-31"), "2026-02-28"); assert.strictEqual(monthLater("2028-01-31"), "2028-02-29");
   assert.strictEqual(monthLater("2026-10-31"), "2026-11-30"); assert.strictEqual(monthLater("2026-12-05"), "2027-01-05");
   assert.strictEqual(daysLater("2026-10-14", 28), "2026-11-11"); assert.strictEqual(daysLater("2026-12-20", 28), "2027-01-17");
+});
+
+test("seconds the old app typed as a weight move to the time column on a hold, once, and a real weight stays", () => {
+  const t = { rows: [
+    { reps: "45 sec", weights: ["45 sec", "1 min", "0:50", "BW"], repsDone: ["", "", "", ""] },
+    { reps: "30 sec", weights: ["30 sec", "25"], repsDone: ["32", ""] },          // the time was already logged: the weight was a copy; 25 lb is a weight
+    { reps: "2 min", weights: ["90 sec", "2 min"], repsDone: ["", ""] },             // 90 sec is not whole minutes: left alone
+    { reps: "10", weights: ["45 sec"], repsDone: [""] },                            // not a hold: nothing moves
+    { reps: "45 sec", weights: ["40 sec"] },                                        // no repsDone array yet
+  ] };
+  assert.strictEqual(repairTimed(t), true);
+  assert.deepStrictEqual(t.rows[0].weights, ["", "", "", "BW"]); assert.deepStrictEqual(t.rows[0].repsDone, ["45", "60", "50", ""]);
+  assert.deepStrictEqual(t.rows[1].weights, ["", "25"]); assert.deepStrictEqual(t.rows[1].repsDone, ["32", ""]);
+  assert.deepStrictEqual(t.rows[2].weights, ["90 sec", ""]); assert.deepStrictEqual(t.rows[2].repsDone, ["", "2"]);
+  assert.deepStrictEqual(t.rows[3].weights, ["45 sec"]); assert.deepStrictEqual(t.rows[3].repsDone, [""]);
+  assert.deepStrictEqual(t.rows[4].weights, [""]); assert.deepStrictEqual(t.rows[4].repsDone, ["40"]);
+  assert.strictEqual(repairTimed(t), false, "a second pass changes nothing");
+  assert.strictEqual(repairTimed({ rows: [] }), false); assert.strictEqual(repairTimed(null), false);
+  assert.strictEqual(timeAsWeight("BW"), null); assert.strictEqual(timeAsWeight("25"), null); assert.strictEqual(timeAsWeight("hold"), null); assert.deepStrictEqual(timeAsWeight("45 sec"), { n: "45", unit: "sec" });
 });
