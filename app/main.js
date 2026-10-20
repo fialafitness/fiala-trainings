@@ -2349,7 +2349,7 @@ import { reportRange, buildReport } from "./report.js";
     {                                                                  // the finished card, opened: every set in a cell — number, weight × reps (editable in place for a typo), a check
       const unitS = (clients.get(t.clientId) || {}).unit || "lb", tmS = timedPlan(r.reps), sumEl = document.createElement("div"); sumEl.className = "row-sum";
       const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); scheduleSave("trainings", t.id); };
-      const fit = (inp) => { inp.style.width = Math.max(2, (inp.value || inp.placeholder || "").length + 0.6) + "ch"; };
+      const fit = (inp) => { inp.style.width = Math.max(1.5, (inp.value || inp.placeholder || "").length + 0.5) + "ch"; };
       const refresh = () => { for (const line of sumEl.children) { const i = +line.dataset.i, wi = line.querySelector(".sum-w"), ri = line.querySelector(".sum-r"); if (!wi) continue; if (document.activeElement !== wi) { wi.value = String((r.weights || [])[i] || ""); fit(wi); } if (document.activeElement !== ri) { ri.value = String((r.repsDone || [])[i] || ""); fit(ri); } line.querySelector(".sum-unit").textContent = wi.value.trim() ? weightWord(wi.value, unitS) : ""; } };
       for (let i = 0; i < setsOf(r); i++) {
         const line = document.createElement("div"); line.className = "sum-set"; line.dataset.i = i; const counted = setCounts(r, i); line.classList.toggle("skip", !counted);
@@ -2361,7 +2361,8 @@ import { reportRange, buildReport } from "./report.js";
           const unit = document.createElement("span"); unit.className = "sum-unit";
           const x = document.createElement("span"); x.className = "sum-x"; x.textContent = "\u00d7";
           const ri = document.createElement("input"); ri.className = "sum-r"; ri.inputMode = "numeric"; ri.placeholder = tmS ? "sec" : "reps"; ri.setAttribute("aria-label", (tmS ? "Seconds" : "Reps") + ", set " + (i + 1)); ri.autocomplete = "off";
-          const runit = document.createElement("span"); runit.className = "sum-unit"; runit.textContent = tmS ? tmS.unit : "";
+          const perSideS = /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || ""));
+          const runit = document.createElement("span"); runit.className = "sum-unit"; runit.textContent = tmS ? tmS.unit : perSideS ? "reps / side" : "reps";   // "× 5 reps", "× 8 reps / side", "× 45 sec"
           val.append(wi, unit, x, ri, runit); line.appendChild(val);
           wi.addEventListener("input", () => { r.weights = correctFrom(r.weights, i, wi.value); fit(wi); mark(); refresh(); });
           ri.addEventListener("input", () => { const v = ri.value.replace(/[^0-9]/g, "").slice(0, 4); ri.value = v; r.repsDone = correctFrom(r.repsDone, i, v); fit(ri); mark(); refresh(); });
