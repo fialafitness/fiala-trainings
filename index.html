@@ -900,8 +900,8 @@
   #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
-  .tpl-pill { justify-self: start; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 34px; border-radius: 50px;
-    font-size: 14px; font-weight: 500; letter-spacing: 0; color: var(--text-primary); background: var(--glyph-fill); transition: opacity 300ms ease; }   /* a link to the template: grey, plain ink; the chevron says it opens */
+  .tpl-pill { justify-self: stretch; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 36px; border-radius: 50px;
+    font-size: 14px; font-weight: 500; letter-spacing: 0; color: var(--text-primary); background: var(--field); transition: opacity 300ms ease; }   /* a link to the template: the same quiet bar as In person above it; the chevron says it opens */
   .tpl-pill:hover { opacity: 0.92; }
   .tpl-pill[hidden] { display: none; }
   .tpl-pill span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 0 1 auto; }   /* a long template name ends in an ellipsis, never pushes the page wider */
@@ -1271,7 +1271,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=52";
+  import { boot } from "./app/main.js?v=53";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
