@@ -19,7 +19,7 @@ import { reportRange, buildReport } from "./report.js";
   let ALL_NAMES = NAMES, ALL_KEYS = NAME_KEYS;
   const builtinKeys = new Set(NAME_KEYS);
   const ALIAS_PAIRS = Object.entries(ALIASES).map(([a, b]) => [squash(a), b]);
-  const aliasFinds = (s, have) => { const out = []; if (!s) return out; const seen = new Set(have); for (const [k, n] of ALIAS_PAIRS) { if (!k.includes(s) || seen.has(n)) continue; if (ALL_NAMES.indexOf(n) < 0) continue; seen.add(n); out.push(n); } return out; };   // "triceps" still finds the tricep exercises: old spellings are aliases
+  const aliasFinds = (s, have) => { const out = []; if (!s) return out; const seen = new Set(have); for (const [k, n] of ALIAS_PAIRS) { if (!k.includes(s)) continue; const i = ALL_KEYS.indexOf(squash(n)); if (i < 0) continue; const shown = ALL_NAMES[i]; if (seen.has(shown)) continue; seen.add(shown); out.push(shown); } return out; };   // "triceps" still finds the tricep exercises: old spellings are aliases (and his own spelling of a built-in is what gets listed)
   const hiddenKeys = new Set();           // built-in exercises he removed or renamed away (table ft_exercise_hidden)
   function refreshNames() {
     const names = [], keys = [];
@@ -27,15 +27,18 @@ import { reportRange, buildReport } from "./report.js";
     for (const [k, n] of [...customNames.entries()].sort((a, b) => a[1].localeCompare(b[1]))) { names.push(n); keys.push(k); }
     ALL_NAMES = names; ALL_KEYS = keys;
   }
-  const knownName = (n) => { const k = squash(n); return !!k && ((builtinKeys.has(k) && !hiddenKeys.has(k)) || customNames.has(k)); };
+  const properName = (n) => { const t = String(n || "").replace(/\s+/g, " ").trim(); return ALIASES[t] || t; };   // an old spelling resolves to the exercise it names
+  const knownName = (n) => { const k = squash(properName(n)); return !!k && ((builtinKeys.has(k) && !hiddenKeys.has(k)) || customNames.has(k)); };
+  let lastDbError = "";                   // the last Supabase message, so a screen can say "run the script" instead of "try again"
+  const missingTable = () => /ft_exercise_hidden|ft_exercises|ft_exercise_videos/.test(lastDbError) && /not find|does not exist|schema cache/i.test(lastDbError);
   async function loadHidden() {
     if (!S.sb || !S.signedIn) return;
     const { data, error } = await S.sb.from("ft_exercise_hidden").select("name_key");
     if (error || !data) return;
     hiddenKeys.clear(); for (const r of data) hiddenKeys.add(r.name_key); refreshNames();
   }
-  async function hideBuiltin(k) { const { error } = await S.sb.from("ft_exercise_hidden").upsert({ name_key: k }); if (error) return false; hiddenKeys.add(k); refreshNames(); return true; }
-  async function unhideBuiltin(k) { if (!hiddenKeys.has(k)) return true; const { error } = await S.sb.from("ft_exercise_hidden").delete().eq("name_key", k); if (error) return false; hiddenKeys.delete(k); refreshNames(); return true; }
+  async function hideBuiltin(k) { const { error } = await S.sb.from("ft_exercise_hidden").upsert({ name_key: k }); if (error) { lastDbError = error.message || ""; return false; } hiddenKeys.add(k); refreshNames(); return true; }
+  async function unhideBuiltin(k) { if (!hiddenKeys.has(k)) return true; const { error } = await S.sb.from("ft_exercise_hidden").delete().eq("name_key", k); if (error) { lastDbError = error.message || ""; return false; } hiddenKeys.delete(k); refreshNames(); return true; }
   const nearName = (n) => { const k = squash(n); if (!k) return null; const cands = [k.replace(/(es|s)$/, ""), k + "s", k + "es"].filter((c) => c && c !== k); for (const c of cands) { const i = ALL_KEYS.indexOf(c); if (i >= 0) return ALL_NAMES[i]; } return null; };
   const tidyName = (n) => { n = String(n || "").replace(/\s+/g, " ").trim(); return n ? n[0].toUpperCase() + n.slice(1) : ""; };
   async function loadCustomNames() {
@@ -45,7 +48,7 @@ import { reportRange, buildReport } from "./report.js";
     customNames.clear(); for (const r of data) customNames.set(r.name_key, r.name); refreshNames();
   }
   async function addCustomName(name) {
-    name = tidyName(name); const k = squash(name); if (!k || knownName(name)) return true;
+    name = tidyName(properName(name)); const k = squash(name); if (!k || knownName(name)) return true;   // "Triceps pushdown" is "Tricep pushdown": nothing to add
     if (!S.sb || !S.signedIn) return false;
     if (builtinKeys.has(k)) return unhideBuiltin(k);                 // a removed built-in added back
     const { error } = await S.sb.from("ft_exercises").upsert({ name_key: k, name });
@@ -314,7 +317,7 @@ import { reportRange, buildReport } from "./report.js";
     $("exCount").textContent = s ? (hits.length ? hits.length + (hits.length === 1 ? " match" : " matches") : "No matches") : ALL_NAMES.length.toLocaleString() + " exercises";
     for (const [name, key] of hits.slice(0, exShown)) ul.appendChild(exerciseRow(name, key));
     $("exMore").hidden = hits.length <= exShown;
-    const canAdd = s.length >= 2 && !hits.some(([, k]) => k === s) && (hits.length === 0 || q.trim().split(/\s+/).length >= 2);
+    const canAdd = s.length >= 2 && !hits.some(([, k]) => k === s) && !knownName(q) && (hits.length === 0 || q.trim().split(/\s+/).length >= 2);   // an old spelling of a listed exercise is not a new exercise
     $("exEmpty").hidden = !canAdd;
     const near = canAdd ? nearName(q) : null;
     if (near) { $("exEmpty").innerHTML = ""; const b = document.createElement("button"); b.type = "button"; b.className = "btn tint"; b.textContent = "Did you mean “" + near + "”?"; b.addEventListener("click", () => { $("exSearch").value = near; exShown = 80; exOpenKey = null; renderExercises(); }); $("exEmpty").appendChild(b); }
@@ -363,23 +366,26 @@ import { reportRange, buildReport } from "./report.js";
     vidRow.appendChild(rmVid);
     const del = mkBtn("Delete exercise", "btn tint danger", async () => {
       if (!(await askFirst({ title: "Delete \u201c" + name + "\u201d from the database?", text: (videoForName(name) ? "Its video goes with it. " : "") + "Workouts that use it keep the name.", yes: "Delete" }))) return;
-      const ok = await deleteExercise(key, name); if (!ok) { $("status").textContent = "Couldn\u2019t delete \u00b7 try again online"; return; }
+      const ok = await deleteExercise(key, name); if (!ok) { $("status").textContent = missingTable() ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t delete \u00b7 try again online"; return; }
       exOpenKey = null; setStatus(); renderExercises();
     });
     const delRow = document.createElement("div"); delRow.className = "row-actions"; delRow.appendChild(del);
     const foot = document.createElement("div"); foot.className = "edit-foot";
     const save = mkBtn("Save changes", "btn sm", async () => {
-      const nn = tidyName(nameInp.value), link = url.value.trim();
+      const nn = tidyName(properName(nameInp.value)), link = url.value.trim();   // an old spelling means the exercise it names
       if (!nn || !squash(nn)) { $("status").textContent = "Give it a name"; return; }
       if (link && !youtubeId(link)) { $("status").textContent = "That doesn\u2019t look like a YouTube link"; return; }
       if (nn !== name && squash(nn) !== key && knownName(nn)) { $("status").textContent = "There is already an exercise called \u201c" + nn + "\u201d"; return; }
       save.disabled = true;
       let cur = name;
-      if (nn !== name) { const ok = await renameExercise(key, name, nn); if (!ok) { save.disabled = false; $("status").textContent = "Couldn\u2019t rename \u00b7 try again online"; return; } cur = nn; }
+      if (nn !== name) { const ok = await renameExercise(key, name, nn); if (!ok) { save.disabled = false; $("status").textContent = missingTable() ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t rename \u00b7 try again online"; return; } cur = nn; }
       const vkey = looseKey(cur), had = videoForName(cur), id = link ? youtubeId(link) : null;
-      if (!link && had) { const e = await saveVideo(vkey, "", ""); if (e) { save.disabled = false; $("status").textContent = "Couldn\u2019t remove the video"; return; } }       // an empty link stored = no video, the built-in one included
-      else if (id && id !== had) { const e = await saveVideo(vkey, link, id); if (e) { save.disabled = false; $("status").textContent = /ft_exercise_videos/.test(e.message) ? "Run the Supabase script first" : "Couldn\u2019t save the video"; return; } }
-      setStatus(); exOpenKey = squash(cur); renderExercises();
+      let videoError = null;
+      if (!link && had) videoError = await saveVideo(vkey, "", "");                                   // an empty link stored = no video, the built-in one included
+      else if (id && id !== had) videoError = await saveVideo(vkey, link, id);
+      exOpenKey = squash(cur); renderExercises();                                                      // the list shows what stands, rename included, before any complaint
+      if (videoError) { $("status").textContent = /ft_exercise_videos/.test(videoError.message || "") ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t save the video"; return; }
+      setStatus();
     });
     foot.append(save, mkBtn("Discard", "btn quiet", () => buildExerciseDetail(box, name, key)));
     box.append(field("Name", nameInp), field("Video", url), vidRow, delRow, foot);
@@ -396,33 +402,39 @@ import { reportRange, buildReport } from "./report.js";
     if (old && customVideos.has(looseKey(old))) await deleteVideo(looseKey(old));
     return true;
   }
-  const renameInWorkouts = (old, newName) => {                                 // workouts and templates that use the old spelling follow the rename
+  const renameInWorkouts = (old, newName) => {                                 // workouts and templates that use the old name, in any of its spellings, follow the rename
+    const canon = (x) => squash(properName(x)), ok = canon(old);
     for (const t of trainings.values()) {
       let touched = false;
-      for (const r of t.rows || []) { if (r.name === old) { r.name = newName; touched = true; } if (Array.isArray(r.alts) && r.alts.includes(old)) { r.alts = r.alts.map((a) => (a === old ? newName : a)); touched = true; } }
+      for (const r of t.rows || []) { if (canon(r.name) === ok && r.name !== newName) { r.name = newName; touched = true; } if (Array.isArray(r.alts) && r.alts.some((a) => canon(a) === ok)) { r.alts = r.alts.map((a) => (canon(a) === ok ? newName : a)); touched = true; } }
       if (touched) scheduleSave("trainings", t.id);
     }
   };
-  async function moveVideo(oldName, newName) {                                 // the video follows the name: his link, or the built-in one
+  async function moveVideo(oldName, newName) {                                 // the video follows the name: his link, or the built-in one (a "no video" marker stays behind)
     const ov = looseKey(oldName), nv = looseKey(newName); if (ov === nv) return null;
     const id = customVideos.has(ov) ? customVideos.get(ov) : (VIDEOS[oldName] || VIDEO_LOOSE.get(looseKey(ALIASES[oldName] || oldName)) || null);
-    if (id == null) return null;
-    const e = await saveVideo(nv, id ? "https://youtu.be/" + id : "", id); if (e) return e;
+    if (!id) { if (customVideos.has(ov)) await deleteVideo(ov); return null; }
+    const e = await saveVideo(nv, "https://youtu.be/" + id, id); if (e) return e;
     if (customVideos.has(ov)) await deleteVideo(ov);
     return null;
   }
   async function renameExercise(key, oldName, newName) {
     const nk = squash(newName); if (!nk || !S.sb || !S.signedIn) return false;
-    if (customNames.has(key)) { const ok = await renameCustom(key, newName); if (ok && builtinKeys.has(nk)) await unhideBuiltin(nk); return ok; }
-    const e = await moveVideo(oldName, newName); if (e) return false;
-    if (nk !== key && !(await hideBuiltin(key))) return false;                 // the built-in spelling steps aside
+    if (customNames.has(key)) {                                                // his own exercise, or his spelling of a built-in
+      const ok = await renameCustom(key, newName); if (!ok) return false;
+      if (nk !== key && builtinKeys.has(key) && !(await hideBuiltin(key))) return false;   // the built-in under his old spelling must not come back
+      if (nk !== key && builtinKeys.has(nk) && !(await unhideBuiltin(nk))) return false;
+      renameInWorkouts(oldName, newName); return true;
+    }
+    if (nk !== key && !(await hideBuiltin(key))) return false;                 // the name first: nothing else moves until the built-in spelling has stepped aside
     if (nk !== key && builtinKeys.has(nk)) { if (!(await unhideBuiltin(nk))) return false; }   // onto another built-in's spelling: merge into it
-    else { const { error } = await S.sb.from("ft_exercises").upsert({ name_key: nk, name: newName }); if (error) return false; customNames.set(nk, newName); refreshNames(); }   // his spelling (same key or a new one) is a custom row
+    else { const { error } = await S.sb.from("ft_exercises").upsert({ name_key: nk, name: newName }); if (error) { lastDbError = error.message || ""; return false; } customNames.set(nk, newName); refreshNames(); }   // his spelling (same key or a new one) is a custom row
+    const e = await moveVideo(oldName, newName); if (e) lastDbError = e.message || "";   // the video follows; if it cannot, the rename still stands
     renameInWorkouts(oldName, newName); return true;
   }
   async function deleteExercise(key, name) {
     if (!S.sb || !S.signedIn) return false;
-    if (customNames.has(key)) { const ok = await removeCustom(key); if (ok && builtinKeys.has(key)) await hideBuiltin(key); return ok; }
+    if (customNames.has(key)) { const ok = await removeCustom(key); return ok && (!builtinKeys.has(key) || await hideBuiltin(key)); }
     if (!(await hideBuiltin(key))) return false;
     if (customVideos.has(looseKey(name))) await deleteVideo(looseKey(name));
     return true;
@@ -2066,7 +2078,7 @@ import { reportRange, buildReport } from "./report.js";
       if (id !== videoId) { videoId = id; pl.replaceChildren(); pl.hidden = true; vidRow.hidden = true; vidBtn.classList.remove("open"); }
       vidBtn.hidden = asClient && !id;                                  // the trainer always has it: with no video it opens the link box
       vidBtn.classList.toggle("has", !!id); vidBtn.title = id ? "Watch video" : "Add video"; vidBtn.setAttribute("aria-label", vidBtn.title);
-      q(".vid-remove").hidden = !customVideos.has(loose(r.name));
+      q(".vid-remove").hidden = !customVideos.get(loose(r.name));   // a stored "no video" marker is not a link to remove
       layoutIcons();
     };
     const openVidForm = () => { const f = q(".vid-form"); f.hidden = !f.hidden; if (!f.hidden) { q(".vid-url").value = ""; q(".vid-url").focus(); } };
@@ -2526,7 +2538,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { renameExercise, deleteExercise, addCustomName, loadHidden, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { renameExercise, deleteExercise, addCustomName, loadHidden, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
