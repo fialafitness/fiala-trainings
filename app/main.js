@@ -1250,9 +1250,9 @@ import { reportRange, buildReport } from "./report.js";
         row.append(name, grip); li.appendChild(row); dragRow(li, c.id);
       } else {
         const b = document.createElement("button"); b.type = "button";
-        const words = packWords(c);                                       // "3 of 10", "20 days left"; the purple dot alone says something new happened
-        b.innerHTML = `<span class="nm"><span></span><span class="n2"></span></span><span class="sub"><span class="chev">&rsaquo;</span></span>`;
-        b.firstChild.firstChild.textContent = c.name; b.firstChild.lastChild.textContent = words; b.firstChild.lastChild.hidden = !words;
+        const words = packWords(c);                                       // "3 of 10", "20 days left" on the right, where the workout count used to be; the purple dot alone says something new happened
+        b.innerHTML = `<span class="nm"><span></span></span><span class="sub"></span>`;
+        b.firstChild.firstChild.textContent = c.name; b.lastChild.textContent = words; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
         b.classList.toggle("news", !!newsWords(clientNews(c)));
         b.addEventListener("click", () => { S.tab = "workouts"; go({ name: "client", id: c.id }); });
         li.appendChild(b);
