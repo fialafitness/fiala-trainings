@@ -205,7 +205,8 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- packages: what he sells, kept on his own Templates record ----------
   const tplClient = () => { if (!clients.has(TEMPLATES_ID)) clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); return clients.get(TEMPLATES_ID); };
   const packagesList = () => ((clients.get(TEMPLATES_ID) || {}).packages || []).filter((pk) => pk && pk.id);
-  let packKind = "sessions";
+  let packKind = "sessions", packInPerson = false, packEdit = null;   // the form: a new package, or (packEdit = id) one being edited
+  const packageOf = (c) => (c && c.plan && c.plan.id ? packagesList().find((pk) => pk.id === c.plan.id) : null) || null;
   function showPackages() {
     settingsOpen = "packages"; hideAllViews(); $("vPackages").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
     renderPackages();
@@ -213,24 +214,44 @@ import { reportRange, buildReport } from "./report.js";
   function renderPackages() {
     const ul = $("packList"); ul.replaceChildren();
     for (const pk of packagesList()) {
-      const li = document.createElement("li"); li.className = "pack-row";
-      const left = document.createElement("div"); const name = document.createElement("div"); name.textContent = pk.name; const sub = document.createElement("div"); sub.className = "sub"; sub.textContent = pk.kind === "monthly" ? "4-week plan" : pk.size + (pk.size === 1 ? " session" : " sessions"); sub.hidden = sub.textContent.toLowerCase() === String(pk.name).toLowerCase(); left.append(name, sub);
+      const li = document.createElement("li"); li.className = "pack-row"; li.classList.toggle("editing", packEdit === pk.id);
+      const left = document.createElement("div"); const name = document.createElement("div"); name.textContent = pk.name;
+      const sub = document.createElement("div"); sub.className = "sub";
+      const what = pk.kind === "monthly" ? "4-week plan" : pk.size + (pk.size === 1 ? " session" : " sessions");
+      sub.textContent = [what.toLowerCase() === String(pk.name || "").toLowerCase() ? "" : what, pk.inPerson ? "In person" : ""].filter(Boolean).join(" \u00b7 "); sub.hidden = !sub.textContent;
+      left.append(name, sub);
       const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "Delete";
-      del.addEventListener("click", async () => { if (!(await askFirst({ title: "Delete \u201c" + pk.name + "\u201d?", text: "Clients already on it keep their package. It just cannot be picked again." }))) return; const tc = tplClient(); tc.packages = packagesList().filter((x) => x.id !== pk.id); planTouched.add(tc.id); scheduleSave("clients", tc.id); renderPackages(); });
+      del.addEventListener("click", async (e) => { e.stopPropagation(); if (!(await askFirst({ title: "Delete \u201c" + pk.name + "\u201d?", text: "Clients already on it keep their package. It just cannot be picked again." }))) return; const tc = tplClient(); tc.packages = packagesList().filter((x) => x.id !== pk.id); planTouched.add(tc.id); scheduleSave("clients", tc.id); if (packEdit === pk.id) packFormReset(); renderPackages(); });
+      li.addEventListener("click", () => { packEdit = pk.id; packKind = pk.kind === "monthly" ? "monthly" : "sessions"; packInPerson = !!pk.inPerson; $("packName").value = pk.name || ""; $("packSize").value = pk.size || ""; renderPackages(); $("packForm").scrollIntoView({ block: "nearest", behavior: "smooth" }); });   // tap a package: the form edits it
       li.append(left, del); ul.appendChild(li);
     }
+    const editing = packEdit ? packagesList().find((pk) => pk.id === packEdit) : null; if (packEdit && !editing) packEdit = null;
+    $("packFormCap").textContent = editing ? "Editing \u201c" + editing.name + "\u201d" : "New package";
+    $("packAdd").textContent = editing ? "Save changes" : "Add package"; $("packCancel").hidden = !editing;
     $("packSizeRow").hidden = packKind !== "sessions";
     for (const b of $("packKind").querySelectorAll("button")) b.classList.toggle("on", b.dataset.kind === packKind);
+    for (const b of $("packInPerson").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.on === "1") === packInPerson);
   }
+  const packFormReset = () => { packEdit = null; packKind = "sessions"; packInPerson = false; $("packName").value = ""; $("packSize").value = ""; };
   $("packagesBtn").addEventListener("click", showPackages);
   $("packKind").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; packKind = b.dataset.kind; renderPackages(); });
+  $("packInPerson").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; packInPerson = b.dataset.on === "1"; renderPackages(); });
+  $("packCancel").addEventListener("click", () => { packFormReset(); renderPackages(); });
   $("packAdd").addEventListener("click", () => {
     const size = clamp(parseInt($("packSize").value, 10) || 0, 0, 200);
     if (packKind === "sessions" && !size) { $("packSize").focus(); return; }
     const name = String($("packName").value || "").trim() || (packKind === "monthly" ? "4-week plan" : size + " sessions");
-    if (packagesList().some((pk) => pk.name.toLowerCase() === name.toLowerCase())) { $("packName").value = name; $("packName").focus(); $("packName").select(); return; }   // one of each name
-    const tc = tplClient(); tc.packages = [...packagesList(), { id: uid(), name, kind: packKind, size: packKind === "sessions" ? size : null }]; planTouched.add(tc.id); scheduleSave("clients", tc.id);
-    $("packName").value = ""; $("packSize").value = ""; renderPackages();
+    if (packagesList().some((pk) => pk.id !== packEdit && pk.name.toLowerCase() === name.toLowerCase())) { $("packName").value = name; $("packName").focus(); $("packName").select(); return; }   // one of each name
+    const tc = tplClient(); const next = { name, kind: packKind, size: packKind === "sessions" ? size : null, inPerson: packInPerson };
+    if (packEdit) {
+      tc.packages = packagesList().map((pk) => (pk.id === packEdit ? { ...pk, ...next } : pk));
+      for (const c of clients.values()) {                                              // clients on it see the new name and size on their card
+        if (!c.plan || c.plan.id !== packEdit || isTemplateClient(c.id)) continue;
+        c.plan = { ...c.plan, name, kind: next.kind, size: next.size }; planTouched.add(c.id); scheduleSave("clients", c.id);
+      }
+    } else tc.packages = [...packagesList(), { id: uid(), ...next }];
+    planTouched.add(tc.id); scheduleSave("clients", tc.id);
+    packFormReset(); renderPackages();
   });
   // a client's plan: picked in Details; the card on the page shows where it stands
   const effPaused = (c) => !!c && (!!c.paused || !planActive(c.plan, today()));            // paused by hand, or a monthly plan past its day
@@ -664,6 +685,7 @@ import { reportRange, buildReport } from "./report.js";
     };
     if (from && from.fromTemplate) t.fromTemplate = from.fromTemplate;
     if (from && from.inPerson) t.inPerson = true;
+    const pk = packageOf(clients.get(clientId)); if (pk && pk.inPerson && !isTemplateClient(clientId)) t.inPerson = true;   // the package's default
     trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
     go({ name: "training", id: t.id });
   }
@@ -2539,7 +2561,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { renameExercise, deleteExercise, addCustomName, loadHidden, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { addTraining, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
