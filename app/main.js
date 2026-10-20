@@ -1702,11 +1702,12 @@ import { reportRange, buildReport } from "./report.js";
           const b = document.createElement("b"); b.textContent = warm ? (kind ? "Warmup \u00b7 " + kind : "Warmup") : kind;
           cap.appendChild(b);
         }
-        if (kind) {
+        if (kind) {                                            // the word stays; what it means is one tap away, in the frosted bubble (his call: cleaner)
           const after = g.rows.length === 2 ? "rest after both" : "rest after all " + g.rows.length;
           const name = (r) => asClient ? ((String(r.label || "").match(/^(?:\d+|w)([a-z])$/i) || [])[1] || r.label || "").toUpperCase() : r.label;
-          const s = document.createElement("span"); s.textContent = g.rows.map(name).join(" + ") + " back to back \u00b7 " + after;
-          cap.appendChild(s);
+          const info = document.createElement("button"); info.type = "button"; info.className = "info"; info.textContent = "i"; info.setAttribute("aria-label", "What is a " + kind.toLowerCase() + "?");
+          info.addEventListener("click", (e) => { e.stopPropagation(); showWhen(info, kind, g.rows.map(name).join(" + ") + " back to back \u00b7 " + after); });
+          cap.appendChild(info);
         }
         block.appendChild(cap);
       }
