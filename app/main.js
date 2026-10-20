@@ -211,7 +211,7 @@ import { reportRange, buildReport } from "./report.js";
   let packKind = "sessions", packInPerson = false, packEdit = null;   // the form: a new package, or (packEdit = id) one being edited
   const packageOf = (c) => (c && c.plan && c.plan.id ? packagesList().find((pk) => pk.id === c.plan.id) : null) || null;
   function showPackages() {
-    settingsOpen = "packages"; hideAllViews(); $("vPackages").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
+    settingsOpen = "packages"; hideAllViews(); $("vPackages").hidden = false; $("back").hidden = false; $("backLabel").textContent = fromSettings ? "Settings" : "Back"; $("brand").hidden = true; $("status").textContent = "";
     renderPackages();
   }
   function renderPackages() {
@@ -236,7 +236,7 @@ import { reportRange, buildReport } from "./report.js";
     for (const b of $("packInPerson").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.on === "1") === packInPerson);
   }
   const packFormReset = () => { packEdit = null; packKind = "sessions"; packInPerson = false; $("packName").value = ""; $("packSize").value = ""; };
-  $("packagesBtn").addEventListener("click", showPackages);
+  $("packagesBtn").addEventListener("click", () => { fromSettings = true; showPackages(); });   // from the Settings list: Back returns there
   $("packKind").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; packKind = b.dataset.kind; renderPackages(); });
   $("packInPerson").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; packInPerson = b.dataset.on === "1"; renderPackages(); });
   $("packCancel").addEventListener("click", () => { packFormReset(); renderPackages(); });
@@ -325,7 +325,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   $("sessionPill").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t || S.clientMode || isTemplateClient(t.clientId)) return; t.inPerson = !t.inPerson; if (!t.inPerson) delete t.inPerson; touchState(t.id, "inPerson"); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); });
   function showExercises() {
-    settingsOpen = "exercises"; hideAllViews(); $("vExercises").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
+    settingsOpen = "exercises"; hideAllViews(); $("vExercises").hidden = false; $("back").hidden = false; $("backLabel").textContent = fromSettings ? "Settings" : "Back"; $("brand").hidden = true; $("status").textContent = "";
     exShown = 80; exOpenKey = null; renderExercises();
   }
   const videoForName = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = looseKey(ALIASES[s] || s); if (customVideos.has(looseKey(s))) return customVideos.get(looseKey(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
@@ -601,7 +601,7 @@ import { reportRange, buildReport } from "./report.js";
   });
   $("settingsBtn").addEventListener("click", showSettings);
   $("changePw").addEventListener("click", () => { fromSettings = true; showPassword(); });
-  $("myExercises").addEventListener("click", showExercises);
+  $("myExercises").addEventListener("click", () => { fromSettings = true; showExercises(); });
   $("setNumber").addEventListener("click", () => { fromSettings = true; showNumber(); });
   $("myPhone").addEventListener("change", () => { setTrainerPhone($("myPhone").value); $("myPhoneMsg").textContent = phoneDigits($("myPhone").value) ? "Saved. Clients now see Message Michal." : "Saved. Without a number clients see no button."; });
   $("settingsBtn2").addEventListener("click", showSettings);

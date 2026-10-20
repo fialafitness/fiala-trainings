@@ -1069,10 +1069,17 @@
   <section id="vSettings" hidden>
     <h1>Settings</h1>
     <ul class="list settings-list">
+      <li class="trainer-only"><button type="button" id="myExercises" hidden><span>Exercises</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
+      <li class="trainer-only"><button type="button" id="packagesBtn" hidden><span>Packages</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
       <li class="trainer-only"><button type="button" id="setNumber"><span>My number</span><span class="sub"><span class="val" id="setNumberVal"></span><span class="chev">&rsaquo;</span></span></button></li>
       <li><div class="srow"><span>Email</span><span class="sub"><span class="val" id="setEmail"></span></span></div></li>
       <li><div class="srow wrap"><span>Appearance</span><div class="seg" id="themeSeg" role="radiogroup" aria-label="Appearance"><button type="button" role="radio" data-theme="auto" class="on">Auto</button><button type="button" role="radio" data-theme="light">Light</button><button type="button" role="radio" data-theme="dark">Dark</button></div></div></li>
       <li><button type="button" id="changePw"><span>Change password</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
+    </ul>
+    <h2 class="trainer-only">Your data</h2>
+    <ul class="list settings-list trainer-only">
+      <li><button type="button" id="backup"><span>Back up</span><span class="sub"><span class="val">Save a copy to this device</span></span></button></li>
+      <li><button type="button" id="restore"><span>Restore</span><span class="sub"><span class="val">From a backup file</span></span></button></li>
     </ul>
     <div class="foot"><button class="btn tint" id="signout" type="button">Sign out</button></div>
   </section>
@@ -1138,7 +1145,7 @@
     <ul class="list inactive" id="inactiveList" hidden></ul>
     <div class="foot foot-col" id="localFoot" hidden>
       <span class="muted" id="dataNote">Saved on this device</span>
-      <div class="foot-pills"><button class="pill" id="backup" type="button">Back up</button><button class="pill" id="restore" type="button">Restore</button><input type="file" id="restoreFile" accept="application/json,.json" hidden><button class="pill" id="myExercises" type="button" hidden>Exercises</button><button class="pill" id="packagesBtn" type="button" hidden>Packages</button><button class="pill" id="settingsBtn" type="button" hidden>Settings</button></div>
+      <div class="foot-pills"><button class="pill" id="settingsBtn" type="button" hidden>Settings</button><input type="file" id="restoreFile" accept="application/json,.json" hidden></div>
     </div>
   </section>
 
@@ -1280,7 +1287,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=57";
+  import { boot } from "./app/main.js?v=58";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
