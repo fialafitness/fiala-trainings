@@ -1,7 +1,7 @@
 // Saving and syncing: the device copy, the debounced save queue, the cloud backend (coach), the client backend (RPCs),
 // the paged read of the server and the merge back into the local maps. Screens are reached only through `ui`.
 import { lsGet, lsSet, norm, clamp, today } from "./util.js";
-import { isTemplateClient, planActive } from "./model.js";
+import { isTemplateClient, planActive, repairTimed } from "./model.js";
 import { mergeNotes } from "./notes.js";
 import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, planTouched, confirmedAt, deletedNotes, pendingNoteRows } from "./state.js";
 
@@ -92,7 +92,7 @@ function flushOne(kind, id) {
   return run;
 }
 const localBackend = {
-  load() { const d = lsGet("fiala.trainings.v1") || { clients: {}, trainings: {} }; for (const c of Object.values(d.clients)) clients.set(c.id, c); for (const t of Object.values(d.trainings)) trainings.set(t.id, t); },
+  load() { const d = lsGet("fiala.trainings.v1") || { clients: {}, trainings: {} }; for (const c of Object.values(d.clients)) clients.set(c.id, c); for (const t of Object.values(d.trainings)) { repairTimed(t); trainings.set(t.id, t); } },
   save() { const ok = lsSet("fiala.trainings.v1", { clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) });  S.deviceFull = !ok; },
   async set() { this.save(); },
   async del() { this.save(); },
@@ -115,6 +115,7 @@ const cloudBackend = {
           if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
         }
       }
+      repairTimed(data); if (live) repairTimed(live);              // seconds the client's old app typed as a weight go to the time column before this write
     };
     for (let attempt = 0; attempt < 4; attempt++) {
       let seen = seenAt.get(k);
@@ -255,7 +256,7 @@ function mergeDown(map, kind, rows, complete, startedAt) {        // the server'
     if ((confirmedAt.get(key(kind, r.id)) || 0) > startedAt) continue;   // written after this read began: keep ours
     if (kind === "trainings" && S.templateDraft && S.templateDraft.dirty && S.templateDraft.id === r.id) continue;   // unsaved template edits
     if (kind === "trainings" && S.renderedTraining === r.id && (S.asking || ui.$("rows").contains(document.activeElement))) continue; // being edited right now, or a confirm sheet is up over it: next sync, stamp and all
-    map.set(r.id, { ...r.data, id: r.id });
+    const rec = { ...r.data, id: r.id }; if (kind === "trainings") repairTimed(rec); map.set(r.id, rec);
     if (!S.clientMode && r.updated_at) seenAt.set(key(kind, r.id), r.updated_at);   // the stamp travels with the record it describes
     if (kind === "trainings") trainerState.delete(r.id);
   }
