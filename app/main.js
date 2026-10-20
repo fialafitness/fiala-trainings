@@ -1606,7 +1606,7 @@ import { reportRange, buildReport } from "./report.js";
       const count = clientTrainings(t.clientId).filter((x) => x.completedAt).length;
       const pc = clients.get(t.clientId), sn = pc && pc.plan ? sessionNo(pc.plan, clientTrainings(t.clientId), t) : null;
       $("celeText").textContent = (sn ? "Session " + sn.n + " of " + sn.size + ". " : "") + "That\u2019s your " + ordinal(count) + " workout. Nice work.";
-      const canMsg = !S.clientMode && !document.body.classList.contains("client") && fillMsg($("celeMsg"), $("celeMsgText"), pc); $("celeMsg").hidden = !canMsg;   // the coach (not previewing as the client) can text the client right from here
+      const canMsg = !S.clientMode && fillMsg($("celeMsg"), $("celeMsgText"), pc); $("celeMsg").hidden = !canMsg;   // the coach can text the client right from here, from either view; a real client never sees it
       celebrating = true; render();
       window.scrollTo(0, 0);
       clearTimeout(celeTimer);
