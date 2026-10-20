@@ -156,6 +156,7 @@ import { reportRange, buildReport } from "./report.js";
   }
 
   function hideAllViews() {
+    rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
     $("tabbar").hidden = true; document.body.classList.remove("tabs");
     for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vPackages", "vSettings", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
   }
@@ -172,6 +173,8 @@ import { reportRange, buildReport } from "./report.js";
   }
   let settingsOpen = false;              // false | "settings" | "password" | "exercises" | "packages" | "number"
   let fromSettings = false;              // number/password opened from the Settings list: Back returns there
+  let pendingPage = null;                // the settings page that was open when the page was last refreshed: it comes back after sign-in
+  const rememberPage = () => lsSet("fiala.trainings.page", settingsOpen ? { open: settingsOpen, from: !!fromSettings } : null);
   // ---- appearance: auto (follow the phone) | light | dark. Saved on this device only.
   const THEME_KEY = "fiala.theme";
   const themeColours = { light: "#f5f5f7", dark: "#000000" };
@@ -1149,6 +1152,11 @@ import { reportRange, buildReport } from "./report.js";
   const templateHome = (t) => { const m = templateMeta(t); return m.program === MY_TEMPLATES ? { name: "client", id: TEMPLATES_ID } : { name: "client", id: TEMPLATES_ID, program: m.program, phase: m.phase, stage: m.stage }; };
   function render() {
     if (S.recovering) { showRecovery(); return; }
+    if (pendingPage && S.signedIn && !(S.clientMode && !S.myClientId)) {   // a refresh on a settings page lands back on it
+      const p = pendingPage; pendingPage = null;
+      const open = { settings: showSettings, number: showNumber, packages: showPackages, exercises: showExercises, password: showPassword }[p.open];
+      if (open) { fromSettings = !!p.from; open(); return; }
+    }
     if (settingsOpen) { if (S.signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : "vPassword").hidden = false; if (settingsOpen === "packages") renderPackages(); $("back").hidden = false; $("brand").hidden = true; } return; }
     if (S.sb && !S.signedIn) { showLogin($("loginMsg").textContent); return; }
     if (S.clientMode && !S.myClientId) { showWaiting(); return; }
@@ -2523,6 +2531,7 @@ import { reportRange, buildReport } from "./report.js";
   Object.assign(ui, { $, setStatus, render, showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar });   // what the sync layer may call on the screens
   async function boot() {
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) S.view = saved;
+    const page = lsGet("fiala.trainings.page"); if (page && page.open) pendingPage = page;   // read before any screen change clears it
     localBackend.load();                       // instant start from the device copy
     restorePending();                          // and whatever was still waiting to reach the server
     holdWake(true);                            // opened straight onto a workout: keep the screen on from the first moment
