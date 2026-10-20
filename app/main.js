@@ -1893,7 +1893,8 @@ import { reportRange, buildReport } from "./report.js";
       };
       const paintSummary = () => {                                      // a finished card opened: the sets in rows, unless opened all the way
         const summary = block.classList.contains("done") && block.classList.contains("open") && !fullBlocks.has(selKey); block.classList.toggle("summary", summary); if (openFull) openFull.hidden = !summary;
-        setTimeout(() => { for (const n of block.querySelectorAll("textarea.name")) { n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; } }, 0);   // the name field re-wraps when the card changes shape: show the whole name (a timer, not a frame: it runs even while the page is not on screen)
+        const regrow = () => { for (const n of block.querySelectorAll("textarea.name")) { n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; } };   // the name field re-wraps when the card changes shape: show the whole name
+        if (block.isConnected) regrow(); else setTimeout(regrow, 0);    // in the page already: at once, so the page does not change height a moment after it was drawn (the glide would chase it)
       };
       const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey)) block.classList.add("open"); if (!all) { openBlocks.delete(selKey); fullBlocks.delete(selKey); } btn.textContent = all ? "\u2713 Done" : "Done"; paintSum(all); paintFold(); paintSummary(); };
       const toggleOpen = () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey); else { openBlocks.delete(selKey); fullBlocks.delete(selKey); } paintFold(); paintSummary(); };
@@ -1986,9 +1987,15 @@ import { reportRange, buildReport } from "./report.js";
     if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();   // the keyboard leaves first; the glide follows the page as it settles
     const target = () => {
       let el = document.querySelector('.block[data-key="' + CSS.escape(String(key)) + '"]'); if (!el) return null;
-      if (el.classList.contains("done")) { let n = el.nextElementSibling; while (n && !(n.classList.contains("block") && !n.classList.contains("done"))) n = n.nextElementSibling; if (n) el = n; }
-      const head = document.querySelector("header"); const off = (head ? head.getBoundingClientRect().bottom : 0) + 12;
       const sc = document.scrollingElement || document.documentElement;
+      if (el.classList.contains("done")) {
+        let n = el.nextElementSibling; while (n && !(n.classList.contains("block") && !n.classList.contains("done"))) n = n.nextElementSibling;
+        if (n) el = n;
+        else {                                                        // the last exercise is done: bring Finish workout into view instead of chasing the folded card at the page's end
+          const fin = $("finishBtn"); if (fin && !fin.hidden && fin.offsetParent) { const r = fin.getBoundingClientRect(); return Math.max(0, Math.min(sc.scrollTop + r.bottom - sc.clientHeight + 24, sc.scrollHeight - sc.clientHeight)); }
+        }
+      }
+      const head = document.querySelector("header"); const off = (head ? head.getBoundingClientRect().bottom : 0) + 12;
       return Math.max(0, Math.min(sc.scrollTop + el.getBoundingClientRect().top - off, sc.scrollHeight - sc.clientHeight));
     };
     glide(target);
@@ -1998,11 +2005,13 @@ import { reportRange, buildReport } from "./report.js";
     const sc = document.scrollingElement || document.documentElement;
     const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) { const to = target(); if (to != null) sc.scrollTop = to; return; }
-    const t0 = performance.now(), dur = 380, cap = 1100;
+    const start = performance.now(); let t0 = start, last = null, resets = 0; const dur = 380, cap = 1100;
     const step = () => {
       const to = target(); if (to == null) return;
+      if (last != null && Math.abs(to - last) > 40 && resets < 3) { t0 = performance.now(); resets++; }   // the page changed shape under us (a card folded, the keyboard left): ease again rather than snap — at most three times
+      last = to;
       const t = performance.now() - t0, p = Math.min(1, t / dur), gap = to - sc.scrollTop;
-      if ((p >= 1 && Math.abs(gap) <= 1) || t > cap) { sc.scrollTop = to; return; }
+      if ((p >= 1 && Math.abs(gap) <= 1) || performance.now() - start > cap + 600) { sc.scrollTop = to; return; }   // the cap is absolute: the glide always ends
       sc.scrollTop = sc.scrollTop + gap * (p >= 1 ? 0.5 : 0.22);
       setTimeout(step, 16);
     };
