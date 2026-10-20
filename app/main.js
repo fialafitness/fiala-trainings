@@ -1252,7 +1252,7 @@ import { reportRange, buildReport } from "./report.js";
         const b = document.createElement("button"); b.type = "button";
         const words = packWords(c);                                       // "3 of 10", "20 days left" on the right, where the workout count used to be; the purple dot alone says something new happened
         b.innerHTML = `<span class="nm"><span></span></span><span class="sub"></span>`;
-        b.firstChild.firstChild.textContent = c.name; b.lastChild.textContent = words; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
+        b.firstChild.firstChild.textContent = c.name; b.lastChild.textContent = words;   // no chevron: the row itself is the way in (his call)
         b.classList.toggle("news", !!newsWords(clientNews(c)));
         b.addEventListener("click", () => { S.tab = "workouts"; go({ name: "client", id: c.id }); });
         li.appendChild(b);
@@ -1264,7 +1264,7 @@ import { reportRange, buildReport } from "./report.js";
     $("inactiveBar").hidden = !inactive.length; $("inactiveList").hidden = !inactive.length;
     $("inactiveList").replaceChildren(...inactive.map((c) => {
       const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
-      b.innerHTML = `<span></span><span class="sub">Paused<span class="chev">&rsaquo;</span></span>`; b.firstChild.textContent = c.name;
+      b.innerHTML = `<span></span><span class="sub">Paused</span>`; b.firstChild.textContent = c.name;
       b.addEventListener("click", () => { S.tab = "workouts"; go({ name: "client", id: c.id }); }); li.appendChild(b); return li;
     }));
   }
