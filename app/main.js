@@ -1868,7 +1868,10 @@ import { reportRange, buildReport } from "./report.js";
         fold.hidden = true; chev.hidden = !done; chev.classList.toggle("up", open);
         chev.setAttribute("aria-label", open ? "Hide sets" : "Show sets");
       };
-      const paintSummary = () => { const summary = block.classList.contains("done") && block.classList.contains("open") && !fullBlocks.has(selKey); block.classList.toggle("summary", summary); if (openFull) openFull.hidden = !summary; };   // a finished card opened: the sets in rows, unless opened all the way
+      const paintSummary = () => {                                      // a finished card opened: the sets in rows, unless opened all the way
+        const summary = block.classList.contains("done") && block.classList.contains("open") && !fullBlocks.has(selKey); block.classList.toggle("summary", summary); if (openFull) openFull.hidden = !summary;
+        setTimeout(() => { for (const n of block.querySelectorAll("textarea.name")) { n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; } }, 0);   // the name field re-wraps when the card changes shape: show the whole name (a timer, not a frame: it runs even while the page is not on screen)
+      };
       const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey)) block.classList.add("open"); if (!all) { openBlocks.delete(selKey); fullBlocks.delete(selKey); } btn.textContent = all ? "\u2713 Done" : "Done"; paintSum(all); paintFold(); paintSummary(); };
       const toggleOpen = () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey); else { openBlocks.delete(selKey); fullBlocks.delete(selKey); } paintFold(); paintSummary(); };
       fold.addEventListener("click", toggleOpen); chev.addEventListener("click", toggleOpen);
