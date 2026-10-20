@@ -394,8 +394,7 @@
   .block.done.open.summary .row > :not(.top):not(.row-sum) { display: none !important; }
   .block.done.open.summary .tracker { display: none; }
   .block.done.open.summary .card-foot .complete, .block.done.open.summary .card-foot .finish-early, .block.done.open.summary .card-foot .resume:not(.resume-full) { display: none !important; }
-  .resume-full { display: none; }
-  .block.done.open.summary .resume-full { display: inline-flex; }
+  .block.done.open.summary .resume-full:not([hidden]) { display: inline-flex; }
   .sum-set { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px 0 8px; background: var(--field); border-radius: var(--r-field); }   /* one cell per set */
   .sum-n { width: 28px; height: 28px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: var(--done); color: var(--done-ink); flex: none; }
   .sum-val { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 5px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; overflow: hidden; }
@@ -434,7 +433,8 @@
   body.client .block.peek .card-chev { top: 6px; }
   .card-foot { padding: 4px 16px 16px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
   .card-foot .foot-row { display: flex; justify-content: space-between; align-items: center; min-height: 40px; }
-  .card-foot .foot-row.center { justify-content: center; min-height: 0; }
+  .card-foot .foot-row.center { justify-content: center; min-height: 0; flex-wrap: wrap; gap: 8px 10px; }   /* undo / resume: room between them; the note row below keeps them clear of the corner chevron */
+  .card-foot .foot-row.center > * { white-space: nowrap; }
   .card-foot .foot-row.center:empty { display: none; }
   .add-note { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 4px; display: inline-flex; align-items: center; gap: 6px; }
   .finish-early { display: inline-flex; align-items: center; gap: 6px; }
@@ -1260,7 +1260,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=49";
+  import { boot } from "./app/main.js?v=50";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
