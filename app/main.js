@@ -27,7 +27,8 @@ import { reportRange, buildReport } from "./report.js";
     for (const [k, n] of [...customNames.entries()].sort((a, b) => a[1].localeCompare(b[1]))) { names.push(n); keys.push(k); }
     ALL_NAMES = names; ALL_KEYS = keys;
   }
-  const properName = (n) => { const t = String(n || "").replace(/\s+/g, " ").trim(); return ALIASES[t] || t; };   // an old spelling resolves to the exercise it names
+  const ALIAS_BY_KEY = new Map(Object.entries(ALIASES).map(([a, b]) => [squash(a), b]));
+  const properName = (n) => { const t = String(n || "").replace(/\s+/g, " ").trim(), k = squash(t); if (!k || builtinKeys.has(k) || customNames.has(k)) return t; return ALIAS_BY_KEY.get(k) || t; };   // an old spelling, however typed, resolves to the exercise it names
   const knownName = (n) => { const k = squash(properName(n)); return !!k && ((builtinKeys.has(k) && !hiddenKeys.has(k)) || customNames.has(k)); };
   let lastDbError = "";                   // the last Supabase message, so a screen can say "run the script" instead of "try again"
   const missingTable = () => /ft_exercise_hidden|ft_exercises|ft_exercise_videos/.test(lastDbError) && /not find|does not exist|schema cache/i.test(lastDbError);
