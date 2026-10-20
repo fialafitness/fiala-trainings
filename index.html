@@ -385,7 +385,7 @@
   .block.done:not(.open) .card-foot { padding: 6px 16px 10px; }
   .block.done:not(.open) .done-btn { display: none; }   /* collapsed: only Show weights, centred; both return when opened */
   .card-sum { display: none; padding: 0 16px 12px; font-size: 13px; color: var(--text-tertiary); }   /* "Finished · 3 of 3 sets" */
-  .block.done:not(.open) .card-sum { display: block; padding-right: 56px; }
+  .block.done:not(.open) .card-sum { display: flex; flex-direction: column; justify-content: center; min-height: 58px; padding: 8px 64px 10px 16px; }   /* a status row tall enough for the disc to sit in, centred */
   .block.done .group { position: relative; }
   .block.done:not(.open) .card-foot { display: none; }                  /* folded: the status line is the bottom of the card */
   /* a finished card opened: the name, then the sets in rows; "Resume this exercise" opens the working card */
@@ -408,7 +408,7 @@
   .sum-set.skip .sum-n { background: var(--glyph-fill); color: var(--text-tertiary); }
   .sum-set.skip .sum-val { color: var(--text-tertiary); font-weight: 500; }
   .sum-set.skip .sum-ok { visibility: hidden; }
-  .block.done:not(.open) .card-chev { bottom: 8px; }                    /* chevron down, beside "Finished · 3 of 3 sets" */
+  .block.done:not(.open) .card-chev { bottom: 11px; }                   /* chevron down, centred on the status row */
   .block.done.open .card-chev { bottom: 14px; }                         /* chevron up, bottom corner of the open card (the Sets line keeps − and +) */
   /* client: the card being done is open; the ones still to come fold to a line each, a tap opens one for a look */
   .row .sum { display: none; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--text-tertiary); margin: 4px 0 0 64px; letter-spacing: 0; }
