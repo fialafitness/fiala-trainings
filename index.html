@@ -408,8 +408,8 @@
   .sum-set.skip .sum-n { background: var(--glyph-fill); color: var(--text-tertiary); }
   .sum-set.skip .sum-val { color: var(--text-tertiary); font-weight: 500; }
   .sum-set.skip .sum-ok { visibility: hidden; }
-  .block.done:not(.open) .card-chev { bottom: -2px; }                   /* chevron down, beside "Finished · 3 of 3 sets" */
-  .block.done.open .card-chev { bottom: 6px; }                          /* chevron up, bottom corner of the open card (the Sets line keeps − and +) */
+  .block.done:not(.open) .card-chev { bottom: 8px; }                    /* chevron down, beside "Finished · 3 of 3 sets" */
+  .block.done.open .card-chev { bottom: 14px; }                         /* chevron up, bottom corner of the open card (the Sets line keeps − and +) */
   /* client: the card being done is open; the ones still to come fold to a line each, a tap opens one for a look */
   .row .sum { display: none; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--text-tertiary); margin: 4px 0 0 64px; letter-spacing: 0; }
   .row .sum .si + .si::before { content: "\00b7"; margin: 0 6px; }
@@ -424,13 +424,14 @@
   body.client .block.peek .row .top .name, body.client .block.peek .row .top input.label { pointer-events: none; }
   /* the chevron in the corner: down on a folded card, up on one opened for a look */
   body.client .block.ahead .group, body.client .block.peek .group { position: relative; }
-  .card-chev { position: absolute; right: 6px; z-index: 2; appearance: none; border: 0; background: none; padding: 0; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }   /* a thumb-sized target around a small glyph */
-  .card-chev svg { width: 22px; height: 22px; }
+  .card-chev { position: absolute; right: 12px; z-index: 2; appearance: none; border: 0; background: var(--field); padding: 0; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-primary); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: opacity 300ms ease; }   /* the fold: a disc, like the one beside the client's name */
+  .card-chev:hover { opacity: 0.85; }
+  .card-chev svg { width: 18px; height: 18px; }
   .card-chev .i-up, .card-chev.up .i-down { display: none; }
   .card-chev.up .i-up { display: block; }
-  body.client .block.ahead .card-chev { top: 10px; }
+  body.client .block.ahead .card-chev { top: 12px; }
   body.client .block.ahead .row .top .name { padding-right: 48px !important; }
-  body.client .block.peek .card-chev { top: 6px; }
+  body.client .block.peek .card-chev { top: 12px; }
   .card-foot { padding: 4px 16px 16px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
   .card-foot .foot-row { display: flex; justify-content: space-between; align-items: center; min-height: 40px; }
   .card-foot .foot-row.center { justify-content: center; min-height: 0; flex-wrap: wrap; gap: 8px 10px; }   /* undo / resume: room between them; the note row below keeps them clear of the corner chevron */
