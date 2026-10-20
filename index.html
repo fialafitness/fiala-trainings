@@ -391,10 +391,13 @@
   /* a finished card opened: the name, then the sets in rows; "Resume this exercise" opens the working card */
   .row-sum { display: none; }
   .block.done.open.summary .row-sum { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 8px; }
-  .block.done.open.summary .row > :not(.top):not(.row-sum) { display: none !important; }
+  .block.done.open.summary .row > :not(.top):not(.row-sum):not(.player):not(.note):not(.cnote):not(.vidrow):not(.vid-form) { display: none !important; }   /* what the three icons open stays reachable */
   .block.done.open.summary .tracker { display: none; }
-  .block.done.open.summary .ex-icons { display: none; }                                   /* the summary is for reading: the name has the whole field; video, instructions and alternatives live on the working card (Resume) */
-  .block.done.open.summary .row .top .name { padding-right: 16px !important; }
+  .block.done.open.summary .row .top .name { padding-right: 16px !important; }           /* the name has the whole field; the three icons sit in their own row under it, as discs */
+  .block.done.open.summary .ex-icons { position: static; height: auto; display: flex; justify-content: flex-end; gap: 6px; margin: 8px 0 0; }
+  .block.done.open.summary .ex-icons button { width: 36px; height: 36px; border-radius: 50%; background: var(--glyph-fill); color: var(--text-primary); }
+  .block.done.open.summary .ex-icons button[hidden] { display: none; }
+  .block.done.open.summary .ex-icons svg { width: 20px; height: 20px; }
   .block.done.open.summary .card-foot .complete, .block.done.open.summary .card-foot .finish-early, .block.done.open.summary .card-foot .resume:not(.resume-full) { display: none !important; }
   .block.done.open.summary .resume-full:not([hidden]) { display: inline-flex; }
   .sum-set { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px 0 8px; background: var(--field); border-radius: var(--r-field); }   /* one cell per set */
