@@ -269,8 +269,12 @@
   .list .n2 { font-size: 13px; line-height: 1.2; font-weight: 500; color: var(--text-secondary); }
   .list .n2[hidden] { display: none; }
   .list button.news .n2 { color: var(--text-primary); }
-  .news { margin-top: 20px; }
-  .news .kicker { margin-bottom: 8px; }
+  .notif { margin-top: 14px; }                                                    /* under the Message pill: what clients did on their own */
+  .notif .count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--brand); color: #fff; font-size: 12px; font-weight: 600; letter-spacing: 0; }
+  .notif .count[hidden], .notif #notifNone[hidden] { display: none; }
+  .notif #notifBtn[aria-expanded="true"] .chev { display: inline-block; transform: rotate(90deg); }
+  .notif .notif-list { margin-top: 8px; }
+  .notif .notif-list[hidden] { display: none; }
   .list button.nn { flex-direction: column; align-items: stretch; gap: 4px; }   /* a new note: exercise and day on top, the note underneath */
   .nn-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .nn-text { font-size: 15px; line-height: 1.35; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1148,6 +1152,7 @@
     </div>
     <div class="contact-row client-only" id="trainerRow" hidden><a class="msg-pill" id="trainerBtn" href="#"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
     <div class="contact-row trainer-only" id="contactRow" hidden><a class="msg-pill" id="msgBtn" href="#"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="msgText">Message</span></a></div>
+    <div class="trainer-only notif" id="notifWrap" hidden><ul class="list"><li><button type="button" id="notifBtn" aria-expanded="false"><span>Notifications</span><span class="sub"><span class="count" id="notifCount" hidden></span><span id="notifNone">Nothing new</span><span class="chev">&rsaquo;</span></span></button></li></ul><ul class="list notif-list" id="notifList" hidden></ul></div>
     <div data-tab="profile" class="trainer-only" id="cEmailWrap">
       <div class="details" id="detailsBody" hidden>
         <input id="cNameField" placeholder="Name" autocomplete="off" autocapitalize="words">
@@ -1162,7 +1167,6 @@
       </div>
     </div>
     <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
-    <div data-tab="workouts" class="trainer-only news" id="newNotes" hidden><div class="kicker" id="newNotesTitle">New from</div><ul class="list" id="newNotesList"></ul></div>
     <div data-tab="workouts" class="plan-card" id="planCard" role="button" tabindex="0" hidden>
       <div class="plan-head"><span id="planName"></span><span id="planRight"></span></div>
       <div class="plan-bar" id="planBar" hidden></div>
@@ -1277,7 +1281,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=54";
+  import { boot } from "./app/main.js?v=55";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

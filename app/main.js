@@ -752,6 +752,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!S.clientMode && (!S.sb || S.syncedOnce) && S.view.name === "training" && !(next.name === "training" && next.id === S.view.id) && fillFor !== S.view.id) {   // leaving an empty workout behind discards it, like an empty note (not while it waits for a template, not before the first sync)
       const t = trainings.get(S.view.id); if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
     }
+    if (notifOpen && !(next.name === "client" && next.id === notifOpen)) closeNotif();   // leaving the client: what was shown counts as seen
     reordering = false; S.view = next; lsSet("fiala.trainings.view", S.view); render(); window.scrollTo(0, 0);
     if (next.name === "training") holdWake(true); else dropWake(); }
   $("back").addEventListener("click", () => {
@@ -1249,7 +1250,7 @@ import { reportRange, buildReport } from "./report.js";
         row.append(name, grip); li.appendChild(row); dragRow(li, c.id);
       } else {
         const b = document.createElement("button"); b.type = "button";
-        const words = [newsWords(clientNews(c)), !c.paused && effPaused(c) ? "Plan ended" : ""].filter(Boolean).join(" \u00b7 ");   // what the client did on their own; a quiet row otherwise
+        const words = packWords(c);                                       // "3 of 10", "20 days left"; the purple dot alone says something new happened
         b.innerHTML = `<span class="nm"><span></span><span class="n2"></span></span><span class="sub"><span class="chev">&rsaquo;</span></span>`;
         b.firstChild.firstChild.textContent = c.name; b.firstChild.lastChild.textContent = words; b.firstChild.lastChild.hidden = !words;
         b.classList.toggle("news", !!newsWords(clientNews(c)));
@@ -1383,15 +1384,25 @@ import { reportRange, buildReport } from "./report.js";
   // "Seen" lives on the client's record (seenDoneAt, seenNotes), so every device of the coach agrees.
   const noteId = (t, r) => "row/" + t.id + "/" + r.id;
   function clientNews(c) {
-    if (!c || isTemplateClient(c.id)) return { done: 0, notes: [] };
+    if (!c || isTemplateClient(c.id)) return { done: 0, notes: [], workouts: [] };
     const since = Date.parse(c.seenDoneAt || "") || 0, seen = new Set(c.seenNotes || []);
-    let done = 0; const notes = [];
+    let done = 0; const notes = [], workouts = [];
     for (const t of clientTrainings(c.id)) {
-      if (t.completedBy === "client" && t.completedAt && (Date.parse(t.completedAt) || 0) > since) done++;
+      if (t.completedBy === "client" && t.completedAt && (Date.parse(t.completedAt) || 0) > since) { done++; workouts.push(t); }
       for (const r of t.rows || []) if (r.clientNote && r.clientNoteBy === "client" && !seen.has(noteId(t, r))) notes.push({ id: noteId(t, r), t, r, at: r.clientNoteAt || "" });
     }
     notes.sort((a, b) => (b.at > a.at ? 1 : b.at < a.at ? -1 : 0));   // newest first
-    return { done, notes };
+    workouts.sort((a, b) => (b.completedAt > a.completedAt ? 1 : b.completedAt < a.completedAt ? -1 : 0));
+    return { done, notes, workouts };
+  }
+  function packWords(c) {                                                  // the Clients list: where the client stands on their package
+    const pk = c && c.plan && c.plan.id ? c.plan : null; if (!pk) return "";
+    if (pk.kind === "monthly") {
+      if (!pk.until) return "";
+      const days = Math.round((Date.parse(pk.until) - Date.parse(today())) / 86400000);
+      return days < 0 ? "Plan ended" : days === 0 ? "Ends today" : days + (days === 1 ? " day left" : " days left");
+    }
+    const pr = planProgress(pk, clientTrainings(c.id)); return pr ? pr.inPack + " of " + pr.size : "";
   }
   function newsWords(n) {
     const parts = [];
@@ -1412,21 +1423,32 @@ import { reportRange, buildReport } from "./report.js";
     if (i >= 0) { const selKey = t.id + "/" + groupKey(x.r.label, i); openBlocks.add(selKey); openExNotes.add(selKey); }
     go({ name: "training", id: t.id }); followRow(x.r.id);
   }
-  function renderNews(c) {
-    const wrap = $("newNotes"), ul = $("newNotesList"), n = clientNews(c);
-    wrap.hidden = !n.notes.length; if (!n.notes.length) { ul.replaceChildren(); return; }
-    $("newNotesTitle").textContent = "New from " + (String(c.name || "").trim().split(/\s+/)[0] || "your client");
-    ul.replaceChildren(...n.notes.map((x) => {
+  let notifOpen = null;                                                   // the client whose Notifications panel is open; closing it (or leaving the page) marks the workouts seen
+  function closeNotif() { if (!notifOpen) return; const c = clients.get(notifOpen); notifOpen = null; if (c) markWorkoutsSeen(c); }
+  function renderNotif(c) {
+    const wrap = $("notifWrap"), ul = $("notifList"), n = clientNews(c), total = n.done + n.notes.length, open = notifOpen === c.id;
+    wrap.hidden = false; $("notifCount").hidden = !total; $("notifCount").textContent = total; $("notifNone").hidden = !!total || open;
+    $("notifBtn").setAttribute("aria-expanded", String(open)); ul.hidden = !open; if (!open) { ul.replaceChildren(); return; }
+    const items = [];
+    for (const t of n.workouts) {
+      const li = document.createElement("li"), b = document.createElement("button"); b.type = "button";
+      b.innerHTML = '<span class="nm"><span></span><span class="n2"></span></span><span class="sub"><span class="chev">&rsaquo;</span></span>';
+      b.firstChild.firstChild.textContent = "Finished " + (String(t.title || "").trim() || "a workout"); b.firstChild.lastChild.textContent = whenDay(effDate(t) || String(t.date || ""), true);
+      b.addEventListener("click", () => go({ name: "training", id: t.id })); li.appendChild(b); items.push(li);
+    }
+    for (const x of n.notes) {
       const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; b.className = "nn";
       b.innerHTML = '<span class="nn-top"><span class="nn-ex"></span><span class="sub"></span></span><span class="nn-text"></span>';
-      b.querySelector(".nn-ex").textContent = String(x.r.name || "").trim() || "Exercise";
+      b.querySelector(".nn-ex").textContent = "Note on " + (String(x.r.name || "").trim() || "an exercise");
       const day = whenDay(effDate(x.t) || String(x.t.date || ""), true); b.querySelector(".sub").textContent = [day, String(x.t.title || "").trim()].filter(Boolean).join(" \u00b7 ");
       b.querySelector(".sub").insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
       b.querySelector(".nn-text").textContent = x.r.clientNote;
-      b.addEventListener("click", () => openClientNote(c, x));
-      li.appendChild(b); return li;
-    }));
+      b.addEventListener("click", () => openClientNote(c, x)); li.appendChild(b); items.push(li);
+    }
+    if (!items.length) { const li = document.createElement("li"); li.className = "empty"; li.style.padding = "12px 16px"; li.textContent = "Nothing new"; items.push(li); }
+    ul.replaceChildren(...items);
   }
+  $("notifBtn").addEventListener("click", () => { const c = clients.get(S.view.id); if (!c) return; if (notifOpen === c.id) closeNotif(); else notifOpen = c.id; renderClient(); });
   function renderClient() {
     const c = clients.get(S.view.id);
     const isTpl = isTemplateClient(c.id);
@@ -1436,7 +1458,7 @@ import { reportRange, buildReport } from "./report.js";
     $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !effPaused(c); $("pausedKicker").textContent = c.paused ? "Access paused" : "Plan ended";
     if (isTpl) { $("cName").readOnly = true; $("overview").hidden = true; $("planCard").hidden = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }
     $("cName").value = c.name; $("cName").readOnly = true; renderPlanCard(c); renderOverview(c); paintPlanDetails(c);
-    if (!S.clientMode) { markWorkoutsSeen(c); renderNews(c); } else $("newNotes").hidden = true;
+    if (!S.clientMode) renderNotif(c); else $("notifWrap").hidden = true;
     if (document.activeElement !== $("cNameField")) $("cNameField").value = c.name || "";
     if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
     if (document.activeElement !== $("cPhone")) $("cPhone").value = c.phone || "";
