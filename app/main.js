@@ -2346,16 +2346,31 @@ import { reportRange, buildReport } from "./report.js";
     const nSets = setsOf(r), sumEl = q(".sum"); sumEl.replaceChildren();   // "3 sets · 8–10 reps · 60 sec transition" (the open card hides the sets part: the chips above say it)
     const chips = [...el.querySelectorAll(".specs .chip")];
     for (const [text, cls] of [[nSets + (nSets === 1 ? " set" : " sets"), "si sum-sets"], [chipText(chips[0]), "si sum-reps"], [chipText(chips[1]), "si sum-rest"]]) { if (!text) continue; const e = document.createElement("span"); e.className = cls; e.textContent = text; sumEl.appendChild(e); }
-    {                                                                  // the finished card, opened: every set in a row — number, what was lifted, a check (his ask: a quick look)
+    {                                                                  // the finished card, opened: every set in a cell — number, weight × reps (editable in place for a typo), a check
       const unitS = (clients.get(t.clientId) || {}).unit || "lb", tmS = timedPlan(r.reps), sumEl = document.createElement("div"); sumEl.className = "row-sum";
+      const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); scheduleSave("trainings", t.id); };
+      const fit = (inp) => { inp.style.width = Math.max(2, (inp.value || inp.placeholder || "").length + 0.6) + "ch"; };
+      const refresh = () => { for (const line of sumEl.children) { const i = +line.dataset.i, wi = line.querySelector(".sum-w"), ri = line.querySelector(".sum-r"); if (!wi) continue; if (document.activeElement !== wi) { wi.value = String((r.weights || [])[i] || ""); fit(wi); } if (document.activeElement !== ri) { ri.value = String((r.repsDone || [])[i] || ""); fit(ri); } line.querySelector(".sum-unit").textContent = wi.value.trim() ? weightWord(wi.value, unitS) : ""; } };
       for (let i = 0; i < setsOf(r); i++) {
-        const line = document.createElement("div"); line.className = "sum-set"; const counted = setCounts(r, i); line.classList.toggle("skip", !counted);
-        const w = String((r.weights || [])[i] || "").trim(), rp = String((r.repsDone || [])[i] || "").trim(), ww = weightWord(w, unitS);
-        const text = !counted ? "Not done" : tmS ? ((w ? w + (ww ? " " + ww : "") + " \u00d7 " : "") + (rp ? rp + " " + tmS.unit : "\u2014")) : ((w ? w + (ww ? " " + ww : "") : "Bodyweight") + (rp ? " \u00d7 " + rp : ""));
-        line.innerHTML = '<span class="sum-n"></span><span class="sum-val"></span><span class="sum-ok">\u2713</span>'; line.children[0].textContent = i + 1; line.children[1].textContent = text;
+        const line = document.createElement("div"); line.className = "sum-set"; line.dataset.i = i; const counted = setCounts(r, i); line.classList.toggle("skip", !counted);
+        const n = document.createElement("span"); n.className = "sum-n"; n.textContent = i + 1; line.appendChild(n);
+        if (!counted) { const v = document.createElement("span"); v.className = "sum-val"; v.textContent = "Not done"; line.appendChild(v); }
+        else {
+          const val = document.createElement("span"); val.className = "sum-val";
+          const wi = document.createElement("input"); wi.className = "sum-w"; wi.inputMode = "decimal"; wi.placeholder = tmS ? "" : "Bodyweight"; wi.setAttribute("aria-label", "Weight, set " + (i + 1)); wi.autocomplete = "off";
+          const unit = document.createElement("span"); unit.className = "sum-unit";
+          const x = document.createElement("span"); x.className = "sum-x"; x.textContent = "\u00d7";
+          const ri = document.createElement("input"); ri.className = "sum-r"; ri.inputMode = "numeric"; ri.placeholder = tmS ? "sec" : "reps"; ri.setAttribute("aria-label", (tmS ? "Seconds" : "Reps") + ", set " + (i + 1)); ri.autocomplete = "off";
+          const runit = document.createElement("span"); runit.className = "sum-unit"; runit.textContent = tmS ? tmS.unit : "";
+          val.append(wi, unit, x, ri, runit); line.appendChild(val);
+          wi.addEventListener("input", () => { r.weights = correctFrom(r.weights, i, wi.value); fit(wi); mark(); refresh(); });
+          ri.addEventListener("input", () => { const v = ri.value.replace(/[^0-9]/g, "").slice(0, 4); ri.value = v; r.repsDone = correctFrom(r.repsDone, i, v); fit(ri); mark(); refresh(); });
+          for (const inp of [wi, ri]) inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
+        }
+        const ok = document.createElement("span"); ok.className = "sum-ok"; ok.textContent = "\u2713"; line.appendChild(ok);
         sumEl.appendChild(line);
       }
-      el.appendChild(sumEl);
+      refresh(); el.appendChild(sumEl);
     }
     return el;
   }
