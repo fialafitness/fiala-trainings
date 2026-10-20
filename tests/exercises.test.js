@@ -57,6 +57,8 @@ test("the old spelling still finds the exercise: 'triceps' is an alias of every 
 test("an old spelling is the exercise it names: known, not addable, resolved by the editor; and the search still finds it", async () => {
   const sb = coach();
   assert.strictEqual(fns.knownName("Triceps pushdown"), true); assert.strictEqual(fns.properName(" Triceps  pushdown "), "Tricep pushdown");
+  assert.strictEqual(fns.knownName("triceps pushdown"), true); assert.strictEqual(fns.properName("triceps push-down"), "Tricep pushdown");   // however typed
+  assert.strictEqual(fns.properName("Band face pull"), "Band face pull", "a real name stays itself even when an alias shares its key");
   assert.strictEqual(await fns.addCustomName("Triceps pushdown"), true); assert.deepStrictEqual(ops(sb, "ft_exercises"), [], "no duplicate row for an alias");
   assert.ok(fns.exerciseMatches("triceps pushdown").some(([n]) => n === "Tricep pushdown"));
   await fns.renameExercise("triceppushdown", "Tricep pushdown", "Tricep push-down");                          // his spelling, same key
