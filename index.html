@@ -388,6 +388,21 @@
   .block.done:not(.open) .card-sum { display: block; padding-right: 56px; }
   .block.done .group { position: relative; }
   .block.done:not(.open) .card-foot { display: none; }                  /* folded: the status line is the bottom of the card */
+  /* a finished card opened: the name, then the sets in rows; "Resume this exercise" opens the working card */
+  .row-sum { display: none; }
+  .block.done.open.summary .row-sum { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 6px; }
+  .block.done.open.summary .row > :not(.top):not(.row-sum) { display: none !important; }
+  .block.done.open.summary .tracker { display: none; }
+  .block.done.open.summary .card-foot .complete, .block.done.open.summary .card-foot .finish-early, .block.done.open.summary .card-foot .resume:not(.resume-full) { display: none !important; }
+  .resume-full { display: none; }
+  .block.done.open.summary .resume-full { display: inline-flex; }
+  .sum-set { display: flex; align-items: center; gap: 12px; min-height: 36px; }
+  .sum-n { width: 28px; height: 28px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: var(--done); color: var(--done-ink); flex: none; }
+  .sum-val { flex: 1 1 auto; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .sum-ok { color: var(--done); font-weight: 700; font-size: 15px; }
+  .sum-set.skip .sum-n { background: var(--glyph-fill); color: var(--text-tertiary); }
+  .sum-set.skip .sum-val { color: var(--text-tertiary); font-weight: 500; }
+  .sum-set.skip .sum-ok { visibility: hidden; }
   .block.done:not(.open) .card-chev { bottom: -2px; }                   /* chevron down, beside "Finished · 3 of 3 sets" */
   .block.done.open .card-chev { bottom: 6px; }                          /* chevron up, bottom corner of the open card (the Sets line keeps − and +) */
   /* client: the card being done is open; the ones still to come fold to a line each, a tap opens one for a look */
@@ -1239,7 +1254,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=46";
+  import { boot } from "./app/main.js?v=47";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

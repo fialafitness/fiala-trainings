@@ -1768,7 +1768,7 @@ import { reportRange, buildReport } from "./report.js";
         undo.hidden = !(sel < doneSets);
         undo.addEventListener("click", () => {                // this set and anything after it go back to not done
           for (const r of g.rows) { if (sel < setsOf(r)) { r.setsDone = Math.min(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), sel); r.done = false; markEarly(t, r, ""); } const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
-          setSel.set(selKey, sel); scheduleSave("trainings", t.id); S.renderedTraining = null; render();
+          fullBlocks.delete(selKey); setSel.set(selKey, sel); scheduleSave("trainings", t.id); S.renderedTraining = null; render();
         });
         complete.addEventListener("click", () => {
           haptic();
@@ -1785,7 +1785,7 @@ import { reportRange, buildReport } from "./report.js";
             if ((r.setsDone || 0) >= setsOf(r)) r.done = true;
             const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id);
           }
-          if (g.rows.every((r) => r.done)) openBlocks.delete(selKey);
+          if (g.rows.every((r) => r.done)) { openBlocks.delete(selKey); fullBlocks.delete(selKey); }
           setSel.delete(selKey); scheduleSave("trainings", t.id);
           setTimeout(() => { S.renderedTraining = null; render(); scrollToCard(g.key); }, 0);   // after the tap has flipped the switch (the iPhone tick), then redraw and glide
         });
@@ -1794,7 +1794,7 @@ import { reportRange, buildReport } from "./report.js";
         resume = document.createElement("button"); resume.type = "button"; resume.className = "resume"; resume.hidden = true; resume.textContent = "Resume this " + groupWord(g);
         resume.addEventListener("click", () => {              // the remaining sets open again; what was logged stays, the reason goes
           for (const r of g.rows) { r.done = clamp(parseInt(r.setsDone, 10) || 0, 0, 20) >= setsOf(r); markEarly(t, r, ""); const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
-          openBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); scrollToCard(g.key);
+          openBlocks.delete(selKey); fullBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); scrollToCard(g.key);
         });
         const first = g.rows[0], noteKey = selKey;
         const addNote = document.createElement("button"); addNote.type = "button"; addNote.className = "add-note";
@@ -1840,8 +1840,10 @@ import { reportRange, buildReport } from "./report.js";
         dropN.addEventListener("click", async () => { const typed = ta.value.trim(); if (typed && typed !== String(first.clientNote || "").trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; noteBox.hidden = true; ta.value = ""; });
         saveN.addEventListener("click", async () => { const text = ta.value.trim(); if (!text && first.clientNote && !(await askFirst({ title: "Delete this note?", text: S.clientMode ? "" : "It goes from this exercise and from the notes list." }))) return; noteBox.hidden = true; writeNote(text); openExNotes.delete(noteKey); paintNote(); });   // saved and folded away: the dot says it is there; an emptied box is a delete and asks like one
         paintNote();
+        const openFull = document.createElement("button"); openFull.type = "button"; openFull.className = "resume resume-full"; openFull.textContent = "Resume this " + groupWord(g);   // from the summary to the working card
+        openFull.addEventListener("click", () => { fullBlocks.add(selKey); paintSummary(); });
         const actsRow = document.createElement("div"); actsRow.className = "foot-row"; actsRow.append(early, addNote);
-        const moreRow = document.createElement("div"); moreRow.className = "foot-row center"; moreRow.append(undo, resume);
+        const moreRow = document.createElement("div"); moreRow.className = "foot-row center"; moreRow.append(undo, resume, openFull);
         foot.append(shown, complete, actsRow, moreRow, noteBox);
       }
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
@@ -1866,10 +1868,11 @@ import { reportRange, buildReport } from "./report.js";
         fold.hidden = true; chev.hidden = !done; chev.classList.toggle("up", open);
         chev.setAttribute("aria-label", open ? "Hide sets" : "Show sets");
       };
-      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey)) block.classList.add("open"); if (!all) openBlocks.delete(selKey); btn.textContent = all ? "\u2713 Done" : "Done"; paintSum(all); paintFold(); };
-      const toggleOpen = () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey); else openBlocks.delete(selKey); paintFold(); };
+      const paintSummary = () => { block.classList.toggle("summary", block.classList.contains("done") && block.classList.contains("open") && !fullBlocks.has(selKey)); };   // a finished card opened: the sets in rows, unless opened all the way
+      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey)) block.classList.add("open"); if (!all) { openBlocks.delete(selKey); fullBlocks.delete(selKey); } btn.textContent = all ? "\u2713 Done" : "Done"; paintSum(all); paintFold(); paintSummary(); };
+      const toggleOpen = () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey); else { openBlocks.delete(selKey); fullBlocks.delete(selKey); } paintFold(); paintSummary(); };
       fold.addEventListener("click", toggleOpen); chev.addEventListener("click", toggleOpen);
-      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.composedPath().some((n) => n.tagName === "BUTTON")) { block.classList.add("open"); openBlocks.add(selKey); paintFold(); } });
+      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.composedPath().some((n) => n.tagName === "BUTTON")) { block.classList.add("open"); openBlocks.add(selKey); paintFold(); paintSummary(); } });
       btn.addEventListener("click", () => {
         const next = !g.rows.every((r) => r.done);
         const track = S.clientMode ? pendingDoneRows : trainerTouched;
@@ -2006,6 +2009,7 @@ import { reportRange, buildReport } from "./report.js";
   const carried = (r, sel) => { const pick = (arr) => { for (let i = sel - 1; i >= 0; i--) { const v = String((arr || [])[i] || "").trim(); if (v) return v; } return ""; }; return { w: pick(r.weights), rp: pick(r.repsDone) }; };
   const setSel = new Map();               // "<training>/<group>" -> set the client is looking at (0-based)
   const openBlocks = new Set();           // finished cards the user opened with "Show sets"
+  const fullBlocks = new Set();           // of those, the ones opened all the way ("Resume this exercise"): the working card instead of the summary
   const peekBlocks = new Set();   // client: exercises still to come that were tapped open to have a look
   let previewClient = false;       // trainer: showing the workout as the client sees it (display only; saving stays the trainer's)
   function rowEl(t, r, group) {
@@ -2342,6 +2346,17 @@ import { reportRange, buildReport } from "./report.js";
     const nSets = setsOf(r), sumEl = q(".sum"); sumEl.replaceChildren();   // "3 sets · 8–10 reps · 60 sec transition" (the open card hides the sets part: the chips above say it)
     const chips = [...el.querySelectorAll(".specs .chip")];
     for (const [text, cls] of [[nSets + (nSets === 1 ? " set" : " sets"), "si sum-sets"], [chipText(chips[0]), "si sum-reps"], [chipText(chips[1]), "si sum-rest"]]) { if (!text) continue; const e = document.createElement("span"); e.className = cls; e.textContent = text; sumEl.appendChild(e); }
+    {                                                                  // the finished card, opened: every set in a row — number, what was lifted, a check (his ask: a quick look)
+      const unitS = (clients.get(t.clientId) || {}).unit || "lb", tmS = timedPlan(r.reps), sumEl = document.createElement("div"); sumEl.className = "row-sum";
+      for (let i = 0; i < setsOf(r); i++) {
+        const line = document.createElement("div"); line.className = "sum-set"; const counted = setCounts(r, i); line.classList.toggle("skip", !counted);
+        const w = String((r.weights || [])[i] || "").trim(), rp = String((r.repsDone || [])[i] || "").trim(), ww = weightWord(w, unitS);
+        const text = !counted ? "Not done" : tmS ? ((w ? w + (ww ? " " + ww : "") + " \u00d7 " : "") + (rp ? rp + " " + tmS.unit : "\u2014")) : ((w ? w + (ww ? " " + ww : "") : "Bodyweight") + (rp ? " \u00d7 " + rp : ""));
+        line.innerHTML = '<span class="sum-n"></span><span class="sum-val"></span><span class="sum-ok">\u2713</span>'; line.children[0].textContent = i + 1; line.children[1].textContent = text;
+        sumEl.appendChild(line);
+      }
+      el.appendChild(sumEl);
+    }
     return el;
   }
 
