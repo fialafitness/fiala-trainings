@@ -173,10 +173,9 @@
     border-bottom: 1px solid var(--header-border);
   }
   .bar { max-width: 680px; margin: 0 auto; padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .back {                                                   /* Apple's glass back capsule: a bold chevron and the place you came from, the page showing through */
+  .back {                                                   /* Apple's back capsule, in the app's own grey: a bold chevron and the place you came from; no shadow, no glass */
     appearance: none; border: 0; padding: 0 16px 0 12px; border-radius: 50px;
-    background: var(--glass-bar); -webkit-backdrop-filter: blur(22px) saturate(170%); backdrop-filter: blur(22px) saturate(170%);
-    box-shadow: inset 0 1px 0 var(--glass-bar-rim), inset 0 0 0 0.5px var(--glass-bar-edge), 0 12px 32px rgba(0,0,0,0.32);   /* the tab bar's exact glass: same tint, blur, rim and shadow */
+    background: var(--glyph-fill);
     color: var(--text-primary); font: inherit; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; cursor: pointer;
     min-height: 40px; display: inline-flex; align-items: center; gap: 6px;
     max-width: 70%; white-space: nowrap; transition: opacity 300ms ease, transform 300ms ease;
@@ -1281,7 +1280,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=55";
+  import { boot } from "./app/main.js?v=56";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
