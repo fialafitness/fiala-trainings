@@ -69,6 +69,11 @@ test("a plan written in time is logged as time; one in reps is not", () => {
   assert.deepStrictEqual(timedPlan("30 sec"), { n: "30", unit: "sec" }); assert.deepStrictEqual(timedPlan("45s"), { n: "45", unit: "sec" });
   assert.deepStrictEqual(timedPlan("1 min"), { n: "1", unit: "min" }); assert.deepStrictEqual(timedPlan("30-45 seconds / side"), { n: "30", unit: "sec" });
   for (const reps of ["10", "6, 6, 4", "8-10 reps", "10 / side", "", "max", "AMRAP", "seconds"]) assert.strictEqual(timedPlan(reps), null, reps);
+  // every spelling of time he uses: mm:ss, 30", "max hold", "hold 30"; the exercise name never decides (a plank jack with 12 is reps)
+  assert.deepStrictEqual(timedPlan("1:30"), { n: "90", unit: "sec" }); assert.deepStrictEqual(timedPlan("0:45 / side"), { n: "45", unit: "sec" }); assert.deepStrictEqual(timedPlan('30"'), { n: "30", unit: "sec" });
+  assert.deepStrictEqual(timedPlan("Max hold"), { n: "", unit: "sec" }); assert.deepStrictEqual(timedPlan("hold 30"), { n: "30", unit: "sec" }); assert.strictEqual(timedPlan("as long as possible").unit, "sec");
+  assert.deepStrictEqual(timedPlan("30 Seconds each side"), { n: "30", unit: "sec" }); assert.deepStrictEqual(timedPlan("2 mins"), { n: "2", unit: "min" }); assert.deepStrictEqual(timedPlan("30sec"), { n: "30", unit: "sec" });
+  assert.strictEqual(timedPlan("12", "Elbow plank jack"), null); assert.strictEqual(timedPlan("60", "Plank"), null, "a bare number is reps until he writes sec"); assert.strictEqual(timedPlan("3:00:00"), null, "not a time of day");
 });
 test("a dumbbell or kettlebell exercise is logged per hand, everything else as loaded", () => {
   for (const [n, v] of [["Dumbbell bicep curl", "dumbbell"], ["DB bench press", "dumbbell"], ["Goblet squat (dumbell)", "dumbbell"], ["Kettlebell swing", "kettlebell"], ["KB goblet squat", "kettlebell"], ["Barbell row", null], ["Deadbug", null], ["Cable curl", null], ["", null]]) assert.strictEqual(perHand(n), v, n);

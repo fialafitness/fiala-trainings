@@ -7,7 +7,17 @@ export const effDate = (t) => t.completedAt ? localIso(new Date(t.completedAt)) 
 export const freshRow = (r) => { const x = { ...r, id: uid(), weights: [], repsDone: [], setsDone: 0, done: false, alts: [...(r.alts || [])] }; delete x.earlyReason; delete x.clientNote; delete x.clientNoteBy; delete x.clientNoteAt; return x; };   // the plan, with nothing logged
 export const isEmptyWorkout = (t) => !!t && !t.completedAt && !t.skippedAt && !(t.rows || []).length && !String(t.title || "").trim() && !isTemplateClient(t.clientId);
 // A plan written in time ("30 sec", "45 s", "1 min", "60 sec / side") is logged as time held, not reps: { n: "30", unit: "sec" }.
-export const timedPlan = (reps) => { const m = /(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*\d+(?:[.,]\d+)?)?\s*(s|sec|secs|second|seconds|min|mins|minute|minutes)\b/i.exec(String(reps || "")); return m ? { n: m[1], unit: /^m/i.test(m[2]) ? "min" : "sec" } : null; };
+// A timed plan: the reps box says time, so the set log asks for time, not reps. Every spelling he uses: "30 sec", "30s", "30 seconds / side",
+// "1 min", "30-45 sec", "1:00", 30", and the words "hold" / "max hold" / "as long as possible". The exercise name never decides (a plank jack is reps).
+export const timedPlan = (reps) => {
+  const s = String(reps || "");
+  const m = /(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*\d+(?:[.,]\d+)?)?\s*(s|sec|secs|second|seconds|min|mins|minute|minutes)\b/i.exec(s);
+  if (m) return { n: m[1], unit: /^m/i.test(m[2]) ? "min" : "sec" };
+  const mm = /(?:^|[^\d:])(\d{1,2}):(\d{2})(?![\d:])/.exec(s); if (mm) return { n: String(parseInt(mm[1], 10) * 60 + parseInt(mm[2], 10)), unit: "sec" };   // "1:30" = 90 seconds
+  const q = /(\d+)\s*(?:"|\u2033|'')/.exec(s); if (q) return { n: q[1], unit: "sec" };                                                  // 30" = 30 seconds
+  if (/\b(hold|max\s*time|as long as possible|alap|for time)\b/i.test(s)) { const n = /\d+/.exec(s); return { n: n ? n[0] : "", unit: "sec" }; }   // "max hold": the box asks for the seconds
+  return null;
+};
 // A dumbbell or kettlebell exercise is logged per hand: the Weight label says so ("Weight / dumbbell"), the number stays a number.
 export const perHand = (name) => { const n = String(name || ""); return /\b(dumb?bells?|dbs?)\b/i.test(n) ? "dumbbell" : /\b(kettlebells?|kbs?)\b/i.test(n) ? "kettlebell" : null; };
 // Ranking logged sets. A hold: the longest, then the heaviest. Anything else: the heaviest, then the most reps; a set with
