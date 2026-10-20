@@ -315,7 +315,11 @@ import { reportRange, buildReport } from "./report.js";
     const row = $("sessionRow"); const show = (v) => { pill.hidden = !v; row.hidden = !v; };
     if (isTemplateClient(t.clientId)) { show(false); return; }
     const plan = c && c.plan && c.plan.kind === "sessions" ? c.plan : null, sn = plan ? sessionNo(plan, clientTrainings(t.clientId), t) : null;
-    if (asClient) { show(!!sn); pill.classList.add("on"); if (sn) pill.textContent = "Session " + sn.n + " of " + sn.size; return; }
+    if (asClient) {                                                     // the client reads it: words on the left, the package as a thin bar on the right
+      show(!!sn); pill.classList.add("on"); if (!sn) return;
+      const bar = sn.size <= 24 ? '<span class="mini-bar">' + Array.from({ length: sn.size }, (_, i) => "<i" + (i < sn.n ? ' class="on"' : "") + "></i>").join("") + "</span>" : "";
+      pill.innerHTML = "<span></span>" + bar; pill.firstChild.textContent = "Session " + sn.n + " of " + sn.size; return;
+    }
     show(true); pill.classList.toggle("on", !!t.inPerson);
     pill.innerHTML = "<i>\u2713</i><span></span>"; pill.lastChild.textContent = t.inPerson && sn ? "In person \u00b7 " + sn.n + " of " + sn.size : "In person";
   }

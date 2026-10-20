@@ -654,7 +654,10 @@
   .session-pill i { display: none; font-style: normal; font-size: 12px; line-height: 1; }           /* the check appears only once it is on */
   .session-pill.on { background: var(--ink); color: var(--ink-on); font-weight: 600; }             /* on: the ink chip, like a chosen filter in Apple's apps */
   .session-pill.on i { display: inline; }
-  body.client .session-pill.on { background: var(--glyph-fill); color: var(--text-primary); }    /* the client reads it; it is not a switch for them */
+  body.client .session-pill.on { background: var(--field); color: var(--text-primary); border-radius: var(--r-field); min-height: 44px; padding: 0 14px; justify-content: space-between; font-size: 15px; font-weight: 600; }   /* the client reads it, in a quiet cell: words left, the package as a thin bar right */
+  .mini-bar { display: flex; gap: 3px; width: 132px; flex: none; }
+  .session-pill .mini-bar i, body.client .session-pill .mini-bar i { display: block; flex: 1 1 0; height: 4px; border-radius: 2px; background: var(--glyph-fill); font-size: 0; }   /* the segments are not the check glyph: they show */
+  .session-pill .mini-bar i.on, body.client .session-pill .mini-bar i.on { background: var(--brand); }   /* the sessions done, in the brand purple like the plan card */
   body.client .session-pill { pointer-events: none; cursor: default; }
   body.client .session-pill i { display: none; }
   .details select { width: 100%; max-width: 220px; appearance: none; -webkit-appearance: none; border: 1.5px solid var(--card-border); border-radius: var(--r-field); background: var(--field); color: var(--text-primary); padding: 8px 32px 8px 12px; font: inherit; font-size: 15px; background-image: linear-gradient(45deg, transparent 50%, var(--text-tertiary) 50%), linear-gradient(135deg, var(--text-tertiary) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
@@ -1236,7 +1239,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=45";
+  import { boot } from "./app/main.js?v=46";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
