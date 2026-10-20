@@ -661,7 +661,12 @@
   .until-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .until-row input { max-width: 170px; }
   .pack-form { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
-  .list li.pack-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; }
+  .list li.pack-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; cursor: pointer; }
+  .list li.pack-row.editing { background: var(--elevated); }
+  .pack-form .kicker { margin: 4px 0 0; }
+  .pack-form .pack-hint { margin: -2px 0 0 2px; font-size: 13px; }
+  .pack-form .edit-foot { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+  .pack-form .edit-foot .btn:first-child { flex: 1 1 auto; }
   .list .pack-row > div:first-child { flex: 1 1 auto; min-width: 0; font-size: 16px; }
   .list .pack-row .sub { margin-top: 2px; }
   .list .pack-row .sub { color: var(--text-secondary); font-size: 14px; }
@@ -1007,10 +1012,13 @@
     <p class="muted" style="margin:0 0 14px;max-width:420px">What you sell. A package is a number of in-person sessions, or a 4-week plan for clients who follow the app on their own.</p>
     <ul class="list" id="packList"></ul>
     <div class="pack-form" id="packForm">
+      <div class="kicker" id="packFormCap">New package</div>
       <input id="packName" placeholder="Name, e.g. 10 sessions" autocomplete="off" autocapitalize="sentences">
       <div class="field-row"><span class="muted">Type</span><div class="seg" id="packKind" role="radiogroup" aria-label="Type"><button type="button" data-kind="sessions" class="on">Sessions</button><button type="button" data-kind="monthly">4 weeks</button></div></div>
       <div class="field-row" id="packSizeRow"><span class="muted">Sessions</span><input id="packSize" type="number" inputmode="numeric" min="1" max="200" placeholder="10" style="max-width:120px"></div>
-      <button class="btn" id="packAdd" type="button" style="width:100%;margin-top:4px">Add package</button>
+      <div class="field-row"><span class="muted">In person by default</span><div class="seg" id="packInPerson" role="radiogroup" aria-label="In person by default"><button type="button" data-on="1">On</button><button type="button" data-on="0" class="on">Off</button></div></div>
+      <p class="muted pack-hint" id="packHint">New workouts for clients on this package start with the In person switch on.</p>
+      <div class="edit-foot"><button class="btn" id="packAdd" type="button">Add package</button><button class="btn quiet" id="packCancel" type="button" hidden>Discard</button></div>
     </div>
   </section>
 
@@ -1228,7 +1236,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=43";
+  import { boot } from "./app/main.js?v=44";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

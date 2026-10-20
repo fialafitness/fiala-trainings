@@ -130,3 +130,16 @@ test("a client whose monthly plan has ended keeps everything still queued: the s
   await fns.syncDownNow();
   assert.ok(maps.dirty.has("trainings/T") && maps.pendingFinish.has("T") && maps.pendingWeightRows.has("T"), "the queue survives"); assert.ok(maps.trainings.has("T"), "and so does the device copy");
 });
+
+test("a client on an 'in person by default' package gets new workouts with the switch on; other clients do not", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const { TEMPLATES_ID } = await import("../app/model.js");
+  maps.clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", kind: "templates", packages: [{ id: "p1", name: "10 sessions", kind: "sessions", size: 10, inPerson: true }, { id: "p2", name: "4-week plan", kind: "monthly", size: null, inPerson: false }] });
+  maps.clients.get("c1").plan = { id: "p1", name: "10 sessions", kind: "sessions", size: 10, startedOn: "2026-10-01", adjust: 0 };
+  maps.clients.set("c2", { id: "c2", name: "Bob", unit: "lb", plan: { id: "p2", name: "4-week plan", kind: "monthly", size: null, until: "2026-12-01" } });
+  maps.clients.set("c3", { id: "c3", name: "Cat", unit: "lb" });
+  fns.addTraining("c1"); fns.addTraining("c2"); fns.addTraining("c3");
+  const of = (id) => [...maps.trainings.values()].find((t) => t.clientId === id);
+  assert.strictEqual(of("c1").inPerson, true); assert.strictEqual(of("c2").inPerson, undefined); assert.strictEqual(of("c3").inPerson, undefined);
+  assert.strictEqual(fns.packageOf(maps.clients.get("c1")).name, "10 sessions"); assert.strictEqual(fns.packageOf(maps.clients.get("c3")), null);
+});
