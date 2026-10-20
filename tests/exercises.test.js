@@ -53,3 +53,35 @@ test("the old spelling still finds the exercise: 'triceps' is an alias of every 
   assert.strictEqual(ALIASES["Triceps pushdown"], "Tricep pushdown"); assert.strictEqual(ALIASES["Triceps dips"], "Tricep dip");
   const keys = new Set(NAMES.map((n) => n.toLowerCase().replace(/[^a-z0-9]+/g, ""))); assert.strictEqual(keys.size, NAMES.length, "no two names share a key");
 });
+
+test("an old spelling is the exercise it names: known, not addable, resolved by the editor; and the search still finds it", async () => {
+  const sb = coach();
+  assert.strictEqual(fns.knownName("Triceps pushdown"), true); assert.strictEqual(fns.properName(" Triceps  pushdown "), "Tricep pushdown");
+  assert.strictEqual(await fns.addCustomName("Triceps pushdown"), true); assert.deepStrictEqual(ops(sb, "ft_exercises"), [], "no duplicate row for an alias");
+  assert.ok(fns.exerciseMatches("triceps pushdown").some(([n]) => n === "Tricep pushdown"));
+  await fns.renameExercise("triceppushdown", "Tricep pushdown", "Tricep push-down");                          // his spelling, same key
+  assert.ok(fns.exerciseMatches("triceps").some(([n]) => n === "Tricep push-down"), "the alias search shows his spelling");
+});
+test("renaming his spelling of a built-in to a new name keeps the built-in hidden, and a failed hide reports failure", async () => {
+  const sb = coach();
+  await fns.renameExercise("triceppushdown", "Tricep pushdown", "Tricep push-down");
+  assert.strictEqual(await fns.renameExercise("triceppushdown", "Tricep push-down", "Cable pushdown"), true);
+  assert.ok(maps.hiddenKeys.has("triceppushdown"), "the built-in must not come back"); assert.ok(!fns.allNames().includes("Tricep pushdown")); assert.ok(fns.allNames().includes("Cable pushdown"));
+  const sb2 = coach(); maps.customNames.set("tricepdip", "Tricep dip!"); fns.refreshNames(); sb2.setFail({ table: "ft_exercise_hidden", times: 1, message: "Could not find the table public.ft_exercise_hidden in the schema cache" });
+  assert.strictEqual(await fns.deleteExercise("tricepdip", "Tricep dip!"), false, "the built-in would have reappeared");
+});
+test("a rename follows every spelling of the old name in workouts, and nothing moves before the built-in has stepped aside", async () => {
+  const sb = coach(); maps.customVideos.set("tricep pushdown", "mine1");
+  maps.trainings.set("t1", { id: "t1", clientId: "c1", date: "2026-10-01", rows: [{ id: "r1", name: "Triceps pushdown" }, { id: "r2", name: "Triceps pushdowns", alts: ["Tricep pushdown"] }] });
+  sb.setFail({ table: "ft_exercise_hidden", times: 1, message: "boom" });
+  assert.strictEqual(await fns.renameExercise("triceppushdown", "Tricep pushdown", "Cable pushdown"), false);
+  assert.strictEqual(maps.customVideos.get("tricep pushdown"), "mine1", "the video stays where it was"); assert.ok(!maps.customVideos.has("cable pushdown"));
+  assert.strictEqual(await fns.renameExercise("triceppushdown", "Tricep pushdown", "Cable pushdown"), true);
+  const rows = maps.trainings.get("t1").rows; assert.strictEqual(rows[0].name, "Cable pushdown"); assert.strictEqual(rows[1].name, "Cable pushdown"); assert.deepStrictEqual(rows[1].alts, ["Cable pushdown"]);
+  assert.strictEqual(maps.customVideos.get("cable pushdown"), "mine1");
+});
+test("a stored 'no video' marker does not travel onto a merge target's own video", async () => {
+  coach(); maps.customVideos.set("tricep pushdown", ""); 
+  assert.strictEqual(await fns.renameExercise("triceppushdown", "Tricep pushdown", "Tricep kickback"), true);
+  assert.ok(!maps.customVideos.has("tricep kickback")); assert.ok(fns.videoForName("Tricep kickback"), "the kickback keeps its built-in video");
+});

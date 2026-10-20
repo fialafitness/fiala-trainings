@@ -110,9 +110,9 @@ Barbell concentration biceps curl
 Barbell curl
 Barbell deadlift from blocks
 Barbell deadlift from deficit
-Barbell decline bench triceps extension
+Barbell decline bench tricep extension
 Barbell deficit reverse lunge
-Barbell flat bench triceps extension
+Barbell flat bench tricep extension
 Barbell French press
 Barbell front raise
 Barbell front squat iso
@@ -121,14 +121,14 @@ Barbell glute bridge
 Barbell good morning
 Barbell hip thrust
 Barbell incline bench row
-Barbell incline bench triceps extension
+Barbell incline bench tricep extension
 Barbell JM press
 Barbell jump squat
 Barbell low decline French press
 Barbell lunge
 Barbell overhead press
 Barbell overhead shrug
-Barbell overhead triceps extension
+Barbell overhead tricep extension
 Barbell pause bench press
 Barbell pause Larsen bench press
 Barbell pause squat
@@ -271,20 +271,20 @@ Cable chest fly
 Cable crossover
 Cable curl
 Cable deadlift
-Cable decline bench triceps extension
+Cable decline bench tricep extension
 Cable external rotation at 30 degrees abduction
 Cable external rotation at 90 degrees abduction
 Cable external rotation on knee
 Cable face pull
 Cable face pull with rotation, to forehead
 Cable flat bench fly
-Cable flat bench triceps extension
+Cable flat bench tricep extension
 Cable front raise
 Cable hammer curl
 Cable incline bench biceps curl
 Cable incline bench fly
 Cable incline bench press
-Cable incline bench triceps extension
+Cable incline bench tricep extension
 Cable kickback
 Cable lat pulldown
 Cable lat pulldown to knees
@@ -295,9 +295,9 @@ Cable machine shoulder press (straddling, reversed)
 Cable narrow-grip lat pulldown
 Cable one-legged kickback
 Cable overhead curl
-Cable overhead triceps extension
-Cable overhead triceps extension on high pulley
-Cable overhead triceps extension with rope
+Cable overhead tricep extension
+Cable overhead tricep extension on high pulley
+Cable overhead tricep extension with rope
 Cable pectoral fly – seated
 Cable pectoral press – seated
 Cable pectoral press – standing
@@ -305,20 +305,20 @@ Cable pull through
 Cable pulldown
 Cable rear delt fly
 Cable reverse-grip lat pulldown
-Cable reverse-grip triceps pushdown
+Cable reverse-grip tricep pushdown
 Cable rope biceps curl
 Cable rope seated high row
-Cable rope triceps pushdown
+Cable rope tricep pushdown
 Cable sawing, 180 degrees
 Cable shoulder press (seated)
 Cable single-arm lat pulldown
-Cable single-arm overhead triceps extension
+Cable single-arm overhead tricep extension
 Cable squat
 Cable standing shoulder press
-Cable straight bar triceps pushdown
+Cable straight bar tricep pushdown
 Cable straight-arm pulldown
 Cable upright row
-Cable V-bar triceps pushdown
+Cable V-bar tricep pushdown
 Cable wide-grip lat pulldown
 Calf raise on leg press/standing
 Calf stretch
@@ -381,7 +381,7 @@ Contralateral snatch
 Cossack squat
 Couch stretch
 Criss cross jumping jack
-Cross body cable triceps extension
+Cross body cable tricep extension
 Cross body sit-up
 Cross jump touch down
 Cross-body lat mobilization
@@ -392,7 +392,7 @@ Crunch over bench
 Crunch over bench/V-crunch
 Cuban rotation + press
 Cuban rotation with stick/barbell
-Curl to press to triceps extension
+Curl to press to tricep extension
 Curtsy lunge
 Curtsy lunge with pause
 Cyclist squat
@@ -407,8 +407,8 @@ Decline close-grip bench press with chains
 Decline EZ bar bench press, medium grip
 Decline EZ bar French press, medium grip, behind head
 Decline EZ bar French press, neutral-grip, to forehead
-Decline neutral-grip dumbbell triceps extension to shoulders
-Decline pronated dumbbell triceps extension behind head
+Decline neutral-grip dumbbell tricep extension to shoulders
+Decline pronated dumbbell tricep extension behind head
 Decline push-up
 Deep dip with press out to support
 Deep neck flexor activation and suboccipital stretch
@@ -580,7 +580,7 @@ Floor chest press hollow hold
 Floor dumbbell hip thrust
 Floor press
 Floor slide
-Floor triceps dip
+Floor tricep dip
 FM flow I (base position – mountain climber – kick through)
 Foam roll
 Forearm plank
@@ -602,7 +602,7 @@ Front foot elevated lunge
 Front foot elevated lunge + step-up
 Front foot elevated split squat
 Front lever protraction (drill)
-Front lunge to overhead triceps
+Front lunge to overhead tricep
 Front rack reverse lunge
 Front rack shrug
 Front raise straddling incline bench
@@ -787,7 +787,7 @@ Knee hug
 Knee over toe lunge
 Knee to chest
 Kneeling cable fly in front of body
-Kneeling cable overhead triceps extension
+Kneeling cable overhead tricep extension
 Kneeling cable press in front of body
 Kneeling chop
 Kneeling Cossack squat
@@ -810,7 +810,7 @@ Landmine reverse lunge
 Landmine Romanian deadlift
 Landmine shoulder press
 Landmine thruster
-Lat and triceps stretch
+Lat and tricep stretch
 Lat pulldown
 Lat pulldown to knees
 Lat pulldown with V-handle
@@ -863,13 +863,13 @@ Low incline dumbbell power fly
 Low incline dumbbell press – with band
 Low plank hip twist
 Low pulley lateral raise
-Lying alternating triceps extension
-Lying band French press/overhead triceps extension with rope
+Lying alternating tricep extension
+Lying band French press/overhead tricep extension with rope
 Lying barbell French press behind head
 Lying close-grip dumbbell press
 Lying decline French press to forehead, medium grip
 Lying dumbbell French press behind head
-Lying dumbbell triceps extension (to shoulders)
+Lying dumbbell tricep extension (to shoulders)
 Lying EZ bar press, close-grip
 Lying EZ bar press, medium grip
 Lying hamstring curl
@@ -886,7 +886,7 @@ Lying leg curl, toes in, dorsiflexed
 Lying leg curl, toes out, dorsiflexed
 Lying leg raise
 Lying slide pulldown
-Lying triceps extension on crossover cables
+Lying tricep extension on crossover cables
 Lying TRX hamstring curl (heels to glutes)
 Machine ab crunch
 Machine assisted chin-up
@@ -919,9 +919,9 @@ Machine shoulder press
 Machine shrug
 Machine single-leg press
 Machine standing leg curl
-Machine triceps dip
-Machine triceps extension
-Machine triceps pushdown
+Machine tricep dip
+Machine tricep extension
+Machine tricep pushdown
 Machine upright row
 Machine vertical row
 Marching bridge
@@ -987,12 +987,12 @@ Overhand dumbbell biceps curl
 Overhand EZ bar curl (one foot forward)
 Overhand EZ bar curl, shoulder width grip
 Overhand lat pulldown
-Overhand triceps pushdown, elbows behind body
-Overhand triceps pushdown, elbows in front of body
+Overhand tricep pushdown, elbows behind body
+Overhand tricep pushdown, elbows in front of body
 Overhead extension on TRX/rings
 Overhead sit-up
 Overhead squat
-Overhead triceps extension with band/rope cable (iso hold at max extension)
+Overhead tricep extension with band/rope cable (iso hold at max extension)
 Pallof press
 Pallof press horizontal circle
 Palm up raise
@@ -1041,12 +1041,12 @@ Plank pop up
 Plank pull
 Plank row
 Plank row rotation
-Plank row to triceps extension
+Plank row to tricep extension
 Plank shoulder and knee tap
 Plank shoulder tap
 Plank to downward dog
 Plank transition from hands to elbows
-Plank triceps extension
+Plank tricep extension
 Plank walk out
 Plank with alternating row
 Plank-up
@@ -1144,7 +1144,7 @@ Reverse plank hold
 Reverse plank knee drive
 Reverse step-up
 Reverse table top knee raise
-Reverse triceps extension
+Reverse tricep extension
 Ring dip (cluster sets)
 Ring dip with support
 Ring plank
@@ -1238,7 +1238,7 @@ Seated military press
 Seated overhead press
 Seated overhead press from pins (low)
 Seated overhead press isometric (high)
-Seated overhead triceps extension
+Seated overhead tricep extension
 Seated partial lat pulldown, underhand grip
 Seated plate loaded row
 Seated reverse fly
@@ -1285,7 +1285,7 @@ Single-arm cable curl
 Single-arm cable hammer curl
 Single-arm cable lateral raise
 Single-arm cable overhead press
-Single-arm cable triceps extension
+Single-arm cable tricep extension
 Single-arm cable upright row
 Single-arm clean
 Single-arm costal cable chest press
@@ -1323,10 +1323,10 @@ Single-arm kettlebell Z press
 Single-arm kettlebell/dumbbell row with rotation
 Single-arm landmine row
 Single-arm lat pulldown
-Single-arm lateral cable triceps extension
+Single-arm lateral cable tricep extension
 Single-arm lateral raise
-Single-arm lying dumbbell rolling triceps extension
-Single-arm lying dumbbell triceps extension
+Single-arm lying dumbbell rolling tricep extension
+Single-arm lying dumbbell tricep extension
 Single-arm machine lat pulldown
 Single-arm machine preacher curl
 Single-arm oblique cable twist
@@ -1497,21 +1497,21 @@ Standing elbow to knee
 Standing EZ bar biceps curl
 Standing face pull overhead
 Standing face pull to forehead
-Standing high cable triceps extension
+Standing high cable tricep extension
 Standing kettlebell press
 Standing medicine ball lift and chop
 Standing oblique crunch
 Standing Olympic barbell biceps curl
 Standing opposite toe tap
 Standing Pallof press
-Standing plate triceps extension behind head
+Standing plate tricep extension behind head
 Standing single-arm dumbbell overhead press
 Standing single-leg arm press
 Standing single-leg hold
 Standing split-stance landmine press
 Standing strict overhead press
 Standing thoracic extension rotation
-Standing triceps extension
+Standing tricep extension
 Standing trunk rotation
 Standing unilateral dumbbell lateral raise
 Static lunge
@@ -1625,15 +1625,15 @@ Trap bar deadlift
 Trap bar farmer's walk
 Traps lacrosse or tennis ball rolling (SMR)
 Travelling push-up
-Triceps dip
-Triceps dip + hold
-Triceps extension (band/dumbbell)
-Triceps kickback
-Triceps press
-Triceps pressdown
-Triceps push-up
-Triceps pushdown
-Triceps rope pushdown (cable/band)
+Tricep dip
+Tricep dip + hold
+Tricep extension (band/dumbbell)
+Tricep kickback
+Tricep press
+Tricep pressdown
+Tricep push-up
+Tricep pushdown
+Tricep rope pushdown (cable/band)
 Triple jump for length
 TRX biceps curl (single-arm/two arms)
 TRX chest press
@@ -1651,7 +1651,7 @@ TRX row (underhand, to chest)
 TRX row and external rotation
 TRX scarecrow
 TRX single-leg squat
-TRX triceps extension
+TRX tricep extension
 Tube walking
 Tuck jump
 Tucked bent arm planche
@@ -1664,7 +1664,7 @@ Tummo
 Turkish get-up
 Twist hanging leg raise
 Two-leg kick-up to handstand from floor
-Underhand cable triceps pushdown
+Underhand cable tricep pushdown
 Underhand chin-up – close-grip (weighted)
 Underhand chin-up – shoulder width (weighted)
 Underhand close-grip lat pulldown
