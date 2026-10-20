@@ -390,16 +390,22 @@
   .block.done:not(.open) .card-foot { display: none; }                  /* folded: the status line is the bottom of the card */
   /* a finished card opened: the name, then the sets in rows; "Resume this exercise" opens the working card */
   .row-sum { display: none; }
-  .block.done.open.summary .row-sum { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 6px; }
+  .block.done.open.summary .row-sum { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 8px; }
   .block.done.open.summary .row > :not(.top):not(.row-sum) { display: none !important; }
   .block.done.open.summary .tracker { display: none; }
   .block.done.open.summary .card-foot .complete, .block.done.open.summary .card-foot .finish-early, .block.done.open.summary .card-foot .resume:not(.resume-full) { display: none !important; }
   .resume-full { display: none; }
   .block.done.open.summary .resume-full { display: inline-flex; }
-  .sum-set { display: flex; align-items: center; gap: 12px; min-height: 36px; }
+  .sum-set { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px 0 8px; background: var(--field); border-radius: var(--r-field); }   /* one cell per set */
   .sum-n { width: 28px; height: 28px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: var(--done); color: var(--done-ink); flex: none; }
-  .sum-val { flex: 1 1 auto; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); }
-  .sum-ok { color: var(--done); font-weight: 700; font-size: 15px; }
+  .sum-val { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 5px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; overflow: hidden; }
+  .row-sum .sum-set input { appearance: none; border: 0; background: transparent; margin: 0; padding: 0 2px; min-height: 28px; height: 28px; width: 4ch; border-radius: 6px; font: inherit; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); text-align: left; }   /* the numbers are text until touched: a tap edits in place */
+  .row-sum .sum-set input::placeholder { color: var(--text-tertiary); font-weight: 500; }
+  .row-sum .sum-set input:focus { outline: none; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--brand); }
+  .sum-unit { color: var(--text-secondary); font-weight: 500; font-size: 14px; }
+  .sum-unit:empty { display: none; }
+  .sum-x { color: var(--text-tertiary); font-weight: 500; }
+  .sum-ok { color: var(--done); font-weight: 700; font-size: 15px; flex: none; }
   .sum-set.skip .sum-n { background: var(--glyph-fill); color: var(--text-tertiary); }
   .sum-set.skip .sum-val { color: var(--text-tertiary); font-weight: 500; }
   .sum-set.skip .sum-ok { visibility: hidden; }
@@ -1254,7 +1260,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=47";
+  import { boot } from "./app/main.js?v=48";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
