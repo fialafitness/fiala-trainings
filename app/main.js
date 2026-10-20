@@ -1757,7 +1757,7 @@ import { reportRange, buildReport } from "./report.js";
       if (tracker) card.appendChild(tracker);
       rowEls.forEach((e) => card.appendChild(e));
       const foot = document.createElement("div"); foot.className = "card-foot";
-      let resume = null;                                   // undo for "Finish early": shown on the opened card while it is finished early
+      let resume = null, openFull = null;                  // undo for "Finish early": shown on the opened card while it is finished early; openFull: from the summary to the working card
       if (total > 0 && !isTpl) {
         const sel = g.sel, current = sel === doneSets && doneSets < total;
         const complete = document.createElement("label"); complete.htmlFor = "hapticSwitch"; complete.className = "btn complete"; complete.setAttribute("role", "button"); complete.tabIndex = 0;   // a label for the hidden switch: the tap itself gives the haptic on iPhone
@@ -1840,11 +1840,11 @@ import { reportRange, buildReport } from "./report.js";
         dropN.addEventListener("click", async () => { const typed = ta.value.trim(); if (typed && typed !== String(first.clientNote || "").trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; noteBox.hidden = true; ta.value = ""; });
         saveN.addEventListener("click", async () => { const text = ta.value.trim(); if (!text && first.clientNote && !(await askFirst({ title: "Delete this note?", text: S.clientMode ? "" : "It goes from this exercise and from the notes list." }))) return; noteBox.hidden = true; writeNote(text); openExNotes.delete(noteKey); paintNote(); });   // saved and folded away: the dot says it is there; an emptied box is a delete and asks like one
         paintNote();
-        const openFull = document.createElement("button"); openFull.type = "button"; openFull.className = "resume resume-full"; openFull.textContent = "Resume this " + groupWord(g);   // from the summary to the working card
+        openFull = document.createElement("button"); openFull.type = "button"; openFull.className = "resume resume-full"; openFull.hidden = true; openFull.textContent = "Resume this " + groupWord(g);   // from the summary to the working card
         openFull.addEventListener("click", () => { fullBlocks.add(selKey); paintSummary(); });
         const actsRow = document.createElement("div"); actsRow.className = "foot-row"; actsRow.append(early, addNote);
         const moreRow = document.createElement("div"); moreRow.className = "foot-row center"; moreRow.append(undo, resume, openFull);
-        foot.append(shown, complete, actsRow, moreRow, noteBox);
+        foot.append(shown, complete, moreRow, actsRow, noteBox);     // undo / resume first, then Finish early + Add note (his order)
       }
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
       const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold-btn";
@@ -1868,7 +1868,7 @@ import { reportRange, buildReport } from "./report.js";
         fold.hidden = true; chev.hidden = !done; chev.classList.toggle("up", open);
         chev.setAttribute("aria-label", open ? "Hide sets" : "Show sets");
       };
-      const paintSummary = () => { block.classList.toggle("summary", block.classList.contains("done") && block.classList.contains("open") && !fullBlocks.has(selKey)); };   // a finished card opened: the sets in rows, unless opened all the way
+      const paintSummary = () => { const summary = block.classList.contains("done") && block.classList.contains("open") && !fullBlocks.has(selKey); block.classList.toggle("summary", summary); if (openFull) openFull.hidden = !summary; };   // a finished card opened: the sets in rows, unless opened all the way
       const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey)) block.classList.add("open"); if (!all) { openBlocks.delete(selKey); fullBlocks.delete(selKey); } btn.textContent = all ? "\u2713 Done" : "Done"; paintSum(all); paintFold(); paintSummary(); };
       const toggleOpen = () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey); else { openBlocks.delete(selKey); fullBlocks.delete(selKey); } paintFold(); paintSummary(); };
       fold.addEventListener("click", toggleOpen); chev.addEventListener("click", toggleOpen);
