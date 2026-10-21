@@ -801,7 +801,7 @@ import { reportRange, buildReport } from "./report.js";
     kbChips.replaceChildren();
     const chip = (label, fn) => { const b = document.createElement("button"); b.type = "button"; b.tabIndex = -1; b.textContent = label; b.addEventListener("click", fn); kbChips.appendChild(b); };
     const unitChip = (u) => chip(u, () => { const v = kbTarget.value.trim().replace(/\s*(sec|s|min)$/i, ""); if (v) kbSet(v + " " + u, true); }); // 60 → 60 sec, 4 min → 4 sec
-    if (kind === "weights") { chip("BW", () => kbSet("BW")); if (!t.closest(".setlog")) unitChip("sec"); }   // the set log has its own Time box: seconds never go in the weight
+    if (kind === "weights") { chip("Bodyweight", () => kbSet("BW")); if (!t.closest(".setlog")) unitChip("sec"); }   // the key says the word the box will show   // the set log has its own Time box: seconds never go in the weight
     const sideChip = (w) => chip(w, () => { const v = kbTarget.value.trim().replace(/\s*(\/|each|per)\s*(side|leg|arm)$/i, ""); if (v) kbSet(v + " " + w, true); });   // 7 → "7 / side"
     if (kind === "reps") { chip("\u2013", () => kbInsert("\u2013")); sideChip("/ side"); unitChip("sec"); }
     if (kind === "tempo") { chip("X", () => kbInsert("X")); for (const w of ["Normal", "Controlled", "Slow"]) chip(w, () => kbSet(w, true)); for (const c of ["3010", "4010", "10X0", "41X0"]) chip(c, () => kbSet(c, true)); }
