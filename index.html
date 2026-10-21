@@ -33,6 +33,7 @@
     --sheet: #ffffff;                   /* bottom sheet (the day picker) */
     --sheet-list: #f5f5f7;              /* a grouped list inside a sheet: the page grey on the white sheet */
     --elevated: #ffffff;                /* anything that floats: menus, keyboard bar, sheet */
+    --kb-bg: #d1d4d9; --kb-key: #ffffff; --kb-special: #abb0ba; --kb-ink: #000000; --kb-shadow: rgba(0,0,0,0.30); --kb-go: #1c1c1e; --kb-go-ink: #ffffff;   /* the bar above the keyboard: iOS's light keys */
     --seg-on: #ffffff;                  /* the chosen segment: a raised white key */
     --seg-shadow: rgba(0,0,0,0.12);
     --card: #ffffff;
@@ -72,6 +73,7 @@
       --sheet: #2c2c2e;
       --sheet-list: rgba(255,255,255,0.08);
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
+      --kb-bg: #202022; --kb-key: #434345; --kb-special: #2b2b2d; --kb-ink: #ffffff; --kb-shadow: rgba(0,0,0,0.55); --kb-go: #ffffff; --kb-go-ink: #000000;   /* iOS's dark keys; Next is the white key */
       --seg-on: rgba(255,255,255,0.16);
       --seg-shadow: transparent;
       --card: #1c1c1e;                  /* Apple's dark grouped card */
@@ -111,6 +113,7 @@
     --sheet: #2c2c2e;
     --sheet-list: rgba(255,255,255,0.08);
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
+      --kb-bg: #202022; --kb-key: #434345; --kb-special: #2b2b2d; --kb-ink: #ffffff; --kb-shadow: rgba(0,0,0,0.55); --kb-go: #ffffff; --kb-go-ink: #000000;   /* iOS's dark keys; Next is the white key */
       --seg-on: rgba(255,255,255,0.16);
       --seg-shadow: transparent;
     --card: #1c1c1e;                  /* Apple's dark grouped card */
@@ -785,12 +788,13 @@
   .weights .boxes { display: flex; gap: 8px; flex-wrap: wrap; }
   .weights input { flex: 1 1 52px; max-width: 80px; text-align: center; padding: 12px 4px; font-weight: 500; }
   /* bar that rides above the phone keyboard while a reps / tempo / weight box is being typed in */
-  #kbbar { position: fixed; left: 0; right: 0; top: 0; z-index: 50; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--elevated); border-top: 1px solid var(--card-border); box-shadow: 0 -6px 20px rgba(0,0,0,0.10); }
+  #kbbar { position: fixed; left: 0; right: 0; top: 0; z-index: 50; display: flex; align-items: center; gap: 6px; padding: 8px 6px; background: var(--kb-bg); }   /* a row of keys in the keyboard's own colours: one system with the keyboard below it */
   #kbbar[hidden] { display: none; }
-  #kbbar button { appearance: none; border: 0; cursor: pointer; min-height: 36px; padding: 0 16px; border-radius: 50px; background: var(--field); color: var(--text-primary); font-size: 15px; font-weight: 500; letter-spacing: 0; white-space: nowrap; }
-  #kbbar .kb-mode { font-variant-numeric: tabular-nums; min-width: 60px; }
-  #kbbar .kb-chips { display: flex; gap: 8px; }
-  #kbbar .kb-done { margin-left: auto; background: transparent; color: var(--brand); font-weight: 600; padding: 0 6px; }
+  #kbbar button { appearance: none; border: 0; cursor: pointer; min-height: 42px; padding: 0 14px; border-radius: 6px; background: var(--kb-key); color: var(--kb-ink); font-size: 17px; font-weight: 400; letter-spacing: 0; white-space: nowrap; box-shadow: 0 1px 0 var(--kb-shadow); -webkit-tap-highlight-color: transparent; }
+  #kbbar button:active { filter: brightness(1.15); }
+  #kbbar .kb-mode { font-variant-numeric: tabular-nums; min-width: 64px; background: var(--kb-special); font-size: 16px; }   /* the ABC / 123 key: a special key, like the keyboard's own */
+  #kbbar .kb-chips { display: flex; gap: 6px; }
+  #kbbar .kb-done { margin-left: auto; min-width: 88px; background: var(--kb-go); color: var(--kb-go-ink); font-weight: 500; }   /* Next / Done: the one key that stands out */
 
   .note { margin-top: 12px; }
   .note[hidden] { display: none; }
@@ -1292,7 +1296,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=67";
+  import { boot } from "./app/main.js?v=68";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
