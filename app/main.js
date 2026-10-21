@@ -2625,6 +2625,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- boot ----------
   Object.assign(ui, { $, setStatus, render, showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar });   // what the sync layer may call on the screens
   async function boot() {
+    try { const v = new URL(import.meta.url).searchParams.get("v"); if (v) $("appVersion").textContent = "Version " + v; } catch (_) {}   // the build this phone runs, read off the script's own ?v=
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) S.view = saved;
     const page = lsGet("fiala.trainings.page"); if (page && page.open) pendingPage = page;   // read before any screen change clears it
     localBackend.load();                       // instant start from the device copy

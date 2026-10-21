@@ -972,6 +972,7 @@
   .pill[hidden] { display: none; }
   .pill:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   .settings-list { max-width: 480px; }
+  .version { margin: 20px 0 0 2px; font-size: 13px; color: var(--text-tertiary); }   /* which build this phone is running: the number after ?v= in index.html */
   .settings-list .srow { min-height: 56px; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 17px; letter-spacing: -0.01em; color: var(--text-primary); }
   .settings-list button > span:first-child, .settings-list .srow > span:first-child { flex: none; }
   .settings-list .sub { display: inline-flex; align-items: center; min-width: 0; font-size: 15px; }
@@ -1083,6 +1084,7 @@
       <li><button type="button" id="restore"><span>Restore</span><span class="sub"><span class="val">From a backup file</span></span></button></li>
     </ul>
     <div class="foot"><button class="btn tint" id="signout" type="button">Sign out</button></div>
+    <p class="muted version" id="appVersion"></p>
   </section>
 
   <section id="vNumber" hidden>
@@ -1288,7 +1290,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=65";
+  import { boot } from "./app/main.js?v=66";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
