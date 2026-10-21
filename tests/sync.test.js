@@ -115,6 +115,16 @@ test("a rule not installed yet keeps the client's decision on the device and doe
   await fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify(t)));
   assert.ok(app.get().moveMissing && app.get().missMissing); assert.ok(maps.pendingMove.has("T") && maps.pendingMiss.has("T"), "kept for a later launch"); assert.ok(!maps.pendingFinish.has("T"));
 });
+test("without the log-set rule a hold's seconds still travel the old way, as a weight the coach's app moves back", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend });
+  sb.rpcs.client_set_weights = async () => null; sb.rpcs.client_set_done = async () => null;   // client_log_set missing: PGRST202
+  const hold = { ...row("r1", ["", "", "25"], ["45", "50", ""], 2), name: "Plank", reps: "45 sec" }, lift = row("r2", ["100", "", ""], ["5", "", ""], 1);
+  const t = training("T", { rows: [hold, lift] }); maps.trainings.set("T", t); maps.pendingWeightRows.set("T", new Set(["r1", "r2"]));
+  await fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify(t)));
+  const sent = sb.log.filter((l) => l.rpc === "client_set_weights").map((l) => l.args.p_weights);
+  assert.deepStrictEqual(sent, [["45 sec", "50 sec", "25"], ["100", "", ""]], "seconds as the old weight string; a real weight and a plain lift untouched");
+  assert.ok(app.get().logSetMissing);
+});
 test("the device copy reports when it cannot be written", () => {
   app.reset(); app.set({ backend: fns.localBackend });
   env.storage.fail = true;

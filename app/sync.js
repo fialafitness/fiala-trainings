@@ -1,7 +1,7 @@
 // Saving and syncing: the device copy, the debounced save queue, the cloud backend (coach), the client backend (RPCs),
 // the paged read of the server and the merge back into the local maps. Screens are reached only through `ui`.
 import { lsGet, lsSet, norm, clamp, today } from "./util.js";
-import { isTemplateClient, planActive, repairTimed } from "./model.js";
+import { isTemplateClient, planActive, repairTimed, timedPlan } from "./model.js";
 import { mergeNotes } from "./notes.js";
 import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, planTouched, confirmedAt, deletedNotes, pendingNoteRows } from "./state.js";
 
@@ -173,11 +173,12 @@ const clientBackend = {
       for (let i = 0; i < ids.length; i++) {
         const r = (data.rows || []).find((x) => x.id === ids[i]); if (!r) continue;
         const clean = (a) => (a || []).map((w) => String(w == null ? "" : w).slice(0, 16));
+        const oldWay = (r) => { const tm = timedPlan(r.reps); if (!tm) return r.weights; const ws = [...(r.weights || [])], rs = r.repsDone || []; for (let j = 0; j < Math.max(ws.length, rs.length); j++) if (!String(ws[j] == null ? "" : ws[j]).trim() && String(rs[j] == null ? "" : rs[j]).trim()) ws[j] = String(rs[j]).trim() + " " + tm.unit; return ws; };   // the old rule carries weights only: a hold's seconds travel as "45 sec" and the coach's app moves them back into the time column
         let error = null;
         if (!S.logSetMissing) ({ error } = await S.sb.rpc("client_log_set", { p_training: id, p_row: ids[i], p_weights: clean(r.weights), p_reps: clean(r.repsDone), p_sets_done: clamp(parseInt(r.setsDone, 10) || 0, 0, 20), p_done: !!r.done }));
         if (S.logSetMissing || (error && (error.code === "PGRST202" || /client_log_set/.test(error.message || "")))) {   // rule not installed yet: weights still get through the old way
           S.logSetMissing = true;
-          ({ error } = await S.sb.rpc("client_set_weights", { p_training: id, p_row: ids[i], p_weights: clean(r.weights) }));
+          ({ error } = await S.sb.rpc("client_set_weights", { p_training: id, p_row: ids[i], p_weights: clean(oldWay(r)) }));
           if (!error && r.done) { const d = await S.sb.rpc("client_set_done", { p_training: id, p_row: ids[i], p_done: true }); error = d.error; }
         }
         if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of ids.slice(i)) rows.add(rest); throw error; }   // P0001: the server refused for good (row or training gone)
