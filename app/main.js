@@ -2056,7 +2056,8 @@ import { reportRange, buildReport } from "./report.js";
     inp.addEventListener("blur", () => { chip.classList.remove("editing"); fit(); });
     return fit;
   }
-  let fitCanvas = null;                   // measures the text of a summary box
+  let ruler = null;                        // the same text in the same font, off to the side of the page: its width is the summary box's width (a canvas measures with another font on the iPhone, and a hidden card has no width at all)
+  const textWidth = (text, ph) => { if (!ruler) { ruler = document.createElement("span"); ruler.className = "sum-measure"; ruler.setAttribute("aria-hidden", "true"); document.body.appendChild(ruler); } ruler.textContent = text; ruler.classList.toggle("ph", !!ph); return ruler.getBoundingClientRect().width; };
   const carried = (r, sel) => { const pick = (arr) => { for (let i = sel - 1; i >= 0; i--) { const v = String((arr || [])[i] || "").trim(); if (v) return v; } return ""; }; return { w: pick(r.weights), rp: pick(r.repsDone) }; };
   const setSel = new Map();               // "<training>/<group>" -> set the client is looking at (0-based)
   const openBlocks = new Set();           // finished cards the user opened with "Show sets"
@@ -2410,7 +2411,7 @@ import { reportRange, buildReport } from "./report.js";
       const unitS = (clients.get(t.clientId) || {}).unit || "lb", tmS = timedPlan(r.reps), sumEl = document.createElement("div"); sumEl.className = "row-sum";
       const runitWord = tmS ? tmS.unit : /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || "")) ? "reps / side" : "reps";   // "× 5 reps", "× 8 reps / side", "× 45 sec"
       const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); scheduleSave("trainings", t.id); };
-      const fit = (inp) => { const c = fitCanvas || (fitCanvas = document.createElement("canvas").getContext("2d")), cs = getComputedStyle(inp); c.font = [cs.fontStyle, cs.fontWeight, cs.fontSize, cs.fontFamily].join(" "); inp.style.width = Math.ceil(c.measureText(inp.value || inp.placeholder || "").width + 8) + "px"; };   // the box is as wide as its text: "BW" is wide letters, not two digits
+      const fit = (inp) => { inp.style.width = Math.ceil(textWidth(inp.value || inp.placeholder || "", !inp.value) + 7) + "px"; };   // as wide as its text, measured in the real font ("BW" is wide letters, not two digits)
       const refresh = () => { for (const line of sumEl.children) { const i = +line.dataset.i, wi = line.querySelector(".sum-w"), ri = line.querySelector(".sum-r"); if (!wi) continue; if (document.activeElement !== wi) { wi.value = String((r.weights || [])[i] || ""); fit(wi); } if (document.activeElement !== ri) { ri.value = String((r.repsDone || [])[i] || ""); fit(ri); } line.querySelector(".sum-unit").textContent = wi.value.trim() ? weightWord(wi.value, unitS) : ""; line.querySelector(".runit").textContent = ri.value.trim() ? runitWord : ""; } };   // an empty box shows its grey word alone
       for (let i = 0; i < setsOf(r); i++) {
         const line = document.createElement("div"); line.className = "sum-set"; line.dataset.i = i; const counted = setCounts(r, i); line.classList.toggle("skip", !counted);
