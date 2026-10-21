@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, pendingNoteRows, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, timeAsWeight, repairTimed, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, timeAsWeight, repairTimed, planNumber, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -1803,7 +1803,7 @@ import { reportRange, buildReport } from "./report.js";
             while (r.weights.length <= sel) r.weights.push(""); while (r.repsDone.length <= sel) r.repsDone.push("");
             const last = lastWeights(t, r), carry = carried(r, sel), asW = (v) => (timedPlan(r.reps) && timeAsWeight(v) ? "" : v);   // a hold: "45 sec" from the old app is not a weight to copy
             if (!String(r.weights[sel] || "").trim()) r.weights[sel] = asW(carry.w) || asW(last && last.weights[sel] ? String(last.weights[sel]) : "");   // untouched box = same as the set before, else same as last time
-            if (!String(r.repsDone[sel] || "").trim()) r.repsDone[sel] = carry.rp || (last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "") || planReps(r);   // the grey number is what gets written: the set before, last time, else the plan's own reps
+            if (!String(r.repsDone[sel] || "").trim()) r.repsDone[sel] = carry.rp || (last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "") || planNumber(r.reps);   // the grey number is what gets written: the set before, last time, else the plan's number (the highest of a range)
             if (current) r.setsDone = Math.max(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), Math.min(prevDone + 1, setsOf(r)));
             if ((r.setsDone || 0) >= setsOf(r)) r.done = true;
             const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id);
@@ -2056,8 +2056,6 @@ import { reportRange, buildReport } from "./report.js";
     inp.addEventListener("blur", () => { chip.classList.remove("editing"); fit(); });
     return fit;
   }
-  // the plan's reps as a number to write down when a set is completed untouched: "10" and "10 / side" give 10; a range, "max" or a hold (its box asks for the time) give nothing
-  const planReps = (r) => { if (timedPlan(r.reps)) return ""; const n = String(r.reps || "").replace(/\s*(\/|each|per)\s*(side|leg|arm)\s*$/i, "").replace(/\s*reps?\s*$/i, "").trim(); return /^\d+$/.test(n) ? n : ""; };
   let fitCanvas = null;                   // measures the text of a summary box
   const carried = (r, sel) => { const pick = (arr) => { for (let i = sel - 1; i >= 0; i--) { const v = String((arr || [])[i] || "").trim(); if (v) return v; } return ""; }; return { w: pick(r.weights), rp: pick(r.repsDone) }; };
   const setSel = new Map();               // "<training>/<group>" -> set the client is looking at (0-based)
@@ -2390,7 +2388,7 @@ import { reportRange, buildReport } from "./report.js";
       const lw = asW(last && last.weights[sel] ? String(last.weights[sel]) : ""), lr = last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "";
       const carry = carried(r, sel);   // the set before (else last time) shows in grey: type over it, or leave it and Complete set writes it down
       w.value = r.weights[sel] || ""; w.placeholder = asW(carry.w) || lw || "";           // nothing to suggest: the chip just says "lb"
-      rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || (timed ? "" : (r.reps ? String(r.reps) : ""));   // a hold never logged before asks for its time; reps still show the plan
+      rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || planNumber(r.reps);   // the set before, last time, else the plan's number (8–10 shows 10): what shows grey is what Complete set writes
       w.inputMode = (wText || nonNum(r.weights[sel] || carry.w || "")) ? "text" : "decimal";
       const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
       w.addEventListener("input", (e) => { r.weights = correctFrom(r.weights, sel, e.target.value); mark(); paintLifts(); });   // NEW BEST lights up as it is typed; later sets that copied this number follow the correction
