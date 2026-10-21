@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, pendingNoteRows, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, timeAsWeight, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, timeAsWeight, repairTimed, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -2600,7 +2600,7 @@ import { reportRange, buildReport } from "./report.js";
       const whats = [nC + (nC === 1 ? " client" : " clients"), nT + (nT === 1 ? " workout" : " workouts")]; if (nTpl) whats.push(nTpl + (nTpl === 1 ? " template" : " templates"));
       if (!(await askFirst({ title: "Restore this backup?", text: whats.join(", ") + " from the file go into the app. Where the app already has one of them, the file\u2019s copy wins; everything else stays.", yes: "Restore" }))) { e.target.value = ""; return; }
       for (const c of cs) { clients.set(c.id, c); scheduleSave("clients", c.id, 0); }
-      for (const t of ts) { trainings.set(t.id, t); scheduleSave("trainings", t.id, 0); }
+      for (const t of ts) { repairTimed(t); trainings.set(t.id, t); scheduleSave("trainings", t.id, 0); }   // a backup from before the Time box: a hold's seconds leave the weight column here too
       render();
     } catch { $("status").textContent = "That file is not a Fiala backup"; }
     e.target.value = "";
