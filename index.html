@@ -143,7 +143,7 @@
 
   * { box-sizing: border-box; }
   html { background: var(--surface); }
-  html, body { height: 100%; }
+  html { height: 100%; } body { min-height: 100%; }   /* body grows with the page: the sticky header stays for the whole scroll, not just the first screen (a body one screen tall let it slide away, and the glide after Complete set measured against a header that was gone) */
   html { overflow-x: hidden; }                       /* an app never scrolls sideways (on html only: on body too it would make body the scroller, and window.scrollTo / tap-the-status-bar stop working) */
   html { -webkit-text-size-adjust: 100%; overscroll-behavior-x: none; }   /* Safari: no text inflation when the phone turns, no sideways rubber band */
   body { touch-action: pan-x pan-y; }                /* scroll, never pinch or double-tap zoom: a zoomed page is what drifts side to side in Safari */
@@ -768,6 +768,7 @@
   .card-foot .done-btn { display: none; }
   .card-foot .complete { width: 100%; display: inline-flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
   .vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  #hapticSwitch { position: fixed; top: 0; left: 0; margin: 0; opacity: 0; pointer-events: none; }   /* the switch behind Complete set takes focus on the tap: fixed, it is always in view, so the page never jumps to it */
   .finish-early { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 4px; }
   .block.done:not(.open) .tracker, .block.done:not(.open) .row .setlog, .block.done:not(.open) .complete, .block.done .finish-early:not(.undo-set), .block.done:not(.open) .undo-set, .block.done:not(.open) .add-note, .block.done:not(.open) .exnote { display: none; }
   .block.done .card-foot .complete { display: none; }                   /* a finished card logs nothing more until it is resumed */
@@ -1287,7 +1288,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=62";
+  import { boot } from "./app/main.js?v=63";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

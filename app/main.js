@@ -1995,23 +1995,38 @@ import { reportRange, buildReport } from "./report.js";
           const fin = $("finishBtn"); if (fin && !fin.hidden && fin.offsetParent) { const r = fin.getBoundingClientRect(); return Math.max(0, Math.min(sc.scrollTop + r.bottom - sc.clientHeight + 24, sc.scrollHeight - sc.clientHeight)); }
         }
       }
-      const head = document.querySelector("header"); const off = (head ? head.getBoundingClientRect().bottom : 0) + 12;
+      const head = document.querySelector("header"); const off = Math.max(0, head ? head.getBoundingClientRect().bottom : 0) + 12;   // never a negative offset: a header that is not on screen must not push the target past the card
       return Math.max(0, Math.min(sc.scrollTop + el.getBoundingClientRect().top - off, sc.scrollHeight - sc.clientHeight));
     };
     glide(target);
   }
-  // our own glide: it re-reads where the card is on every step (names settling, the keyboard closing), eases towards it, and lands exactly
+  // our own glide: it re-reads where the card is on every step (names settling, the keyboard closing), eases towards it, and lands exactly.
+  // It does not call itself landed while the keyboard is still moving, and for a moment after landing it watches: the phone may put the page
+  // back where the typed box was once the keyboard has gone (the bottom of the card just finished) — that nudge is eased away again.
+  // A moving finger or a wheel takes over at once.
   function glide(target) {
-    const sc = document.scrollingElement || document.documentElement;
+    const sc = document.scrollingElement || document.documentElement, vv = window.visualViewport;
     const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) { const to = target(); if (to != null) sc.scrollTop = to; return; }
-    const start = performance.now(); let t0 = start, last = null, resets = 0; const dur = 380, cap = 1100;
+    const start = performance.now(); let t0 = start, last = null, resets = 0, quiet = start, landedAt = 0, nudges = 0, taken = false; const dur = 380, cap = 1100, watch = 900;
+    const onVV = () => { quiet = performance.now(); };                                       // the keyboard is still on its way out
+    const onUser = () => { taken = true; };
+    if (vv) vv.addEventListener("resize", onVV);
+    for (const ev of ["touchmove", "wheel"]) window.addEventListener(ev, onUser, { passive: true });   // a moving finger or a wheel, not a tap: a tap on the next box is on its way to the keyboard anyway
+    const stop = () => { if (vv) vv.removeEventListener("resize", onVV); for (const ev of ["touchmove", "wheel"]) window.removeEventListener(ev, onUser); };
     const step = () => {
-      const to = target(); if (to == null) return;
-      if (last != null && Math.abs(to - last) > 40 && resets < 3) { t0 = performance.now(); resets++; }   // the page changed shape under us (a card folded, the keyboard left): ease again rather than snap — at most three times
+      if (taken) { stop(); return; }
+      const to = target(); if (to == null) { stop(); return; }
+      const now = performance.now();
+      if (landedAt) {                                                                        // landed: watch, and only move again if something moved the page
+        if (now - landedAt > watch || nudges >= 2) { stop(); return; }
+        if (Math.abs(to - sc.scrollTop) <= 8) { setTimeout(step, 50); return; }
+        landedAt = 0; t0 = now; nudges++; last = to;                                          // the phone nudged the page (the keyboard's parting shot): ease back, gently
+      }
+      if (last != null && Math.abs(to - last) > 40 && resets < 3) { t0 = now; resets++; }   // the page changed shape under us (a card folded, the keyboard left): ease again rather than snap — at most three times
       last = to;
-      const t = performance.now() - t0, p = Math.min(1, t / dur), gap = to - sc.scrollTop;
-      if ((p >= 1 && Math.abs(gap) <= 1) || performance.now() - start > cap + 600) { sc.scrollTop = to; return; }   // the cap is absolute: the glide always ends
+      const t = now - t0, p = Math.min(1, t / dur), gap = to - sc.scrollTop, settled = now - quiet > 150;
+      if ((p >= 1 && Math.abs(gap) <= 1 && settled) || now - start > cap + 600 + nudges * dur) { sc.scrollTop = to; landedAt = now; setTimeout(step, 50); return; }   // the cap is absolute: the glide always ends
       sc.scrollTop = sc.scrollTop + gap * (p >= 1 ? 0.5 : 0.22);
       setTimeout(step, 16);
     };
