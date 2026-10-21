@@ -33,7 +33,6 @@
     --sheet: #ffffff;                   /* bottom sheet (the day picker) */
     --sheet-list: #f5f5f7;              /* a grouped list inside a sheet: the page grey on the white sheet */
     --elevated: #ffffff;                /* anything that floats: menus, keyboard bar, sheet */
-    --kb-bg: rgba(209,212,217,0.62); --kb-key: #ffffff; --kb-ink: #000000; --kb-shadow: rgba(0,0,0,0.30); --kb-go: #1c1c1e; --kb-go-ink: #ffffff;   /* the bar above the keyboard: iOS's light keys on the keyboard's translucent grey */
     --seg-on: #ffffff;                  /* the chosen segment: a raised white key */
     --seg-shadow: rgba(0,0,0,0.12);
     --card: #ffffff;
@@ -73,7 +72,6 @@
       --sheet: #2c2c2e;
       --sheet-list: rgba(255,255,255,0.08);
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
-      --kb-bg: rgba(28,28,30,0.58); --kb-key: #434345; --kb-ink: #ffffff; --kb-shadow: rgba(0,0,0,0.55); --kb-go: #ffffff; --kb-go-ink: #000000;   /* iOS's dark keys on the keyboard's translucent black; Next is the white key */
       --seg-on: rgba(255,255,255,0.16);
       --seg-shadow: transparent;
       --card: #1c1c1e;                  /* Apple's dark grouped card */
@@ -113,7 +111,6 @@
     --sheet: #2c2c2e;
     --sheet-list: rgba(255,255,255,0.08);
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
-      --kb-bg: rgba(28,28,30,0.58); --kb-key: #434345; --kb-ink: #ffffff; --kb-shadow: rgba(0,0,0,0.55); --kb-go: #ffffff; --kb-go-ink: #000000;   /* iOS's dark keys on the keyboard's translucent black; Next is the white key */
       --seg-on: rgba(255,255,255,0.16);
       --seg-shadow: transparent;
     --card: #1c1c1e;                  /* Apple's dark grouped card */
@@ -142,6 +139,12 @@
     --btn-fg: #ffffff;
     --logo-light: none;
     --logo-dark: inline-block;
+  }
+  /* The bar above the keyboard is drawn in the keyboard's own colours. The iPhone's keyboard follows the phone's appearance, not the
+     app's theme (a light app on a dark phone still gets the dark keyboard), so these tokens follow the phone too. */
+  :root { --kb-bg: rgba(209,212,217,0.62); --kb-key: #ffffff; --kb-ink: #000000; --kb-shadow: rgba(0,0,0,0.30); --kb-go: #1c1c1e; --kb-go-ink: #ffffff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --kb-bg: rgba(28,28,30,0.58); --kb-key: #434345; --kb-ink: #ffffff; --kb-shadow: rgba(0,0,0,0.55); --kb-go: #ffffff; --kb-go-ink: #000000; }
   }
 
   * { box-sizing: border-box; }
@@ -1296,7 +1299,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=70";
+  import { boot } from "./app/main.js?v=71";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
