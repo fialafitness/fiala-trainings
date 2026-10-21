@@ -785,7 +785,12 @@ import { reportRange, buildReport } from "./report.js";
     else { kbbar.style.top = "auto"; kbbar.style.bottom = "0"; }
   }
   const kbFire = (t) => t.dispatchEvent(new Event("input", { bubbles: true }));
-  const kbSibling = (t) => { const pair = t.closest(".setlog .pair"); if (pair) { const ins = [...pair.querySelectorAll("input")]; return ins[ins.indexOf(t) + 1] || null; } return t.closest(".boxes") ? t.nextElementSibling : null; };
+  const kbSibling = (t) => {                                        // the box after this one: weight → reps → the next exercise of the superset or giant set → … ; nothing left = Done
+    if (t.closest(".boxes")) return t.nextElementSibling;
+    const block = t.closest(".block"); if (!block || !t.closest(".setlog")) return null;
+    const ins = [...block.querySelectorAll(".setlog input")].filter((i) => !i.closest(".setlog").hidden && i.offsetParent !== null);
+    return ins[ins.indexOf(t) + 1] || null;
+  };
   function kbNext() { const t = kbTarget; if (!t) return; const nx = kbSibling(t); if (nx) nx.focus(); else t.blur(); }
   const kbSet = (v, stay) => { const t = kbTarget; if (!t) return; t.value = v; kbFire(t); if (!stay) kbNext(); };
   const kbInsert = (s) => { const t = kbTarget; if (!t) return; const a = t.selectionStart == null ? t.value.length : t.selectionStart, b = t.selectionEnd == null ? a : t.selectionEnd; t.value = t.value.slice(0, a) + s + t.value.slice(b); try { t.setSelectionRange(a + s.length, a + s.length); } catch (_) {} kbFire(t); };
@@ -801,7 +806,7 @@ import { reportRange, buildReport } from "./report.js";
     if (kind === "reps") { chip("\u2013", () => kbInsert("\u2013")); sideChip("/ side"); unitChip("sec"); }
     if (kind === "tempo") { chip("X", () => kbInsert("X")); for (const w of ["Normal", "Controlled", "Slow"]) chip(w, () => kbSet(w, true)); for (const c of ["3010", "4010", "10X0", "41X0"]) chip(c, () => kbSet(c, true)); }
     if (kind === "rest") { unitChip("sec"); unitChip("min"); }
-    kbDone.textContent = (kind === "weights" && kbSibling(t)) ? "Next" : "Done";
+    kbDone.textContent = kbSibling(t) ? "Next" : "Done";                                  // Done only when nothing is left to fill in this exercise, superset or giant set
   }
   function showKb(el) {
     kbTarget = el; paintKb(); kbbar.hidden = false; placeKb(); $("draftBar").classList.add("kb");
@@ -2395,7 +2400,7 @@ import { reportRange, buildReport } from "./report.js";
       w.addEventListener("input", (e) => { r.weights = correctFrom(r.weights, sel, e.target.value); mark(); paintLifts(); });   // NEW BEST lights up as it is typed; later sets that copied this number follow the correction
       rp.addEventListener("input", (e) => { const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); r.repsDone = correctFrom(r.repsDone, sel, v); e.target.value = v; mark(); paintLifts(); });
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.focus(); } });
-      rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rp.blur(); } });
+      rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); kbNext(); } });   // on to the next exercise of the superset, else the keyboard goes
       const hand = perHand(r.name); q(".setlog .chip.stack:nth-child(1) .lab").textContent = hand ? "Weight / " + hand : "Weight";   // one dumbbell, one kettlebell: the label says what the number is per
       wireChip(w, { empty: timed ? "Bodyweight" : "Log weight", hint: true, suffix: (v) => weightWord(v, unit), show: showWeight });   // a hold with no weight is bodyweight; BW can still be typed or picked   // after the handlers above, so the words follow the tidied value; never logged before = the box asks
       const perSide = /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || ""));             // "10 / side": the label says so, the box holds the number
