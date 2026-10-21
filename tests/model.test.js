@@ -1,6 +1,6 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
-import { timedPlan, timeAsWeight, repairTimed, perHand, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
+import { timedPlan, timeAsWeight, repairTimed, planNumber, perHand, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
 import { monthLater, daysLater } from "../app/util.js";
 const app = await load();
 const { fns, maps } = app;
@@ -157,4 +157,9 @@ test("seconds the old app typed as a weight move to the time column on a hold, o
   assert.strictEqual(repairTimed(t), false, "a second pass changes nothing");
   assert.strictEqual(repairTimed({ rows: [] }), false); assert.strictEqual(repairTimed(null), false);
   assert.strictEqual(timeAsWeight("BW"), null); assert.strictEqual(timeAsWeight("25"), null); assert.strictEqual(timeAsWeight("hold"), null); assert.deepStrictEqual(timeAsWeight("45 sec"), { n: "45", unit: "sec" });
+});
+
+test("the plan's number for an untouched set: one number as is, the highest of a range or a list, nothing for max or a bare hold", () => {
+  for (const [reps, want] of [["10", "10"], ["8\u201310", "10"], ["8-12 reps", "12"], ["10 / side", "10"], ["12 each leg", "12"], ["6, 6, 4", "6"], ["12, 10, 8", "12"], ["1", "1"],
+    ["45 sec", "45"], ["30-45 sec", "45"], ["1:00", "60"], ["1:30 / side", "90"], ["2 min", "2"], ["max", ""], ["AMRAP", ""], ["Max hold", ""], ["hold", ""], ["", ""], ["12.5", ""]]) assert.strictEqual(planNumber(reps), want, reps);
 });

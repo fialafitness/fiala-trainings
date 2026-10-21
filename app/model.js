@@ -21,6 +21,15 @@ export const timedPlan = (reps) => {
 // Before the Time box existed, a plank's seconds were typed into the weight box ("45 sec"). On a timed exercise a weight that reads as a
 // time is the time: it moves to the time column (in the plan's unit) and the weight is bodyweight again. Idempotent: runs on every load and pull.
 export const timeAsWeight = (v) => { const tm = timedPlan(v); return tm && tm.n !== "" ? tm : null; };
+// The number the plan puts in the box before anything is typed: "10" → 10, "8–10" or "6, 6, 4" → the highest, "10 / side" → 10,
+// "45 sec" → 45, "30-45 sec" → 45, "1:00" → 60; "max", "AMRAP" or a bare "hold" → nothing (the box asks). Whole numbers only.
+export const planNumber = (reps) => {
+  const s = String(reps || ""), tm = timedPlan(s);
+  if (tm && /\d+:\d{2}/.test(s)) return tm.n;
+  const nums = (s.replace(/\s*(\/|each|per)\s*(side|leg|arm)\b/gi, "").match(/\d+(?:[.,]\d+)?/g) || []).map((x) => parseFloat(x.replace(",", ".")));
+  if (!nums.length) return "";
+  const top = Math.max(...nums); return Number.isInteger(top) ? String(top) : "";
+};
 export const repairTimed = (t) => {
   let changed = false;
   for (const r of (t && t.rows) || []) {
