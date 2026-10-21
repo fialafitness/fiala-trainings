@@ -1803,7 +1803,7 @@ import { reportRange, buildReport } from "./report.js";
             while (r.weights.length <= sel) r.weights.push(""); while (r.repsDone.length <= sel) r.repsDone.push("");
             const last = lastWeights(t, r), carry = carried(r, sel), asW = (v) => (timedPlan(r.reps) && timeAsWeight(v) ? "" : v);   // a hold: "45 sec" from the old app is not a weight to copy
             if (!String(r.weights[sel] || "").trim()) r.weights[sel] = asW(carry.w) || asW(last && last.weights[sel] ? String(last.weights[sel]) : "");   // untouched box = same as the set before, else same as last time
-            if (!String(r.repsDone[sel] || "").trim()) r.repsDone[sel] = carry.rp || (last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "");
+            if (!String(r.repsDone[sel] || "").trim()) r.repsDone[sel] = carry.rp || (last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "") || planReps(r);   // the grey number is what gets written: the set before, last time, else the plan's own reps
             if (current) r.setsDone = Math.max(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), Math.min(prevDone + 1, setsOf(r)));
             if ((r.setsDone || 0) >= setsOf(r)) r.done = true;
             const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id);
@@ -2056,6 +2056,9 @@ import { reportRange, buildReport } from "./report.js";
     inp.addEventListener("blur", () => { chip.classList.remove("editing"); fit(); });
     return fit;
   }
+  // the plan's reps as a number to write down when a set is completed untouched: "10" and "10 / side" give 10; a range, "max" or a hold (its box asks for the time) give nothing
+  const planReps = (r) => { if (timedPlan(r.reps)) return ""; const n = String(r.reps || "").replace(/\s*(\/|each|per)\s*(side|leg|arm)\s*$/i, "").replace(/\s*reps?\s*$/i, "").trim(); return /^\d+$/.test(n) ? n : ""; };
+  let fitCanvas = null;                   // measures the text of a summary box
   const carried = (r, sel) => { const pick = (arr) => { for (let i = sel - 1; i >= 0; i--) { const v = String((arr || [])[i] || "").trim(); if (v) return v; } return ""; }; return { w: pick(r.weights), rp: pick(r.repsDone) }; };
   const setSel = new Map();               // "<training>/<group>" -> set the client is looking at (0-based)
   const openBlocks = new Set();           // finished cards the user opened with "Show sets"
@@ -2407,9 +2410,10 @@ import { reportRange, buildReport } from "./report.js";
     for (const [text, cls] of [[nSets + (nSets === 1 ? " set" : " sets"), "si sum-sets"], [chipText(chips[0]), "si sum-reps"], [chipText(chips[1]), "si sum-rest"]]) { if (!text) continue; const e = document.createElement("span"); e.className = cls; e.textContent = text; sumEl.appendChild(e); }
     {                                                                  // the finished card, opened: every set in a cell — number, weight × reps (editable in place for a typo), a check
       const unitS = (clients.get(t.clientId) || {}).unit || "lb", tmS = timedPlan(r.reps), sumEl = document.createElement("div"); sumEl.className = "row-sum";
+      const runitWord = tmS ? tmS.unit : /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || "")) ? "reps / side" : "reps";   // "× 5 reps", "× 8 reps / side", "× 45 sec"
       const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); scheduleSave("trainings", t.id); };
-      const fit = (inp) => { inp.style.width = Math.max(1.5, (inp.value || inp.placeholder || "").length + 0.5) + "ch"; };
-      const refresh = () => { for (const line of sumEl.children) { const i = +line.dataset.i, wi = line.querySelector(".sum-w"), ri = line.querySelector(".sum-r"); if (!wi) continue; if (document.activeElement !== wi) { wi.value = String((r.weights || [])[i] || ""); fit(wi); } if (document.activeElement !== ri) { ri.value = String((r.repsDone || [])[i] || ""); fit(ri); } line.querySelector(".sum-unit").textContent = wi.value.trim() ? weightWord(wi.value, unitS) : ""; } };
+      const fit = (inp) => { const c = fitCanvas || (fitCanvas = document.createElement("canvas").getContext("2d")), cs = getComputedStyle(inp); c.font = [cs.fontStyle, cs.fontWeight, cs.fontSize, cs.fontFamily].join(" "); inp.style.width = Math.ceil(c.measureText(inp.value || inp.placeholder || "").width + 8) + "px"; };   // the box is as wide as its text: "BW" is wide letters, not two digits
+      const refresh = () => { for (const line of sumEl.children) { const i = +line.dataset.i, wi = line.querySelector(".sum-w"), ri = line.querySelector(".sum-r"); if (!wi) continue; if (document.activeElement !== wi) { wi.value = String((r.weights || [])[i] || ""); fit(wi); } if (document.activeElement !== ri) { ri.value = String((r.repsDone || [])[i] || ""); fit(ri); } line.querySelector(".sum-unit").textContent = wi.value.trim() ? weightWord(wi.value, unitS) : ""; line.querySelector(".runit").textContent = ri.value.trim() ? runitWord : ""; } };   // an empty box shows its grey word alone
       for (let i = 0; i < setsOf(r); i++) {
         const line = document.createElement("div"); line.className = "sum-set"; line.dataset.i = i; const counted = setCounts(r, i); line.classList.toggle("skip", !counted);
         const n = document.createElement("span"); n.className = "sum-n"; n.textContent = i + 1; line.appendChild(n);
@@ -2420,8 +2424,7 @@ import { reportRange, buildReport } from "./report.js";
           const unit = document.createElement("span"); unit.className = "sum-unit";
           const x = document.createElement("span"); x.className = "sum-x"; x.textContent = "\u00d7";
           const ri = document.createElement("input"); ri.className = "sum-r"; ri.inputMode = "numeric"; ri.placeholder = tmS ? "sec" : "reps"; ri.setAttribute("aria-label", (tmS ? "Seconds" : "Reps") + ", set " + (i + 1)); ri.autocomplete = "off";
-          const perSideS = /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || ""));
-          const runit = document.createElement("span"); runit.className = "sum-unit"; runit.textContent = tmS ? tmS.unit : perSideS ? "reps / side" : "reps";   // "× 5 reps", "× 8 reps / side", "× 45 sec"
+          const runit = document.createElement("span"); runit.className = "sum-unit runit"; runit.textContent = runitWord;
           val.append(wi, unit, x, ri, runit); line.appendChild(val);
           wi.addEventListener("input", () => { r.weights = correctFrom(r.weights, i, wi.value); fit(wi); mark(); refresh(); });
           ri.addEventListener("input", () => { const v = ri.value.replace(/[^0-9]/g, "").slice(0, 4); ri.value = v; r.repsDone = correctFrom(r.repsDone, i, v); fit(ri); mark(); refresh(); });
