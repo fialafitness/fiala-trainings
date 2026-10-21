@@ -33,7 +33,7 @@
     --sheet: #ffffff;                   /* bottom sheet (the day picker) */
     --sheet-list: #f5f5f7;              /* a grouped list inside a sheet: the page grey on the white sheet */
     --elevated: #ffffff;                /* anything that floats: menus, keyboard bar, sheet */
-    --kb-bg: rgba(209,212,217,0.82); --kb-key: #ffffff; --kb-ink: #000000; --kb-shadow: rgba(0,0,0,0.30); --kb-go: #1c1c1e; --kb-go-ink: #ffffff;   /* the bar above the keyboard: iOS's light keys on the keyboard's translucent grey */
+    --kb-bg: rgba(209,212,217,0.62); --kb-key: #ffffff; --kb-ink: #000000; --kb-shadow: rgba(0,0,0,0.30); --kb-go: #1c1c1e; --kb-go-ink: #ffffff;   /* the bar above the keyboard: iOS's light keys on the keyboard's translucent grey */
     --seg-on: #ffffff;                  /* the chosen segment: a raised white key */
     --seg-shadow: rgba(0,0,0,0.12);
     --card: #ffffff;
@@ -73,7 +73,7 @@
       --sheet: #2c2c2e;
       --sheet-list: rgba(255,255,255,0.08);
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
-      --kb-bg: rgba(28,28,30,0.80); --kb-key: #434345; --kb-ink: #ffffff; --kb-shadow: rgba(0,0,0,0.55); --kb-go: #ffffff; --kb-go-ink: #000000;   /* iOS's dark keys on the keyboard's translucent black; Next is the white key */
+      --kb-bg: rgba(28,28,30,0.58); --kb-key: #434345; --kb-ink: #ffffff; --kb-shadow: rgba(0,0,0,0.55); --kb-go: #ffffff; --kb-go-ink: #000000;   /* iOS's dark keys on the keyboard's translucent black; Next is the white key */
       --seg-on: rgba(255,255,255,0.16);
       --seg-shadow: transparent;
       --card: #1c1c1e;                  /* Apple's dark grouped card */
@@ -113,7 +113,7 @@
     --sheet: #2c2c2e;
     --sheet-list: rgba(255,255,255,0.08);
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
-      --kb-bg: rgba(28,28,30,0.80); --kb-key: #434345; --kb-ink: #ffffff; --kb-shadow: rgba(0,0,0,0.55); --kb-go: #ffffff; --kb-go-ink: #000000;   /* iOS's dark keys on the keyboard's translucent black; Next is the white key */
+      --kb-bg: rgba(28,28,30,0.58); --kb-key: #434345; --kb-ink: #ffffff; --kb-shadow: rgba(0,0,0,0.55); --kb-go: #ffffff; --kb-go-ink: #000000;   /* iOS's dark keys on the keyboard's translucent black; Next is the white key */
       --seg-on: rgba(255,255,255,0.16);
       --seg-shadow: transparent;
     --card: #1c1c1e;                  /* Apple's dark grouped card */
@@ -788,9 +788,9 @@
   .weights .boxes { display: flex; gap: 8px; flex-wrap: wrap; }
   .weights input { flex: 1 1 52px; max-width: 80px; text-align: center; padding: 12px 4px; font-weight: 500; }
   /* bar that rides above the phone keyboard while a reps / tempo / weight box is being typed in */
-  #kbbar { position: fixed; left: 0; right: 0; top: 0; z-index: 50; display: flex; align-items: center; gap: 6px; padding: 8px 6px; background: var(--kb-bg); -webkit-backdrop-filter: blur(24px) saturate(1.3); backdrop-filter: blur(24px) saturate(1.3); }   /* one more row of the keyboard: its translucent ground, its keys */
+  #kbbar { position: fixed; left: 0; right: 0; top: 0; z-index: 50; display: flex; align-items: center; gap: 6px; padding: 8px 6px; background: var(--kb-bg); -webkit-backdrop-filter: blur(30px) saturate(1.3); backdrop-filter: blur(30px) saturate(1.3); }   /* one more row of the keyboard: its translucent ground (the page shows through, as it does through the keyboard), its keys */
   #kbbar[hidden] { display: none; }
-  #kbbar button { appearance: none; border: 0; cursor: pointer; min-height: 46px; min-width: 58px; padding: 0 14px; border-radius: 5px; background: var(--kb-key); color: var(--kb-ink); font-size: 18px; font-weight: 400; letter-spacing: 0; white-space: nowrap; box-shadow: 0 1px 0 var(--kb-shadow); -webkit-tap-highlight-color: transparent; }   /* the keyboard's own key: its height, its corner, its shadow line */
+  #kbbar button { appearance: none; border: 0; cursor: pointer; min-height: 46px; min-width: 58px; padding: 0 14px; border-radius: 9px; background: var(--kb-key); color: var(--kb-ink); font-size: 18px; font-weight: 400; letter-spacing: 0; white-space: nowrap; box-shadow: 0 1px 0 var(--kb-shadow); -webkit-tap-highlight-color: transparent; }   /* the keyboard's own key: its height, its corner, its shadow line */
   #kbbar button:active { filter: brightness(1.15); }
   #kbbar .kb-mode { font-variant-numeric: tabular-nums; min-width: 66px; }
   #kbbar .kb-chips { display: flex; gap: 6px; }
@@ -1296,7 +1296,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=69";
+  import { boot } from "./app/main.js?v=70";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
