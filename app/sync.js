@@ -48,7 +48,7 @@ function restorePending() {
   for (const id of p.plans || []) planTouched.add(id);
   for (const [n, cid] of p.notesGone || []) deletedNotes.set(n, cid);
   for (const [pk, cid] of p.packagesGone || []) deletedPackages.set(pk, cid);
-  for (const k of p.fromFile || []) fromFile.add(k);
+  for (const e of p.fromFile || []) { if (Array.isArray(e)) fromFile.set(e[0], Number(e[1]) || 0); else if (typeof e === "string") fromFile.set(e, 0); }   // older devices wrote the key alone
   S.pendingOwner = p.owner || "";
 }
 function scheduleSave(kind, id, delay = 500) {
@@ -83,14 +83,15 @@ function flushOne(kind, id) {
       try {
         if (data) await S.backend.set(kind, id, data); else await S.backend.del(kind, id);
         S.failed = false;
-        if (dirty.get(k) === version) { dirty.delete(k); fromFile.delete(k); if (kind === "trainings") { trainerState.delete(id); trainerTouched.delete(id); trainerNamed.delete(id); trainerNoted.delete(id); } if (kind === "clients") dropIntent(id); }   // the coach's state changes went with this save; a later touch keeps its flag
+        if (fromFile.has(k) && version >= fromFile.get(k)) fromFile.delete(k);   // the write that carried the backup's copy landed: every later save merges as usual, even one queued meanwhile
+        if (dirty.get(k) === version) { dirty.delete(k); if (kind === "trainings") { trainerState.delete(id); trainerTouched.delete(id); trainerNamed.delete(id); trainerNoted.delete(id); } if (kind === "clients") dropIntent(id); }   // the coach's state changes went with this save; a later touch keeps its flag
         confirmedAt.set(k, Date.now());
         return;
       } catch (e) {
         attempt++;
         S.failReason = reasonOf(e);
         if (isOffline(e)) { S.offline = true; return; }           // no signal: keep it queued, no red status
-        if (e && e.fatal) { S.failed = true; if (dirty.get(k) === version) { dirty.delete(k); fromFile.delete(k); } return; }   // the server said no for good: don't carry it forever
+        if (e && e.fatal) { S.failed = true; if (fromFile.has(k) && version >= fromFile.get(k)) fromFile.delete(k); if (dirty.get(k) === version) dirty.delete(k); return; }   // the server said no for good: don't carry it forever
         if (attempt > 3) { S.failed = true; return; }
         await new Promise((r) => setTimeout(r, 700 * attempt + Math.random() * 400));
       }
@@ -155,7 +156,7 @@ const cloudBackend = {
       if (seen) res = await withTimeout(S.sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at"), SAVE_WAIT);
       else res = await withTimeout(S.sb.from(TABLE[kind]).upsert(row).select("updated_at"), SAVE_WAIT);
       if (res.error) {
-        if (res.error.code === "23505") res.error.fatal = true;
+        if (res.error.code === "23505" || res.error.code === "22P02") res.error.fatal = true;   // another client has that email; an id the table cannot hold: no retry will change the answer
         if (/^22/.test(String(res.error.code || ""))) seenAt.delete(k);   // a bad stamp must not poison every retry
         throw res.error;
       }

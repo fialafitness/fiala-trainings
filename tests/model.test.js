@@ -31,22 +31,24 @@ test("last weights come from the most recent earlier session of the same exercis
   const last = fns.lastWeights(maps.trainings.get("cur"), maps.trainings.get("cur").rows[0]);
   assert.ok(last); assert.deepStrictEqual(last.weights, ["25"]);
 });
+const U = (n) => "00000000-0000-4000-8000-" + String(n).padStart(12, "0");   // the server's id columns take uuids only
 test("a backup is accepted whole or refused whole", () => {
   app.reset();
-  const good = { app: "fiala-trainings", clients: { c1: { id: "c1", name: "A" } }, trainings: { t1: { id: "t1", clientId: "c1", rows: [{ id: "r1" }], date: "2026-10-01" } } };
+  const good = { app: "fiala-trainings", clients: { c1: { id: U(1), name: "A" } }, trainings: { t1: { id: U(2), clientId: U(1), rows: [{ id: "r1" }], date: "2026-10-01" } } };
   const out = fns.validateBackup(good); assert.strictEqual(out.cs.length, 1); assert.strictEqual(out.ts.length, 1);
   for (const bad of [
-    { app: "fiala-trainings", clients: { c1: { id: "c1", name: "A" } }, trainings: { t1: null } },
+    { app: "fiala-trainings", clients: { c1: { id: U(1), name: "A" } }, trainings: { t1: null } },
     { app: "other", clients: {}, trainings: {} },
-    { app: "fiala-trainings", clients: {}, trainings: { t1: { id: "t1", clientId: "nobody", rows: [] } } },
-    { app: "fiala-trainings", clients: { c1: { id: "c1", name: "A" } }, trainings: { t1: { id: "t1", clientId: "c1", rows: [], date: "yesterday" } } },
+    { app: "fiala-trainings", clients: {}, trainings: { t1: { id: U(2), clientId: U(9), rows: [], date: "2026-10-01" } } },
+    { app: "fiala-trainings", clients: { c1: { id: U(1), name: "A" } }, trainings: { t1: { id: U(2), clientId: U(1), rows: [], date: "yesterday" } } },
+    { app: "fiala-trainings", clients: { c1: { id: "c1", name: "A" } }, trainings: {} },
     [], null, "text",
   ]) assert.throws(() => fns.validateBackup(bad));
   assert.strictEqual(maps.clients.size, 0, "validation never writes");
 });
 test("the app's own backup shape, with a client without a name and a template, is accepted", () => {
   app.reset();
-  const d = { app: "fiala-trainings", exported: "x", clients: { c1: { id: "c1" }, tpl: { id: "00000000-0000-4000-8000-0000000000f1", name: "Templates", kind: "templates" } }, trainings: { t1: { id: "t1", clientId: "00000000-0000-4000-8000-0000000000f1", rows: [], date: "2026-01-01", title: "Upper A" } } };
+  const d = { app: "fiala-trainings", exported: "x", clients: { c1: { id: U(1) }, tpl: { id: "00000000-0000-4000-8000-0000000000f1", name: "Templates", kind: "templates" } }, trainings: { t1: { id: U(2), clientId: "00000000-0000-4000-8000-0000000000f1", rows: [], date: "2026-01-01", title: "Upper A", template: { program: "Performance Training", phase: 1, stage: 2, n: 3, phaseName: "" } } } };
   assert.doesNotThrow(() => fns.validateBackup(d));
 });
 test("notes: the old single note shows as Earlier, saving folds it in, merges keep both sides and honour a deletion", async () => {
@@ -194,8 +196,8 @@ test("a logged weight keeps its unit: switching the client stamps old rows, a we
 });
 test("a backup is refused when a field a screen reads as a list or an object is something else, when ids repeat, or when a later app wrote it", () => {
   app.reset();
-  const base = () => ({ app: "fiala-trainings", format: 1, clients: { c1: { id: "c1", name: "A", unit: "lb", paused: false, packages: [{ id: "p1", name: "10 sessions", kind: "sessions", size: 10, inPerson: true }], plan: { id: "p1", kind: "sessions", size: 10, adjust: 0, startedOn: "2026-10-01" }, planHistory: [], notes: { log: [] } } },
-    trainings: { t1: { id: "t1", clientId: "c1", date: "2026-10-01", title: "A", completedAt: null, skippedAt: null, missed: false, inPerson: true, rows: [{ id: "r1", name: "Squat", label: "1", sets: "3", setsDone: 2, reps: "5", rest: "", tempo: "", note: "", weights: ["100", 100, null], repsDone: ["5"], alts: ["Lunge"], unit: "lb", done: false }] } } });
+  const base = () => ({ app: "fiala-trainings", format: 1, clients: { c1: { id: U(1), name: "A", unit: "lb", paused: false, seenNotes: ["x"], seenDoneAt: "2026-10-01T10:00:00.000Z", packages: [{ id: "p1", name: "10 sessions", kind: "sessions", size: 10, inPerson: true }], plan: { id: "p1", kind: "sessions", size: 10, adjust: 0, startedOn: "2026-10-01" }, planHistory: [], notes: { log: [] } } },
+    trainings: { t1: { id: U(2), clientId: U(1), date: "2026-10-01", title: "A", completedAt: null, skippedAt: null, missed: false, inPerson: true, rows: [{ id: "r1", name: "Squat", label: "1", sets: "3", setsDone: 2, reps: "5", rest: "", tempo: "", note: "", weights: ["100", 100, null], repsDone: ["5"], alts: ["Lunge"], unit: "lb", done: false }] } } });
   assert.doesNotThrow(() => fns.validateBackup(base(), () => false), "the app's own shape, counts as strings or numbers, nulls where the app writes nulls");
   const bad = [
     ["weights as an object", (d) => { d.trainings.t1.rows[0].weights = { 0: "100" }; }],
@@ -217,6 +219,12 @@ test("a backup is refused when a field a screen reads as a list or an object is 
     ["a finish stamp that is not a moment", (d) => { d.trainings.t1.completedAt = "yesterday"; }],
     ["a row unit the app would rescale", (d) => { d.trainings.t1.rows[0].unit = "lbs"; }],
     ["a client order that is a word", (d) => { d.clients.c1.sort = "first"; }],
+    ["a package without a name", (d) => { d.clients.c1.packages = [{ id: "p1", kind: "sessions", size: 10 }]; }],
+    ["a sessions package without a size", (d) => { d.clients.c1.packages = [{ id: "p1", name: "Ten", kind: "sessions", size: null }]; }],
+    ["seen notes that are not a list", (d) => { d.clients.c1.seenNotes = 5; }],
+    ["an id the server cannot hold", (d) => { d.clients.c1.id = "c1"; d.trainings.t1.clientId = "c1"; }],
+    ["a template program that is a number", (d) => { d.trainings.t1.template = { program: 1 }; }],
+    ["a done flag that is a word", (d) => { d.trainings.t1.rows[0].done = "false"; }],
   ];
   for (const [why, b] of bad) { const d = base(); b(d); assert.throws(() => fns.validateBackup(d, () => false), Error, "should refuse: " + why); }
   const later = base(); later.format = 2; assert.throws(() => fns.validateBackup(later, () => false), /newer backup/);

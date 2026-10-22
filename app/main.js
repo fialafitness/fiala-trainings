@@ -255,7 +255,7 @@ import { reportRange, buildReport } from "./report.js";
     const size = clamp(parseInt($("packSize").value, 10) || 0, 0, 200);
     if (packKind === "sessions" && !size) { $("packSize").focus(); return; }
     const name = String($("packName").value || "").trim() || (packKind === "monthly" ? "4-week plan" : size + " sessions");
-    if (packagesList().some((pk) => pk.id !== packEdit && pk.name.toLowerCase() === name.toLowerCase())) { $("packName").value = name; $("packName").focus(); $("packName").select(); return; }   // one of each name
+    if (packagesList().some((pk) => pk.id !== packEdit && String(pk.name || "").toLowerCase() === name.toLowerCase())) { $("packName").value = name; $("packName").focus(); $("packName").select(); return; }   // one of each name
     const tc = tplClient(); const next = { name, kind: packKind, size: packKind === "sessions" ? size : null, inPerson: packInPerson };
     if (packEdit) {
       tc.packages = packagesList().map((pk) => (pk.id === packEdit ? { ...pk, ...next } : pk));
@@ -1135,7 +1135,7 @@ import { reportRange, buildReport } from "./report.js";
       $("tplKicker").textContent = "Workout library"; $("cName").value = "Templates";
       const mine = (byProg.get(MY_TEMPLATES) || []).sort((x, y) => templateMeta(x).n - templateMeta(y).n);
       if (mine.length) { wrap.appendChild(h2("My templates")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...mine.map((t) => tplRow(t, !!pickFor))); wrap.appendChild(ul); }
-      const progs = [...byProg.keys()].filter((p) => p !== MY_TEMPLATES).sort((x, y) => progRank(x) - progRank(y) || x.localeCompare(y));
+      const progs = [...byProg.keys()].filter((p) => p !== MY_TEMPLATES).sort((x, y) => progRank(x) - progRank(y) || String(x).localeCompare(String(y)));
       if (progs.length) { wrap.appendChild(h2("Programs")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...progs.map((p) => navRow(p, wn(byProg.get(p).length), () => go({ ...S.view, program: p, phase: null, stage: null })))); wrap.appendChild(ul); }
       if (!all.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "No templates yet. Open a workout and tap Save as template."; wrap.appendChild(e); }
       return;
@@ -1397,7 +1397,7 @@ import { reportRange, buildReport } from "./report.js";
   const noteId = (t, r) => "row/" + t.id + "/" + r.id;
   function clientNews(c) {
     if (!c || isTemplateClient(c.id)) return { done: 0, notes: [], workouts: [] };
-    const since = Date.parse(c.seenDoneAt || "") || 0, seen = new Set(c.seenNotes || []);
+    const since = Date.parse(c.seenDoneAt || "") || 0, seen = new Set(Array.isArray(c.seenNotes) ? c.seenNotes : []);
     let done = 0; const notes = [], workouts = [];
     for (const t of clientTrainings(c.id)) {
       if (t.completedBy === "client" && t.completedAt && (Date.parse(t.completedAt) || 0) > since) { done++; workouts.push(t); }
@@ -2645,29 +2645,40 @@ import { reportRange, buildReport } from "./report.js";
   const canon = (v) => JSON.stringify(v, (_, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x));   // the same record in another key order is the same record
   function planRestore(d) {                                          // the file checked whole, then held against what is here: what the sheet says is exactly what applyRestore does
     const { cs, ts } = validateBackup(d, (id) => clients.has(id));
-    const changed = (map, r) => { const here = map.get(r.id); return !here || canon(here) !== canon(r); };   // already here and the same: nothing to do, nothing to send
-    const cs2 = cs.filter((c) => changed(clients, c)), ts2 = ts.filter((t) => changed(trainings, t));
+    for (const t of ts) repairTimed(t);                                // compared, and later written, in the shape the app keeps: a backup from before the Time box carries a hold's seconds as a weight
+    const changed = (map, kind, r) => { const here = map.get(r.id); return !here || dirty.has(key(kind, r.id)) || !seenAt.has(key(kind, r.id)) || canon(here) !== canon(r); };   // already here, the same, and known to the server: nothing to do, nothing to send
+    const cs2 = cs.filter((c) => changed(clients, "clients", c)), ts2 = ts.filter((t) => changed(trainings, "trainings", t));
     const nC = cs2.filter((c) => !isTemplateClient(c.id)).length, nT = ts2.filter((t) => !isTemplateClient(t.clientId)).length, nTpl = ts2.length - nT, packs = cs2.some((c) => isTemplateClient(c.id));
     const parts = []; if (nC) parts.push(nC + (nC === 1 ? " client" : " clients")); if (nT) parts.push(nT + (nT === 1 ? " workout" : " workouts")); if (nTpl) parts.push(nTpl + (nTpl === 1 ? " template" : " templates")); if (packs) parts.push("the packages list");
-    const total = cs2.length + ts2.length, replaces = cs2.filter((c) => clients.has(c.id)).length + ts2.filter((t) => trainings.has(t.id)).length;
+    const rC = cs2.filter((c) => clients.has(c.id) && !isTemplateClient(c.id)).length, rT = ts2.filter((t) => trainings.has(t.id)).length, rP = cs2.some((c) => clients.has(c.id) && isTemplateClient(c.id)) ? 1 : 0;
+    const total = cs2.length + ts2.length, replaces = rC + rT + rP;
     const what = parts.length > 1 ? parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1] : parts[0] || "";
     const who = replaces === total ? (total === 1 ? "It replaces" : "They replace") : replaces === 1 ? "1 of them replaces" : replaces + " of them replace";
-    const text = total ? what + " from the file " + (total === 1 ? "goes" : "go") + " into the app." + (replaces ? " " + who + " a copy already here, logged sets and all." : "") + " Everything else stays as it is." : "";
+    const incl = rT && rC ? ", logged sets, notes and plans included" : rT ? ", logged sets and all" : rC ? (rC === 1 ? ", notes and plan included" : ", notes and plans included") : "";   // what a replaced copy loses, by kind
+    const text = total ? what + " from the file " + (total === 1 ? "goes" : "go") + " into the app." + (replaces ? " " + who + " a copy already here" + incl + "." : "") + " Everything else stays as it is." : "";
     return { cs: cs2, ts: ts2, text };
   }
-  function applyRestore({ cs, ts }) {                               // the file's copy, as it is: the save carries a marker so nothing of the server's is merged into it
-    for (const c of cs) { const here = clients.get(c.id); if (here && (here.templatesVersion || 0) > (c.templatesVersion || 0)) c.templatesVersion = here.templatesVersion; clients.set(c.id, c); fromFile.add(key("clients", c.id)); scheduleSave("clients", c.id, 0); }   // the built-in templates never roll back to an older set
-    for (const t of ts) { repairTimed(t); trainings.set(t.id, t); fromFile.add(key("trainings", t.id)); scheduleSave("trainings", t.id, 0); }   // a backup from before the Time box: a hold's seconds leave the weight column here too
+  function applyRestore({ cs, ts }) {                               // the file's copy, as it is: a record already here is replaced whole (the save carries a marker so nothing of the server's is merged in); one this device never had joins the usual way, keeping what a client logged on the server meanwhile
+    const put = (map, kind, r) => {
+      const had = map.has(r.id);
+      if (kind === "trainings" && S.templateDraft && S.templateDraft.id === r.id) { S.templateDraft = null; paintDraftBar(); }   // the template open as a draft: its save must be a real save
+      map.set(r.id, r); const k = key(kind, r.id);
+      if (had) fromFile.set(k, (dirty.get(k) || 0) + 1);            // the version the next save gets: that write carries the file's copy
+      scheduleSave(kind, r.id, 0);
+    };
+    for (const c of cs) put(clients, "clients", c);                 // the Templates record included, version number and all: a file from an older set makes the next launch repair and complete the built-in templates
+    for (const t of ts) put(trainings, "trainings", t);
   }
   $("restoreFile").addEventListener("change", async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f || S.clientMode) { e.target.value = ""; return; }
-    try {
-      const plan = planRestore(JSON.parse(await f.text()));        // the whole file first; nothing is touched if any part is wrong
-      if (!plan.cs.length && !plan.ts.length) { $("status").textContent = "Everything in that backup is already here"; e.target.value = ""; return; }
-      if (!(await askFirst({ title: "Restore this backup?", text: plan.text, yes: "Restore" }))) { e.target.value = ""; return; }
-      applyRestore(plan); render();
-    } catch (err) { $("status").textContent = err && err.message === "newer backup" ? "That backup is from a newer version of the app" : "That file is not a Fiala backup"; }
+    let plan = null;
+    try { plan = planRestore(JSON.parse(await f.text())); }         // the whole file first; nothing is touched if any part is wrong
+    catch (err) { $("status").textContent = err && err.message === "newer backup" ? "That backup is from a newer version of the app" : "That file is not a Fiala backup"; }
     e.target.value = "";
+    if (!plan) return;
+    if (!plan.cs.length && !plan.ts.length) { $("status").textContent = "Everything in that backup is already here"; return; }
+    if (!(await askFirst({ title: "Restore this backup?", text: plan.text, yes: "Restore" }))) return;
+    applyRestore(plan); render();
   });
 
   // ---------- boot ----------

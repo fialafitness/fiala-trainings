@@ -189,6 +189,7 @@ test("a client whose monthly plan has ended keeps everything still queued: the s
   maps.dirty.set("trainings/T", 1); maps.pendingFinish.add("T"); maps.pendingWeightRows.set("T", new Set(["r1"]));
   await fns.syncDownNow();
   assert.ok(maps.dirty.has("trainings/T") && maps.pendingFinish.has("T") && maps.pendingWeightRows.has("T"), "the queue survives"); assert.ok(maps.trainings.has("T"), "and so does the device copy");
+  for (let i = 0; i < 300 && app.get().inflight; i++) await tick(10);   // the flush the sync started settles here, not inside the next test
 });
 
 test("a client on an 'in person by default' package gets new workouts with the switch on; other clients do not", async () => {
@@ -204,12 +205,13 @@ test("a client on an 'in person by default' package gets new workouts with the s
   assert.strictEqual(fns.packageOf(maps.clients.get("c1")).name, "10 sessions"); assert.strictEqual(fns.packageOf(maps.clients.get("c3")), null);
 });
 
-const TPL = "00000000-0000-4000-8000-0000000000f1";
+const TPL = "00000000-0000-4000-8000-0000000000f1", U = (n) => "00000000-0000-4000-8000-" + String(n).padStart(12, "0");
+const settle = async () => { await tick(5); for (let i = 0; i < 300 && app.get().inflight; i++) await tick(10); };   // every save this test started has answered: nothing of it runs on into the next test
 test("a workout restored from a backup lands as the file has it: without a stamp and through a conflict, nothing of the server's is merged in", async () => {
   const sb = makeSupabase(); coach(sb);
   sb.seed("ft_trainings", "T", training("T", { title: "Server", completedAt: null, date: day(2), rows: [row("r1", ["40"], ["5"], 1)] }), { client_id: "c1" });
   const file = training("T", { title: "File", completedAt: "2026-10-02T18:00:00.000Z", date: "2026-10-02", rows: [row("r1", ["100", "100", "100"], ["5", "5", "5"], 3)] });
-  maps.trainings.set("T", JSON.parse(JSON.stringify(file))); maps.fromFile.add("trainings/T");   // no stamp: the app was relaunched, or never saw this record
+  maps.trainings.set("T", JSON.parse(JSON.stringify(file))); maps.fromFile.set("trainings/T", 1);   // no stamp: the app was relaunched, or never saw this record
   await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(file)));
   let saved = sb.tables.ft_trainings.get("T").data;
   assert.deepStrictEqual([saved.title, saved.completedAt, saved.date, saved.rows[0].weights], ["File", file.completedAt, "2026-10-02", ["100", "100", "100"]]);
@@ -224,7 +226,7 @@ test("a client restored from a backup replaces the server's notes, packages and 
   const file = { id: TPL, name: "Templates", kind: "templates", packages: [], notes: { log: [] }, plan: null };
   for (const restored of [true, false]) {
     const sb = makeSupabase(); coach(sb); sb.seed("ft_clients", TPL, serverCopy());
-    maps.clients.set(TPL, JSON.parse(JSON.stringify(file))); if (restored) maps.fromFile.add("clients/" + TPL);
+    maps.clients.set(TPL, JSON.parse(JSON.stringify(file))); if (restored) maps.fromFile.set("clients/" + TPL, 1);
     await fns.cloudBackend.set("clients", TPL, JSON.parse(JSON.stringify(file)));
     const saved = sb.tables.ft_clients.get(TPL).data;
     if (restored) { assert.deepStrictEqual(saved.packages, []); assert.deepStrictEqual(saved.notes, { log: [] }); assert.strictEqual(saved.plan, null); }
@@ -235,14 +237,14 @@ test("the coach's plan edit, a deleted note and a deleted package are kept on th
   const sb = makeSupabase(); coach(sb); sb.delayMs = 30;
   sb.seed("ft_clients", TPL, { id: TPL, name: "Templates", kind: "templates", packages: [{ id: "p1", name: "10 sessions", kind: "sessions", size: 10 }], notes: { log: [{ id: "n1", at: "2026-10-01T10:00:00.000Z", text: "Old" }] } });
   const tc = { id: TPL, name: "Templates", kind: "templates", packages: [], notes: { log: [] }, plan: { id: "x", kind: "monthly", until: "2026-11-15" } }; maps.clients.set(TPL, tc);
-  maps.planTouched.add(TPL); maps.deletedNotes.set("n1", TPL); maps.deletedPackages.set("p1", TPL); maps.fromFile.add("trainings/zzz");
+  maps.planTouched.add(TPL); maps.deletedNotes.set("n1", TPL); maps.deletedPackages.set("p1", TPL); maps.fromFile.set("trainings/zzz", 7);
   fns.scheduleSave("clients", TPL, 0);
   await tick(5);                                                      // the save is on the wire
   const stored = JSON.parse(localStorage.getItem("fiala.pending.v1"));
-  assert.deepStrictEqual([stored.plans, stored.notesGone, stored.packagesGone, stored.fromFile], [[TPL], [["n1", TPL]], [["p1", TPL]], ["trainings/zzz"]], "written to the device with the queue");
+  assert.deepStrictEqual([stored.plans, stored.notesGone, stored.packagesGone, stored.fromFile], [[TPL], [["n1", TPL]], [["p1", TPL]], [["trainings/zzz", 7]]], "written to the device with the queue");
   maps.planTouched.clear(); maps.deletedNotes.clear(); maps.deletedPackages.clear(); maps.fromFile.clear(); fns.restorePending();   // the app relaunched meanwhile
-  assert.ok(maps.planTouched.has(TPL) && maps.deletedNotes.get("n1") === TPL && maps.deletedPackages.get("p1") === TPL && maps.fromFile.has("trainings/zzz"), "back after the relaunch");
-  await tick(120);                                                    // the save landed: read first (no stamp), then the write
+  assert.ok(maps.planTouched.has(TPL) && maps.deletedNotes.get("n1") === TPL && maps.deletedPackages.get("p1") === TPL && maps.fromFile.get("trainings/zzz") === 7, "back after the relaunch");
+  await settle();                                                    // the save landed: read first (no stamp), then the write
   const saved = sb.tables.ft_clients.get(TPL).data;
   assert.deepStrictEqual(saved.packages, [], "the deleted package did not come back"); assert.deepStrictEqual(saved.notes.log, [], "nor the deleted note"); assert.strictEqual(saved.plan.until, "2026-11-15", "and the plan edit stands");
   assert.ok(!maps.planTouched.has(TPL) && !maps.deletedNotes.has("n1") && !maps.deletedPackages.has("p1"), "the save that carried them clears them");
@@ -265,22 +267,72 @@ test("a deleted package does not come back through a conflict, and an offline pl
   await fns.cloudBackend.set("clients", "c1", JSON.parse(JSON.stringify(c)));
   assert.strictEqual(sb.tables.ft_clients.get("c1").data.plan.until, "2026-10-18", "without the marker a plan set on another device stands");
 });
-test("a restore skips what is already here and the same, replaces what differs, says so in the sheet's words, and never rolls the built-in templates back", async () => {
+test("a restore skips what is already here, the same and known to the server, replaces what differs, says so in the sheet's words, and brings the file's template version", async () => {
   const sb = makeSupabase(); coach(sb);
-  maps.clients.set(TPL, { id: TPL, name: "Templates", kind: "templates", templatesVersion: 5, packages: [] });
-  maps.trainings.set("T", training("T", { title: "Same" })); maps.trainings.set("U", training("U", { title: "Here" }));
-  const file = { app: "fiala-trainings", format: 1, clients: { [TPL]: { id: TPL, name: "Templates", kind: "templates", templatesVersion: 3, packages: [{ id: "p1", name: "10 sessions", kind: "sessions", size: 10 }] }, c1: { unit: "lb", name: "Jane", id: "c1" } },
-    trainings: { T: training("T", { title: "Same" }), U: training("U", { title: "From the file" }), V: training("V", { title: "New" }) } };
+  maps.clients.set(U(1), { id: U(1), name: "Jane", unit: "lb" }); maps.seenAt.set("clients/" + U(1), "S1");
+  maps.clients.set(TPL, { id: TPL, name: "Templates", kind: "templates", templatesVersion: 5, packages: [] }); maps.seenAt.set("clients/" + TPL, "S1");
+  maps.trainings.set(U(10), training(U(10), { clientId: U(1), title: "Same" })); maps.seenAt.set("trainings/" + U(10), "S1");
+  maps.trainings.set(U(11), training(U(11), { clientId: U(1), title: "Here" })); maps.seenAt.set("trainings/" + U(11), "S1");
+  const file = { app: "fiala-trainings", format: 1, clients: { [TPL]: { id: TPL, name: "Templates", kind: "templates", templatesVersion: 3, packages: [{ id: "p1", name: "10 sessions", kind: "sessions", size: 10 }] }, [U(1)]: { unit: "lb", name: "Jane", id: U(1) } },
+    trainings: { [U(10)]: training(U(10), { clientId: U(1), title: "Same" }), [U(11)]: training(U(11), { clientId: U(1), title: "From the file" }), [U(12)]: training(U(12), { clientId: U(1), title: "New" }) } };
   const plan = fns.planRestore(JSON.parse(JSON.stringify(file)));
-  assert.deepStrictEqual([plan.cs.map((c) => c.id), plan.ts.map((t) => t.id)], [[TPL], ["U", "V"]], "T and Jane are here already and the same (whatever the key order)");
+  assert.deepStrictEqual([plan.cs.map((c) => c.id), plan.ts.map((t) => t.id)], [[TPL], [U(11), U(12)]], "the first workout and Jane are here already and the same (whatever the key order)");
   assert.strictEqual(plan.text, "2 workouts and the packages list from the file go into the app. 2 of them replace a copy already here, logged sets and all. Everything else stays as it is.");
-  assert.strictEqual(fns.planRestore(JSON.parse(JSON.stringify({ app: "fiala-trainings", clients: { c1: { id: "c1", name: "Jane", unit: "lb" } }, trainings: {} }))).text, "", "nothing to do, nothing to say");
+  maps.seenAt.delete("trainings/" + U(10));                           // the same record, but never confirmed by the server: it goes too
+  assert.deepStrictEqual(fns.planRestore(JSON.parse(JSON.stringify(file))).ts.map((t) => t.id), [U(10), U(11), U(12)]); maps.seenAt.set("trainings/" + U(10), "S1");
+  assert.strictEqual(fns.planRestore(JSON.parse(JSON.stringify({ app: "fiala-trainings", clients: { [U(1)]: { id: U(1), name: "Jane", unit: "lb" } }, trainings: {} }))).text, "", "nothing to do, nothing to say");
   fns.applyRestore(plan);
-  assert.strictEqual(maps.trainings.get("U").title, "From the file"); assert.strictEqual(maps.trainings.get("V").title, "New"); assert.strictEqual(maps.trainings.get("T").title, "Same");
-  assert.strictEqual(maps.clients.get(TPL).templatesVersion, 5, "the newer built-in set stays"); assert.strictEqual(maps.clients.get(TPL).packages[0].id, "p1", "the packages come from the file");
-  assert.deepStrictEqual([...maps.fromFile].sort(), ["clients/" + TPL, "trainings/U", "trainings/V"]); assert.ok(!maps.dirty.has("trainings/T"), "an unchanged record is not saved again");
-  await tick(20);                                                     // the zero-delay saves landed
-  assert.strictEqual(sb.tables.ft_trainings.get("U").data.title, "From the file"); assert.ok(!maps.fromFile.size, "the markers went with the saves");
-  const single = fns.planRestore(JSON.parse(JSON.stringify({ app: "fiala-trainings", clients: {}, trainings: { U: training("U", { title: "Again" }) } })));
-  assert.strictEqual(single.text, "1 workout from the file goes into the app. It replaces a copy already here, logged sets and all. Everything else stays as it is.");
+  assert.strictEqual(maps.trainings.get(U(11)).title, "From the file"); assert.strictEqual(maps.trainings.get(U(12)).title, "New"); assert.strictEqual(maps.trainings.get(U(10)).title, "Same");
+  assert.strictEqual(maps.clients.get(TPL).templatesVersion, 3, "the file's template version: the next launch repairs and completes the built-in set"); assert.strictEqual(maps.clients.get(TPL).packages[0].id, "p1", "the packages come from the file");
+  assert.deepStrictEqual([...maps.fromFile.keys()].sort(), ["clients/" + TPL, "trainings/" + U(11)].sort(), "a marker only for what was here already"); assert.ok(!maps.dirty.has("trainings/" + U(10)), "an unchanged record is not saved again");
+  await settle();                                                     // the zero-delay saves landed
+  assert.strictEqual(sb.tables.ft_trainings.get(U(11)).data.title, "From the file"); assert.ok(!maps.fromFile.size, "the markers went with the saves");
+  const one = fns.planRestore(JSON.parse(JSON.stringify({ app: "fiala-trainings", clients: {}, trainings: { [U(11)]: training(U(11), { clientId: U(1), title: "Again" }) } })));
+  assert.strictEqual(one.text, "1 workout from the file goes into the app. It replaces a copy already here, logged sets and all. Everything else stays as it is.");
+  const cl = fns.planRestore(JSON.parse(JSON.stringify({ app: "fiala-trainings", clients: { [U(1)]: { id: U(1), name: "Jane", unit: "kg" } }, trainings: {} })));
+  assert.strictEqual(cl.text, "1 client from the file goes into the app. It replaces a copy already here, notes and plan included. Everything else stays as it is.");
+});
+test("a restored workout this device never had joins the usual way: the file's plan, the client's log on the server kept", async () => {
+  const sb = makeSupabase(); coach(sb);
+  maps.clients.set(U(1), { id: U(1), name: "Jane", unit: "lb" }); maps.seenAt.set("clients/" + U(1), "S1");
+  sb.seed("ft_trainings", U(10), training(U(10), { clientId: U(1), title: "Server", rows: [row("r1", ["40", "40"], ["5", "5"], 2)] }), { client_id: U(1) });
+  const plan = fns.planRestore(JSON.parse(JSON.stringify({ app: "fiala-trainings", clients: {}, trainings: { [U(10)]: training(U(10), { clientId: U(1), title: "File", rows: [row("r1")] }) } })));
+  assert.strictEqual(plan.text, "1 workout from the file goes into the app. Everything else stays as it is.");
+  fns.applyRestore(plan); assert.ok(!maps.fromFile.size, "no marker for a record that was not here");
+  await settle();
+  const saved = sb.tables.ft_trainings.get(U(10)).data; assert.strictEqual(saved.title, "File"); assert.deepStrictEqual(saved.rows[0].weights, ["40", "40"], "the client's log on the server is kept");
+});
+test("the restore marker goes with the write that carried the file's copy, even with an edit queued behind it: the next save merges a client's newer log as usual", async () => {
+  const sb = makeSupabase(); coach(sb); sb.delayMs = 30;
+  sb.seed("ft_trainings", "T", training("T", { title: "Server", rows: [row("r1", ["40"], ["5"], 1)] }), { client_id: "c1" }); maps.seenAt.set("trainings/T", sb.tables.ft_trainings.get("T").updated_at);
+  const file = training("T", { title: "File", rows: [row("r1", ["100", "100", "100"], ["5", "5", "5"], 3)] }); maps.trainings.set("T", file);
+  maps.fromFile.set("trainings/T", (maps.dirty.get("trainings/T") || 0) + 1); fns.scheduleSave("trainings", "T", 0);   // as applyRestore does
+  await tick(5); sb.delayMs = 100;                                    // write A is on the wire with the file's copy; what follows takes longer
+  file.title = "File, edited"; fns.scheduleSave("trainings", "T", 0);   // the coach edits while it is out: a second save queued behind the first
+  await tick(80);                                                     // write A landed
+  assert.strictEqual(sb.tables.ft_trainings.get("T").data.title, "File"); assert.ok(!maps.fromFile.has("trainings/T"), "the marker went with the write that carried the file's copy"); assert.ok(maps.dirty.has("trainings/T"), "the edit is still to go");
+  const srv = sb.tables.ft_trainings.get("T"); srv.data.rows[0].weights = ["110", "110", "110", "110"]; srv.data.rows[0].setsDone = 4; srv.updated_at = "2026-10-13T00:00:59Z";   // the client logs a set before write B
+  await settle();
+  const saved = sb.tables.ft_trainings.get("T").data;
+  assert.strictEqual(saved.title, "File, edited"); assert.deepStrictEqual(saved.rows[0].weights, ["110", "110", "110", "110"], "the client's newer sets survive the queued edit"); assert.ok(!maps.dirty.size);
+});
+test("a save already out when Restore is tapped merges nothing of the server's into the restored record, and the restore's own write follows it", async () => {
+  const sb = makeSupabase(); coach(sb); sb.delayMs = 30;
+  sb.seed("ft_trainings", "T", training("T", { completedAt: "2026-10-12T18:00:00.000Z", rows: [row("r1", ["40"], ["5"], 1)] }), { client_id: "c1" });   // the server holds the client's log
+  maps.trainings.set("T", training("T", { title: "Renamed" })); fns.scheduleSave("trainings", "T", 0);   // an ordinary edit with no stamp: it would read first and merge
+  await tick(5);
+  const file = training("T", { title: "File", completedAt: null, rows: [row("r1", ["100"], ["5"], 1)] }); maps.trainings.set("T", file);
+  maps.fromFile.set("trainings/T", (maps.dirty.get("trainings/T") || 0) + 1); fns.scheduleSave("trainings", "T", 0);   // Restore while that save is out
+  await settle();
+  assert.strictEqual(maps.trainings.get("T").completedAt, null, "the live copy stayed the file's: the earlier save merged nothing into it"); assert.deepStrictEqual(maps.trainings.get("T").rows[0].weights, ["100"]);
+  const saved = sb.tables.ft_trainings.get("T").data; assert.strictEqual(saved.title, "File"); assert.strictEqual(saved.completedAt, null); assert.deepStrictEqual(saved.rows[0].weights, ["100"]);
+  assert.ok(!maps.fromFile.size && !maps.dirty.size);
+});
+test("a restored client the server refuses for good drops its marker with the queue entry", async () => {
+  const sb = makeSupabase(); coach(sb);
+  maps.clients.set(U(2), { id: U(2), name: "Twin", email: "same@x.com" }); maps.seenAt.set("clients/" + U(2), "S0");
+  maps.fromFile.set("clients/" + U(2), 1); maps.dirty.set("clients/" + U(2), 1);
+  sb.setFail({ table: "ft_clients", op: "update", times: 1, code: "23505", message: "duplicate key" });
+  await fns.flushOne("clients", U(2)).catch(() => {});
+  assert.ok(!maps.fromFile.has("clients/" + U(2)) && !maps.dirty.has("clients/" + U(2))); assert.ok(app.get().failed);
 });

@@ -46,4 +46,4 @@ export const pendingSwap = new Map();        // client mode: trainingId -> Map(r
 export const pendingNoteRows = new Map();   // client mode: trainingId -> Set(rowId) with a note to send
 export const deletedNotes = new Map();       // noteId -> clientId: notes removed on this device and not yet saved to the server; a merge must not bring them back
 export const deletedPackages = new Map();    // packageId -> clientId (the Templates record): packages removed on this device and not yet saved; a merge must not bring them back
-export const fromFile = new Set();           // "kind/id" restored from a backup and not yet saved: written as the file has it, nothing merged in
+export const fromFile = new Map();           // "kind/id" -> the save version that carries a backup's copy: written as the file has it, nothing merged in, until a write at or after that version lands
