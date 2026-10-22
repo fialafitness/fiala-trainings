@@ -768,7 +768,7 @@ import { reportRange, buildReport } from "./report.js";
 
   // ---------- render ----------
   // ---- keyboard bar (above the phone keyboard): 123/ABC switch, quick entries, Next/Done. The number keypad on iPhone has no Return key.
-  const kbbar = $("kbbar"), kbMode = kbbar.querySelector(".kb-mode"), kbChips = kbbar.querySelector(".kb-chips"), kbDone = kbbar.querySelector(".kb-done");
+  const kbbar = $("kbbar"), kbMode = kbbar.querySelector(".kb-mode"), kbChips = kbbar.querySelector(".kb-chips"), kbNextBtn = kbbar.querySelector(".kb-next"), kbDone = kbbar.querySelector(".kb-done");
   let kbTarget = null;
   const kbKind = (el) => {
     if (!el || el.tagName !== "INPUT" || el.readOnly) return "";
@@ -797,7 +797,7 @@ import { reportRange, buildReport } from "./report.js";
   function paintKb() {
     const t = kbTarget; if (!t) return;
     const kind = kbKind(t);
-    kbMode.textContent = t.inputMode === "text" ? "123" : "ABC";
+    kbMode.textContent = t.inputMode === "text" ? "123" : "Aa";
     kbChips.replaceChildren();
     const chip = (label, fn) => { const b = document.createElement("button"); b.type = "button"; b.tabIndex = -1; b.textContent = label; b.addEventListener("click", fn); kbChips.appendChild(b); };
     const unitChip = (u) => chip(u, () => { const v = kbTarget.value.trim().replace(/\s*(sec|s|min)$/i, ""); if (v) kbSet(v + " " + u, true); }); // 60 → 60 sec, 4 min → 4 sec
@@ -806,7 +806,7 @@ import { reportRange, buildReport } from "./report.js";
     if (kind === "reps") { chip("\u2013", () => kbInsert("\u2013")); sideChip("/ side"); unitChip("sec"); }
     if (kind === "tempo") { chip("X", () => kbInsert("X")); for (const w of ["Normal", "Controlled", "Slow"]) chip(w, () => kbSet(w, true)); for (const c of ["3010", "4010", "10X0", "41X0"]) chip(c, () => kbSet(c, true)); }
     if (kind === "rest") { unitChip("sec"); unitChip("min"); }
-    kbDone.textContent = kbSibling(t) ? "Next" : "Done";                                  // Done only when nothing is left to fill in this exercise, superset or giant set
+    kbNextBtn.hidden = !kbSibling(t);                                                      // Next only while another box of this exercise, superset or giant set is left; the check is always there
   }
   function showKb(el) {
     kbTarget = el; paintKb(); kbbar.hidden = false; placeKb(); $("draftBar").classList.add("kb");
@@ -825,7 +825,8 @@ import { reportRange, buildReport } from "./report.js";
     for (const b of group) b.inputMode = text ? "text" : "decimal";
     t.blur(); setTimeout(() => t.focus(), 50);   // the phone reads the keyboard type when the box takes focus
   });
-  kbDone.addEventListener("click", kbNext);
+  kbNextBtn.addEventListener("click", kbNext);
+  kbDone.addEventListener("click", () => { const t = kbTarget; if (t) t.blur(); else hideKb(); });   // the check: done with this box, the keyboard goes
   document.addEventListener("focusin", (e) => { if (kbKind(e.target)) showKb(e.target); else if (kbTarget) hideKb(); });
   document.addEventListener("focusout", () => { setTimeout(() => { if (!kbKind(document.activeElement)) hideKb(); }, 80); });
 
