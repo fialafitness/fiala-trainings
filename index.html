@@ -284,12 +284,15 @@
   .nn-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .nn-text { font-size: 15px; line-height: 1.35; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .list .chev { color: var(--text-tertiary); margin-left: 8px; }
-  .list.actions { margin-top: 24px; }                                          /* the page's other actions, grouped the way Settings groups them: one list, one row each, the destructive one alone in red */
-  .list.actions + .list.actions, .use + .list.actions { margin-top: 16px; }
-  .list.actions li[hidden] { display: none; }
-  .list.actions button.danger { color: var(--danger); justify-content: center; }
-  .list.actions #tNoteBox { padding: 0 20px 16px; }
-  .list.actions #tNoteBox textarea { width: 100%; box-sizing: border-box; }
+  body:not(.client) #vTraining { padding-bottom: 88px; }                       /* room under the last pills for the compose disc */
+  .note-fab { position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 40; }   /* the session note: Mail's compose button, bottom right, over the page */
+  .note-fab[hidden] { display: none; }
+  .fab { appearance: none; border: 0; cursor: pointer; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--glass-bar); -webkit-backdrop-filter: blur(22px) saturate(170%); backdrop-filter: blur(22px) saturate(170%); box-shadow: 0 6px 20px rgba(0,0,0,0.25), inset 0 1px 0 var(--glass-bar-rim), inset 0 0 0 0.5px var(--glass-bar-edge); color: var(--text-primary); -webkit-tap-highlight-color: transparent; }
+  .fab svg { width: 24px; height: 24px; }
+  .fab[hidden] { display: none; }
+  #noteSheet:has(#tNoteBox[hidden]) { display: none; }                        /* the sheet is up exactly while the note box is */
+  #noteSheet #tNoteBox { margin-top: 10px; }
+  #noteSheet textarea { width: 100%; box-sizing: border-box; min-height: 120px; }
   .list.form li { padding: 0; }                                                /* a form: a label and its field in each cell */
   .list.form .cell { display: flex; flex-direction: column; gap: 3px; padding: 11px 20px 12px; cursor: text; }
   .list.form .cap { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
@@ -952,7 +955,7 @@
   .pick-note b { font-weight: 500; color: var(--text-primary); }
   #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .contact-row, #vClient.tpl #cEmailWrap, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
   #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
-  #vTraining.tpl #finishWrap, #vTraining.tpl #workoutActions, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
+  #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
   .tpl-pill { justify-self: stretch; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 36px; border-radius: 50px;
     font-size: 14px; font-weight: 500; letter-spacing: 0; color: var(--text-primary); background: var(--field); transition: opacity 300ms ease; }   /* a link to the template: the same quiet bar as In person above it; the chevron says it opens */
@@ -1096,7 +1099,7 @@
       <li><label class="cell"><span class="cap">Video</span><input id="exVideo" type="url" placeholder="Paste a YouTube link" autocomplete="off" autocapitalize="none" inputmode="url"></label></li>
     </ul>
     <p class="group-foot" id="exHint"></p>
-    <ul class="list actions"><li><button type="button" class="danger" id="exDelete">Delete exercise</button></li></ul>
+    <div class="foot"><button class="btn tint danger" id="exDelete" type="button">Delete exercise</button></div>
   </section>
   <section id="vExercises" hidden>
     <h1>Exercises</h1>
@@ -1285,24 +1288,25 @@
     <div class="finish" id="finishWrap" hidden>
       <button class="btn wide" id="finishBtn">Finish workout</button>
       <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn tint" id="unfinishBtn" type="button">Undo</button></div>
+      <div class="finished" id="skipLine"><button class="btn tint wide" id="skipBtn" type="button">Skip workout</button></div>
       <div class="finished" id="skippedLine" hidden><span class="muted" id="skippedText" style="font-size:17px"></span><button class="btn tint" id="unskipBtn" type="button">Undo</button></div>
     </div>
-    <ul class="list actions" id="workoutActions">
-      <li id="skipLine"><button type="button" id="skipBtn"><span>Skip workout</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
-      <li id="tNoteWrap" hidden><button type="button" id="tNoteOpen"><span>Add a note</span><span class="sub"><span class="chev">&rsaquo;</span></span></button>
-        <div id="tNoteBox" hidden>
-          <textarea id="tNote" placeholder="A note about this session, for you only"></textarea>
-          <div class="note-actions"><button class="btn sm" id="tNoteSave" type="button">Save note</button><button class="btn quiet" id="tNoteDiscard" type="button">Discard</button></div>
-        </div>
-      </li>
-      <li class="trainer-only" id="copyRow"><button type="button" id="copyTraining"><span>Copy workout</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
-      <li class="trainer-only" id="templateRow"><button type="button" id="saveTemplate"><span>Save as template</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
-    </ul>
     <div class="use trainer-only" id="useWrap" hidden>
       <button class="btn" id="useBtn" type="button" style="width:100%">Use for a client</button>
       <ul class="list" id="usePick" hidden style="margin-top:12px"></ul>
     </div>
-    <ul class="list actions trainer-only" id="deleteList"><li><button type="button" class="danger" id="delTraining">Delete workout</button></li></ul>
+    <div class="foot trainer-only">
+      <button class="btn tint" id="copyTraining">Copy workout</button>
+      <button class="btn tint" id="saveTemplate">Save as template</button>
+      <button class="btn tint danger" id="delTraining">Delete workout</button>
+    </div>
+    <div class="note-fab trainer-only" id="tNoteWrap" hidden><button class="fab" id="tNoteOpen" type="button" aria-label="Add a note" title="Add a note"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.5H6.5A2.5 2.5 0 0 0 4 7v10.5A2.5 2.5 0 0 0 6.5 20H17a2.5 2.5 0 0 0 2.5-2.5V13"/><path d="M18.2 3.3l2.5 2.5L12.5 14 9 15l1-3.5z"/></svg></button></div>
+    <div class="sheet-bg" id="noteSheet"><div class="sheet ask" role="dialog" aria-modal="true" aria-labelledby="noteTitle"><h3 id="noteTitle">Session note</h3>
+      <div id="tNoteBox" hidden>
+        <textarea id="tNote" placeholder="A note about this session, for you only"></textarea>
+        <div class="note-actions"><button class="btn sm" id="tNoteSave" type="button">Save note</button><button class="btn quiet" id="tNoteDiscard" type="button">Discard</button></div>
+      </div>
+    </div></div>
   </section>
 </main>
 
@@ -1360,7 +1364,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=85";
+  import { boot } from "./app/main.js?v=86";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
