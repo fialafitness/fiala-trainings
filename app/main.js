@@ -182,6 +182,7 @@ import { reportRange, buildReport } from "./report.js";
     hideAllViews(); $("vSignup").hidden = false; $("suForm").hidden = false; $("suDone").hidden = true; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("suMsg").textContent = ""; $("suEmail").value = $("loginEmail").value.trim(); setTimeout(() => $("suName").focus(), 50);
   }
+  let backScroll = null;                 // where the Clients page (or the client's profile) was scrolled when Settings, Catalog or Data was opened: Back returns there, not to the top
   let settingsOpen = false;              // false | "settings" | "password" | "exercises" | "packages" | "number"
   let fromSettings = false;              // false | "settings" | "catalog": the list page a sub-page (number, password, exercises, packages) was opened from; Back returns there
   let pendingPage = null;                // the settings page that was open when the page was last refreshed: it comes back after sign-in
@@ -609,14 +610,14 @@ import { reportRange, buildReport } from "./report.js";
     msg.textContent = "Password changed."; $("pwNew").value = ""; $("pwNew2").value = "";
     pwTimer = setTimeout(() => { if (settingsOpen === "password") { if (fromSettings) showParent(); else { settingsOpen = false; hideAllViews(); render(); } } }, 1200);
   });
-  $("settingsBtn").addEventListener("click", () => { showSettings(); window.scrollTo(0, 0); });   // the pills sit at the bottom of a long list: each page opens at its top
-  $("catalogBtn").addEventListener("click", () => { showCatalog(); window.scrollTo(0, 0); });
-  $("dataBtn").addEventListener("click", () => { showData(); window.scrollTo(0, 0); });
+  $("settingsBtn").addEventListener("click", () => { backScroll = window.scrollY; showSettings(); window.scrollTo(0, 0); });   // the pills sit at the bottom of a long list: each page opens at its top, and Back lands where the list was
+  $("catalogBtn").addEventListener("click", () => { backScroll = window.scrollY; showCatalog(); window.scrollTo(0, 0); });
+  $("dataBtn").addEventListener("click", () => { backScroll = window.scrollY; showData(); window.scrollTo(0, 0); });
   $("changePw").addEventListener("click", () => { fromSettings = "settings"; showPassword(); window.scrollTo(0, 0); });
   $("myExercises").addEventListener("click", () => { fromSettings = "catalog"; showExercises(); window.scrollTo(0, 0); });
   $("setNumber").addEventListener("click", () => { fromSettings = "settings"; showNumber(); window.scrollTo(0, 0); });
   $("myPhone").addEventListener("change", () => { setTrainerPhone($("myPhone").value); $("myPhoneMsg").textContent = phoneDigits($("myPhone").value) ? "Saved. Clients now see Message Michal." : "Saved. Without a number clients see no button."; });
-  $("settingsBtn2").addEventListener("click", () => { showSettings(); window.scrollTo(0, 0); });
+  $("settingsBtn2").addEventListener("click", () => { backScroll = window.scrollY; showSettings(); window.scrollTo(0, 0); });
   $("forgotBtn").addEventListener("click", async () => {
     const email = $("loginEmail").value.trim();
     if (!email) { $("loginMsg").textContent = "Type your email first, then tap Forgot password."; return; }
@@ -772,7 +773,9 @@ import { reportRange, buildReport } from "./report.js";
     if (settingsOpen === "exercise") { if (exDirty() && !(await askFirst({ title: "Discard the changes?", text: "The exercise stays as it was.", yes: "Discard" }))) return; showExercises(true); return; }
     if (settingsOpen) {
       if (fromSettings) { showParent(); window.scrollTo(0, 0); return; }
-      settingsOpen = false; fromSettings = false; $("exPlayer").replaceChildren(); hideAllViews(); render(); window.scrollTo(0, 0); return;
+      settingsOpen = false; fromSettings = false; $("exPlayer").replaceChildren(); hideAllViews(); render();
+      if (backScroll != null) window.scrollTo(0, backScroll); else { const foot = S.clientMode ? $("clientFoot") : $("localFoot"); if (!foot.hidden) foot.scrollIntoView({ block: "end" }); else window.scrollTo(0, 0); }   // back where the page was; after a refresh, at the pills it was opened from
+      backScroll = null; return;
     }
     if (S.view.name === "training") { const t = trainings.get(S.view.id); go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }); }
     else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.phase) go({ name: "client", id: TEMPLATES_ID, program: S.view.program });
