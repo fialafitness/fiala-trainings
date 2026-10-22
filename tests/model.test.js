@@ -1,6 +1,6 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
-import { timedPlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
+import { timedPlan, distPlan, measurePlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
 import { monthLater, daysLater } from "../app/util.js";
 const app = await load();
 const { fns, maps } = app;
@@ -176,4 +176,11 @@ test("a long name splits into a title and a subtitle at a bracket, comma or dash
   assert.deepStrictEqual(splitName("Cable face pull with rotation, to forehead", "rotation"), { title: "Cable face pull with rotation, to forehead", sub: "" }, "not the end of the name: no split");
   assert.deepStrictEqual(splitName("TRX row (underhand, to chest)", "to chest"), { title: "TRX row (underhand", sub: "to chest" });
   assert.strictEqual(autoSubtitle("(low)"), ""); assert.strictEqual(autoSubtitle(""), "");
+});
+
+test("a plan in meters logs distance the way a hold logs time; min is still time, max is nothing", () => {
+  assert.deepStrictEqual(distPlan("40 m"), { n: "40", unit: "m" }); assert.deepStrictEqual(distPlan("40m"), { n: "40", unit: "m" }); assert.deepStrictEqual(distPlan("20-40 meters"), { n: "20", unit: "m" }); assert.deepStrictEqual(distPlan("40 m / side"), { n: "40", unit: "m" });
+  for (const reps of ["2 min", "max", "10", "AMRAP", "", "45 sec"]) assert.strictEqual(distPlan(reps), null, reps);
+  assert.deepStrictEqual(measurePlan("2 min"), { n: "2", unit: "min" }); assert.deepStrictEqual(measurePlan("40 m"), { n: "40", unit: "m" }); assert.strictEqual(measurePlan("10"), null);
+  assert.strictEqual(planNumber("40 m"), "40"); assert.strictEqual(planNumber("20-40 m"), "40");
 });

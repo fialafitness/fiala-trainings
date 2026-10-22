@@ -18,6 +18,9 @@ export const timedPlan = (reps) => {
   if (/\b(hold|max\s*time|as long as possible|alap|for time)\b/i.test(s)) { const n = /\d+/.exec(s); return { n: n ? n[0] : "", unit: "sec" }; }   // "max hold": the box asks for the seconds
   return null;
 };
+// A distance plan ("40 m", "40m", "20-40 meters"): the box logs meters, like a hold logs seconds. measurePlan covers both.
+export const distPlan = (reps) => { const m = /(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*\d+(?:[.,]\d+)?)?\s*(m|meter|meters|metre|metres)\b/i.exec(String(reps || "")); return m ? { n: m[1], unit: "m" } : null; };
+export const measurePlan = (reps) => timedPlan(reps) || distPlan(reps);
 // Before the Time box existed, a plank's seconds were typed into the weight box ("45 sec"). On a timed exercise a weight that reads as a
 // time is the time: it moves to the time column (in the plan's unit) and the weight is bodyweight again. Idempotent: runs on every load and pull.
 export const timeAsWeight = (v) => { const tm = timedPlan(v); return tm && tm.n !== "" ? tm : null; };

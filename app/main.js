@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, pendingNoteRows, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, measurePlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -802,10 +802,10 @@ import { reportRange, buildReport } from "./report.js";
     kbMode.textContent = t.inputMode === "text" ? "123" : "Aa";
     kbChips.replaceChildren();
     const chip = (label, fn) => { const b = document.createElement("button"); b.type = "button"; b.tabIndex = -1; b.textContent = label; b.addEventListener("click", fn); kbChips.appendChild(b); };
-    const unitChip = (u) => chip(u, () => { const v = kbTarget.value.trim().replace(/\s*(sec|s|min)$/i, ""); if (v) kbSet(v + " " + u, true); }); // 60 → 60 sec, 4 min → 4 sec
+    const unitChip = (u) => chip(u, () => { const v = kbTarget.value.trim().replace(/\s*(sec|s|min|m)$/i, ""); if (v) kbSet(v + " " + u, true); }); // 60 → 60 sec, 4 min → 4 sec, 40 → 40 m
     if (kind === "weights") { chip("Bodyweight", () => kbSet("BW")); if (!t.closest(".setlog")) unitChip("sec"); }   // the key says the word the box will show   // the set log has its own Time box: seconds never go in the weight
     const sideChip = (w) => chip(w, () => { const v = kbTarget.value.trim().replace(/\s*(\/|each|per)\s*(side|leg|arm)$/i, ""); if (v) kbSet(v + " " + w, true); });   // 7 → "7 / side"
-    if (kind === "reps") { chip("\u2013", () => kbInsert("\u2013")); sideChip("/ side"); unitChip("sec"); }
+    if (kind === "reps") { chip("\u2013", () => kbInsert("\u2013")); sideChip("/ side"); unitChip("sec"); unitChip("m"); }
     if (kind === "tempo") { chip("X", () => kbInsert("X")); for (const w of ["Normal", "Controlled", "Slow"]) chip(w, () => kbSet(w, true)); for (const c of ["3010", "4010", "10X0", "41X0"]) chip(c, () => kbSet(c, true)); }
     if (kind === "rest") { unitChip("sec"); unitChip("min"); }
     kbNextBtn.hidden = !kbSibling(t);                                                      // Next only while another box of this exercise, superset or giant set is left; the check is always there
@@ -1362,14 +1362,14 @@ import { reportRange, buildReport } from "./report.js";
     const canon = (x) => squash(ALIASES[String(x || "").trim()] || x); const map = new Map();
     for (const t of clientTrainings(c.id)) for (const r of t.rows || []) {   // newest first: the name keeps its latest spelling
       const k = canon(r.name); if (!k) continue;
-      const e = map.get(k) || { name: String(r.name || "").trim(), count: 0, best: null, timed: !!timedPlan(r.reps) };
+      const e = map.get(k) || { name: String(r.name || "").trim(), count: 0, best: null, measure: measurePlan(r.reps), timed: !!measurePlan(r.reps) };
       const st = topSet(r, e.timed); if (!st) continue;
       st.date = effDate(t); st.title = String(t.title || "").trim(); e.count++; if (betterSet(st, e.best, e.timed)) e.best = st; map.set(k, e);
     }
     return map;
   }
   let ovFor = null, ovPick = "";                                     // the exercise looked up, kept while the page stays open
-  const fmtSetFor = (c, e) => { const u = c.unit || "lb", st = e.best; return e.timed ? (st.w != null ? st.w + " " + u + " \u00d7 " : "") + st.rp + " sec" : st.w != null ? st.w + " " + u + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps"); };
+  const fmtSetFor = (c, e) => { const u = c.unit || "lb", st = e.best; return e.timed ? (st.w != null ? st.w + " " + u + " \u00d7 " : "") + st.rp + " " + (e.measure ? e.measure.unit : "sec") : st.w != null ? st.w + " " + u + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps"); };
   function paintOvBest() {
     const c = clients.get(S.view.id); const box = $("ovBest"); if (!c || !ovPick) { box.hidden = true; return; }
     const e = loggedExercises(c).get(ovPick); box.hidden = false;
@@ -2257,9 +2257,9 @@ import { reportRange, buildReport } from "./report.js";
     const bind = (sel, field, transform) => { if (asClient) return; q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); }); };
     if (!asClient) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
     bind(".reps", "reps"); bind(".tempo", "tempo", (v) => { setTimeout(paintTempo, 0); return v; });
-    const timedAtPaint = JSON.stringify(timedPlan(r.reps));           // reps turned into "30 sec" (or back): the set log, its labels and the summary follow as soon as he leaves the box
+    const timedAtPaint = JSON.stringify(measurePlan(r.reps));           // reps turned into "30 sec" (or back): the set log, its labels and the summary follow as soon as he leaves the box
     if (!asClient) q(".reps").addEventListener("blur", (e) => {
-      if (JSON.stringify(timedPlan(r.reps)) === timedAtPaint) return;
+      if (JSON.stringify(measurePlan(r.reps)) === timedAtPaint) return;
       const nx = e.relatedTarget, field = nx && nx.closest && nx.closest('.row[data-id="' + r.id + '"]') ? ["name", "reps", "tempo", "rest", "label"].find((c) => nx.classList.contains(c)) : null;
       S.renderedTraining = null; render();
       if (field) { const row = $("rows").querySelector('.row[data-id="' + r.id + '"]'), inp = row && row.querySelector("." + field); if (inp) inp.focus({ preventScroll: true }); }   // he tapped the next box: it keeps the keyboard, no jump
@@ -2357,7 +2357,7 @@ import { reportRange, buildReport } from "./report.js";
 
     const liftHistory = () => {                                      // this exercise, this client, EARLIER sessions only: the last session's top set and the best ever
       const canon = (x) => squash(ALIASES[String(x || "").trim()] || x); const name = canon(r.name); if (!name) return null;
-      const timed = !!timedPlan(r.reps);
+      const timed = !!measurePlan(r.reps);
       let best = null, last = null;
       for (const other of clientTrainings(t.clientId)) {              // newest first
         if (other.id === t.id) continue;                               // today is what the line is compared against, never part of it
@@ -2374,7 +2374,7 @@ import { reportRange, buildReport } from "./report.js";
     const paintLifts = () => {                                       // LAST 215 lb × 4   BEST 230 lb × 3  ·  one entry when the best was the last session  ·  NEW BEST in gold while today beats it  ·  a tap on a number tells when
       const box = q(".lifts"), h = isTemplateClient(t.clientId) ? null : liftHistory();
       box.hidden = !h; if (!h) return;
-      const unit = (clients.get(t.clientId) || {}).unit || "lb", tm = timedPlan(r.reps);
+      const unit = (clients.get(t.clientId) || {}).unit || "lb", tm = measurePlan(r.reps);
       const fmt = tm ? (st) => (st.w != null ? st.w + " " + unit + " \u00d7 " : "") + st.rp + " " + tm.unit : (st) => st.w != null ? st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps");
       const now = topSet(r, h.timed, (group.sel | 0) + 1), newBest = !!(now && betterSet(now, h.best, h.timed)), same = sameSet(h.last, h.best);   // the set under the finger counts for the gold preview as it is typed
       q(".lift.best").classList.toggle("new", newBest); q(".lift.best b").textContent = fmt(newBest ? now : h.best); q(".lift.best .vh").textContent = newBest ? "New best " : "Personal best ";   // the read-out word follows the state
@@ -2426,7 +2426,7 @@ import { reportRange, buildReport } from "./report.js";
       const last = lastWeights(t, r);
       r.weights = r.weights || []; r.repsDone = r.repsDone || [];
       const w = q(".setlog .w"), rp = q(".setlog .rp");
-      const timed = timedPlan(r.reps); q(".setlog").classList.toggle("timed", !!timed);   // a plank: the box says Time and comes first, Weight waits beside it
+      const timed = measurePlan(r.reps); q(".setlog").classList.toggle("timed", !!timed);   // a plank: the box says Time and comes first, Weight waits beside it
       const asW = (v) => (timed && timeAsWeight(v) ? "" : v);                              // a hold never borrows "45 sec" as its weight (the old app typed seconds there)
       const lw = asW(last && last.weights[sel] ? String(last.weights[sel]) : ""), lr = last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "";
       const carry = carried(r, sel);   // the set before (else last time) shows in grey: type over it, or leave it and Complete set writes it down
@@ -2441,8 +2441,8 @@ import { reportRange, buildReport } from "./report.js";
       const hand = perHand(r.name); q(".setlog .chip.stack:nth-child(1) .lab").textContent = hand ? "Weight / " + hand : "Weight";   // one dumbbell, one kettlebell: the label says what the number is per
       wireChip(w, { empty: timed ? "Bodyweight" : "Log weight", hint: true, suffix: (v) => weightWord(v, unit), show: showWeight });   // a hold with no weight is bodyweight; BW can still be typed or picked   // after the handlers above, so the words follow the tidied value; never logged before = the box asks
       const perSide = /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || ""));             // "10 / side": the label says so, the box holds the number
-      q(".setlog .chip.stack:nth-child(2) .lab").textContent = (timed ? "Time" : "Reps") + (perSide ? " / side" : "");
-      if (timed) wireChip(rp, { empty: "Log time", hint: true, suffix: () => timed.unit, show: (v) => v });
+      q(".setlog .chip.stack:nth-child(2) .lab").textContent = (timed ? (timed.unit === "m" ? "Distance" : "Time") : "Reps") + (perSide ? " / side" : "");
+      if (timed) wireChip(rp, { empty: timed.unit === "m" ? "Log distance" : "Log time", hint: true, suffix: () => timed.unit, show: (v) => v });
       else wireChip(rp, { empty: "\u2013", suffix: () => "", show: (v) => String(v || "").replace(/\s*(\/|each|per)\s*(side|leg|arm)\s*$/i, "").replace(/\s*reps?\s*$/i, "") });   // the label above already says Reps: the box holds the number alone (lbs and sec are units, "reps" would only repeat the label)
     }
     const chipText = (c) => c.querySelector(".val").textContent + (c.querySelector(".suffix").hidden ? "" : " " + c.querySelector(".suffix").textContent);
@@ -2450,7 +2450,7 @@ import { reportRange, buildReport } from "./report.js";
     const chips = [...el.querySelectorAll(".specs .chip")];
     for (const [text, cls] of [[nSets + (nSets === 1 ? " set" : " sets"), "si sum-sets"], [chipText(chips[0]), "si sum-reps"], [chipText(chips[1]), "si sum-rest"]]) { if (!text) continue; const e = document.createElement("span"); e.className = cls; e.textContent = text; sumEl.appendChild(e); }
     {                                                                  // the finished card, opened: every set in a cell — number, weight × reps (editable in place for a typo), a check
-      const unitS = (clients.get(t.clientId) || {}).unit || "lb", tmS = timedPlan(r.reps), sumEl = document.createElement("div"); sumEl.className = "row-sum";
+      const unitS = (clients.get(t.clientId) || {}).unit || "lb", tmS = measurePlan(r.reps), sumEl = document.createElement("div"); sumEl.className = "row-sum";
       const runitWord = tmS ? tmS.unit : /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || "")) ? "reps / side" : "reps";   // "× 5 reps", "× 8 reps / side", "× 45 sec"
       const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); scheduleSave("trainings", t.id); };
       const fit = (inp) => { inp.style.width = Math.ceil(textWidth(inp.value || inp.placeholder || "", !inp.value) + 7) + "px"; };   // as wide as its text, measured in the real font ("BW" is wide letters, not two digits)
@@ -2464,7 +2464,7 @@ import { reportRange, buildReport } from "./report.js";
           const wi = document.createElement("input"); wi.className = "sum-w"; wi.inputMode = "decimal"; wi.placeholder = "Bodyweight"; wi.setAttribute("aria-label", "Weight, set " + (i + 1)); wi.autocomplete = "off";
           const unit = document.createElement("span"); unit.className = "sum-unit";
           const x = document.createElement("span"); x.className = "sum-x"; x.textContent = "\u00d7";
-          const ri = document.createElement("input"); ri.className = "sum-r"; ri.inputMode = "numeric"; ri.placeholder = tmS ? "sec" : "reps"; ri.setAttribute("aria-label", (tmS ? "Seconds" : "Reps") + ", set " + (i + 1)); ri.autocomplete = "off";
+          const ri = document.createElement("input"); ri.className = "sum-r"; ri.inputMode = "numeric"; ri.placeholder = tmS ? tmS.unit : "reps"; ri.setAttribute("aria-label", (tmS ? (tmS.unit === "m" ? "Meters" : "Seconds") : "Reps") + ", set " + (i + 1)); ri.autocomplete = "off";
           const runit = document.createElement("span"); runit.className = "sum-unit runit"; runit.textContent = runitWord;
           val.append(wi, unit, x, ri, runit); line.appendChild(val);
           wi.addEventListener("input", () => { r.weights = correctFrom(r.weights, i, wi.value); fit(wi); mark(); refresh(); });
