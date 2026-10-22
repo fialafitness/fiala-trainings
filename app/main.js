@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, pendingNoteRows, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, doneCount, timedPlan, measurePlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, doneCount, timedPlan, measurePlan, convertWeight, stampUnit, toUnit, toTimeUnit, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -718,7 +718,7 @@ import { reportRange, buildReport } from "./report.js";
       if (effDate(other) > effDate(t)) continue;
       if (effDate(other) === effDate(t) && (other.createdAt || "") >= (t.createdAt || "")) continue;
       const r = other.rows.find((x) => canon(x.name) === name && ((x.weights || []).some((w, i) => setCounts(x, i) && String(w || "").trim() !== "") || (x.repsDone || []).some((v, i) => setCounts(x, i) && String(v || "").trim() !== "")));   // a session where a set of it really happened (a plank has no weight: its time counts)
-      if (r) { const only = (arr) => (arr || []).map((v, i) => (setCounts(r, i) ? v : "")); return { date: effDate(other) || other.date, weights: only(r.weights), reps: only(r.repsDone) }; }   // a weight typed into a set that never happened does not carry forward
+      if (r) { const cu = (clients.get(t.clientId) || {}).unit || "lb"; const only = (arr) => (arr || []).map((v, i) => (setCounts(r, i) ? v : "")); return { date: effDate(other) || other.date, weights: only(r.weights).map((v) => (r.unit && r.unit !== cu ? String(convertWeight(v, r.unit, cu)) : v)), reps: only(r.repsDone) }; }   // read in the client's unit today   // a weight typed into a set that never happened does not carry forward
     }
     return null;
   }
@@ -1366,7 +1366,8 @@ import { reportRange, buildReport } from "./report.js";
     for (const t of clientTrainings(c.id)) for (const r of t.rows || []) {   // newest first: the name keeps its latest spelling
       const k = canon(r.name); if (!k) continue;
       const e = map.get(k) || { name: String(r.name || "").trim(), count: 0, best: null, measure: measurePlan(r.reps), timed: !!measurePlan(r.reps) };
-      const st = topSet(r, e.timed); if (!st) continue;
+      let st = topSet(r, e.timed); if (!st) continue;
+      st = toUnit(st, r.unit, c.unit || "lb"); const mu = measurePlan(r.reps); if (e.measure && mu) st = toTimeUnit(st, mu.unit, e.measure.unit);   // every session read in the client's unit, holds in the unit of the latest plan
       st.date = effDate(t); st.title = String(t.title || "").trim(); e.count++; if (betterSet(st, e.best, e.timed)) e.best = st; map.set(k, e);
     }
     return map;
@@ -1816,6 +1817,7 @@ import { reportRange, buildReport } from "./report.js";
             while (r.weights.length <= sel) r.weights.push(""); while (r.repsDone.length <= sel) r.repsDone.push("");
             const last = lastWeights(t, r), carry = carried(r, sel), asW = (v) => (timedPlan(r.reps) && timeAsWeight(v) ? "" : v);   // a hold: "45 sec" from the old app is not a weight to copy
             if (!String(r.weights[sel] || "").trim()) r.weights[sel] = asW(carry.w) || asW(last && last.weights[sel] ? String(last.weights[sel]) : "");   // untouched box = same as the set before, else same as last time
+            if (!r.unit && (r.weights || []).some((w) => /^\d/.test(String(w || "").trim()))) r.unit = (clients.get(t.clientId) || {}).unit || "lb";   // the unit this was logged in
             if (!String(r.repsDone[sel] || "").trim()) r.repsDone[sel] = carry.rp || (last && last.reps && last.reps[sel] ? String(last.reps[sel]) : "") || planNumber(r.reps);   // the grey number is what gets written: the set before, last time, else the plan's number (the highest of a range)
             if (current) r.setsDone = Math.max(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), Math.min(prevDone + 1, setsOf(r)));
             if ((r.setsDone || 0) >= setsOf(r)) r.done = true;
@@ -2360,14 +2362,16 @@ import { reportRange, buildReport } from "./report.js";
 
     const liftHistory = () => {                                      // this exercise, this client, EARLIER sessions only: the last session's top set and the best ever
       const canon = (x) => squash(ALIASES[String(x || "").trim()] || x); const name = canon(r.name); if (!name) return null;
-      const timed = !!measurePlan(r.reps);
+      const timed = !!measurePlan(r.reps), tmNow = measurePlan(r.reps), cu = (clients.get(t.clientId) || {}).unit || "lb";
       let best = null, last = null;
       for (const other of clientTrainings(t.clientId)) {              // newest first
         if (other.id === t.id) continue;                               // today is what the line is compared against, never part of it
         const earlier = effDate(other) < effDate(t) || (effDate(other) === effDate(t) && (other.createdAt || "") < (t.createdAt || ""));
         if (!earlier) continue;
         for (const x of other.rows || []) {
-          if (canon(x.name) !== name) continue; const st = topSet(x, timed); if (!st) continue; st.date = effDate(other); st.title = String(other.title || "").trim();
+          if (canon(x.name) !== name) continue; let st = topSet(x, timed); if (!st) continue;
+          const xu = measurePlan(x.reps); if (timed && xu && tmNow && (xu.unit === "m") !== (tmNow.unit === "m")) continue;   // a carry and a hold are not the same measure
+          st = toUnit(st, x.unit, cu); if (timed && xu && tmNow) st = toTimeUnit(st, xu.unit, tmNow.unit); st.date = effDate(other); st.title = String(other.title || "").trim();
           if (betterSet(st, best, timed)) best = st;                   // equal numbers: the newest session keeps the title
           if (!last) last = st;
         }
@@ -2438,12 +2442,12 @@ import { reportRange, buildReport } from "./report.js";
       w.inputMode = (wText || nonNum(r.weights[sel] || carry.w || "")) ? "text" : "decimal";
       const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
       let wWas = null, rpWas = null; w.addEventListener("focus", () => { wWas = String(r.weights[sel] || ""); }); rp.addEventListener("focus", () => { rpWas = String(r.repsDone[sel] || ""); });   // what the box held when editing began: the chain follows that, not every keystroke
-      w.addEventListener("input", (e) => { r.weights = correctFrom(r.weights, sel, e.target.value, wWas); mark(); paintLifts(); });   // NEW BEST lights up as it is typed; later sets that copied this number follow the correction
+      w.addEventListener("input", (e) => { r.weights = correctFrom(r.weights, sel, e.target.value, wWas); if (!r.unit) r.unit = unit; mark(); paintLifts(); });   // NEW BEST lights up as it is typed; later sets that copied this number follow the correction
       rp.addEventListener("input", (e) => { const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); r.repsDone = correctFrom(r.repsDone, sel, v, rpWas); e.target.value = v; mark(); paintLifts(); });
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); kbNext(); } });
       rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); kbNext(); } });   // on to the next exercise of the superset, else the keyboard goes
       const hand = perHand(r.name); q(".setlog .chip.stack:nth-child(1) .lab").textContent = hand ? "Weight / " + hand : "Weight";   // one dumbbell, one kettlebell: the label says what the number is per
-      wireChip(w, { empty: timed ? "Bodyweight" : "Log weight", hint: true, suffix: (v) => weightWord(v, unit), show: showWeight });   // a hold with no weight is bodyweight; BW can still be typed or picked   // after the handlers above, so the words follow the tidied value; never logged before = the box asks
+      wireChip(w, { empty: timed ? "Bodyweight" : "Log weight", hint: true, suffix: (v) => weightWord(v, r.unit || unit), show: showWeight });   // a hold with no weight is bodyweight; BW can still be typed or picked   // after the handlers above, so the words follow the tidied value; never logged before = the box asks
       const perSide = /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || ""));             // "10 / side": the label says so, the box holds the number
       q(".setlog .chip.stack:nth-child(2) .lab").textContent = (timed ? (timed.unit === "m" ? "Distance" : "Time") : "Reps") + (perSide ? " / side" : "");
       if (timed) wireChip(rp, { empty: timed.unit === "m" ? "Log distance" : "Log time", hint: true, suffix: () => timed.unit, show: (v) => v });
@@ -2458,7 +2462,7 @@ import { reportRange, buildReport } from "./report.js";
       const runitWord = tmS ? tmS.unit : /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || "")) ? "reps / side" : "reps";   // "× 5 reps", "× 8 reps / side", "× 45 sec"
       const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); scheduleSave("trainings", t.id); };
       const fit = (inp) => { inp.style.width = Math.ceil(textWidth(inp.value || inp.placeholder || "", !inp.value) + 7) + "px"; };   // as wide as its text, measured in the real font ("BW" is wide letters, not two digits)
-      const refresh = () => { for (const line of sumEl.children) { const i = +line.dataset.i, wi = line.querySelector(".sum-w"), ri = line.querySelector(".sum-r"); if (!wi) continue; if (document.activeElement !== wi) { wi.value = String((r.weights || [])[i] || ""); fit(wi); } if (document.activeElement !== ri) { ri.value = String((r.repsDone || [])[i] || ""); fit(ri); } line.querySelector(".sum-unit").textContent = wi.value.trim() ? weightWord(wi.value, unitS) : ""; line.querySelector(".runit").textContent = ri.value.trim() ? runitWord : ""; } };   // an empty box shows its grey word alone
+      const refresh = () => { for (const line of sumEl.children) { const i = +line.dataset.i, wi = line.querySelector(".sum-w"), ri = line.querySelector(".sum-r"); if (!wi) continue; if (document.activeElement !== wi) { wi.value = String((r.weights || [])[i] || ""); fit(wi); } if (document.activeElement !== ri) { ri.value = String((r.repsDone || [])[i] || ""); fit(ri); } line.querySelector(".sum-unit").textContent = wi.value.trim() ? weightWord(wi.value, r.unit || unitS) : ""; line.querySelector(".runit").textContent = ri.value.trim() ? runitWord : ""; } };   // an empty box shows its grey word alone
       for (let i = 0; i < setsOf(r); i++) {
         const line = document.createElement("div"); line.className = "sum-set"; line.dataset.i = i; const counted = setCounts(r, i); line.classList.toggle("skip", !counted);
         const n = document.createElement("span"); n.className = "sum-n"; n.textContent = i + 1; line.appendChild(n);
@@ -2472,7 +2476,7 @@ import { reportRange, buildReport } from "./report.js";
           const runit = document.createElement("span"); runit.className = "sum-unit runit"; runit.textContent = runitWord;
           val.append(wi, unit, x, ri, runit); line.appendChild(val);
           let wiWas = null, riWas = null; wi.addEventListener("focus", () => { wiWas = String((r.weights || [])[i] || ""); }); ri.addEventListener("focus", () => { riWas = String((r.repsDone || [])[i] || ""); });
-          wi.addEventListener("input", () => { r.weights = correctFrom(r.weights, i, wi.value, wiWas); fit(wi); mark(); refresh(); });
+          wi.addEventListener("input", () => { r.weights = correctFrom(r.weights, i, wi.value, wiWas); if (!r.unit) r.unit = unitS; fit(wi); mark(); refresh(); });
           ri.addEventListener("input", () => { const v = ri.value.replace(/[^0-9]/g, "").slice(0, 4); ri.value = v; r.repsDone = correctFrom(r.repsDone, i, v, riWas); fit(ri); mark(); refresh(); });
           for (const inp of [wi, ri]) inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
         }
@@ -2532,7 +2536,8 @@ import { reportRange, buildReport } from "./report.js";
   $("noteDiscard").addEventListener("click", async () => { if ($("cNotes").value.trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; const c = clients.get(S.view.id); if (c) noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox(); });
   $("unitSeg").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-unit]"); const c = clients.get(S.view.id); if (!b || !c) return;
-    c.unit = b.dataset.unit; scheduleSave("clients", c.id);
+    const was = c.unit || "lb"; c.unit = b.dataset.unit; scheduleSave("clients", c.id);
+    if (was !== c.unit) for (const t of clientTrainings(c.id)) if (stampUnit(t, was)) scheduleSave("trainings", t.id);   // what was logged stays what it was: 100 lb does not become 100 kg
     for (const x of $("unitSeg").querySelectorAll("button")) x.classList.toggle("on", x === b);
   });
   $("cEmail").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.email = e.target.value.trim().toLowerCase(); scheduleSave("clients", c.id); });
