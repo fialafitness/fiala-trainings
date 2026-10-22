@@ -1695,7 +1695,6 @@ import { reportRange, buildReport } from "./report.js";
     const src = !asClient && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
     $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = templatePath(src);
     $("tplFill").hidden = asClient || isTpl || (t.rows || []).length > 0 || !!t.completedAt;   // only an empty workout offers a template
-    paintWorkoutNotes(t);                                                                         // notes written on this session before the session-note button went (profile notes tagged with the workout)
     $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || S.clientMode;
     $("viewSeg").hidden = S.clientMode || isTpl; for (const b of $("viewSeg").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.view === "client") === previewClient); if (!isTpl || S.renderedTraining !== t.id) $("usePick").hidden = true;   // the client list built for another template must not survive onto this one
     $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
@@ -2488,24 +2487,6 @@ import { reportRange, buildReport } from "./report.js";
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
   $("cNameField").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.name = e.target.value; $("cName").value = c.name; scheduleSave("clients", c.id); });
   const growNotesBox = () => growBox($("cNotes"));
-  const wNoteOpen = new Set();                                   // workouts whose notes are unfolded (this session)
-  function paintWorkoutNotes(t) {
-    const c = clients.get(t.clientId), wrap = $("wNote");
-    const mine = c && !S.clientMode && !isTemplateClient(t.clientId) ? noteEntries(c).filter((n) => n.workout && n.workout.id === t.id).sort((a, b) => String(a.at || "").localeCompare(String(b.at || ""))) : [];
-    wrap.hidden = !mine.length; if (!mine.length) return;
-    const open = wNoteOpen.has(t.id), word = mine.length === 1 ? "note" : "notes";
-    $("wNoteLab").textContent = open ? "Hide " + word : "Read " + (mine.length === 1 ? "note" : mine.length + " notes");
-    $("wNoteBtn").classList.toggle("open", open); $("wNoteBtn").setAttribute("aria-expanded", String(open));
-    const list = $("wNoteList"); list.hidden = !open; list.replaceChildren();
-    for (const n of mine) {
-      const row = document.createElement("div"); row.className = "entry";
-      const when = document.createElement("div"); when.className = "when"; const d = new Date(n.at);
-      when.textContent = n.at ? d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "Earlier";
-      const text = document.createElement("div"); text.className = "text"; text.textContent = n.text;
-      row.append(when, text); list.appendChild(row);
-    }
-  }
-  $("wNoteBtn").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t) return; if (wNoteOpen.has(t.id)) wNoteOpen.delete(t.id); else wNoteOpen.add(t.id); paintWorkoutNotes(t); });
   $("cNotes").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; noteDraft.set(c.id, e.target.value); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
   $("noteSave").addEventListener("click", () => {
     const c = clients.get(S.view.id); if (!c) return;
