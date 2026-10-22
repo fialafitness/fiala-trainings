@@ -192,3 +192,33 @@ test("a logged weight keeps its unit: switching the client stamps old rows, a we
   assert.deepStrictEqual(toUnit({ w: 100, rp: 5 }, "lb", "kg"), { w: 45.5, rp: 5 }); assert.deepStrictEqual(toUnit({ w: null, rp: 5 }, "lb", "kg"), { w: null, rp: 5 }); assert.deepStrictEqual(toUnit({ w: 100, rp: 5 }, undefined, "kg"), { w: 100, rp: 5 });
   assert.deepStrictEqual(toTimeUnit({ w: null, rp: 1 }, "min", "sec"), { w: null, rp: 60 }); assert.deepStrictEqual(toTimeUnit({ w: null, rp: 90 }, "sec", "min"), { w: null, rp: 1.5 }); assert.deepStrictEqual(toTimeUnit({ w: null, rp: 40 }, "m", "sec"), { w: null, rp: 40 }, "a carry is not a hold");
 });
+test("a backup is refused when a field a screen reads as a list or an object is something else, when ids repeat, or when a later app wrote it", () => {
+  app.reset();
+  const base = () => ({ app: "fiala-trainings", format: 1, clients: { c1: { id: "c1", name: "A", unit: "lb", paused: false, packages: [{ id: "p1", name: "10 sessions", kind: "sessions", size: 10, inPerson: true }], plan: { id: "p1", kind: "sessions", size: 10, adjust: 0, startedOn: "2026-10-01" }, planHistory: [], notes: { log: [] } } },
+    trainings: { t1: { id: "t1", clientId: "c1", date: "2026-10-01", title: "A", completedAt: null, skippedAt: null, missed: false, inPerson: true, rows: [{ id: "r1", name: "Squat", label: "1", sets: "3", setsDone: 2, reps: "5", rest: "", tempo: "", note: "", weights: ["100", 100, null], repsDone: ["5"], alts: ["Lunge"], unit: "lb", done: false }] } } });
+  assert.doesNotThrow(() => fns.validateBackup(base(), () => false), "the app's own shape, counts as strings or numbers, nulls where the app writes nulls");
+  const bad = [
+    ["weights as an object", (d) => { d.trainings.t1.rows[0].weights = { 0: "100" }; }],
+    ["alternatives as a string", (d) => { d.trainings.t1.rows[0].alts = "Lunge"; }],
+    ["an alternative that is not a name", (d) => { d.trainings.t1.rows[0].alts = [{ name: "Lunge" }]; }],
+    ["a name that is an object", (d) => { d.trainings.t1.rows[0].name = { first: "Squat" }; }],
+    ["a weight that is an object", (d) => { d.trainings.t1.rows[0].weights = [{ kg: 100 }]; }],
+    ["two rows with one id", (d) => { d.trainings.t1.rows.push({ id: "r1" }); }],
+    ["a finish stamp that is a number", (d) => { d.trainings.t1.completedAt = 5; }],
+    ["a flag that is a word", (d) => { d.trainings.t1.missed = "yes"; }],
+    ["packages as an object", (d) => { d.clients.c1.packages = { p1: {} }; }],
+    ["a package without an id", (d) => { d.clients.c1.packages = [{ name: "no id" }]; }],
+    ["a plan as a string", (d) => { d.clients.c1.plan = "10 sessions"; }],
+    ["notes as a list", (d) => { d.clients.c1.notes = ["a"]; }],
+    ["a unit the app does not know", (d) => { d.clients.c1.unit = "stone"; }],
+    ["two clients with one id", (d) => { d.clients.c2 = { id: "c1", name: "twin" }; }],
+    ["two workouts with one id", (d) => { d.trainings.t2 = { ...d.trainings.t1 }; }],
+    ["a later format", (d) => { d.format = 2; }],
+    ["a finish stamp that is not a moment", (d) => { d.trainings.t1.completedAt = "yesterday"; }],
+    ["a row unit the app would rescale", (d) => { d.trainings.t1.rows[0].unit = "lbs"; }],
+    ["a client order that is a word", (d) => { d.clients.c1.sort = "first"; }],
+  ];
+  for (const [why, b] of bad) { const d = base(); b(d); assert.throws(() => fns.validateBackup(d, () => false), Error, "should refuse: " + why); }
+  const later = base(); later.format = 2; assert.throws(() => fns.validateBackup(later, () => false), /newer backup/);
+  const old = base(); delete old.format; assert.doesNotThrow(() => fns.validateBackup(old, () => false), "a backup from before the format number");
+});

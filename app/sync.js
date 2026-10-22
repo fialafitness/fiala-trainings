@@ -3,7 +3,7 @@
 import { lsGet, lsSet, norm, clamp, today } from "./util.js";
 import { isTemplateClient, planActive, repairTimed, timedPlan } from "./model.js";
 import { mergeNotes } from "./notes.js";
-import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, trainerNoted, planTouched, confirmedAt, deletedNotes, pendingNoteRows } from "./state.js";
+import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, trainerNoted, planTouched, confirmedAt, deletedNotes, deletedPackages, fromFile, pendingNoteRows } from "./state.js";
 
 // ---------- persistence ----------
 const isNetwork = (error) => /load failed|failed to fetch|network|fetch/i.test((error && error.message) || "");
@@ -23,6 +23,7 @@ function persistPending() {
   lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].map(([id, r]) => [id, [...r]]), rownotes: [...pendingNoteRows].map(([id, r]) => [id, [...r]]),
     finish: [...pendingFinish], skip: [...pendingSkip], move: [...pendingMove], miss: [...pendingMiss], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]),
     touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]), noted: [...trainerNoted].map(([id, r]) => [id, [...r]]), state: [...trainerState].map(([id, f]) => [id, [...f]]),
+    plans: [...planTouched], notesGone: [...deletedNotes], packagesGone: [...deletedPackages], fromFile: [...fromFile],   // the coach's intent about a client record: a plan changed, a note or package removed, a backup restored
     stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), owner: S.sessionEmail || S.pendingOwner || "" });
   if (S.sessionEmail) S.pendingOwner = S.sessionEmail;
 }
@@ -44,6 +45,10 @@ function restorePending() {
   for (const [id, rows] of p.named || []) trainerNamed.set(id, new Set([...(trainerNamed.get(id) || []), ...rows]));
   for (const [id, rows] of p.noted || []) trainerNoted.set(id, new Set([...(trainerNoted.get(id) || []), ...rows]));
   for (const [k, stamp] of p.stamps || []) if (stamp && !seenAt.has(k)) seenAt.set(k, stamp);
+  for (const id of p.plans || []) planTouched.add(id);
+  for (const [n, cid] of p.notesGone || []) deletedNotes.set(n, cid);
+  for (const [pk, cid] of p.packagesGone || []) deletedPackages.set(pk, cid);
+  for (const k of p.fromFile || []) fromFile.add(k);
   S.pendingOwner = p.owner || "";
 }
 function scheduleSave(kind, id, delay = 500) {
@@ -55,6 +60,7 @@ function scheduleSave(kind, id, delay = 500) {
   ui.setStatus();
 }
 
+const dropIntent = (id) => { planTouched.delete(id); for (const [n, cid] of [...deletedNotes]) if (cid === id) deletedNotes.delete(n); for (const [pk, cid] of [...deletedPackages]) if (cid === id) deletedPackages.delete(pk); };   // the save that carried them is on the server: the markers have done their work
 function flushAll() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); flushOne(kind, id); } }
 function flushOne(kind, id) {
   const k = key(kind, id);
@@ -77,14 +83,14 @@ function flushOne(kind, id) {
       try {
         if (data) await S.backend.set(kind, id, data); else await S.backend.del(kind, id);
         S.failed = false;
-        if (dirty.get(k) === version) { dirty.delete(k); if (kind === "trainings") { trainerState.delete(id); trainerTouched.delete(id); trainerNamed.delete(id); trainerNoted.delete(id); } if (kind === "clients") planTouched.delete(id); }   // the coach's state changes went with this save; a later touch keeps its flag
+        if (dirty.get(k) === version) { dirty.delete(k); fromFile.delete(k); if (kind === "trainings") { trainerState.delete(id); trainerTouched.delete(id); trainerNamed.delete(id); trainerNoted.delete(id); } if (kind === "clients") dropIntent(id); }   // the coach's state changes went with this save; a later touch keeps its flag
         confirmedAt.set(k, Date.now());
         return;
       } catch (e) {
         attempt++;
         S.failReason = reasonOf(e);
         if (isOffline(e)) { S.offline = true; return; }           // no signal: keep it queued, no red status
-        if (e && e.fatal) { S.failed = true; if (dirty.get(k) === version) dirty.delete(k); return; }   // the server said no for good: don't carry it forever
+        if (e && e.fatal) { S.failed = true; if (dirty.get(k) === version) { dirty.delete(k); fromFile.delete(k); } return; }   // the server said no for good: don't carry it forever
         if (attempt > 3) { S.failed = true; return; }
         await new Promise((r) => setTimeout(r, 700 * attempt + Math.random() * 400));
       }
@@ -110,6 +116,7 @@ const cloudBackend = {
     const k = key(kind, id);
     const row = { id, data };
     if (kind === "trainings") row.client_id = data.clientId;
+    const verbatim = () => fromFile.has(k);                    // restored from a backup: the file's copy replaces what the server holds, nothing of the server's is merged in (asked at merge time: a save already out when Restore was tapped must not merge into the restored record either)
     const mergeServerRows = (serverData) => {                 // take the client's weights/done/swaps for rows the trainer did not touch
       const touched = trainerTouched.get(id) || new Set(), named = trainerNamed.get(id) || new Set(), noted = trainerNoted.get(id) || new Set();   // three separate claims per row: the log, the name, the note — a coach who only wrote a note keeps nothing else
       const live = trainings.get(id);
@@ -134,7 +141,7 @@ const cloudBackend = {
         if (kind !== "clients" || !serverData) return;
         const merged = mergeNotes(data.notes, serverData.notes, deletedNotes); data.notes = merged; const live = clients.get(id); if (live) live.notes = merged;
         if (Array.isArray(serverData.packages) || Array.isArray(data.packages)) {                  // packages added on two devices: keep both
-          const have = new Set((data.packages || []).map((x) => x && x.id)), union = [...(data.packages || []), ...(serverData.packages || []).filter((x) => x && x.id && !have.has(x.id))];
+          const have = new Set((data.packages || []).map((x) => x && x.id)), union = [...(data.packages || []), ...(serverData.packages || []).filter((x) => x && x.id && !have.has(x.id) && !deletedPackages.has(x.id))];   // one removed here stays removed
           data.packages = union; if (live) live.packages = union;
         }
         if (!planTouched.has(id)) for (const f of ["plan", "planHistory"]) for (const target of [data, live]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; }   // a plan set on another device stands, unless this one changed it
@@ -142,7 +149,7 @@ const cloudBackend = {
       if (!seen && attempt === 0) {                               // no stamp (edited offline, app relaunched): read first, never write over the other side blind
         const existing = await withTimeout(S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle(), SAVE_WAIT);
         if (existing.error) throw existing.error;
-        if (existing.data) { if (kind === "trainings") { mergeServerRows(existing.data.data); takeState(existing.data.data); } takeNotes(existing.data.data); seen = existing.data.updated_at; seenAt.set(k, seen); }
+        if (existing.data) { if (!verbatim()) { if (kind === "trainings") { mergeServerRows(existing.data.data); takeState(existing.data.data); } takeNotes(existing.data.data); } seen = existing.data.updated_at; seenAt.set(k, seen); }
       }
       let res;
       if (seen) res = await withTimeout(S.sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at"), SAVE_WAIT);
@@ -158,6 +165,7 @@ const cloudBackend = {
       if (fresh.error) throw fresh.error;
       if (!fresh.data) { seenAt.delete(k); continue; }
       seenAt.set(k, fresh.data.updated_at);
+      if (verbatim()) continue;                                        // the file's copy, written again over the newer stamp
       if (kind === "trainings") { mergeServerRows(fresh.data.data); takeState(fresh.data.data); }
       takeNotes(fresh.data.data);
     }
@@ -310,6 +318,7 @@ async function syncDownNow() {
     for (const id of [...trainerTouched.keys()]) if (!dirty.has(key("trainings", id))) trainerTouched.delete(id);
     for (const id of [...trainerNamed.keys()]) if (!dirty.has(key("trainings", id))) trainerNamed.delete(id);
     for (const id of [...trainerNoted.keys()]) if (!dirty.has(key("trainings", id))) trainerNoted.delete(id);
+    for (const id of [...planTouched]) if (!dirty.has(key("clients", id))) planTouched.delete(id);
   }
   const migrated = lsGet("fiala.trainings.migrated");
   if (!S.clientMode && !migrated && c.data.length === 0 && t.data.length === 0 && (clients.size || trainings.size)) {
