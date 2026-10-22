@@ -50,7 +50,8 @@ function makeWorker() {
   const releases = () => [...stores.keys()].filter((k) => k.startsWith(REL)).map((k) => Number(k.slice(REL.length))).sort();
   return { server, device, stores, rel, relText, current, releases, install: () => run("install"), activate: () => run("activate"), request,
     open: (resultingClientId = "page") => request("./", { mode: "navigate", resultingClientId }), script: (clientId = "page") => request("./app/main.js?v=99", { clientId }), templates: () => request("./templates.json", { clientId: "page" }),
-    hits: (p) => server.hits.filter((x) => x === p).length };
+    hits: (p) => server.hits.filter((x) => x === p).length,
+    check: async (clientId = "page") => { const replies = [], w = []; listeners.message({ data: { type: "check" }, source: { id: clientId, postMessage: (m) => replies.push(m) }, waitUntil: (p) => w.push(p) }); await Promise.allSettled(w); return replies; } };   // a page, back on screen, asking for news
 }
 
 const PAGE = (n) => "/index.html v" + n + " main.js?v=" + n;
@@ -165,4 +166,31 @@ test("icons and the library come from the device and are refreshed quietly; othe
   assert.strictEqual((await w.request("https://other.example/x.js")).handled, false);
   assert.strictEqual((await w.request("https://x.supabase.co/rest/v1/ft_trainings")).handled, false);
   assert.strictEqual((await w.request("./index.html", { method: "POST" })).handled, false);
+});
+
+
+test("a page back on screen after a deploy: its check puts the new release on the device and hears the newest, while it keeps running on its own", async () => {
+  const w = makeWorker(); await w.install(); await w.activate();
+  const page = await w.open(); assert.strictEqual(page.text, PAGE(1)); await page.settle();
+  w.server.version = 2; w.server.hits.length = 0;
+  assert.deepStrictEqual(await w.check(), [{ type: "release", current: 2 }]);
+  assert.deepStrictEqual(w.releases(), [1, 2]); assert.strictEqual(await w.relText(2, "/app/main.js"), "/app/main.js v2");
+  assert.strictEqual((await w.script()).text, "/app/main.js v1", "the open page still gets the scripts of its own release");
+  assert.strictEqual((await w.open("page2")).text, PAGE(2), "the next open runs on the new one");
+});
+test("a check with nothing new fetches the page only, and a check with the server away still answers with the device's newest", async () => {
+  const w = makeWorker(); await w.install(); await w.activate(); w.server.hits.length = 0;
+  assert.deepStrictEqual(await w.check(), [{ type: "release", current: 1 }]);
+  assert.strictEqual(w.hits("/index.html"), 1); assert.strictEqual(w.hits("/app/main.js"), 0, "no release download when the server's page is the one on the device");
+  w.server.down = true;
+  assert.deepStrictEqual(await w.check(), [{ type: "release", current: 1 }]);
+  assert.deepStrictEqual(w.releases(), [1]);
+});
+test("a check during a deploy (the page says one release, a script another) keeps the device as it was and says so", async () => {
+  const w = makeWorker(); await w.install(); await w.activate();
+  let calls = 0; const real = w.server; const orig = Object.getOwnPropertyDescriptor(real, "version");
+  Object.defineProperty(real, "version", { get: () => (++calls <= 12 ? 2 : 3), configurable: true });   // call 1: the page says 2; calls 2-12: the eleven files of release 2; call 13: the page again, and 3 has landed
+  assert.deepStrictEqual(await w.check(), [{ type: "release", current: 1 }]);
+  assert.deepStrictEqual(w.releases(), [1], "nothing half-way lands");
+  Object.defineProperty(real, "version", orig || { value: 3, writable: true, configurable: true });
 });

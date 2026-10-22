@@ -56,6 +56,10 @@ async function fetchBundle() {                                      // every fil
   return { n, bundle };
 }
 const pin = (event, n) => (event.resultingClientId ? metaSet("/client/" + event.resultingClientId, n) : Promise.resolve());   // this page runs on release n for as long as it is open
+async function check() {                                           // a page asks on resume: the server's page first (cheap, usually unchanged), the whole release only when it is newer than the device's
+  const page = await fetch(new Request(PAGE, { cache: "no-cache" }));
+  if (page.ok && (await releaseOf(page)) > (await current())) await takeIn(await fetchBundle());
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
@@ -64,6 +68,11 @@ self.addEventListener("install", (event) => {
     await Promise.allSettled([...EXTRAS, LIB, FONTS].map(async (url) => { if (!(await a.match(url))) await a.add(new Request(url, { cache: "reload" })); }));   // nice to have offline; what is there already is refreshed quietly at use
     await self.skipWaiting();
   })());
+});
+
+self.addEventListener("message", (event) => {                   // a page kept alive for days (iOS keeps the app open) asks whether a newer release is in: the answer is the newest on the device
+  if (!event.data || event.data.type !== "check" || !event.source) return;
+  event.waitUntil((async () => { try { await check(); } catch {} event.source.postMessage({ type: "release", current: await current() }); })());
 });
 
 self.addEventListener("activate", (event) => {

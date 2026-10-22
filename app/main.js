@@ -2691,8 +2691,21 @@ import { reportRange, buildReport } from "./report.js";
 
   // ---------- boot ----------
   Object.assign(ui, { $, setStatus, render, showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadCustomSubs, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar });   // what the sync layer may call on the screens
+  function watchReleases(mine) {               // a page iOS keeps alive for days still gets the next release: on coming back to the app, never mid-tap, mid-sheet or mid-typing
+    const sw = navigator.serviceWorker; if (!mine || !sw || !sw.addEventListener) return;
+    let newest = 0;
+    const settle = () => { if (newest > mine && document.visibilityState === "visible" && !S.asking && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || "")) location.reload(); };
+    sw.addEventListener("message", (e) => { if (e.data && e.data.type === "release") { newest = Math.max(newest, Number(e.data.current) || 0); settle(); } });
+    let had = !!sw.controller;
+    sw.addEventListener("controllerchange", () => { if (had) { newest = Infinity; settle(); } had = true; });   // a newer worker took this page over: it was written for a newer page
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      sw.getRegistration().then((reg) => reg && reg.update()).catch(() => {});   // a new worker, if one was deployed while the app slept
+      if (sw.controller) sw.controller.postMessage({ type: "check" }); else settle();   // and a new release: the worker answers with the newest on the device
+    });
+  }
   async function boot() {
-    try { const v = new URL(import.meta.url).searchParams.get("v"); if (v) $("appVersion").textContent = "Version " + v; } catch (_) {}   // the build this phone runs, read off the script's own ?v=
+    try { const v = new URL(import.meta.url).searchParams.get("v"); if (v) { $("appVersion").textContent = "Version " + v; watchReleases(Number(v) || 0); } } catch (_) {}   // the build this phone runs, read off the script's own ?v=
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) S.view = saved;
     const page = lsGet("fiala.trainings.page"); if (page && page.open) pendingPage = page;   // read before any screen change clears it
     localBackend.load();                       // instant start from the device copy
