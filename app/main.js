@@ -1964,8 +1964,8 @@ import { reportRange, buildReport } from "./report.js";
   const haptic = () => { try { if (navigator.vibrate) navigator.vibrate(10); } catch (_) {} };   // Android; iPhone ticks on its own through the switch the button is a label for
   const whenDay = (iso, long) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || "")) return ""; const d = new Date(iso + "T12:00:00"), thisYear = d.getFullYear() === new Date().getFullYear(); return d.toLocaleDateString(undefined, { ...(long ? { weekday: "short" } : {}), month: "short", day: "numeric", ...(thisYear ? {} : { year: "numeric" }) }); };   // "Tue, Oct 6", "Jul 2, 2025"
   function showWhen(anchor, title, sub) {                            // a small frosted bubble under a tapped chip: in words. Any tap, a scroll or Escape closes it
-    const bg = $("whenBg"), pop = $("whenPop"), rows = Array.isArray(title) ? title : [{ v: title, d: sub }];   // rows: [{ k: "Best", v: "225 lb × 8", d: "Wed, Oct 8" }]
-    const words = rows.some((row) => row.k); pop.classList.toggle("plain", !words);                             // no words at all (the overview tile): two columns
+    const pop = $("whenPop"), rows = Array.isArray(title) ? title : [{ v: title, d: sub }];   // rows: [{ k: "Best", v: "225 lb × 8", d: "Wed, Oct 8" }]
+    const words = rows.some((row) => row.k); pop.classList.toggle("plain", !words); pop.classList.remove("menu");   // no words at all (the overview tile): two columns
     pop.replaceChildren(...rows.map((row) => {                                                                  // every row fills every column, empty or not: the grid rows are display:contents
       const div = document.createElement("div"); div.className = "wrow";
       if (words) { const k = document.createElement("span"); k.className = "wk"; k.textContent = row.k || ""; div.appendChild(k); }
@@ -1973,6 +1973,20 @@ import { reportRange, buildReport } from "./report.js";
       const d = document.createElement("span"); d.className = "wd"; d.textContent = row.d || ""; div.appendChild(d);
       return div;
     }));
+    openPop(anchor);
+  }
+  function showMenu(anchor, items) {                                 // the same frosted bubble with rows to tap: [{ label, onPick }]
+    const pop = $("whenPop"); pop.classList.remove("plain"); pop.classList.add("menu");
+    let close = null;
+    pop.replaceChildren(...items.map((it) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "wopt"; b.textContent = it.label;
+      b.addEventListener("click", (e) => { e.stopPropagation(); if (close) close(); it.onPick(); });
+      return b;
+    }));
+    close = openPop(anchor);
+  }
+  function openPop(anchor) {                                         // places the bubble under (or above) its anchor and wires the ways it closes; returns close
+    const bg = $("whenBg"), pop = $("whenPop");
     bg.hidden = false; pop.classList.remove("above");
     const r = anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, pw = pop.offsetWidth, ph = pop.offsetHeight;
     const left = Math.max(8, Math.min(r.left, vw - pw - 8)); let top = r.bottom + 8;
@@ -1981,6 +1995,7 @@ import { reportRange, buildReport } from "./report.js";
     const close = () => { bg.hidden = true; bg.removeEventListener("click", close); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", close, true); };
     const onKey = (e) => { if (e.key === "Escape") close(); };
     bg.addEventListener("click", close); document.addEventListener("keydown", onKey); window.addEventListener("scroll", close, true);
+    return close;
   }
   function followRow(id, field) {                                   // a card that just moved (a new label): keep it under the finger, and the keyboard on the field he was heading for
     const row = $("rows").querySelector('.row[data-id="' + id + '"]'); if (!row) return;
@@ -2156,9 +2171,9 @@ import { reportRange, buildReport } from "./report.js";
     }
     altBtn.addEventListener("mousedown", (ev) => ev.preventDefault());
     altBtn.addEventListener("click", () => {
-      if (asClient) {                                                                                   // the client picks from a sheet, like everything else they choose: it fits the screen and reads as one thing
+      if (asClient) {                                                                                   // the client picks from the frosted bubble under the disc: consistent with the other pop-ups, and it always fits
         const alts = altList().filter((a) => a !== r.name); if (!alts.length) return;
-        pickOne({ title: "Swap exercise", items: alts.map((a) => ({ id: a, label: a })) }).then((a) => { if (a) swapTo(a); });
+        showMenu(altBtn, alts.map((a) => ({ label: a, onPick: () => swapTo(a) })));   // the frosted bubble, like last/best: tap an alternative to swap it in
         return;
       }
       if (!altMenu.hidden) { closeAlt(); return; }

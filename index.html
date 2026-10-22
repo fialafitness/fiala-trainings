@@ -527,7 +527,7 @@
   .ex-icons .vid-btn .i-up, .ex-icons .vid-btn.open .i-play { display: none; }   /* while the video is open the play becomes a chevron up: tap to tuck it away */
   .ex-icons .vid-btn.open .i-up { display: block; }
   .alt-btn { color: var(--text-tertiary); order: -1; }   /* the swap arrows sit first, left of the play button, in both views */
-  body.client .ex-icons .alt-btn { width: 36px; height: 36px; margin-right: 2px; border-radius: 50%; background: var(--field-in); color: var(--text-primary); opacity: 1; }   /* the same soft disc as the play button */
+  body.client .ex-icons .alt-btn { width: 36px; height: 36px; margin-right: 10px; border-radius: 50%; background: var(--field-in); color: var(--text-primary); opacity: 1; }   /* the same soft disc as the play button */
   body.client .ex-icons .alt-btn svg { width: 16px; height: 16px; }
   body.client .alt-menu { left: 0; }
   .alt-btn[hidden] { display: none; }
@@ -769,6 +769,9 @@
   #whenPop .wd { font-size: 13px; color: var(--text-secondary); }
   #whenPop::before { content: ""; position: absolute; z-index: -1; top: -6px; left: var(--caret, 16px); width: 12px; height: 12px; background: inherit; -webkit-backdrop-filter: inherit; backdrop-filter: inherit; transform: translateX(-50%) rotate(45deg); box-shadow: inset 0.5px 0.5px 0 var(--glass-edge); }
   #whenPop.above::before { top: auto; bottom: -6px; box-shadow: inset -0.5px -0.5px 0 var(--glass-edge); }
+  #whenPop.menu { display: flex; flex-direction: column; gap: 2px; padding: 6px; min-width: 220px; }   /* the same bubble with rows to tap (swap exercise) */
+  #whenPop .wopt { appearance: none; border: 0; background: none; text-align: left; padding: 11px 14px; border-radius: 11px; font: inherit; font-size: 16px; letter-spacing: -0.01em; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  #whenPop .wopt:active, #whenPop .wopt:hover { background: var(--field); }
   @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
   .block.done:not(.open) .row .lifts, body.client .block.ahead .row .lifts { display: none; }
   .setlog .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -1302,7 +1305,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=74";
+  import { boot } from "./app/main.js?v=75";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
