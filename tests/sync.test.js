@@ -65,6 +65,19 @@ test("on a conflict the coach's title lands, and the client's finish and logged 
   assert.strictEqual(saved.title, "New title"); assert.strictEqual(saved.completedAt, server.completedAt, "the client's finish must survive"); assert.deepStrictEqual(saved.rows[0].weights, ["100", "100", "105"]);
   assert.strictEqual(maps.trainings.get("T").completedAt, server.completedAt, "the live copy learns the finish too");
 });
+test("a coach's note on a row lands on a conflict without carrying the row's old weights; a coach's weight edit still wins for its row", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const server = training("T", { rows: [row("r1", ["30", "30"], ["5", "5"], 2), row("r2", ["80"], ["8"], 1)] });   // the client logged more meanwhile
+  sb.seed("ft_trainings", "T", server, { client_id: "c1" }); maps.seenAt.set("trainings/T", "S0");
+  const local = training("T", { rows: [row("r1", ["20"], ["5"], 1), row("r2", ["90"], ["8"], 1)] });               // the coach's older copy: a note on r1, a corrected weight on r2
+  local.rows[0].clientNote = "Keep the elbows in"; local.rows[0].clientNoteBy = "coach"; maps.trainings.set("T", local);
+  maps.trainerNoted.set("T", new Set(["r1"])); maps.trainerTouched.set("T", new Set(["r2"]));
+  await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(local)));
+  const saved = sb.tables.ft_trainings.get("T").data;
+  assert.strictEqual(saved.rows[0].clientNote, "Keep the elbows in", "the note lands"); assert.deepStrictEqual(saved.rows[0].weights, ["30", "30"], "the client's newer weights stay"); assert.strictEqual(saved.rows[0].setsDone, 2);
+  assert.deepStrictEqual(saved.rows[1].weights, ["90"], "the coach's own weight edit wins for its row");
+  assert.deepStrictEqual(maps.trainings.get("T").rows[0].weights, ["30", "30"], "the live copy learns the client's sets too");
+});
 test("on a conflict a field the coach changed wins, field by field", async () => {
   const sb = makeSupabase(); coach(sb);
   sb.seed("ft_trainings", "T", training("T", { completedAt: "2026-10-12T18:00:00.000Z", skippedAt: null, date: day(-1) }), { client_id: "c1" });

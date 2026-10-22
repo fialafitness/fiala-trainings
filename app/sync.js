@@ -3,7 +3,7 @@
 import { lsGet, lsSet, norm, clamp, today } from "./util.js";
 import { isTemplateClient, planActive, repairTimed, timedPlan } from "./model.js";
 import { mergeNotes } from "./notes.js";
-import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, planTouched, confirmedAt, deletedNotes, pendingNoteRows } from "./state.js";
+import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, trainerNoted, planTouched, confirmedAt, deletedNotes, pendingNoteRows } from "./state.js";
 
 // ---------- persistence ----------
 const isNetwork = (error) => /load failed|failed to fetch|network|fetch/i.test((error && error.message) || "");
@@ -22,7 +22,7 @@ function markDirty(kind, id) { const k = key(kind, id); dirty.set(k, (dirty.get(
 function persistPending() {
   lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].map(([id, r]) => [id, [...r]]), rownotes: [...pendingNoteRows].map(([id, r]) => [id, [...r]]),
     finish: [...pendingFinish], skip: [...pendingSkip], move: [...pendingMove], miss: [...pendingMiss], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]),
-    touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]), state: [...trainerState].map(([id, f]) => [id, [...f]]),
+    touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]), noted: [...trainerNoted].map(([id, r]) => [id, [...r]]), state: [...trainerState].map(([id, f]) => [id, [...f]]),
     stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), owner: S.sessionEmail || S.pendingOwner || "" });
   if (S.sessionEmail) S.pendingOwner = S.sessionEmail;
 }
@@ -42,6 +42,7 @@ function restorePending() {
   for (const [id, rows] of p.touched || []) trainerTouched.set(id, new Set([...(trainerTouched.get(id) || []), ...rows]));
   for (const [id, fields] of p.state || []) trainerState.set(id, new Set([...(trainerState.get(id) || []), ...fields]));
   for (const [id, rows] of p.named || []) trainerNamed.set(id, new Set([...(trainerNamed.get(id) || []), ...rows]));
+  for (const [id, rows] of p.noted || []) trainerNoted.set(id, new Set([...(trainerNoted.get(id) || []), ...rows]));
   for (const [k, stamp] of p.stamps || []) if (stamp && !seenAt.has(k)) seenAt.set(k, stamp);
   S.pendingOwner = p.owner || "";
 }
@@ -76,7 +77,7 @@ function flushOne(kind, id) {
       try {
         if (data) await S.backend.set(kind, id, data); else await S.backend.del(kind, id);
         S.failed = false;
-        if (dirty.get(k) === version) { dirty.delete(k); if (kind === "trainings") { trainerState.delete(id); trainerTouched.delete(id); trainerNamed.delete(id); } if (kind === "clients") planTouched.delete(id); }   // the coach's state changes went with this save; a later touch keeps its flag
+        if (dirty.get(k) === version) { dirty.delete(k); if (kind === "trainings") { trainerState.delete(id); trainerTouched.delete(id); trainerNamed.delete(id); trainerNoted.delete(id); } if (kind === "clients") planTouched.delete(id); }   // the coach's state changes went with this save; a later touch keeps its flag
         confirmedAt.set(k, Date.now());
         return;
       } catch (e) {
@@ -110,12 +111,13 @@ const cloudBackend = {
     const row = { id, data };
     if (kind === "trainings") row.client_id = data.clientId;
     const mergeServerRows = (serverData) => {                 // take the client's weights/done/swaps for rows the trainer did not touch
-      const touched = trainerTouched.get(id) || new Set(), named = trainerNamed.get(id) || new Set();
+      const touched = trainerTouched.get(id) || new Set(), named = trainerNamed.get(id) || new Set(), noted = trainerNoted.get(id) || new Set();   // three separate claims per row: the log, the name, the note — a coach who only wrote a note keeps nothing else
       const live = trainings.get(id);
       for (const sr of (serverData && serverData.rows) || []) {
         for (const target of [data, live]) {
           const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (!lr) continue;
-          if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; if (sr.setsDone != null) lr.setsDone = sr.setsDone; else delete lr.setsDone; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; if (sr.clientNote) { lr.clientNote = String(sr.clientNote); if (sr.clientNoteBy) lr.clientNoteBy = String(sr.clientNoteBy); else delete lr.clientNoteBy; if (sr.clientNoteAt) lr.clientNoteAt = String(sr.clientNoteAt); else delete lr.clientNoteAt; } else { delete lr.clientNote; delete lr.clientNoteBy; delete lr.clientNoteAt; } }
+          if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; if (sr.setsDone != null) lr.setsDone = sr.setsDone; else delete lr.setsDone; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; }
+          if (!noted.has(sr.id)) { if (sr.clientNote) { lr.clientNote = String(sr.clientNote); if (sr.clientNoteBy) lr.clientNoteBy = String(sr.clientNoteBy); else delete lr.clientNoteBy; if (sr.clientNoteAt) lr.clientNoteAt = String(sr.clientNoteAt); else delete lr.clientNoteAt; } else { delete lr.clientNote; delete lr.clientNoteBy; delete lr.clientNoteAt; } }
           if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
         }
       }
@@ -302,6 +304,7 @@ async function syncDownNow() {
     }
     for (const id of [...trainerTouched.keys()]) if (!dirty.has(key("trainings", id))) trainerTouched.delete(id);
     for (const id of [...trainerNamed.keys()]) if (!dirty.has(key("trainings", id))) trainerNamed.delete(id);
+    for (const id of [...trainerNoted.keys()]) if (!dirty.has(key("trainings", id))) trainerNoted.delete(id);
   }
   const migrated = lsGet("fiala.trainings.migrated");
   if (!S.clientMode && !migrated && c.data.length === 0 && t.data.length === 0 && (clients.size || trainings.size)) {

@@ -21,7 +21,7 @@ export const initial = () => ({
 });
 export const S = initial();
 export const ui = {};                       // the screen functions the sync layer may call ($, setStatus, render, showProblem, …), filled in by main.js
-export function resetState() { Object.assign(S, initial()); for (const m of [clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingNoteRows, seenAt, trainerTouched, trainerNamed, confirmedAt, planTouched]) m.clear(); }
+export function resetState() { Object.assign(S, initial()); for (const m of [clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingNoteRows, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, planTouched]) m.clear(); }
 
 export const clients = new Map();            // id -> { id, name, notes, createdAt, … }
 export const trainings = new Map();          // id -> { id, clientId, title, date, createdAt, rows: [...] }
@@ -34,6 +34,7 @@ export const trainerState = new Map();       // trainingId -> Set(field): finish
 export const trainerTouched = new Map();     // trainingId -> Set(rowId) whose weights the trainer edited since the last sync
 export const planTouched = new Set();        // clientId whose plan / packages this device changed since the last sync: a stale save must not lose them
 export const trainerNamed = new Map();       // trainingId -> Set(rowId) whose name / alternatives the trainer edited since the last sync
+export const trainerNoted = new Map();       // trainingId -> Set(rowId) whose card note the trainer wrote or removed since the last sync (the note alone: a note edit never carries old weights)
 export const pendingWeightRows = new Map();  // client mode: trainingId -> Set(rowId) with sets to send
 export const pendingDoneRows = new Map();    // client mode: trainingId -> Set(rowId) with a done flag to send
 export const pendingEarlyRows = new Map();   // client mode: trainingId -> Set(rowId) with a "finished early" reason to send
