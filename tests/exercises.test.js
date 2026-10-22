@@ -87,3 +87,12 @@ test("a stored 'no video' marker does not travel onto a merge target's own video
   assert.strictEqual(await fns.renameExercise("triceppushdown", "Tricep pushdown", "Tricep kickback"), true);
   assert.ok(!maps.customVideos.has("tricep kickback")); assert.ok(fns.videoForName("Tricep kickback"), "the kickback keeps its built-in video");
 });
+
+test("a chosen subtitle is stored under the exercise key, read back, moved by a rename, and removed again", async () => {
+  const sb = coach();
+  assert.strictEqual(await fns.saveSub("trxrow", "underhand, to chest", null), null);
+  assert.strictEqual(sb.tables.ft_exercise_subtitles.get("trxrow").subtitle, "underhand, to chest");
+  maps.customSubs.clear(); await fns.loadCustomSubs(); assert.strictEqual(fns.subtitleFor("TRX row"), "underhand, to chest");
+  assert.strictEqual(await fns.saveSub("trxrowwide", "wide", "trxrow"), null); assert.ok(!sb.tables.ft_exercise_subtitles.has("trxrow"), "a rename moves it"); assert.strictEqual(maps.customSubs.get("trxrowwide"), "wide");
+  assert.strictEqual(await fns.deleteSub(["trxrowwide"]), null); assert.strictEqual(fns.subtitleFor("TRX row wide"), null);
+});

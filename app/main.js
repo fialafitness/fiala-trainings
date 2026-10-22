@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, pendingNoteRows, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, timeAsWeight, repairTimed, planNumber, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, timedPlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -31,7 +31,7 @@ import { reportRange, buildReport } from "./report.js";
   const properName = (n) => { const t = String(n || "").replace(/\s+/g, " ").trim(), k = squash(t); if (!k || builtinKeys.has(k) || customNames.has(k)) return t; return ALIAS_BY_KEY.get(k) || t; };   // an old spelling, however typed, resolves to the exercise it names
   const knownName = (n) => { const k = squash(properName(n)); return !!k && ((builtinKeys.has(k) && !hiddenKeys.has(k)) || customNames.has(k)); };
   let lastDbError = "";                   // the last Supabase message, so a screen can say "run the script" instead of "try again"
-  const missingTable = () => /ft_exercise_hidden|ft_exercises|ft_exercise_videos/.test(lastDbError) && /not find|does not exist|schema cache/i.test(lastDbError);
+  const missingTable = () => /ft_exercise_hidden|ft_exercises|ft_exercise_videos|ft_exercise_subtitles/.test(lastDbError) && /not find|does not exist|schema cache/i.test(lastDbError);
   async function loadHidden() {
     if (!S.sb || !S.signedIn) return;
     const { data, error } = await S.sb.from("ft_exercise_hidden").select("name_key");
@@ -105,6 +105,16 @@ import { reportRange, buildReport } from "./report.js";
   const SUPABASE_URL = "https://umurkxqswcjmubeucrzw.supabase.co";
   const SUPABASE_KEY = "sb_publishable__OG8G0RdJkERDqwV8xKN2Q_uwL1zY4p";
   const customVideos = new Map();        // loose exercise name -> YouTube id (trainer's own links)
+  const customSubs = new Map();          // exercise key -> the subtitle he chose ("" = the whole name is the title); absent = the automatic split
+  const subtitleFor = (name) => { const k = squash(name); return customSubs.has(k) ? customSubs.get(k) : null; };
+  async function loadCustomSubs() {
+    if (!S.sb || !S.signedIn) return;
+    const { data, error } = await S.sb.from("ft_exercise_subtitles").select("name_key,subtitle");
+    if (error || !data) return;
+    customSubs.clear(); for (const r of data) customSubs.set(r.name_key, String(r.subtitle || ""));
+  }
+  async function saveSub(k, sub, oldKey) { const { error } = await S.sb.from("ft_exercise_subtitles").upsert({ name_key: k, subtitle: sub }); if (error) { lastDbError = error.message || ""; return error; } customSubs.set(k, sub); if (oldKey && oldKey !== k) await deleteSub([oldKey]); return null; }
+  async function deleteSub(keys) { const { error } = await S.sb.from("ft_exercise_subtitles").delete().in("name_key", keys); if (error) { lastDbError = error.message || ""; return error; } for (const k of keys) customSubs.delete(k); return null; }
   const videoRawKeys = new Map();        // loose key -> Set of name_key values actually stored (old spellings included)
   const videoKeysFor = (k) => [...new Set([k, ...(videoRawKeys.get(k) || [])])];
   async function saveVideo(k, url, id) { const { error } = await S.sb.from("ft_exercise_videos").upsert({ name_key: k, url, video_id: id }); if (error) return error; const stale = videoKeysFor(k).filter((x) => x !== k); if (stale.length) await S.sb.from("ft_exercise_videos").delete().in("name_key", stale); customVideos.set(k, id); videoRawKeys.set(k, new Set([k])); return null; }
@@ -356,7 +366,8 @@ import { reportRange, buildReport } from "./report.js";
     const li = document.createElement("li"); li.dataset.key = key;
     const b = document.createElement("button"); b.type = "button";
     const mine = customNames.has(key); const vid = videoForName(name);
-    const pri = document.createElement("span"); pri.className = "pri"; pri.textContent = name;
+    const pri = document.createElement("span"); pri.className = "pri"; const parts = splitName(name, subtitleFor(name)); pri.textContent = parts.title;
+    if (parts.sub) { const st = document.createElement("span"); st.className = "subt"; st.textContent = parts.sub; pri.appendChild(st); }
     const sec = document.createElement("span"); sec.className = "sec"; sec.innerHTML = (vid ? '<span class="dot">▶ video</span>' : "") + (vid && mine ? " · " : "") + (mine ? "yours" : "");
     const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.innerHTML) left.append(sec);
     const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "›";
@@ -388,7 +399,12 @@ import { reportRange, buildReport } from "./report.js";
     const field = (label, inp) => { const w = document.createElement("div"); w.className = "edit-field"; const c = document.createElement("span"); c.className = "cap"; c.textContent = label; w.append(c, inp); return w; };
     const nameInp = document.createElement("input"); nameInp.value = name; nameInp.placeholder = "Name"; nameInp.setAttribute("autocapitalize", "sentences"); nameInp.setAttribute("autocomplete", "off");
     const url = document.createElement("input"); url.type = "url"; url.placeholder = "Paste a YouTube link"; url.value = vid ? "https://youtu.be/" + vid : ""; url.setAttribute("autocomplete", "off"); url.setAttribute("autocapitalize", "none"); url.inputMode = "url";
-    for (const i of [nameInp, url]) i.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); i.blur(); } });
+    const subInp = document.createElement("input"); subInp.placeholder = "None"; subInp.setAttribute("autocapitalize", "none"); subInp.setAttribute("autocomplete", "off");   // the ending of the name the client sees as a second, smaller line
+    const chosenSub = customSubs.has(key) ? customSubs.get(key) : null; subInp.value = chosenSub == null ? autoSubtitle(name) : chosenSub;
+    const subHint = document.createElement("span"); subHint.className = "hint";
+    const paintSubHint = () => { const nm = nameInp.value.trim(), want = subInp.value.trim(), { title, sub } = splitName(nm, want); subHint.textContent = sub ? "Clients see \u201c" + title + "\u201d with \u201c" + sub + "\u201d under it" : want ? "The subtitle has to be the end of the name" : "Clients see the whole name on one line"; };
+    for (const i of [nameInp, subInp]) i.addEventListener("input", paintSubHint); paintSubHint();
+    for (const i of [nameInp, subInp, url]) i.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); i.blur(); } });
     const vidRow = document.createElement("div"); vidRow.className = "row-actions";
     const rmVid = mkBtn("Remove video", "btn tint danger", () => { url.value = ""; rmVid.hidden = true; }); rmVid.hidden = !vid;
     url.addEventListener("input", () => { rmVid.hidden = !url.value.trim(); });
@@ -405,6 +421,7 @@ import { reportRange, buildReport } from "./report.js";
       if (!nn || !squash(nn)) { $("status").textContent = "Give it a name"; return; }
       if (link && !youtubeId(link)) { $("status").textContent = "That doesn\u2019t look like a YouTube link"; return; }
       if (nn !== name && squash(nn) !== key && knownName(nn)) { $("status").textContent = "There is already an exercise called \u201c" + nn + "\u201d"; return; }
+      const wantSub = subInp.value.trim(); if (wantSub && !splitName(nn, wantSub).sub) { $("status").textContent = "The subtitle has to be the end of the name"; return; }
       save.disabled = true;
       let cur = name;
       if (nn !== name) { const ok = await renameExercise(key, name, nn); if (!ok) { save.disabled = false; $("status").textContent = missingTable() ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t rename \u00b7 try again online"; return; } cur = nn; }
@@ -412,12 +429,17 @@ import { reportRange, buildReport } from "./report.js";
       let videoError = null;
       if (!link && had) videoError = await saveVideo(vkey, "", "");                                   // an empty link stored = no video, the built-in one included
       else if (id && id !== had) videoError = await saveVideo(vkey, link, id);
-      exOpenKey = squash(cur); renderExercises();                                                      // the list shows what stands, rename included, before any complaint
+      const nk2 = squash(cur); let subError = null;                                                   // the subtitle: his choice stored only when it differs from the automatic split
+      if (wantSub === autoSubtitle(cur)) { const gone = [nk2, key].filter((k, i, arr) => customSubs.has(k) && arr.indexOf(k) === i); if (gone.length) subError = await deleteSub(gone); }
+      else subError = await saveSub(nk2, wantSub, key);
+      exOpenKey = nk2; renderExercises();                                                              // the list shows what stands, rename included, before any complaint
+      if (subError) { $("status").textContent = /ft_exercise_subtitles/.test(subError.message || "") ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t save the subtitle"; return; }
       if (videoError) { $("status").textContent = /ft_exercise_videos/.test(videoError.message || "") ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t save the video"; return; }
       setStatus();
     });
     foot.append(save, mkBtn("Discard", "btn quiet", () => buildExerciseDetail(box, name, key)));
-    box.append(field("Name", nameInp), field("Video", url), vidRow, delRow, foot);
+    const subField = field("Subtitle", subInp); subField.appendChild(subHint);
+    box.append(field("Name", nameInp), subField, field("Video", url), vidRow, delRow, foot);
     nameInp.focus({ preventScroll: true });
   }
   $("exSearch").addEventListener("input", () => { exShown = 80; exOpenKey = null; renderExercises(); });
@@ -2240,6 +2262,10 @@ import { reportRange, buildReport } from "./report.js";
     if (ALIASES[r.name]) { r.name = ALIASES[r.name]; if (!S.clientMode) scheduleSave("trainings", t.id); }
     if (!S.clientMode && Array.isArray(r.alts) && r.alts.some((a) => ALIASES[a])) { r.alts = r.alts.map((a) => ALIASES[a] || a); scheduleSave("trainings", t.id); }
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
+    if (S.clientMode || previewClient) {                                                             // the client reads a long name as a title with its subtitle under it; the coach keeps the one editable line
+      const parts = splitName(r.name, subtitleFor(r.name));
+      if (parts.sub) { q(".name").value = parts.title; const d = document.createElement("div"); d.className = "name-sub"; d.textContent = parts.sub; q(".name").insertAdjacentElement("afterend", d); }
+    }
     requestAnimationFrame(growName);
     q(".name").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
     q(".reps").value = r.reps || ""; q(".tempo").value = r.tempo || ""; q(".rest").value = r.rest || "";
@@ -2658,7 +2684,7 @@ import { reportRange, buildReport } from "./report.js";
   });
 
   // ---------- boot ----------
-  Object.assign(ui, { $, setStatus, render, showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar });   // what the sync layer may call on the screens
+  Object.assign(ui, { $, setStatus, render, showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadCustomSubs, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar });   // what the sync layer may call on the screens
   async function boot() {
     try { const v = new URL(import.meta.url).searchParams.get("v"); if (v) $("appVersion").textContent = "Version " + v; } catch (_) {}   // the build this phone runs, read off the script's own ?v=
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) S.view = saved;
@@ -2701,8 +2727,8 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { addTraining, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
-      maps: { hiddenKeys, customNames, customVideos, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap },
+      fns: { addTraining, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
       reset: () => { resetState(); localStorage.clear(); },
