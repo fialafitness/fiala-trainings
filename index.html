@@ -526,7 +526,10 @@
   .ex-icons .vid-btn.has, .ex-icons .note-btn.has { color: var(--text-primary); }   /* holds something: ink; empty: quiet grey */
   .ex-icons .vid-btn .i-up, .ex-icons .vid-btn.open .i-play { display: none; }   /* while the video is open the play becomes a chevron up: tap to tuck it away */
   .ex-icons .vid-btn.open .i-up { display: block; }
-  .alt-btn { color: var(--text-tertiary); }
+  .alt-btn { color: var(--text-tertiary); order: -1; }   /* the swap arrows sit first, left of the play button, in both views */
+  body.client .ex-icons .alt-btn { width: 36px; height: 36px; margin-right: 2px; border-radius: 50%; background: var(--field-in); color: var(--text-primary); opacity: 1; }   /* the same soft disc as the play button */
+  body.client .ex-icons .alt-btn svg { width: 16px; height: 16px; }
+  body.client .alt-menu { left: 0; }
   .alt-btn[hidden] { display: none; }
   .alt-btn.some { color: var(--text-primary); }
   .block.done:not(.open) .ex-icons { display: none; }
@@ -1299,7 +1302,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=73";
+  import { boot } from "./app/main.js?v=74";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
