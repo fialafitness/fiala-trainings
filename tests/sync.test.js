@@ -146,6 +146,35 @@ test("a client's skip carries the reason; a rule that does not know the reason y
   const calls = sb.log.filter((l) => l.rpc === "client_skip_training").map((l) => l.args);
   assert.deepStrictEqual(calls, [{ p_training: "T", p_skipped: true, p_reason: "Sick" }, { p_training: "T", p_skipped: true }]); assert.ok(!maps.pendingSkip.has("T"));
 });
+test("Finish then Undo while the finish request is out: the answer does not swallow the Undo, which goes with the next flush", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend });
+  const t = training("T", { completedAt: "2026-10-22T10:00:00.000Z" }); maps.trainings.set("T", t); maps.pendingFinish.add("T");
+  sb.rpcs.client_finish_training = async (a) => { if (a.p_finished) { t.completedAt = null; maps.pendingFinish.add("T"); } return null; };   // Undo lands while the Finish request is on its way
+  await fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify({ ...t, completedAt: "2026-10-22T10:00:00.000Z" })));
+  assert.ok(maps.pendingFinish.has("T"), "the Undo is still queued");
+  await fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify(t)));
+  const sent = sb.log.filter((l) => l.rpc === "client_finish_training").map((l) => l.args.p_finished);
+  assert.deepStrictEqual(sent, [true, false]); assert.ok(!maps.pendingFinish.has("T"), "acknowledged once the server holds the Undo");
+});
+test("a set logged while the log request is out stays queued, and the queue survives a persist mid-flight", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend });
+  const t = training("T", { rows: [row("r1", ["100"], ["5"], 1)] }); maps.trainings.set("T", t); maps.pendingWeightRows.set("T", new Set(["r1"]));
+  let persistedMidFlight = null;
+  sb.rpcs.client_log_set = async (a) => { if (a.p_sets_done === 1) { fns.persistPending(); persistedMidFlight = JSON.parse(localStorage.getItem("fiala.pending.v1")); t.rows[0].weights = ["100", "105"]; t.rows[0].repsDone = ["5", "5"]; t.rows[0].setsDone = 2; } return null; };   // the app is backgrounded and set 2 logged while set 1 is on its way
+  await fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify({ ...t, rows: [row("r1", ["100"], ["5"], 1)] })));
+  assert.deepStrictEqual(persistedMidFlight.weights, [["T", ["r1"]]], "the queue written mid-flight still holds the row");
+  assert.ok(maps.pendingWeightRows.get("T").has("r1"), "set 2 is still queued");
+  await fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify(t)));
+  const sent = sb.log.filter((l) => l.rpc === "client_log_set").map((l) => l.args.p_sets_done);
+  assert.deepStrictEqual(sent, [1, 2]); assert.ok(!maps.pendingWeightRows.get("T").has("r1"), "acknowledged once the server holds set 2");
+});
+test("a send that fails leaves every unsent row queued; a row the server refused for good is dropped", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend });
+  const t = training("T", { rows: [row("r1", ["1"], ["1"], 1), row("r2", ["2"], ["2"], 1), row("r3", ["3"], ["3"], 1)] }); maps.trainings.set("T", t); maps.pendingWeightRows.set("T", new Set(["r1", "r2", "r3"]));
+  sb.rpcs.client_log_set = async (a) => { if (a.p_row === "r1") { const e = new Error("row gone"); e.code = "P0001"; throw e; } if (a.p_row === "r2") { const e = new Error("network down"); e.code = "500"; throw e; } return null; };
+  await assert.rejects(fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify(t))));
+  assert.deepStrictEqual([...maps.pendingWeightRows.get("T")], ["r2", "r3"], "r1 dropped for good, r2 and r3 wait for the next try");
+});
 test("the device copy reports when it cannot be written", () => {
   app.reset(); app.set({ backend: fns.localBackend });
   env.storage.fail = true;

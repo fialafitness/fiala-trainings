@@ -171,85 +171,90 @@ const cloudBackend = {
 };
 
 const clientBackend = {
+  // Every queue is an outbox: an item stays in it until the server holds what the record says NOW. Nothing is cleared before the answer
+  // comes back (a persist mid-flight, or the app being killed, loses nothing), and an answer never acknowledges a newer action — a set
+  // logged, or Undo tapped, while the request was out stays queued and goes with the next flush. P0001 means the server refused for good
+  // (row or workout gone): the item is dropped and the server's version comes back on the next sync. Sending twice is harmless: every rule
+  // writes the whole value it is given.
   async set(kind, id, data) {
     if (kind !== "trainings") return;
+    const live = () => trainings.get(id) || data;
+    const rowOf = (t, rid) => ((t && t.rows) || []).find((x) => x.id === rid);
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const clean = (a) => (a || []).map((w) => String(w == null ? "" : w).slice(0, 16));
+    const oldWay = (r) => { const tm = timedPlan(r.reps); if (!tm) return r.weights; const ws = [...(r.weights || [])], rs = r.repsDone || []; for (let j = 0; j < Math.max(ws.length, rs.length); j++) if (!String(ws[j] == null ? "" : ws[j]).trim() && String(rs[j] == null ? "" : rs[j]).trim()) ws[j] = String(rs[j]).trim() + " " + tm.unit; return ws; };   // the old rule carries weights only: a hold's seconds travel as "45 sec" and the coach's app moves them back into the time column
+    const logOf = (r) => (r ? { w: clean(r.weights), rp: clean(r.repsDone), sd: clamp(parseInt(r.setsDone, 10) || 0, 0, 20), d: !!r.done } : null);
     const rows = pendingWeightRows.get(id);
-    if (rows) {
-      const ids = [...rows]; rows.clear();
-      for (let i = 0; i < ids.length; i++) {
-        const r = (data.rows || []).find((x) => x.id === ids[i]); if (!r) continue;
-        const clean = (a) => (a || []).map((w) => String(w == null ? "" : w).slice(0, 16));
-        const oldWay = (r) => { const tm = timedPlan(r.reps); if (!tm) return r.weights; const ws = [...(r.weights || [])], rs = r.repsDone || []; for (let j = 0; j < Math.max(ws.length, rs.length); j++) if (!String(ws[j] == null ? "" : ws[j]).trim() && String(rs[j] == null ? "" : rs[j]).trim()) ws[j] = String(rs[j]).trim() + " " + tm.unit; return ws; };   // the old rule carries weights only: a hold's seconds travel as "45 sec" and the coach's app moves them back into the time column
-        let error = null;
-        if (!S.logSetMissing) ({ error } = await rpc("client_log_set", { p_training: id, p_row: ids[i], p_weights: clean(r.weights), p_reps: clean(r.repsDone), p_sets_done: clamp(parseInt(r.setsDone, 10) || 0, 0, 20), p_done: !!r.done }));
-        if (S.logSetMissing || (error && (error.code === "PGRST202" || /client_log_set/.test(error.message || "")))) {   // rule not installed yet: weights still get through the old way
-          S.logSetMissing = true;
-          ({ error } = await rpc("client_set_weights", { p_training: id, p_row: ids[i], p_weights: clean(oldWay(r)) }));
-          if (!error && r.done) { const d = await rpc("client_set_done", { p_training: id, p_row: ids[i], p_done: true }); error = d.error; }
-        }
-        if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of ids.slice(i)) rows.add(rest); throw error; }   // P0001: the server refused for good (row or training gone)
+    if (rows) for (const rid of [...rows]) {
+      const r = rowOf(data, rid); if (!r) { rows.delete(rid); continue; }
+      const sent = logOf(r); let error = null;
+      if (!S.logSetMissing) ({ error } = await rpc("client_log_set", { p_training: id, p_row: rid, p_weights: sent.w, p_reps: sent.rp, p_sets_done: sent.sd, p_done: sent.d }));
+      if (S.logSetMissing || (error && (error.code === "PGRST202" || /client_log_set/.test(error.message || "")))) {   // rule not installed yet: weights still get through the old way
+        S.logSetMissing = true;
+        ({ error } = await rpc("client_set_weights", { p_training: id, p_row: rid, p_weights: clean(oldWay(r)) }));
+        if (!error && r.done) { const d = await rpc("client_set_done", { p_training: id, p_row: rid, p_done: true }); error = d.error; }
       }
+      if (error && error.code === "P0001") { rows.delete(rid); scheduleSync(); continue; }
+      if (error) throw error;
+      if (same(logOf(rowOf(live(), rid)), sent)) rows.delete(rid);
     }
     const swaps = pendingSwap.get(id);
-    if (swaps && swaps.size) {
-      const picks = [...swaps.entries()]; swaps.clear();
-      for (let i = 0; i < picks.length; i++) {
-        const { error } = await rpc("client_swap_exercise", { p_training: id, p_row: picks[i][0], p_name: picks[i][1] });
-        if (error) {
-          if (error.code === "P0001") { scheduleSync(); continue; } // the server said no (alternative or row gone): its version comes back on the next sync
-          for (const rest of picks.slice(i)) swaps.set(rest[0], rest[1]); throw error;
-        }
-      }
+    if (swaps && swaps.size) for (const [rid, name] of [...swaps.entries()]) {
+      const { error } = await rpc("client_swap_exercise", { p_training: id, p_row: rid, p_name: name });
+      if (error && error.code === "P0001") { swaps.delete(rid); scheduleSync(); continue; }   // the server said no (alternative or row gone): its version comes back on the next sync
+      if (error) throw error;
+      if (swaps.get(rid) === name) swaps.delete(rid);
     }
     if (pendingFinish.has(id)) {
-      const { error } = await rpc("client_finish_training", { p_training: id, p_finished: !!data.completedAt });
+      const finished = !!data.completedAt;
+      const { error } = await rpc("client_finish_training", { p_training: id, p_finished: finished });
       if (error && error.code !== "P0001") throw error;
-      pendingFinish.delete(id);
+      if (error || !!live().completedAt === finished) pendingFinish.delete(id);              // Undo tapped while Finish was out: still queued, goes next
     }
     if (pendingSkip.has(id)) {
-      let { error } = await rpc("client_skip_training", { p_training: id, p_skipped: !!data.skippedAt, p_reason: String(data.skipReason || "") });
-      if (error && error.code === "PGRST202") ({ error } = await rpc("client_skip_training", { p_training: id, p_skipped: !!data.skippedAt }));   // the rule without the reason (not updated yet): the skip still lands
+      const skipped = !!data.skippedAt, reason = String(data.skipReason || "");
+      let { error } = await rpc("client_skip_training", { p_training: id, p_skipped: skipped, p_reason: reason });
+      if (error && error.code === "PGRST202") ({ error } = await rpc("client_skip_training", { p_training: id, p_skipped: skipped }));   // the rule without the reason (not updated yet): the skip still lands
       if (error && error.code !== "P0001") throw error;
-      pendingSkip.delete(id);
+      const now = live(); if (error || (!!now.skippedAt === skipped && String(now.skipReason || "") === reason)) pendingSkip.delete(id);
     }
     if (pendingMove.has(id) && !S.moveMissing) {
-      const { error } = await rpc("client_move_training", { p_training: id, p_date: String(data.date || "").slice(0, 10) });
+      const date = String(data.date || "").slice(0, 10);
+      const { error } = await rpc("client_move_training", { p_training: id, p_date: date });
       if (error && (error.code === "PGRST202" || /client_move_training/.test(error.message || ""))) S.moveMissing = true;   // rule not installed yet: stays on the device until it is
-      else { if (error && error.code !== "P0001") throw error; pendingMove.delete(id); }
+      else { if (error && error.code !== "P0001") throw error; if (error || String(live().date || "").slice(0, 10) === date) pendingMove.delete(id); }
     }
     if (pendingMiss.has(id) && !S.missMissing) {
-      const { error } = await rpc("client_miss_training", { p_training: id, p_missed: data.missed === true });
+      const missed = data.missed === true;
+      const { error } = await rpc("client_miss_training", { p_training: id, p_missed: missed });
       if (error && (error.code === "PGRST202" || /client_miss_training/.test(error.message || ""))) S.missMissing = true;
-      else { if (error && error.code !== "P0001") throw error; pendingMiss.delete(id); }
+      else { if (error && error.code !== "P0001") throw error; if (error || (live().missed === true) === missed) pendingMiss.delete(id); }
     }
     const dones = pendingDoneRows.get(id);
-    if (dones) {
-      const dids = [...dones]; dones.clear();
-      for (let i = 0; i < dids.length; i++) {
-        const r = (data.rows || []).find((x) => x.id === dids[i]); if (!r) continue;
-        const { error } = await rpc("client_set_done", { p_training: id, p_row: dids[i], p_done: !!r.done });
-        if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of dids.slice(i)) dones.add(rest); throw error; }
-      }
+    if (dones) for (const rid of [...dones]) {
+      const r = rowOf(data, rid); if (!r) { dones.delete(rid); continue; }
+      const d = !!r.done; const { error } = await rpc("client_set_done", { p_training: id, p_row: rid, p_done: d });
+      if (error && error.code === "P0001") { dones.delete(rid); scheduleSync(); continue; }
+      if (error) throw error;
+      const lr = rowOf(live(), rid); if (!lr || !!lr.done === d) dones.delete(rid);
     }
     const notesQ = pendingNoteRows.get(id);
-    if (notesQ && !S.noteMissing) {
-      const nids = [...notesQ]; notesQ.clear();
-      for (let i = 0; i < nids.length; i++) {
-        const r = (data.rows || []).find((x) => x.id === nids[i]); if (!r) continue;
-        const { error } = await rpc("client_row_note", { p_training: id, p_row: nids[i], p_note: String(r.clientNote || "").slice(0, 500) || null });
-        if (error && (error.code === "PGRST202" || /client_row_note/.test(error.message || ""))) { S.noteMissing = true; for (const rest of nids.slice(i)) notesQ.add(rest); break; }   // rule not installed yet: kept for a later launch
-        if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of nids.slice(i)) notesQ.add(rest); throw error; }
-      }
+    if (notesQ && !S.noteMissing) for (const rid of [...notesQ]) {
+      const r = rowOf(data, rid); if (!r) { notesQ.delete(rid); continue; }
+      const note = String(r.clientNote || "").slice(0, 500); const { error } = await rpc("client_row_note", { p_training: id, p_row: rid, p_note: note || null });
+      if (error && (error.code === "PGRST202" || /client_row_note/.test(error.message || ""))) { S.noteMissing = true; break; }   // rule not installed yet: kept for a later launch
+      if (error && error.code === "P0001") { notesQ.delete(rid); scheduleSync(); continue; }
+      if (error) throw error;
+      const lr = rowOf(live(), rid); if (!lr || String(lr.clientNote || "").slice(0, 500) === note) notesQ.delete(rid);
     }
     const earlies = pendingEarlyRows.get(id);
-    if (earlies && !S.earlyMissing) {
-      const eids = [...earlies]; earlies.clear();
-      for (let i = 0; i < eids.length; i++) {
-        const r = (data.rows || []).find((x) => x.id === eids[i]); if (!r) continue;
-        const { error } = await rpc("client_finish_early", { p_training: id, p_row: eids[i], p_reason: String(r.earlyReason || "").slice(0, 40) || null });
-        if (error && (error.code === "PGRST202" || /client_finish_early/.test(error.message || ""))) { S.earlyMissing = true; for (const rest of eids.slice(i)) earlies.add(rest); break; }   // rule not installed yet: the reasons wait on the device for a later launch, everything else still syncs
-        if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of eids.slice(i)) earlies.add(rest); throw error; }
-      }
+    if (earlies && !S.earlyMissing) for (const rid of [...earlies]) {
+      const r = rowOf(data, rid); if (!r) { earlies.delete(rid); continue; }
+      const reason = String(r.earlyReason || "").slice(0, 40); const { error } = await rpc("client_finish_early", { p_training: id, p_row: rid, p_reason: reason || null });
+      if (error && (error.code === "PGRST202" || /client_finish_early/.test(error.message || ""))) { S.earlyMissing = true; break; }   // rule not installed yet: the reasons wait on the device for a later launch, everything else still syncs
+      if (error && error.code === "P0001") { earlies.delete(rid); scheduleSync(); continue; }
+      if (error) throw error;
+      const lr = rowOf(live(), rid); if (!lr || String(lr.earlyReason || "").slice(0, 40) === reason) earlies.delete(rid);
     }
     localBackend.save();
   },
