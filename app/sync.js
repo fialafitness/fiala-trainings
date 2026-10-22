@@ -12,6 +12,7 @@ const reasonOf = (e) => {
   const m = String((e && e.message) || "");
   if ((e && e.code === "PGRST202") || /Could not find the function/i.test(m)) return "database rule missing";
   if (e && e.code === "P0001" && m && m.length < 40) return m;
+  if (e && e.code === "23505") return "that email is already on another client";
   return "";
 };
 
@@ -75,7 +76,7 @@ function flushOne(kind, id) {
       try {
         if (data) await S.backend.set(kind, id, data); else await S.backend.del(kind, id);
         S.failed = false;
-        if (dirty.get(k) === version) { dirty.delete(k); if (kind === "trainings") trainerState.delete(id); if (kind === "clients") planTouched.delete(id); }   // the coach's state changes went with this save; a later touch keeps its flag
+        if (dirty.get(k) === version) { dirty.delete(k); if (kind === "trainings") { trainerState.delete(id); trainerTouched.delete(id); trainerNamed.delete(id); } if (kind === "clients") planTouched.delete(id); }   // the coach's state changes went with this save; a later touch keeps its flag
         confirmedAt.set(k, Date.now());
         return;
       } catch (e) {
@@ -99,6 +100,9 @@ const localBackend = {
 };
 const touchState = (id, ...fields) => { if (S.clientMode) return; if (!trainerState.has(id)) trainerState.set(id, new Set()); for (const f of fields) trainerState.get(id).add(f); };
 const TABLE = { clients: "ft_clients", trainings: "ft_trainings" };
+const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r({ data: null, error: { message: "network timeout" } }), ms))]);
+const SAVE_WAIT = 15000;                                           // a save that never answers must not block every later save of the record: it times out like a read, and is retried
+const rpc = (name, args) => withTimeout(S.sb.rpc(name, args), SAVE_WAIT);
 
 const cloudBackend = {
   async set(kind, id, data) {
@@ -111,7 +115,7 @@ const cloudBackend = {
       for (const sr of (serverData && serverData.rows) || []) {
         for (const target of [data, live]) {
           const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (!lr) continue;
-          if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; lr.setsDone = sr.setsDone || 0; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; if (sr.clientNote) { lr.clientNote = String(sr.clientNote); if (sr.clientNoteBy) lr.clientNoteBy = String(sr.clientNoteBy); else delete lr.clientNoteBy; if (sr.clientNoteAt) lr.clientNoteAt = String(sr.clientNoteAt); else delete lr.clientNoteAt; } else { delete lr.clientNote; delete lr.clientNoteBy; delete lr.clientNoteAt; } }
+          if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; if (sr.setsDone != null) lr.setsDone = sr.setsDone; else delete lr.setsDone; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; if (sr.clientNote) { lr.clientNote = String(sr.clientNote); if (sr.clientNoteBy) lr.clientNoteBy = String(sr.clientNoteBy); else delete lr.clientNoteBy; if (sr.clientNoteAt) lr.clientNoteAt = String(sr.clientNoteAt); else delete lr.clientNoteAt; } else { delete lr.clientNote; delete lr.clientNoteBy; delete lr.clientNoteAt; } }
           if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
         }
       }
@@ -134,21 +138,21 @@ const cloudBackend = {
         if (!planTouched.has(id)) for (const f of ["plan", "planHistory"]) for (const target of [data, live]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; }   // a plan set on another device stands, unless this one changed it
       };
       if (!seen && attempt === 0) {                               // no stamp (edited offline, app relaunched): read first, never write over the other side blind
-        const existing = await S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle();
+        const existing = await withTimeout(S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle(), SAVE_WAIT);
         if (existing.error) throw existing.error;
         if (existing.data) { if (kind === "trainings") { mergeServerRows(existing.data.data); takeState(existing.data.data); } takeNotes(existing.data.data); seen = existing.data.updated_at; seenAt.set(k, seen); }
       }
       let res;
-      if (seen) res = await S.sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at");
-      else res = await S.sb.from(TABLE[kind]).upsert(row).select("updated_at");
+      if (seen) res = await withTimeout(S.sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at"), SAVE_WAIT);
+      else res = await withTimeout(S.sb.from(TABLE[kind]).upsert(row).select("updated_at"), SAVE_WAIT);
       if (res.error) {
-        if (res.error.code === "23505") { res.error.fatal = true; ui.$("status").textContent = "That email is already on another client"; }
+        if (res.error.code === "23505") res.error.fatal = true;
         if (/^22/.test(String(res.error.code || ""))) seenAt.delete(k);   // a bad stamp must not poison every retry
         throw res.error;
       }
       if (res.data && res.data.length) { seenAt.set(k, res.data[0].updated_at); localBackend.save(); return; }
       // someone else (a client logging weights) saved first: take their weights, keep everything else, retry
-      const fresh = await S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle();
+      const fresh = await withTimeout(S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle(), SAVE_WAIT);
       if (fresh.error) throw fresh.error;
       if (!fresh.data) { seenAt.delete(k); continue; }
       seenAt.set(k, fresh.data.updated_at);
@@ -158,7 +162,7 @@ const cloudBackend = {
     throw new Error("save conflict");
   },
   async del(kind, id) {
-    const { error } = await S.sb.from(TABLE[kind]).delete().eq("id", id);
+    const { error } = await withTimeout(S.sb.from(TABLE[kind]).delete().eq("id", id), SAVE_WAIT);
     if (error) throw error;
     localBackend.save();
   },
@@ -175,11 +179,11 @@ const clientBackend = {
         const clean = (a) => (a || []).map((w) => String(w == null ? "" : w).slice(0, 16));
         const oldWay = (r) => { const tm = timedPlan(r.reps); if (!tm) return r.weights; const ws = [...(r.weights || [])], rs = r.repsDone || []; for (let j = 0; j < Math.max(ws.length, rs.length); j++) if (!String(ws[j] == null ? "" : ws[j]).trim() && String(rs[j] == null ? "" : rs[j]).trim()) ws[j] = String(rs[j]).trim() + " " + tm.unit; return ws; };   // the old rule carries weights only: a hold's seconds travel as "45 sec" and the coach's app moves them back into the time column
         let error = null;
-        if (!S.logSetMissing) ({ error } = await S.sb.rpc("client_log_set", { p_training: id, p_row: ids[i], p_weights: clean(r.weights), p_reps: clean(r.repsDone), p_sets_done: clamp(parseInt(r.setsDone, 10) || 0, 0, 20), p_done: !!r.done }));
+        if (!S.logSetMissing) ({ error } = await rpc("client_log_set", { p_training: id, p_row: ids[i], p_weights: clean(r.weights), p_reps: clean(r.repsDone), p_sets_done: clamp(parseInt(r.setsDone, 10) || 0, 0, 20), p_done: !!r.done }));
         if (S.logSetMissing || (error && (error.code === "PGRST202" || /client_log_set/.test(error.message || "")))) {   // rule not installed yet: weights still get through the old way
           S.logSetMissing = true;
-          ({ error } = await S.sb.rpc("client_set_weights", { p_training: id, p_row: ids[i], p_weights: clean(oldWay(r)) }));
-          if (!error && r.done) { const d = await S.sb.rpc("client_set_done", { p_training: id, p_row: ids[i], p_done: true }); error = d.error; }
+          ({ error } = await rpc("client_set_weights", { p_training: id, p_row: ids[i], p_weights: clean(oldWay(r)) }));
+          if (!error && r.done) { const d = await rpc("client_set_done", { p_training: id, p_row: ids[i], p_done: true }); error = d.error; }
         }
         if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of ids.slice(i)) rows.add(rest); throw error; }   // P0001: the server refused for good (row or training gone)
       }
@@ -188,7 +192,7 @@ const clientBackend = {
     if (swaps && swaps.size) {
       const picks = [...swaps.entries()]; swaps.clear();
       for (let i = 0; i < picks.length; i++) {
-        const { error } = await S.sb.rpc("client_swap_exercise", { p_training: id, p_row: picks[i][0], p_name: picks[i][1] });
+        const { error } = await rpc("client_swap_exercise", { p_training: id, p_row: picks[i][0], p_name: picks[i][1] });
         if (error) {
           if (error.code === "P0001") { scheduleSync(); continue; } // the server said no (alternative or row gone): its version comes back on the next sync
           for (const rest of picks.slice(i)) swaps.set(rest[0], rest[1]); throw error;
@@ -196,23 +200,23 @@ const clientBackend = {
       }
     }
     if (pendingFinish.has(id)) {
-      const { error } = await S.sb.rpc("client_finish_training", { p_training: id, p_finished: !!data.completedAt });
+      const { error } = await rpc("client_finish_training", { p_training: id, p_finished: !!data.completedAt });
       if (error && error.code !== "P0001") throw error;
       pendingFinish.delete(id);
     }
     if (pendingSkip.has(id)) {
-      let { error } = await S.sb.rpc("client_skip_training", { p_training: id, p_skipped: !!data.skippedAt, p_reason: String(data.skipReason || "") });
-      if (error && error.code === "PGRST202") ({ error } = await S.sb.rpc("client_skip_training", { p_training: id, p_skipped: !!data.skippedAt }));   // the rule without the reason (not updated yet): the skip still lands
+      let { error } = await rpc("client_skip_training", { p_training: id, p_skipped: !!data.skippedAt, p_reason: String(data.skipReason || "") });
+      if (error && error.code === "PGRST202") ({ error } = await rpc("client_skip_training", { p_training: id, p_skipped: !!data.skippedAt }));   // the rule without the reason (not updated yet): the skip still lands
       if (error && error.code !== "P0001") throw error;
       pendingSkip.delete(id);
     }
     if (pendingMove.has(id) && !S.moveMissing) {
-      const { error } = await S.sb.rpc("client_move_training", { p_training: id, p_date: String(data.date || "").slice(0, 10) });
+      const { error } = await rpc("client_move_training", { p_training: id, p_date: String(data.date || "").slice(0, 10) });
       if (error && (error.code === "PGRST202" || /client_move_training/.test(error.message || ""))) S.moveMissing = true;   // rule not installed yet: stays on the device until it is
       else { if (error && error.code !== "P0001") throw error; pendingMove.delete(id); }
     }
     if (pendingMiss.has(id) && !S.missMissing) {
-      const { error } = await S.sb.rpc("client_miss_training", { p_training: id, p_missed: data.missed === true });
+      const { error } = await rpc("client_miss_training", { p_training: id, p_missed: data.missed === true });
       if (error && (error.code === "PGRST202" || /client_miss_training/.test(error.message || ""))) S.missMissing = true;
       else { if (error && error.code !== "P0001") throw error; pendingMiss.delete(id); }
     }
@@ -221,7 +225,7 @@ const clientBackend = {
       const dids = [...dones]; dones.clear();
       for (let i = 0; i < dids.length; i++) {
         const r = (data.rows || []).find((x) => x.id === dids[i]); if (!r) continue;
-        const { error } = await S.sb.rpc("client_set_done", { p_training: id, p_row: dids[i], p_done: !!r.done });
+        const { error } = await rpc("client_set_done", { p_training: id, p_row: dids[i], p_done: !!r.done });
         if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of dids.slice(i)) dones.add(rest); throw error; }
       }
     }
@@ -230,7 +234,7 @@ const clientBackend = {
       const nids = [...notesQ]; notesQ.clear();
       for (let i = 0; i < nids.length; i++) {
         const r = (data.rows || []).find((x) => x.id === nids[i]); if (!r) continue;
-        const { error } = await S.sb.rpc("client_row_note", { p_training: id, p_row: nids[i], p_note: String(r.clientNote || "").slice(0, 500) || null });
+        const { error } = await rpc("client_row_note", { p_training: id, p_row: nids[i], p_note: String(r.clientNote || "").slice(0, 500) || null });
         if (error && (error.code === "PGRST202" || /client_row_note/.test(error.message || ""))) { S.noteMissing = true; for (const rest of nids.slice(i)) notesQ.add(rest); break; }   // rule not installed yet: kept for a later launch
         if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of nids.slice(i)) notesQ.add(rest); throw error; }
       }
@@ -240,8 +244,8 @@ const clientBackend = {
       const eids = [...earlies]; earlies.clear();
       for (let i = 0; i < eids.length; i++) {
         const r = (data.rows || []).find((x) => x.id === eids[i]); if (!r) continue;
-        const { error } = await S.sb.rpc("client_finish_early", { p_training: id, p_row: eids[i], p_reason: String(r.earlyReason || "").slice(0, 40) || null });
-        if (error && (error.code === "PGRST202" || /client_finish_early/.test(error.message || ""))) { S.earlyMissing = true; break; }   // rule not installed yet: the reason stays on the device, everything else still syncs
+        const { error } = await rpc("client_finish_early", { p_training: id, p_row: eids[i], p_reason: String(r.earlyReason || "").slice(0, 40) || null });
+        if (error && (error.code === "PGRST202" || /client_finish_early/.test(error.message || ""))) { S.earlyMissing = true; for (const rest of eids.slice(i)) earlies.add(rest); break; }   // rule not installed yet: the reasons wait on the device for a later launch, everything else still syncs
         if (error) { if (error.code === "P0001") { scheduleSync(); continue; } for (const rest of eids.slice(i)) earlies.add(rest); throw error; }
       }
     }
@@ -262,14 +266,14 @@ function mergeDown(map, kind, rows, complete, startedAt) {        // the server'
     if (!S.clientMode && r.updated_at) seenAt.set(key(kind, r.id), r.updated_at);   // the stamp travels with the record it describes
     if (kind === "trainings") trainerState.delete(r.id);
   }
-  if (complete) for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id))) map.delete(id);   // only a full answer can say something is gone
+  if (complete) for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id)) && !((confirmedAt.get(key(kind, id)) || 0) > startedAt)) map.delete(id);   // only a full answer can say something is gone, and not about a record written after this read began
 }
 async function syncDownNow() {
   if (!S.sb || !S.signedIn || !S.backend || S.seeding) return false;
   const startedAt = Date.now();
   const sess = await S.sb.auth.getSession().catch(() => null);           // no usable token (refresh failed, cooldown): don't sync as a stranger
   if (!(sess && sess.data && sess.data.session)) { S.offline = true; ui.setStatus(); return false; }
-  ui.loadCustomVideos().catch(() => {}); ui.loadHidden().catch(() => {}); ui.loadCustomNames().catch(() => {}); ui.loadCustomSubs().catch(() => {});
+  await Promise.all([ui.loadCustomVideos(), ui.loadHidden(), ui.loadCustomNames(), ui.loadCustomSubs()].map((p) => p.catch(() => {})));   // the exercise list and page paint from loaded names, videos and subtitles
   let c, t;
   if (S.clientMode) {
     const res = await withTimeout(S.sb.rpc("client_my_data"), 8000);
@@ -278,6 +282,7 @@ async function syncDownNow() {
         if (ui.offlineFromMirror()) return false;               // no signal: the last synced copy stands in
         ui.showProblem("Couldn\u2019t load your workouts \u00b7 check your signal and tap Try again"); return false;
       }
+      if (S.myClientId) { ui.$("status").textContent = "Couldn\u2019t sync \u00b7 " + (res.error.message || "server error"); return false; }   // the workouts are on the screen already: a failed refresh is a line in the header, not a page
       ui.showProblem("Couldn\u2019t load your workouts \u00b7 " + (res.error.message || "server error") + " \u00b7 tap Try again"); return false;
     }
     c = { data: res.data.clients || [] }; t = { data: res.data.trainings || [] };
@@ -323,7 +328,6 @@ window.addEventListener("focus", scheduleSync);
 window.addEventListener("online", () => { S.failed = false; if (S.offline && S.signedIn) { ui.resumeOnline().catch(() => {}); return; } for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } scheduleSync(); });
 setInterval(() => { if (document.visibilityState === "visible") scheduleSync(); }, 60000);
 // a request that gets no answer within `ms` counts as a network failure (a phone with one bar can hang for a long time)
-const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r({ data: null, error: { message: "network timeout" } }), ms))]);
 async function fetchAll(table) {                                 // every row, page by page: the server answers at most 1,000 at a time
   const PAGE = 1000, out = []; let after = null;
   for (;;) {
