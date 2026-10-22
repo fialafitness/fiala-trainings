@@ -44,6 +44,13 @@ export const splitName = (name, chosen) => {
   const title = s.slice(0, i).replace(/[\s,(\u2013-]+$/, "").trim();
   return title ? { title, sub: s.slice(i, i + sub.length) } : { title: s, sub: "" };
 };
+// A logged weight carries the unit it was logged in (row.unit, "lb" or "kg"); rows from before that were logged in the unit the client had then,
+// which stampUnit writes onto them the moment the client's unit is switched. A weight read in the other unit converts to the nearest half.
+export const LB_PER_KG = 2.2046226218;
+export const convertWeight = (v, from, to) => { if (!from || !to || from === to) return v; const n = num(v); if (n == null) return v; return Math.round((from === "kg" ? n * LB_PER_KG : n / LB_PER_KG) * 2) / 2; };
+export const stampUnit = (t, unit) => { let changed = false; for (const r of (t && t.rows) || []) { if (r.unit || !(r.weights || []).some((w) => num(w) != null)) continue; r.unit = unit; changed = true; } return changed; };
+export const toUnit = (st, from, to) => (st && from && to && from !== to && st.w != null ? { ...st, w: convertWeight(st.w, from, to) } : st);   // a top set read in another unit
+export const toTimeUnit = (st, from, to) => (st && from && to && from !== to && st.rp != null && from !== "m" && to !== "m" ? { ...st, rp: from === "min" ? st.rp * 60 : Math.round(st.rp / 60 * 100) / 100 } : st);   // a hold logged in minutes against one in seconds
 export const repairTimed = (t) => {
   let changed = false;
   for (const r of (t && t.rows) || []) {

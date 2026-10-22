@@ -50,3 +50,11 @@ test("the report embeds Inter when the font files are there, keeping Czech lette
 test("a chosen month covers that whole month", () => {
   const r = fns.reportRange("2026-02"); assert.strictEqual(r.from, "2026-02-01"); assert.strictEqual(r.to, "2026-02-28"); assert.ok(/February 2026/.test(r.title));
 });
+
+test("a row logged in pounds prints in pounds after the client switched to kilos, and a minute hold compares with a seconds hold", () => {
+  const c = seed(); c.unit = "kg";
+  const a = maps.trainings.get("a"); a.rows[0].unit = "lb"; a.rows[1].reps = "1 min"; a.rows[1].weights = [""]; a.rows[1].repsDone = ["1"];
+  const { text } = checkPdf(fns.buildReport("month", null, c).bytes);
+  assert.ok(text.includes("140 lb"), "the old row keeps its pounds"); assert.ok(!text.includes("140 kg"), "and is never read as kilos");
+  assert.ok(text.includes("60 sec"), "a one-minute hold reads as 60 seconds in the progress table"); assert.ok(!text.includes("1 min") || text.includes("60 sec"));
+});

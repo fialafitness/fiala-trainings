@@ -1,6 +1,6 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
-import { timedPlan, distPlan, measurePlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
+import { timedPlan, distPlan, measurePlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, convertWeight, stampUnit, toUnit, toTimeUnit, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
 import { monthLater, daysLater } from "../app/util.js";
 const app = await load();
 const { fns, maps } = app;
@@ -183,4 +183,12 @@ test("a plan in meters logs distance the way a hold logs time; min is still time
   for (const reps of ["2 min", "max", "10", "AMRAP", "", "45 sec"]) assert.strictEqual(distPlan(reps), null, reps);
   assert.deepStrictEqual(measurePlan("2 min"), { n: "2", unit: "min" }); assert.deepStrictEqual(measurePlan("40 m"), { n: "40", unit: "m" }); assert.strictEqual(measurePlan("10"), null);
   assert.strictEqual(planNumber("40 m"), "40"); assert.strictEqual(planNumber("20-40 m"), "40");
+});
+
+test("a logged weight keeps its unit: switching the client stamps old rows, a weight read in the other unit converts, holds compare in seconds", () => {
+  assert.strictEqual(convertWeight("100", "lb", "kg"), 45.5); assert.strictEqual(convertWeight("40", "kg", "lb"), 88); assert.strictEqual(convertWeight("BW", "lb", "kg"), "BW"); assert.strictEqual(convertWeight("100", "lb", "lb"), "100"); assert.strictEqual(convertWeight("100", null, "kg"), "100");
+  const t = { rows: [{ weights: ["100", "105"] }, { weights: ["", ""] }, { weights: ["60"], unit: "kg" }, {}] };
+  assert.strictEqual(stampUnit(t, "lb"), true); assert.strictEqual(t.rows[0].unit, "lb"); assert.strictEqual(t.rows[1].unit, undefined, "nothing logged: no unit"); assert.strictEqual(t.rows[2].unit, "kg", "already stamped"); assert.strictEqual(stampUnit(t, "lb"), false);
+  assert.deepStrictEqual(toUnit({ w: 100, rp: 5 }, "lb", "kg"), { w: 45.5, rp: 5 }); assert.deepStrictEqual(toUnit({ w: null, rp: 5 }, "lb", "kg"), { w: null, rp: 5 }); assert.deepStrictEqual(toUnit({ w: 100, rp: 5 }, undefined, "kg"), { w: 100, rp: 5 });
+  assert.deepStrictEqual(toTimeUnit({ w: null, rp: 1 }, "min", "sec"), { w: null, rp: 60 }); assert.deepStrictEqual(toTimeUnit({ w: null, rp: 90 }, "sec", "min"), { w: null, rp: 1.5 }); assert.deepStrictEqual(toTimeUnit({ w: null, rp: 40 }, "m", "sec"), { w: null, rp: 40 }, "a carry is not a hold");
 });

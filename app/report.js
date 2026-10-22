@@ -1,6 +1,6 @@
 // The monthly client report: overview, progress, sessions, notes, laid out on US Letter.
 import { today, localIso, fmtDay, clamp } from "./util.js";
-import { effDate, measurePlan, topSet as modelTop, setCounts, setsOf } from "./model.js";
+import { effDate, measurePlan, topSet as modelTop, setCounts, setsOf, toUnit, toTimeUnit } from "./model.js";
 import { noteEntries } from "./notes.js";
 import { pdfDoc } from "./pdf.js";
 
@@ -42,8 +42,9 @@ export function buildReport(kind, fonts, c, allTrainings) {                     
   const same = (a, b) => a.w === b.w && a.rp === b.rp;
   const prog = new Map();
   for (const x of sessions) if (x.completedAt) for (const row of x.rows || []) {
-    const top = topSet(row), name = String(row.name || "").trim(); if (!top || !name) continue;
-    const k = name.toLowerCase(), tm = measurePlan(row.reps); if (!prog.has(k)) prog.set(k, { name, first: top, last: top, best: top, n: 0, tm });
+    let top = topSet(row); const name = String(row.name || "").trim(); if (!top || !name) continue;
+    const k = name.toLowerCase(); let tm = measurePlan(row.reps); top = toUnit(top, row.unit, unit); if (tm && tm.unit === "min") { top = toTimeUnit(top, "min", "sec"); tm = { ...tm, unit: "sec" }; }   // one unit per column: the client's weight unit, holds in seconds
+    if (!prog.has(k)) prog.set(k, { name, first: top, last: top, best: top, n: 0, tm });
     const e = prog.get(k); e.n++; e.last = top; e.name = name; e.tm = tm; if (better(top, e.best, !!tm)) e.best = top;
   }
   doc.section("Progress");
@@ -65,7 +66,7 @@ export function buildReport(kind, fonts, c, allTrainings) {                     
     doc.row([{ x: M, text: fmtDay(effDate(x)), bold: true }, { x: M + 92, text: x.title || "Workout", bold: true, maxW: 290 }, { right: R, text: st, color: st === "Finished" ? fern : st === "Missed" || st === "Not done" ? warn : grey }], { size: 10.5, gap: 3 });
     if (x.completedAt) for (const row of x.rows || []) {
       const sets = [], tm = measurePlan(row.reps);
-      for (let i = 0; i < setsOf(row); i++) { if (!setCounts(row, i)) continue; const w = String((row.weights || [])[i] || "").trim(), rp = String((row.repsDone || [])[i] || "").trim(); const wt = w ? (/^\d+(?:[.,]\d+)?$/.test(w) ? w + " " + unit : w) : ""; sets.push(tm ? (wt ? wt + " × " : "") + (rp ? rp + " " + tm.unit : "–") : (wt ? wt + (rp ? " × " + rp : "") : (rp ? rp + " reps" : "–"))); }
+      for (let i = 0; i < setsOf(row); i++) { if (!setCounts(row, i)) continue; const w = String((row.weights || [])[i] || "").trim(), rp = String((row.repsDone || [])[i] || "").trim(); const wt = w ? (/^\d+(?:[.,]\d+)?$/.test(w) ? w + " " + (row.unit || unit) : w) : ""; sets.push(tm ? (wt ? wt + " × " : "") + (rp ? rp + " " + tm.unit : "–") : (wt ? wt + (rp ? " × " + rp : "") : (rp ? rp + " reps" : "–"))); }
       const lines = doc.wrap((sets.length ? sets.join(", ") : "not started") + (row.earlyReason ? "  ·  finished early: " + row.earlyReason : "") + (row.clientNote ? "  ·  note from " + (row.clientNoteBy === "coach" ? "coach" : (String(c.name || "").trim().split(/\s+/)[0] || "client")) + ": " + row.clientNote : ""), 9.5, false, R - (M + 252));
       doc.row([{ x: M + 92, text: row.name || "Exercise", color: soft, maxW: 150 }, { x: M + 252, text: lines[0], color: soft }], { size: 9.5, gap: 2 });
       for (const ln of lines.slice(1)) doc.text(ln, { size: 9.5, indent: 198, gap: 2, color: soft });
