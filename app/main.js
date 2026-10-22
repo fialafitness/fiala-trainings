@@ -247,7 +247,7 @@ import { reportRange, buildReport } from "./report.js";
     for (const b of $("packInPerson").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.on === "1") === packInPerson);
   }
   const packFormReset = () => { packEdit = null; packKind = "sessions"; packInPerson = false; $("packName").value = ""; $("packSize").value = ""; };
-  $("packagesBtn").addEventListener("click", () => { fromSettings = true; showPackages(); });   // from the Settings list: Back returns there
+  $("packagesBtn").addEventListener("click", () => { fromSettings = true; showPackages(); window.scrollTo(0, 0); });   // from the Settings list: Back returns there
   $("packKind").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; packKind = b.dataset.kind; renderPackages(); });
   $("packInPerson").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; packInPerson = b.dataset.on === "1"; renderPackages(); });
   $("packCancel").addEventListener("click", () => { packFormReset(); renderPackages(); });
@@ -600,10 +600,10 @@ import { reportRange, buildReport } from "./report.js";
     msg.textContent = "Password changed."; $("pwNew").value = ""; $("pwNew2").value = "";
     pwTimer = setTimeout(() => { if (settingsOpen === "password") { if (fromSettings) showSettings(); else { settingsOpen = false; hideAllViews(); render(); } } }, 1200);
   });
-  $("settingsBtn").addEventListener("click", showSettings);
-  $("changePw").addEventListener("click", () => { fromSettings = true; showPassword(); });
-  $("myExercises").addEventListener("click", () => { fromSettings = true; showExercises(); });
-  $("setNumber").addEventListener("click", () => { fromSettings = true; showNumber(); });
+  $("settingsBtn").addEventListener("click", () => { showSettings(); window.scrollTo(0, 0); });   // the pill sits at the bottom of a long list: the page opens at its top
+  $("changePw").addEventListener("click", () => { fromSettings = true; showPassword(); window.scrollTo(0, 0); });
+  $("myExercises").addEventListener("click", () => { fromSettings = true; showExercises(); window.scrollTo(0, 0); });
+  $("setNumber").addEventListener("click", () => { fromSettings = true; showNumber(); window.scrollTo(0, 0); });
   $("myPhone").addEventListener("change", () => { setTrainerPhone($("myPhone").value); $("myPhoneMsg").textContent = phoneDigits($("myPhone").value) ? "Saved. Clients now see Message Michal." : "Saved. Without a number clients see no button."; });
   $("settingsBtn2").addEventListener("click", showSettings);
   $("forgotBtn").addEventListener("click", async () => {
