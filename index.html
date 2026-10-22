@@ -545,10 +545,10 @@
   .alt-menu .add { color: var(--brand); }
   .alt-menu .item.last { border-top: 1px solid var(--card-border); margin-top: 4px; padding-top: 4px; }
   .alt-menu .remove { color: var(--danger); }
-  .alt-menu .alt-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; padding: 8px 4px 2px; border-top: 1px solid var(--glass-bar-edge); }   /* the menu's own buttons: a way out that reads like a sheet */
-  .alt-menu .alt-foot button { width: auto; padding: 9px 12px; font-size: 15px; font-weight: 500; border-radius: 50px; min-height: 36px; }
-  .alt-menu .alt-foot .done { margin-left: auto; background: var(--brand); color: #fff; font-weight: 600; padding: 9px 22px; }
-  .alt-menu .alt-foot .cancel { margin-left: auto; background: var(--glass-bar-on); color: var(--text-primary); padding: 9px 18px; }
+  .alt-menu .alt-foot { display: flex; gap: 8px; margin-top: 8px; padding: 10px 4px 4px; border-top: 1px solid var(--glass-bar-edge); }   /* the menu's own buttons side by side, Apple-alert style: neutral pills, the destructive one in red text */
+  .alt-menu .alt-foot button { flex: 1 1 0; width: auto; min-height: 46px; padding: 10px 16px; text-align: center; font-size: 16px; font-weight: 500; border-radius: 50px; background: var(--glass-bar-on); color: var(--text-primary); }
+  .alt-menu .alt-foot .remove { color: var(--danger); }
+  .alt-menu .alt-foot .done { font-weight: 600; }
   .alt-menu .alt-input { width: calc(100% - 24px); margin: 8px 12px 6px; }
   .alt-menu .alt-hits:empty { display: none; }
   .alt-menu .alt-hits { max-height: 32vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
@@ -1310,7 +1310,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=78";
+  import { boot } from "./app/main.js?v=79";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
