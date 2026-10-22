@@ -2150,13 +2150,19 @@ import { reportRange, buildReport } from "./report.js";
       if (String(r.name || "").trim()) { const c = mk("div", "cur"); c.appendChild(mk("span", "ck", "\u2713")); c.appendChild(mk("span", null, r.name)); altMenu.appendChild(c); }
       for (const a of alts) altMenu.appendChild(menuItem(a, "", () => { closeAlt(); swapTo(a); }, asClient ? null : () => removeAlt(a)));
       if (!asClient && alts.length < 2) altMenu.appendChild(menuItem("+ Add alternative", "add", paintAltAdd));
-      if (!asClient) { const d = menuItem("Remove exercise", "remove", async () => { closeAlt(); const nm = String(r.name || "").trim() || "this exercise", tpl = isTemplateClient(t.clientId); if (!(await askFirst({ title: tpl ? "Remove " + nm + " from this template?" : "Remove " + nm + "?", text: tpl ? "Nothing changes until you tap Save template." : "It comes off this workout, with anything logged on it.", yes: "Remove" }))) return; t.rows = t.rows.filter((x) => x.id !== r.id); save(); S.renderedTraining = null; render(); }); d.classList.add("last"); altMenu.appendChild(d); }
+      if (!asClient) {                                                                                   // a clear way out, like a sheet: Remove exercise on the left, Done on the right
+        const foot = mk("div", "alt-foot");
+        const rm = mk("button", "remove", "Remove exercise"); rm.type = "button"; rm.addEventListener("mousedown", (ev) => ev.preventDefault()); rm.addEventListener("click", async () => { closeAlt(); const nm = String(r.name || "").trim() || "this exercise", tpl = isTemplateClient(t.clientId); if (!(await askFirst({ title: tpl ? "Remove " + nm + " from this template?" : "Remove " + nm + "?", text: tpl ? "Nothing changes until you tap Save template." : "It comes off this workout, with anything logged on it.", yes: "Remove" }))) return; t.rows = t.rows.filter((x) => x.id !== r.id); save(); S.renderedTraining = null; render(); });
+        const ok = mk("button", "done", "Done"); ok.type = "button"; ok.addEventListener("mousedown", (ev) => ev.preventDefault()); ok.addEventListener("click", closeAlt);
+        foot.append(rm, ok); altMenu.appendChild(foot);
+      }
       altMenu.hidden = false;
     }
     function paintAltAdd() {
       altMode = "add"; altMenu.replaceChildren();
       const inp = mk("input", "alt-input"); inp.maxLength = 120; inp.placeholder = "Alternative exercise"; inp.autocomplete = "off"; inp.setAttribute("autocapitalize", "sentences"); inp.setAttribute("enterkeyhint", "done");
       const hits = mk("div", "alt-hits"); altMenu.append(inp, hits);
+      const foot = mk("div", "alt-foot"); const back = mk("button", "cancel", "Cancel"); back.type = "button"; back.addEventListener("mousedown", (ev) => ev.preventDefault()); back.addEventListener("click", paintAltList); foot.appendChild(back); altMenu.appendChild(foot);   // back to the list without adding
       const paintHits = () => {
         const s = squash(inp.value); hits.replaceChildren(); if (s.length < 2) return;
         const taken = new Set([squash(r.name), ...altList().map(squash)]); const starts = [], contains = [];
