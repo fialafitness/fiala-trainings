@@ -2503,6 +2503,7 @@ import { reportRange, buildReport } from "./report.js";
   $("tNoteOpen").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t) return; tNoteOpenFor = t.id; $("tNoteBox").hidden = false; $("tNoteOpen").hidden = true; $("tNote").focus(); });
   $("tNote").addEventListener("input", (e) => { tNoteDraft.set(S.view.id, e.target.value); growBox(e.target); });
   $("tNoteDiscard").addEventListener("click", async () => { if ($("tNote").value.trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; tNoteDraft.delete(S.view.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false; });
+  $("noteSheet").addEventListener("click", (e) => { if (e.target === $("noteSheet")) $("tNoteDiscard").click(); });   // tapping beside the sheet: the same as Discard (it asks if something was written)
   $("tNoteSave").addEventListener("click", () => {
     const t = trainings.get(S.view.id), c = t && clients.get(t.clientId); if (!t || !c) return;
     const text = String($("tNote").value || "").trim(); if (!text) return;
