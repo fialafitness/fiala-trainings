@@ -432,7 +432,7 @@
   body:not(.client) .ex-icons button { width: 36px; height: 36px; border-radius: 50%; background: var(--glyph-fill); color: var(--text-primary); }
   body:not(.client) .ex-icons button[hidden] { display: none; }
   body:not(.client) .ex-icons svg { width: 20px; height: 20px; }
-  .ex-icons .vid-btn .i-play { width: 20px; height: 20px; margin-left: 3px; }   /* one play disc in both views: the triangle nudged right so it sits in the middle (a triangle's weight is to the left) */
+  .ex-icons .vid-btn .i-play { width: 20px; height: 20px; margin: 0; }   /* one play disc in both views; the triangle is drawn a hair right of the box's middle, which is where a triangle looks centred */
   .ex-icons .vid-btn .i-play path { stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }   /* softly rounded corners, like the TV app's play */
   body:not(.client) .block.done:not(.open) .ex-icons { display: none; }
   .block.done.open.summary .card-foot .complete, .block.done.open.summary .card-foot .finish-early, .block.done.open.summary .card-foot .resume:not(.resume-full) { display: none !important; }
@@ -1372,7 +1372,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=97";
+  import { boot } from "./app/main.js?v=98";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
