@@ -1,6 +1,6 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
-import { timedPlan, timeAsWeight, repairTimed, planNumber, perHand, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
+import { timedPlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
 import { monthLater, daysLater } from "../app/util.js";
 const app = await load();
 const { fns, maps } = app;
@@ -162,4 +162,18 @@ test("seconds the old app typed as a weight move to the time column on a hold, o
 test("the plan's number for an untouched set: one number as is, the highest of a range or a list, nothing for max or a bare hold", () => {
   for (const [reps, want] of [["10", "10"], ["8\u201310", "10"], ["8-12 reps", "12"], ["10 / side", "10"], ["12 each leg", "12"], ["6, 6, 4", "6"], ["12, 10, 8", "12"], ["1", "1"],
     ["45 sec", "45"], ["30-45 sec", "45"], ["1:00", "60"], ["1:30 / side", "90"], ["2 min", "2"], ["max", ""], ["AMRAP", ""], ["Max hold", ""], ["hold", ""], ["", ""], ["12.5", ""]]) assert.strictEqual(planNumber(reps), want, reps);
+});
+
+test("a long name splits into a title and a subtitle at a bracket, comma or dash; his own ending wins; nothing else splits", () => {
+  assert.deepStrictEqual(splitName("TRX row (underhand, to chest)"), { title: "TRX row", sub: "underhand, to chest" });
+  assert.deepStrictEqual(splitName("Cable face pull with rotation, to forehead"), { title: "Cable face pull with rotation", sub: "to forehead" });
+  assert.deepStrictEqual(splitName("Dumbbell seated bent-over shrug \u2013 iso"), { title: "Dumbbell seated bent-over shrug", sub: "iso" });
+  assert.deepStrictEqual(splitName("Seated overhead press from pins (low)"), { title: "Seated overhead press from pins", sub: "low" });
+  assert.deepStrictEqual(splitName("Deadlift"), { title: "Deadlift", sub: "" }); assert.deepStrictEqual(splitName("Deep squat with reach"), { title: "Deep squat with reach", sub: "" });
+  assert.deepStrictEqual(splitName("Bent-over row"), { title: "Bent-over row", sub: "" }, "a hyphen inside a word is not a dash");
+  assert.deepStrictEqual(splitName("Cable face pull with rotation, to forehead", "with rotation, to forehead"), { title: "Cable face pull", sub: "with rotation, to forehead" }, "his own ending");
+  assert.deepStrictEqual(splitName("Cable face pull with rotation, to forehead", ""), { title: "Cable face pull with rotation, to forehead", sub: "" }, "none: one line");
+  assert.deepStrictEqual(splitName("Cable face pull with rotation, to forehead", "rotation"), { title: "Cable face pull with rotation, to forehead", sub: "" }, "not the end of the name: no split");
+  assert.deepStrictEqual(splitName("TRX row (underhand, to chest)", "to chest"), { title: "TRX row (underhand", sub: "to chest" });
+  assert.strictEqual(autoSubtitle("(low)"), ""); assert.strictEqual(autoSubtitle(""), "");
 });

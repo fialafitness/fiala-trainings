@@ -30,6 +30,17 @@ export const planNumber = (reps) => {
   if (!nums.length) return "";
   const top = Math.max(...nums); return Number.isInteger(top) ? String(top) : "";
 };
+// A long name reads as a title with a subtitle under it (client view). The subtitle is the ending the coach chose for it — "" for none —
+// else the part in brackets, after the first comma, or after a spaced dash: "TRX row (underhand, to chest)" → "TRX row" / "underhand, to chest".
+export const autoSubtitle = (name) => { const s = String(name || "").trim(); const m = /^(.*?\S)\s*(?:\((.+)\)|,\s*(.+)|\s[\u2013-]\s+(.+))$/.exec(s); if (!m) return ""; const sub = (m[2] || m[3] || m[4] || "").trim(); return m[1].trim() && sub ? sub : ""; };
+export const splitName = (name, chosen) => {
+  const s = String(name || "").trim(), sub = chosen == null ? autoSubtitle(s) : String(chosen).trim();
+  if (!sub) return { title: s, sub: "" };
+  const i = s.toLowerCase().lastIndexOf(sub.toLowerCase());
+  if (i <= 0 || i + sub.length < s.length - 1) return { title: s, sub: "" };                        // the subtitle must be the end of the name (a closing bracket may follow)
+  const title = s.slice(0, i).replace(/[\s,(\u2013-]+$/, "").trim();
+  return title ? { title, sub: s.slice(i, i + sub.length) } : { title: s, sub: "" };
+};
 export const repairTimed = (t) => {
   let changed = false;
   for (const r of (t && t.rows) || []) {

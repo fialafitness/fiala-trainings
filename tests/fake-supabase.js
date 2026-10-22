@@ -1,6 +1,6 @@
 // An in-memory stand-in for the parts of supabase-js the app uses: from().select/update/upsert/delete chains, rpc(), auth.getSession().
 function makeSupabase() {
-  const tables = { ft_clients: new Map(), ft_trainings: new Map(), ft_exercises: new Map(), ft_exercise_videos: new Map(), ft_exercise_hidden: new Map() };   // the exercise tables key rows by name_key
+  const tables = { ft_clients: new Map(), ft_trainings: new Map(), ft_exercises: new Map(), ft_exercise_videos: new Map(), ft_exercise_hidden: new Map(), ft_exercise_subtitles: new Map() };   // the exercise tables key rows by name_key
   let stamp = 0; const nextStamp = () => "2026-10-13T00:00:" + String(++stamp).padStart(2, "0") + "Z";
   const log = []; const rpcs = {}; let fail = null;                      // fail: { table?, op?, times } to make calls error
   const clone = (x) => JSON.parse(JSON.stringify(x));
