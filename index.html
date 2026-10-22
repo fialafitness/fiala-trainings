@@ -1321,6 +1321,24 @@
 <div id="whenBg" hidden><div id="whenPop" role="dialog" aria-live="polite"></div></div>
 <div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="pickSheet" hidden><div class="sheet ask confirm-sheet pick-sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle"><h3 id="pickTitle"></h3><ul class="list" id="pickList"></ul><div class="ask-actions"><button class="btn quiet" id="pickNo" type="button">Cancel</button></div></div></div>
+<div class="sheet-bg" id="skipSheet" hidden>
+  <div class="sheet ask" role="dialog" aria-modal="true" aria-labelledby="skTitle">
+    <h3 id="skTitle">Skip this workout?</h3>
+    <p class="lead">It stays in the list as skipped, with the reason. Undo is on the workout.</p>
+    <hr>
+    <p class="cap">Reason (optional)</p>
+    <div class="reasons" id="skReasons" role="group" aria-label="Reason">
+      <button type="button" data-reason="Sick" aria-pressed="false">Sick</button>
+      <button type="button" data-reason="Injury" aria-pressed="false">Injury</button>
+      <button type="button" data-reason="No time" aria-pressed="false">No time</button>
+      <button type="button" data-reason="Travelling" aria-pressed="false">Travelling</button>
+      <button type="button" data-reason="Rest day" aria-pressed="false">Rest day</button>
+      <button type="button" data-reason="Other" aria-pressed="false">Other</button>
+    </div>
+    <button class="btn" id="skGo" type="button">Skip workout</button>
+    <button class="btn quiet" id="skKeep" type="button">Keep it</button>
+  </div>
+</div>
 <div class="sheet-bg" id="earlySheet" hidden>
   <div class="sheet ask" role="dialog" aria-modal="true" aria-labelledby="esTitle">
     <h3 id="esTitle">Finish this exercise?</h3>
@@ -1342,7 +1360,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=84";
+  import { boot } from "./app/main.js?v=85";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
