@@ -23,7 +23,7 @@ test("the copies of client_my_data are identical, so re-running any file gives t
 });
 test("the service worker fetches the page, the scripts and the templates as one bundle, checked with the server", () => {
   const sw = fs.readFileSync(path.join(root, "sw.js"), "utf8");
-  const bundle = sw.slice(sw.indexOf("async function fetchBundle"), sw.indexOf("async function store"));
+  const start = sw.indexOf("async function fetchBundle"); const bundle = sw.slice(start, sw.indexOf("\n}", start));
   assert.ok(/cache:\s*"no-cache"/.test(bundle), "the bundle must bypass the host's 10-minute HTTP cache");
   const list = JSON.parse(sw.match(/const BUNDLE = (\[[^\]]*\])/)[1].replace(/\bPAGE\b/, '"./index.html"'));
   for (const f of fs.readdirSync(path.join(root, "app")).filter((x) => x.endsWith(".js"))) assert.ok(list.includes("./app/" + f), f + " missing from the BUNDLE list");
