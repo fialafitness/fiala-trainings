@@ -1,6 +1,6 @@
 // Fiala Trainings — the app. Loaded by index.html as an ES module; boot() starts it.
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
-import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, confirmedAt, deletedNotes, pendingNoteRows, ui, planTouched } from "./state.js";
+import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, pendingNoteRows, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
 import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, doneCount, timedPlan, measurePlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
@@ -514,7 +514,7 @@ import { reportRange, buildReport } from "./report.js";
     } else lsSet("fiala.trainings.role", { email: S.sessionEmail, role: trainer ? "trainer" : "client" });
     S.offlineEntry = null;
     if (S.pendingOwner && S.pendingOwner !== S.sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
-      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear();
+      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear();
     }
     S.pendingOwner = S.sessionEmail; persistPending();
     S.clientMode = trainer !== true;
@@ -659,7 +659,7 @@ import { reportRange, buildReport } from "./report.js";
     if (dirty.size) { $("status").textContent = "Some changes are not saved yet \u00b7 try again when online"; return; }
     const finish = () => {
       for (const tm of timers.values()) clearTimeout(tm);
-      timers.clear(); chains.clear(); dirty.clear(); trainerTouched.clear(); trainerNamed.clear(); S.failed = false;
+      timers.clear(); chains.clear(); dirty.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); S.failed = false;
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
       S.offline = false; S.offlineEntry = null; S.pendingOwner = "";
@@ -909,7 +909,7 @@ import { reportRange, buildReport } from "./report.js";
     for (const tr of clientTrainings(c.id)) for (const r of tr.rows || []) if (r.clientNote) onCards.push({ id: "row/" + tr.id + "/" + r.id, at: r.clientNoteAt || (tr.date ? tr.date + "T12:00:00" : null), text: r.clientNote, by: r.clientNoteBy || "client", exercise: String(r.name || ""), workout: { id: tr.id, title: String(tr.title || ""), date: effDate(tr) || String(tr.date || "") }, row: r, training: tr });
     const entries = [...noteEntries(c).map((n) => ({ ...n, by: "coach" })), ...onCards].sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
     const firstName = String(c.name || "").trim().split(/\s+/)[0] || "Client";
-    const dropCardNote = (n) => { delete n.row.clientNote; delete n.row.clientNoteBy; delete n.row.clientNoteAt; if (!trainerTouched.has(n.training.id)) trainerTouched.set(n.training.id, new Set()); trainerTouched.get(n.training.id).add(n.row.id); scheduleSave("trainings", n.training.id); };
+    const dropCardNote = (n) => { delete n.row.clientNote; delete n.row.clientNoteBy; delete n.row.clientNoteAt; if (!trainerNoted.has(n.training.id)) trainerNoted.set(n.training.id, new Set()); trainerNoted.get(n.training.id).add(n.row.id); scheduleSave("trainings", n.training.id); };
     const t = today(), base = new Date(t + "T12:00:00"), monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
     const mondayIso = localIso(monday), yIso = localIso(new Date(base.getTime() - 86400000));
     const groups = new Map();                                                    // "This week", then this year's months, then years, then "Earlier"
@@ -1854,7 +1854,7 @@ import { reportRange, buildReport } from "./report.js";
           if (text) { first.clientNote = text; first.clientNoteBy = S.clientMode ? "client" : "coach"; first.clientNoteAt = new Date().toISOString(); }   // who wrote it, and when (the server stamps a client's the same way)
           else { delete first.clientNote; delete first.clientNoteBy; delete first.clientNoteAt; }
           if (S.clientMode) { if (!pendingNoteRows.has(t.id)) pendingNoteRows.set(t.id, new Set()); pendingNoteRows.get(t.id).add(first.id); }
-          else { if (!trainerTouched.has(t.id)) trainerTouched.set(t.id, new Set()); trainerTouched.get(t.id).add(first.id); }   // the coach's word on this row stands on a conflict
+          else { if (!trainerNoted.has(t.id)) trainerNoted.set(t.id, new Set()); trainerNoted.get(t.id).add(first.id); }   // the coach's note on this row stands on a conflict — the note only, never the weights with it
           scheduleSave("trainings", t.id);
         };
         const whose = () => {                                                  // the caption says who wrote it
@@ -2729,7 +2729,7 @@ import { reportRange, buildReport } from "./report.js";
   export function internals() {
     return {
       fns: { addTraining, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
-      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap },
+      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
       reset: () => { resetState(); localStorage.clear(); },
