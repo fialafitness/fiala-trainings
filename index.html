@@ -810,7 +810,8 @@
   #kbbar .kb-chips { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; }
   #kbbar .kb-next { margin-left: auto; min-width: 74px; flex: none; }                                                            /* on to the next box: a plain key */
   #kbbar .kb-next[hidden] { display: none; }
-  #kbbar .kb-done { width: 56px; min-width: 56px; padding: 0; flex: none; background: var(--kb-go); color: var(--kb-go-ink); }   /* the check: done, the keyboard goes — the one key that stands out */
+  #kbbar .kb-done { width: 56px; min-width: 56px; padding: 0; flex: none; display: flex; align-items: center; justify-content: center; background: var(--kb-go); color: var(--kb-go-ink); }
+  #kbbar .kb-done svg { display: block; }   /* the check: done, the keyboard goes — the one key that stands out */
   #kbbar .kb-next[hidden] + .kb-done { margin-left: auto; }
 
   .note { margin-top: 12px; }
@@ -1313,7 +1314,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=81";
+  import { boot } from "./app/main.js?v=82";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
