@@ -1878,7 +1878,7 @@ import { reportRange, buildReport } from "./report.js";
         const actsRow = document.createElement("div"); actsRow.className = "foot-row"; actsRow.append(early, addNote);
         const moreRow = document.createElement("div"); moreRow.className = "foot-row center"; moreRow.append(undo, resume, openFull);
         sumRow = document.createElement("div"); sumRow.className = "foot-row sum-row"; sumRow.hidden = true;   // the opened finished card: note disc · Resume · (the chevron disc in the corner) on one line
-        placeFootRows = (summary) => { if (summary) { sumRow.append(addNote, openFull); sumRow.hidden = false; } else { actsRow.append(addNote); moreRow.append(openFull); sumRow.hidden = true; } };
+        placeFootRows = (summary) => { if (summary) { sumRow.append(openFull, addNote); sumRow.hidden = false; } else { actsRow.append(addNote); moreRow.append(openFull); sumRow.hidden = true; } };
         foot.append(shown, complete, moreRow, actsRow, sumRow, noteBox);     // undo / resume first, then Finish early + Add note (his order)
       }
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
