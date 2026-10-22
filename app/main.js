@@ -1701,6 +1701,7 @@ import { reportRange, buildReport } from "./report.js";
     const active = document.activeElement;
     if (S.renderedTraining === t.id && (S.asking || (rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")))) return; // never rebuild under a typing finger, nor under a confirm sheet
     S.renderedTraining = t.id;
+    const sc = document.scrollingElement || document.documentElement, keepScroll = sc.scrollTop;   // the cards are rebuilt in place (every sync does it): the page must not move while it is empty
     if (!S.clientMode && normalizeLabels(t)) scheduleSave("trainings", t.id);
     t.rows.sort((a, b) => cmpLabel(a.label, b.label));
     if (closeOpenAlt) closeOpenAlt();
@@ -1925,6 +1926,7 @@ import { reportRange, buildReport } from "./report.js";
       block.appendChild(card); rowsEl.appendChild(block);
     });
     $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false;
+    const back = Math.min(keepScroll, Math.max(0, sc.scrollHeight - sc.clientHeight)); if (Math.abs(sc.scrollTop - back) > 1) sc.scrollTop = back;   // a box measured mid-rebuild made the browser clamp the scroll to a page with no cards yet: put it back where he was
   }
 
   // Numbering rule: one exercise on a number is plain (2); two or more share letters (1a, 1b …).
