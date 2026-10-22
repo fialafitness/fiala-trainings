@@ -806,9 +806,12 @@
   #kbbar[hidden] { display: none; }
   #kbbar button { appearance: none; border: 0; cursor: pointer; min-height: 46px; min-width: 58px; padding: 0 14px; border-radius: 9px; background: var(--kb-key); color: var(--kb-ink); font-size: 18px; font-weight: 400; letter-spacing: 0; white-space: nowrap; box-shadow: 0 1px 0 var(--kb-shadow); -webkit-tap-highlight-color: transparent; }   /* the keyboard's own key: its height, its corner, its shadow line */
   #kbbar button:active { filter: brightness(1.15); }
-  #kbbar .kb-mode { font-variant-numeric: tabular-nums; min-width: 66px; }
-  #kbbar .kb-chips { display: flex; gap: 6px; }
-  #kbbar .kb-done { margin-left: auto; min-width: 92px; background: var(--kb-go); color: var(--kb-go-ink); font-weight: 500; }   /* Next / Done: the one key that stands out */
+  #kbbar .kb-mode { font-variant-numeric: tabular-nums; width: 46px; min-width: 46px; padding: 0; flex: none; font-size: 17px; }   /* Aa / 123: a compact square key, the way Sheets does it */
+  #kbbar .kb-chips { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; }
+  #kbbar .kb-next { margin-left: auto; min-width: 74px; flex: none; }                                                            /* on to the next box: a plain key */
+  #kbbar .kb-next[hidden] { display: none; }
+  #kbbar .kb-done { width: 56px; min-width: 56px; padding: 0; flex: none; background: var(--kb-go); color: var(--kb-go-ink); }   /* the check: done, the keyboard goes — the one key that stands out */
+  #kbbar .kb-next[hidden] + .kb-done { margin-left: auto; }
 
   .note { margin-top: 12px; }
   .note[hidden] { display: none; }
@@ -1307,10 +1310,10 @@
   </div>
 </div>
 <div id="draftBar" hidden><span class="draft-text">Unsaved changes</span><button class="btn quiet" id="draftDiscard" type="button">Discard</button><button class="btn sm" id="draftSave" type="button">Save template</button></div>
-<div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1">ABC</button><div class="kb-chips"></div><button class="kb-done" type="button" tabindex="-1">Done</button></div>
+<div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=80";
+  import { boot } from "./app/main.js?v=81";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
