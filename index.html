@@ -488,6 +488,7 @@
   .block.done.open.summary .card-chev { bottom: 18px; }
   .block.done.open.summary .ex-icons .alt-btn, .block.done.open.summary .ex-icons .note-btn { display: none; }   /* a finished exercise: only the video disc stays; swapping and instructions are for the one still to do */
   .block.done.open.summary .ex-icons:not(:has(.vid-btn:not([hidden]))) { display: none; }   /* no video either: no row at all */
+  .block.done.open.summary .row .cnote { display: none; }   /* the Instructions line goes with it */
   .add-note { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 4px; display: inline-flex; align-items: center; gap: 6px; }
   .finish-early { display: inline-flex; align-items: center; gap: 6px; }
   .finish-early svg { flex: 0 0 auto; }
@@ -1369,7 +1370,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=93";
+  import { boot } from "./app/main.js?v=94";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
