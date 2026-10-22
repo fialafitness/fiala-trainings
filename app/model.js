@@ -113,17 +113,44 @@ export function groupKey(label, index) {
   return /^w\s*[a-z]?$/i.test(s) ? "w" : (s || "row-" + index);
 }
 
-export function validateBackup(d, knownClient) {
+export function validateBackup(d, knownClient) {                  // the whole file first: a backup is taken whole or refused whole, and only in the shape every screen reads
   const isObj = (x) => !!x && typeof x === "object" && !Array.isArray(x);
+  const optStr = (v) => v == null || typeof v === "string";
+  const optNum = (v) => v == null || (typeof v === "number" && isFinite(v)) || (typeof v === "string" && v.trim() !== "" && isFinite(Number(v)));   // a count may travel as "3"
+  const optBool = (v) => v == null || typeof v === "boolean";
+  const optWhen = (v) => v == null || (typeof v === "string" && !isNaN(new Date(v)));   // a moment the screens turn into a day
+  const optUnit = (v) => v == null || v === "lb" || v === "kg";                           // anything else would be rescaled as if it were one of these
+  const optList = (v, max) => v == null || (Array.isArray(v) && v.length <= max);   // a list where a list is read with .map / .find: an object here throws on the screen
+  const LIMIT = { rows: 300, sets: 60, alts: 60, history: 200, packages: 200 };
   if (!isObj(d) || d.app !== "fiala-trainings") throw new Error("not a backup");
+  if (d.format != null) { const f = Number(d.format); if (!(f >= 1)) throw new Error("not a backup"); if (f > 1) throw new Error("newer backup"); }   // written by a later app: it may use words this one does not know
   const cs = Object.values(isObj(d.clients) ? d.clients : {}), ts = Object.values(isObj(d.trainings) ? d.trainings : {});
-  for (const c of cs) if (!isObj(c) || typeof c.id !== "string" || !c.id || typeof (c.name == null ? "" : c.name) !== "string") throw new Error("bad client");
-  const ids = new Set(cs.map((c) => c.id));
+  const ids = new Set();
+  for (const c of cs) {
+    if (!isObj(c) || typeof c.id !== "string" || !c.id || ids.has(c.id)) throw new Error("bad client");
+    if (!optStr(c.name) || !optStr(c.email) || !optStr(c.kind) || !optBool(c.paused) || !optNum(c.sort) || !optUnit(c.unit)) throw new Error("bad client");
+    if (c.notes != null && typeof c.notes !== "string" && !(isObj(c.notes) && optList(c.notes.log, 5000))) throw new Error("bad client");
+    if (c.plan != null && !(isObj(c.plan) && optStr(c.plan.id) && optStr(c.plan.name) && optStr(c.plan.kind) && optNum(c.plan.size) && optNum(c.plan.adjust) && optStr(c.plan.startedOn) && optStr(c.plan.until))) throw new Error("bad client");
+    if (!optList(c.planHistory, LIMIT.history) || (c.planHistory || []).some((h) => !isObj(h))) throw new Error("bad client");
+    if (!optList(c.packages, LIMIT.packages) || (c.packages || []).some((pk) => !isObj(pk) || typeof pk.id !== "string" || !pk.id || !optStr(pk.name) || !optStr(pk.kind) || !optNum(pk.size) || !optBool(pk.inPerson))) throw new Error("bad client");
+    ids.add(c.id);
+  }
+  const tids = new Set();
   for (const t of ts) {
-    if (!isObj(t) || typeof t.id !== "string" || !t.id || typeof t.clientId !== "string" || !Array.isArray(t.rows)) throw new Error("bad training");
+    if (!isObj(t) || typeof t.id !== "string" || !t.id || tids.has(t.id) || typeof t.clientId !== "string" || !Array.isArray(t.rows) || t.rows.length > LIMIT.rows) throw new Error("bad training");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(t.date || ""))) throw new Error("bad date");   // every workout has a day (the app's own backups always carry one)
+    if (!optStr(t.title) || !optStr(t.createdAt) || !optWhen(t.completedAt) || !optStr(t.completedBy) || !optWhen(t.skippedAt) || !optStr(t.skipReason) || !optBool(t.missed) || !optBool(t.inPerson)) throw new Error("bad training");
     if (!ids.has(t.clientId) && !knownClient(t.clientId)) throw new Error("orphan training");
-    for (const r of t.rows) if (!isObj(r) || typeof r.id !== "string") throw new Error("bad row");
+    const rids = new Set();
+    for (const r of t.rows) {
+      if (!isObj(r) || typeof r.id !== "string" || !r.id || rids.has(r.id)) throw new Error("bad row");
+      if (!optStr(r.name) || !optStr(r.label) || !optStr(r.reps) || !optStr(r.rest) || !optStr(r.tempo) || !optStr(r.note) || !optStr(r.clientNote) || !optStr(r.earlyReason) || !optUnit(r.unit)) throw new Error("bad row");
+      if (!optNum(r.sets) || !optNum(r.setsDone)) throw new Error("bad row");
+      if (!optList(r.weights, LIMIT.sets) || !optList(r.repsDone, LIMIT.sets) || !optList(r.alts, LIMIT.alts)) throw new Error("bad row");   // read with .map and .find on every screen
+      if ((r.alts || []).some((a) => typeof a !== "string") || [...(r.weights || []), ...(r.repsDone || [])].some((w) => w != null && typeof w !== "string" && typeof w !== "number")) throw new Error("bad row");
+      rids.add(r.id);
+    }
+    tids.add(t.id);
   }
   return { cs, ts };
 }

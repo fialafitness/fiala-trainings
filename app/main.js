@@ -1,6 +1,6 @@
 // Fiala Trainings — the app. Loaded by index.html as an ES module; boot() starts it.
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
-import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, pendingNoteRows, ui, planTouched } from "./state.js";
+import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, fromFile, pendingNoteRows, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
 import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, doneCount, timedPlan, measurePlan, convertWeight, stampUnit, toUnit, toTimeUnit, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
@@ -235,7 +235,7 @@ import { reportRange, buildReport } from "./report.js";
       sub.textContent = [what.toLowerCase() === String(pk.name || "").toLowerCase() ? "" : what, pk.inPerson ? "In person" : ""].filter(Boolean).join(" \u00b7 "); sub.hidden = !sub.textContent;
       left.append(name, sub);
       const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "Delete";
-      del.addEventListener("click", async (e) => { e.stopPropagation(); if (!(await askFirst({ title: "Delete \u201c" + pk.name + "\u201d?", text: "Clients already on it keep their package. It just cannot be picked again." }))) return; const tc = tplClient(); tc.packages = packagesList().filter((x) => x.id !== pk.id); planTouched.add(tc.id); scheduleSave("clients", tc.id); if (packEdit === pk.id) packFormReset(); renderPackages(); });
+      del.addEventListener("click", async (e) => { e.stopPropagation(); if (!(await askFirst({ title: "Delete \u201c" + pk.name + "\u201d?", text: "Clients already on it keep their package. It just cannot be picked again." }))) return; const tc = tplClient(); tc.packages = packagesList().filter((x) => x.id !== pk.id); deletedPackages.set(pk.id, tc.id); planTouched.add(tc.id); scheduleSave("clients", tc.id); if (packEdit === pk.id) packFormReset(); renderPackages(); });
       li.addEventListener("click", () => { packEdit = pk.id; packKind = pk.kind === "monthly" ? "monthly" : "sessions"; packInPerson = !!pk.inPerson; $("packName").value = pk.name || ""; $("packSize").value = pk.size || ""; renderPackages(); $("packForm").scrollIntoView({ block: "nearest", behavior: "smooth" }); });   // tap a package: the form edits it
       li.append(left, del); ul.appendChild(li);
     }
@@ -514,7 +514,7 @@ import { reportRange, buildReport } from "./report.js";
     } else lsSet("fiala.trainings.role", { email: S.sessionEmail, role: trainer ? "trainer" : "client" });
     S.offlineEntry = null;
     if (S.pendingOwner && S.pendingOwner !== S.sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
-      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear();
+      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); fromFile.clear();
     }
     S.pendingOwner = S.sessionEmail; persistPending();
     S.clientMode = trainer !== true;
@@ -659,7 +659,7 @@ import { reportRange, buildReport } from "./report.js";
     if (dirty.size) { $("status").textContent = "Some changes are not saved yet \u00b7 try again when online"; return; }
     const finish = () => {
       for (const tm of timers.values()) clearTimeout(tm);
-      timers.clear(); chains.clear(); dirty.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); S.failed = false;
+      timers.clear(); chains.clear(); dirty.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); fromFile.clear(); S.failed = false;
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
       S.offline = false; S.offlineEntry = null; S.pendingOwner = "";
@@ -944,7 +944,7 @@ import { reportRange, buildReport } from "./report.js";
         if (armedNotes.has(n.id)) {
           const q = document.createElement("span"); q.textContent = "Delete this note?";
           const go = document.createElement("button"); go.type = "button"; go.className = "go"; go.textContent = "Delete";
-          go.addEventListener("click", () => { armedNotes.delete(n.id); if (n.row) dropCardNote(n); else { deletedNotes.add(n.id); writeNotes(c, noteEntries(c).filter((x) => x.id !== n.id)); } renderNotes(c); });
+          go.addEventListener("click", () => { armedNotes.delete(n.id); if (n.row) dropCardNote(n); else { deletedNotes.set(n.id, c.id); writeNotes(c, noteEntries(c).filter((x) => x.id !== n.id)); } renderNotes(c); });
           const keep = document.createElement("button"); keep.type = "button"; keep.className = "keep"; keep.textContent = "Keep";
           keep.addEventListener("click", () => { armedNotes.delete(n.id); renderNotes(c); });
           ask.append(q, go, keep);
@@ -1200,7 +1200,7 @@ import { reportRange, buildReport } from "./report.js";
   }
 
   // clients keep the order he sets (c.sort); unsorted ones follow alphabetically
-  const clientOrder = (a, b) => ((a.sort ?? Infinity) - (b.sort ?? Infinity)) || a.name.localeCompare(b.name);
+  const clientOrder = (a, b) => ((a.sort ?? Infinity) - (b.sort ?? Infinity)) || String(a.name || "").localeCompare(String(b.name || ""));
   const peopleList = () => [...clients.values()].filter((c) => !isTemplateClient(c.id)).sort(clientOrder);
   const activeList = () => peopleList().filter((c) => !c.paused);
   let reordering = false;
@@ -2669,23 +2669,38 @@ import { reportRange, buildReport } from "./report.js";
   $("reportNow").addEventListener("click", () => shareReport("month", S.view.id));
   $("reportMonth").addEventListener("change", (e) => { const v = e.target.value; e.target.value = ""; if (v) shareReport(v, S.view.id); });
   $("backup").addEventListener("click", () => {
-    const data = { app: "fiala-trainings", exported: now(), clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) };
+    if (S.clientMode) return;                                                               // the coach's data only (the buttons are hidden for a client; the handler must not rely on that)
+    const data = { app: "fiala-trainings", format: 1, exported: now(), clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) };   // format: bumped when a later app writes something an older one must not read
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "fiala-trainings-" + today() + ".json";
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   });
   $("restore").addEventListener("click", () => $("restoreFile").click());
+  const canon = (v) => JSON.stringify(v, (_, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x));   // the same record in another key order is the same record
+  function planRestore(d) {                                          // the file checked whole, then held against what is here: what the sheet says is exactly what applyRestore does
+    const { cs, ts } = validateBackup(d, (id) => clients.has(id));
+    const changed = (map, r) => { const here = map.get(r.id); return !here || canon(here) !== canon(r); };   // already here and the same: nothing to do, nothing to send
+    const cs2 = cs.filter((c) => changed(clients, c)), ts2 = ts.filter((t) => changed(trainings, t));
+    const nC = cs2.filter((c) => !isTemplateClient(c.id)).length, nT = ts2.filter((t) => !isTemplateClient(t.clientId)).length, nTpl = ts2.length - nT, packs = cs2.some((c) => isTemplateClient(c.id));
+    const parts = []; if (nC) parts.push(nC + (nC === 1 ? " client" : " clients")); if (nT) parts.push(nT + (nT === 1 ? " workout" : " workouts")); if (nTpl) parts.push(nTpl + (nTpl === 1 ? " template" : " templates")); if (packs) parts.push("the packages list");
+    const total = cs2.length + ts2.length, replaces = cs2.filter((c) => clients.has(c.id)).length + ts2.filter((t) => trainings.has(t.id)).length;
+    const what = parts.length > 1 ? parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1] : parts[0] || "";
+    const who = replaces === total ? (total === 1 ? "It replaces" : "They replace") : replaces === 1 ? "1 of them replaces" : replaces + " of them replace";
+    const text = total ? what + " from the file " + (total === 1 ? "goes" : "go") + " into the app." + (replaces ? " " + who + " a copy already here, logged sets and all." : "") + " Everything else stays as it is." : "";
+    return { cs: cs2, ts: ts2, text };
+  }
+  function applyRestore({ cs, ts }) {                               // the file's copy, as it is: the save carries a marker so nothing of the server's is merged into it
+    for (const c of cs) { const here = clients.get(c.id); if (here && (here.templatesVersion || 0) > (c.templatesVersion || 0)) c.templatesVersion = here.templatesVersion; clients.set(c.id, c); fromFile.add(key("clients", c.id)); scheduleSave("clients", c.id, 0); }   // the built-in templates never roll back to an older set
+    for (const t of ts) { repairTimed(t); trainings.set(t.id, t); fromFile.add(key("trainings", t.id)); scheduleSave("trainings", t.id, 0); }   // a backup from before the Time box: a hold's seconds leave the weight column here too
+  }
   $("restoreFile").addEventListener("change", async (e) => {
-    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const f = e.target.files && e.target.files[0]; if (!f || S.clientMode) { e.target.value = ""; return; }
     try {
-      const { cs, ts } = validateBackup(JSON.parse(await f.text()), (id) => clients.has(id));        // the whole file first; nothing is touched if any part is wrong
-      const nC = cs.filter((c) => !isTemplateClient(c.id)).length, nT = ts.filter((t) => !isTemplateClient(t.clientId)).length, nTpl = ts.length - nT;
-      const whats = [nC + (nC === 1 ? " client" : " clients"), nT + (nT === 1 ? " workout" : " workouts")]; if (nTpl) whats.push(nTpl + (nTpl === 1 ? " template" : " templates"));
-      if (!(await askFirst({ title: "Restore this backup?", text: whats.join(", ") + " from the file go into the app. Where the app already has one of them, the file\u2019s copy wins; everything else stays.", yes: "Restore" }))) { e.target.value = ""; return; }
-      for (const c of cs) { clients.set(c.id, c); scheduleSave("clients", c.id, 0); }
-      for (const t of ts) { repairTimed(t); trainings.set(t.id, t); scheduleSave("trainings", t.id, 0); }   // a backup from before the Time box: a hold's seconds leave the weight column here too
-      render();
-    } catch { $("status").textContent = "That file is not a Fiala backup"; }
+      const plan = planRestore(JSON.parse(await f.text()));        // the whole file first; nothing is touched if any part is wrong
+      if (!plan.cs.length && !plan.ts.length) { $("status").textContent = "Everything in that backup is already here"; e.target.value = ""; return; }
+      if (!(await askFirst({ title: "Restore this backup?", text: plan.text, yes: "Restore" }))) { e.target.value = ""; return; }
+      applyRestore(plan); render();
+    } catch (err) { $("status").textContent = err && err.message === "newer backup" ? "That backup is from a newer version of the app" : "That file is not a Fiala backup"; }
     e.target.value = "";
   });
 
@@ -2747,8 +2762,8 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { addTraining, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
-      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap },
+      fns: { addTraining, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
       reset: () => { resetState(); localStorage.clear(); },

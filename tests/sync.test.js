@@ -203,3 +203,84 @@ test("a client on an 'in person by default' package gets new workouts with the s
   assert.strictEqual(of("c1").inPerson, true); assert.strictEqual(of("c2").inPerson, undefined); assert.strictEqual(of("c3").inPerson, undefined);
   assert.strictEqual(fns.packageOf(maps.clients.get("c1")).name, "10 sessions"); assert.strictEqual(fns.packageOf(maps.clients.get("c3")), null);
 });
+
+const TPL = "00000000-0000-4000-8000-0000000000f1";
+test("a workout restored from a backup lands as the file has it: without a stamp and through a conflict, nothing of the server's is merged in", async () => {
+  const sb = makeSupabase(); coach(sb);
+  sb.seed("ft_trainings", "T", training("T", { title: "Server", completedAt: null, date: day(2), rows: [row("r1", ["40"], ["5"], 1)] }), { client_id: "c1" });
+  const file = training("T", { title: "File", completedAt: "2026-10-02T18:00:00.000Z", date: "2026-10-02", rows: [row("r1", ["100", "100", "100"], ["5", "5", "5"], 3)] });
+  maps.trainings.set("T", JSON.parse(JSON.stringify(file))); maps.fromFile.add("trainings/T");   // no stamp: the app was relaunched, or never saw this record
+  await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(file)));
+  let saved = sb.tables.ft_trainings.get("T").data;
+  assert.deepStrictEqual([saved.title, saved.completedAt, saved.date, saved.rows[0].weights], ["File", file.completedAt, "2026-10-02", ["100", "100", "100"]]);
+  assert.deepStrictEqual(maps.trainings.get("T").rows[0].weights, ["100", "100", "100"], "the live copy keeps the file's sets too");
+  sb.seed("ft_trainings", "T", training("T", { title: "Server again", rows: [row("r1", ["50"], ["5"], 1)] }), { client_id: "c1" });   // the server moves on: the next write meets a newer stamp
+  await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(file)));
+  saved = sb.tables.ft_trainings.get("T").data; assert.strictEqual(saved.title, "File"); assert.deepStrictEqual(saved.rows[0].weights, ["100", "100", "100"]);
+  assert.strictEqual(sb.log.filter((l) => l.op === "update" && l.table === "ft_trainings").length, 3, "a conditional write each time, one retried over the newer stamp");
+});
+test("a client restored from a backup replaces the server's notes, packages and plan; the same save without the restore marker keeps them", async () => {
+  const serverCopy = () => ({ id: TPL, name: "Templates", kind: "templates", packages: [{ id: "p1", name: "10 sessions", kind: "sessions", size: 10 }], notes: { log: [{ id: "n1", at: "2026-10-01T10:00:00.000Z", text: "Server note" }] }, plan: { id: "p1", kind: "sessions" } });
+  const file = { id: TPL, name: "Templates", kind: "templates", packages: [], notes: { log: [] }, plan: null };
+  for (const restored of [true, false]) {
+    const sb = makeSupabase(); coach(sb); sb.seed("ft_clients", TPL, serverCopy());
+    maps.clients.set(TPL, JSON.parse(JSON.stringify(file))); if (restored) maps.fromFile.add("clients/" + TPL);
+    await fns.cloudBackend.set("clients", TPL, JSON.parse(JSON.stringify(file)));
+    const saved = sb.tables.ft_clients.get(TPL).data;
+    if (restored) { assert.deepStrictEqual(saved.packages, []); assert.deepStrictEqual(saved.notes, { log: [] }); assert.strictEqual(saved.plan, null); }
+    else { assert.strictEqual(saved.packages.length, 1, "an ordinary save keeps a package added elsewhere"); assert.strictEqual(saved.notes.log.length, 1); assert.deepStrictEqual(saved.plan, { id: "p1", kind: "sessions" }); }
+  }
+});
+test("the coach's plan edit, a deleted note and a deleted package are kept on the device across a relaunch and cleared only by the save that carried them", async () => {
+  const sb = makeSupabase(); coach(sb); sb.delayMs = 30;
+  sb.seed("ft_clients", TPL, { id: TPL, name: "Templates", kind: "templates", packages: [{ id: "p1", name: "10 sessions", kind: "sessions", size: 10 }], notes: { log: [{ id: "n1", at: "2026-10-01T10:00:00.000Z", text: "Old" }] } });
+  const tc = { id: TPL, name: "Templates", kind: "templates", packages: [], notes: { log: [] }, plan: { id: "x", kind: "monthly", until: "2026-11-15" } }; maps.clients.set(TPL, tc);
+  maps.planTouched.add(TPL); maps.deletedNotes.set("n1", TPL); maps.deletedPackages.set("p1", TPL); maps.fromFile.add("trainings/zzz");
+  fns.scheduleSave("clients", TPL, 0);
+  await tick(5);                                                      // the save is on the wire
+  const stored = JSON.parse(localStorage.getItem("fiala.pending.v1"));
+  assert.deepStrictEqual([stored.plans, stored.notesGone, stored.packagesGone, stored.fromFile], [[TPL], [["n1", TPL]], [["p1", TPL]], ["trainings/zzz"]], "written to the device with the queue");
+  maps.planTouched.clear(); maps.deletedNotes.clear(); maps.deletedPackages.clear(); maps.fromFile.clear(); fns.restorePending();   // the app relaunched meanwhile
+  assert.ok(maps.planTouched.has(TPL) && maps.deletedNotes.get("n1") === TPL && maps.deletedPackages.get("p1") === TPL && maps.fromFile.has("trainings/zzz"), "back after the relaunch");
+  await tick(120);                                                    // the save landed: read first (no stamp), then the write
+  const saved = sb.tables.ft_clients.get(TPL).data;
+  assert.deepStrictEqual(saved.packages, [], "the deleted package did not come back"); assert.deepStrictEqual(saved.notes.log, [], "nor the deleted note"); assert.strictEqual(saved.plan.until, "2026-11-15", "and the plan edit stands");
+  assert.ok(!maps.planTouched.has(TPL) && !maps.deletedNotes.has("n1") && !maps.deletedPackages.has("p1"), "the save that carried them clears them");
+  assert.ok(maps.fromFile.has("trainings/zzz"), "a marker for another record stays");
+  assert.ok(!maps.dirty.has("clients/" + TPL));
+});
+test("a deleted package does not come back through a conflict, and an offline plan extension survives a relaunch and a newer server copy", async () => {
+  const sb = makeSupabase(); coach(sb);
+  sb.seed("ft_clients", TPL, { id: TPL, name: "Templates", kind: "templates", packages: [{ id: "p1", name: "10 sessions", kind: "sessions", size: 10 }] });
+  maps.seenAt.set("clients/" + TPL, "S0");                            // stale: the server has moved on since this device read it
+  const tc = { id: TPL, name: "Templates", kind: "templates", packages: [] }; maps.clients.set(TPL, tc); maps.deletedPackages.set("p1", TPL); maps.planTouched.add(TPL);
+  await fns.cloudBackend.set("clients", TPL, JSON.parse(JSON.stringify(tc)));
+  assert.deepStrictEqual(sb.tables.ft_clients.get(TPL).data.packages, [], "the only package, deleted, stays deleted");
+  sb.seed("ft_clients", "c1", { id: "c1", name: "Jane", plan: { id: "p1", kind: "monthly", until: "2026-10-18" } });   // the server's copy, edited on another device meanwhile
+  const c = { id: "c1", name: "Jane", plan: { id: "p1", kind: "monthly", until: "2026-11-15" } }; maps.clients.set("c1", c);   // extended here, offline
+  maps.planTouched.add("c1"); fns.persistPending(); maps.planTouched.clear(); fns.restorePending();   // relaunched before it could be sent
+  await fns.cloudBackend.set("clients", "c1", JSON.parse(JSON.stringify(c)));                        // no stamp: read first, then the write
+  assert.strictEqual(sb.tables.ft_clients.get("c1").data.plan.until, "2026-11-15", "the extension lands");
+  maps.planTouched.clear(); maps.seenAt.delete("clients/c1"); sb.seed("ft_clients", "c1", { id: "c1", name: "Jane", plan: { id: "p1", kind: "monthly", until: "2026-10-18" } });
+  await fns.cloudBackend.set("clients", "c1", JSON.parse(JSON.stringify(c)));
+  assert.strictEqual(sb.tables.ft_clients.get("c1").data.plan.until, "2026-10-18", "without the marker a plan set on another device stands");
+});
+test("a restore skips what is already here and the same, replaces what differs, says so in the sheet's words, and never rolls the built-in templates back", async () => {
+  const sb = makeSupabase(); coach(sb);
+  maps.clients.set(TPL, { id: TPL, name: "Templates", kind: "templates", templatesVersion: 5, packages: [] });
+  maps.trainings.set("T", training("T", { title: "Same" })); maps.trainings.set("U", training("U", { title: "Here" }));
+  const file = { app: "fiala-trainings", format: 1, clients: { [TPL]: { id: TPL, name: "Templates", kind: "templates", templatesVersion: 3, packages: [{ id: "p1", name: "10 sessions", kind: "sessions", size: 10 }] }, c1: { unit: "lb", name: "Jane", id: "c1" } },
+    trainings: { T: training("T", { title: "Same" }), U: training("U", { title: "From the file" }), V: training("V", { title: "New" }) } };
+  const plan = fns.planRestore(JSON.parse(JSON.stringify(file)));
+  assert.deepStrictEqual([plan.cs.map((c) => c.id), plan.ts.map((t) => t.id)], [[TPL], ["U", "V"]], "T and Jane are here already and the same (whatever the key order)");
+  assert.strictEqual(plan.text, "2 workouts and the packages list from the file go into the app. 2 of them replace a copy already here, logged sets and all. Everything else stays as it is.");
+  assert.strictEqual(fns.planRestore(JSON.parse(JSON.stringify({ app: "fiala-trainings", clients: { c1: { id: "c1", name: "Jane", unit: "lb" } }, trainings: {} }))).text, "", "nothing to do, nothing to say");
+  fns.applyRestore(plan);
+  assert.strictEqual(maps.trainings.get("U").title, "From the file"); assert.strictEqual(maps.trainings.get("V").title, "New"); assert.strictEqual(maps.trainings.get("T").title, "Same");
+  assert.strictEqual(maps.clients.get(TPL).templatesVersion, 5, "the newer built-in set stays"); assert.strictEqual(maps.clients.get(TPL).packages[0].id, "p1", "the packages come from the file");
+  assert.deepStrictEqual([...maps.fromFile].sort(), ["clients/" + TPL, "trainings/U", "trainings/V"]); assert.ok(!maps.dirty.has("trainings/T"), "an unchanged record is not saved again");
+  await tick(20);                                                     // the zero-delay saves landed
+  assert.strictEqual(sb.tables.ft_trainings.get("U").data.title, "From the file"); assert.ok(!maps.fromFile.size, "the markers went with the saves");
+  const single = fns.planRestore(JSON.parse(JSON.stringify({ app: "fiala-trainings", clients: {}, trainings: { U: training("U", { title: "Again" }) } })));
+  assert.strictEqual(single.text, "1 workout from the file goes into the app. It replaces a copy already here, logged sets and all. Everything else stays as it is.");
+});

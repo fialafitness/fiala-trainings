@@ -21,7 +21,7 @@ export const initial = () => ({
 });
 export const S = initial();
 export const ui = {};                       // the screen functions the sync layer may call ($, setStatus, render, showProblem, …), filled in by main.js
-export function resetState() { Object.assign(S, initial()); for (const m of [clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingNoteRows, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, planTouched]) m.clear(); }
+export function resetState() { Object.assign(S, initial()); for (const m of [clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingNoteRows, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, planTouched, deletedNotes, deletedPackages, fromFile]) m.clear(); }
 
 export const clients = new Map();            // id -> { id, name, notes, createdAt, … }
 export const trainings = new Map();          // id -> { id, clientId, title, date, createdAt, rows: [...] }
@@ -44,4 +44,6 @@ export const pendingMove = new Set();        // client mode: "Do it today" to se
 export const pendingMiss = new Set();        // client mode: filed as missed (or decided) to send
 export const pendingSwap = new Map();        // client mode: trainingId -> Map(rowId -> alternative tapped) to send
 export const pendingNoteRows = new Map();   // client mode: trainingId -> Set(rowId) with a note to send
-export const deletedNotes = new Set();       // note ids removed on this device: a merge must not bring them back        // client mode: trainingId -> Map(rowId -> alternative tapped) to send
+export const deletedNotes = new Map();       // noteId -> clientId: notes removed on this device and not yet saved to the server; a merge must not bring them back
+export const deletedPackages = new Map();    // packageId -> clientId (the Templates record): packages removed on this device and not yet saved; a merge must not bring them back
+export const fromFile = new Set();           // "kind/id" restored from a backup and not yet saved: written as the file has it, nothing merged in
