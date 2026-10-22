@@ -122,7 +122,7 @@ const cloudBackend = {
       const takeState = (serverData) => {                      // the client may have finished, skipped or moved it meanwhile: keep that, field by field, unless the coach changed that field
         if (kind !== "trainings" || !serverData) return;
         const mine = trainerState.get(id) || new Set();
-        for (const f of ["completedAt", "completedBy", "skippedAt", "missed", "date", "inPerson"]) { if (mine.has(f)) continue; for (const target of [data, trainings.get(id)]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; } }
+        for (const f of ["completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"]) { if (mine.has(f)) continue; for (const target of [data, trainings.get(id)]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; } }
       };
       const takeNotes = (serverData) => {                      // another device may have written notes: keep both
         if (kind !== "clients" || !serverData) return;
@@ -201,7 +201,8 @@ const clientBackend = {
       pendingFinish.delete(id);
     }
     if (pendingSkip.has(id)) {
-      const { error } = await S.sb.rpc("client_skip_training", { p_training: id, p_skipped: !!data.skippedAt });
+      let { error } = await S.sb.rpc("client_skip_training", { p_training: id, p_skipped: !!data.skippedAt, p_reason: String(data.skipReason || "") });
+      if (error && error.code === "PGRST202") ({ error } = await S.sb.rpc("client_skip_training", { p_training: id, p_skipped: !!data.skippedAt }));   // the rule without the reason (not updated yet): the skip still lands
       if (error && error.code !== "P0001") throw error;
       pendingSkip.delete(id);
     }

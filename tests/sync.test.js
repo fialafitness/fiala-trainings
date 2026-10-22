@@ -125,6 +125,14 @@ test("without the log-set rule a hold's seconds still travel the old way, as a w
   assert.deepStrictEqual(sent, [["45 sec", "50 sec", "25"], ["100", "", ""]], "seconds as the old weight string; a real weight and a plain lift untouched");
   assert.ok(app.get().logSetMissing);
 });
+test("a client's skip carries the reason; a rule that does not know the reason yet still takes the skip", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend });
+  sb.rpcs.client_skip_training = async (a) => { if (a.p_reason !== undefined) { const e = new Error("Could not find the function"); e.code = "PGRST202"; throw e; } return null; };   // the old two-argument rule
+  const t = training("T", { skippedAt: "2026-10-22T10:00:00.000Z", skipReason: "Sick" }); maps.trainings.set("T", t); maps.pendingSkip.add("T");
+  await fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify(t)));
+  const calls = sb.log.filter((l) => l.rpc === "client_skip_training").map((l) => l.args);
+  assert.deepStrictEqual(calls, [{ p_training: "T", p_skipped: true, p_reason: "Sick" }, { p_training: "T", p_skipped: true }]); assert.ok(!maps.pendingSkip.has("T"));
+});
 test("the device copy reports when it cannot be written", () => {
   app.reset(); app.set({ backend: fns.localBackend });
   env.storage.fail = true;

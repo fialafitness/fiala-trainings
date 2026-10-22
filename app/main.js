@@ -1510,7 +1510,7 @@ import { reportRange, buildReport } from "./report.js";
       const d = new Date(effDate(t) + "T12:00:00");
       const pri = document.createElement("span"); pri.className = "pri";
       const skipped = !t.completedAt && !!t.skippedAt;
-      pri.textContent = (t.completedAt ? "\u2713 " : skipped ? (t.missed === true ? "Missed \u00b7 " : "Skipped \u00b7 ") : "") + d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      pri.textContent = (t.completedAt ? "\u2713 " : skipped ? (t.missed === true ? "Missed \u00b7 " : "Skipped \u00b7 " + (t.skipReason ? t.skipReason + " \u00b7 " : "")) : "") + d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
       if (skipped) pri.style.color = "var(--text-tertiary)";
       const sec = document.createElement("span"); sec.className = "sec";
       sec.textContent = [t.title, !t.completedAt && done ? done + " of " + total + " done" : ""].filter(Boolean).join(" \u00b7 ");
@@ -1647,7 +1647,7 @@ import { reportRange, buildReport } from "./report.js";
     const done = !!t.completedAt, skipped = !done && !!t.skippedAt;
     $("finishBtn").hidden = done || skipped; $("finishedLine").hidden = !done;
     $("skipLine").hidden = done || skipped; $("skippedLine").hidden = !skipped;
-    if (skipped) $("skippedText").textContent = t.missed === true ? "Missed" : "Skipped";
+    if (skipped) $("skippedText").textContent = (t.missed === true ? "Missed" : "Skipped") + (t.skipReason ? " \u00b7 " + t.skipReason : "");
     if (done) { const d = new Date(t.completedAt); $("finishedText").textContent = "\u2713 Finished \u00b7 " + d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); }
   }
   const ordinal = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
@@ -2586,14 +2586,30 @@ import { reportRange, buildReport } from "./report.js";
     S.renderedTraining = null; render();
     const el = document.querySelector('.row[data-id="' + r.id + '"]'); if (el) el.querySelector(".name").focus();
   });
-  function setSkipped(skipped) {
+  function setSkipped(skipped, reason) {                               // asked first (the sheet); the workout stays on screen, marked Skipped, with Undo
     const t = trainings.get(S.view.id); if (!t) return;
-    t.skippedAt = skipped ? now() : null; t.missed = false; touchState(t.id, "skippedAt", "missed");   // a person decided: never filed by itself again
+    t.skippedAt = skipped ? now() : null; t.missed = false; touchState(t.id, "skippedAt", "missed", "skipReason");   // a person decided: never filed by itself again
+    if (skipped && reason) t.skipReason = reason; else delete t.skipReason;
     if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); }
-    scheduleSave("trainings", t.id); paintFinish(t);
-    if (skipped) go({ name: "client", id: t.clientId });
+    scheduleSave("trainings", t.id); paintFinish(t); S.renderedTraining = null; render();
   }
-  $("skipBtn").addEventListener("click", () => setSkipped(true));
+  let sk = null;                                                       // the skip sheet: { t, reason }
+  function openSkip() {
+    const t = trainings.get(S.view.id); if (!t) return; sk = { t, reason: "" };
+    for (const b of $("skReasons").querySelectorAll("button")) { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); }
+    $("skipSheet").hidden = false; setTimeout(() => { if (sk) $("skGo").focus({ preventScroll: true }); }, 0);
+  }
+  function closeSkip() { $("skipSheet").hidden = true; sk = null; }
+  $("skGo").addEventListener("click", () => { if (!sk) return; const reason = sk.reason; closeSkip(); setSkipped(true, reason); });
+  $("skKeep").addEventListener("click", closeSkip);
+  $("skipSheet").addEventListener("click", (e) => { if (e.target === $("skipSheet")) closeSkip(); });
+  $("skReasons").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b || !sk) return;
+    const on = !b.classList.contains("on");                          // tap again to clear
+    for (const x of $("skReasons").querySelectorAll("button")) { x.classList.toggle("on", on && x === b); x.setAttribute("aria-pressed", String(on && x === b)); }
+    sk.reason = on ? b.dataset.reason : "";
+  });
+  $("skipBtn").addEventListener("click", openSkip);
   $("unskipBtn").addEventListener("click", () => setSkipped(false));
   $("finishBtn").addEventListener("click", () => setFinished(true));
   $("unfinishBtn").addEventListener("click", () => setFinished(false));
