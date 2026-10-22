@@ -895,7 +895,6 @@ import { reportRange, buildReport } from "./report.js";
   const openNotes = new Set();                                   // exercise rows whose instructions the client opened (this session)
   const openExNotes = new Set();                                 // cards whose session note is unfolded (this session)
   const noteDraft = new Map();                                   // clientId -> what is typed in the notes box and not saved yet
-  const tNoteDraft = new Map(); let tNoteOpenFor = null;          // the same for the note box on a workout page
   const growBox = (ta) => { ta.style.height = "auto"; ta.style.height = Math.max(96, ta.scrollHeight) + "px"; };
   const openMonths = new Set();          // History months the user opened: clientId/yyyy-mm
   const openNoteGroups = new Set(), armedNotes = new Set();
@@ -1696,11 +1695,7 @@ import { reportRange, buildReport } from "./report.js";
     const src = !asClient && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
     $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = templatePath(src);
     $("tplFill").hidden = asClient || isTpl || (t.rows || []).length > 0 || !!t.completedAt;   // only an empty workout offers a template
-    $("tNoteWrap").hidden = S.clientMode || isTpl;                                                // the coach's session note, in either view, never for a client
-    paintWorkoutNotes(t);
-    const open = tNoteOpenFor === t.id;
-    $("tNoteBox").hidden = !open; $("tNoteOpen").hidden = open;
-    if (document.activeElement !== $("tNote")) { $("tNote").value = tNoteDraft.get(t.id) || ""; growBox($("tNote")); }
+    paintWorkoutNotes(t);                                                                         // notes written on this session before the session-note button went (profile notes tagged with the workout)
     $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || S.clientMode;
     $("viewSeg").hidden = S.clientMode || isTpl; for (const b of $("viewSeg").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.view === "client") === previewClient); if (!isTpl || S.renderedTraining !== t.id) $("usePick").hidden = true;   // the client list built for another template must not survive onto this one
     $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
@@ -2511,16 +2506,6 @@ import { reportRange, buildReport } from "./report.js";
     }
   }
   $("wNoteBtn").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t) return; if (wNoteOpen.has(t.id)) wNoteOpen.delete(t.id); else wNoteOpen.add(t.id); paintWorkoutNotes(t); });
-  $("tNoteOpen").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t) return; tNoteOpenFor = t.id; $("tNoteBox").hidden = false; $("tNoteOpen").hidden = true; $("tNote").focus(); });
-  $("tNote").addEventListener("input", (e) => { tNoteDraft.set(S.view.id, e.target.value); growBox(e.target); });
-  $("tNoteDiscard").addEventListener("click", async () => { if ($("tNote").value.trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; tNoteDraft.delete(S.view.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false; });
-  $("tNoteSave").addEventListener("click", () => {
-    const t = trainings.get(S.view.id), c = t && clients.get(t.clientId); if (!t || !c) return;
-    const text = String($("tNote").value || "").trim(); if (!text) return;
-    tNoteDraft.delete(t.id); tNoteOpenFor = null; $("tNote").value = ""; $("tNoteBox").hidden = true; $("tNoteOpen").hidden = false;
-    writeNotes(c, [...noteEntries(c), { id: uid(), at: now(), text, workout: { id: t.id, title: String(t.title || ""), date: effDate(t) || String(t.date || "") } }]);
-    wNoteOpen.add(t.id); paintWorkoutNotes(t);
-  });
   $("cNotes").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; noteDraft.set(c.id, e.target.value); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
   $("noteSave").addEventListener("click", () => {
     const c = clients.get(S.view.id); if (!c) return;
