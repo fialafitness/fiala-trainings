@@ -1790,7 +1790,7 @@ import { reportRange, buildReport } from "./report.js";
       if (tracker) card.appendChild(tracker);
       rowEls.forEach((e) => card.appendChild(e));
       const foot = document.createElement("div"); foot.className = "card-foot";
-      let resume = null, openFull = null;                  // undo for "Finish early": shown on the opened card while it is finished early; openFull: from the summary to the working card
+      let resume = null, openFull = null, sumRow = null, placeFootRows = null;   // undo for "Finish early": shown on the opened card while it is finished early; openFull: from the summary to the working card; sumRow: the summary's one-line foot
       if (total > 0 && !isTpl) {
         const sel = g.sel, current = sel === doneSets && doneSets < total;
         const complete = document.createElement("label"); complete.htmlFor = "hapticSwitch"; complete.className = "btn complete"; complete.setAttribute("role", "button"); complete.tabIndex = 0;   // a label for the hidden switch: the tap itself gives the haptic on iPhone
@@ -1877,7 +1877,9 @@ import { reportRange, buildReport } from "./report.js";
         openFull.addEventListener("click", () => { fullBlocks.add(selKey); paintSummary(); });
         const actsRow = document.createElement("div"); actsRow.className = "foot-row"; actsRow.append(early, addNote);
         const moreRow = document.createElement("div"); moreRow.className = "foot-row center"; moreRow.append(undo, resume, openFull);
-        foot.append(shown, complete, moreRow, actsRow, noteBox);     // undo / resume first, then Finish early + Add note (his order)
+        sumRow = document.createElement("div"); sumRow.className = "foot-row sum-row"; sumRow.hidden = true;   // the opened finished card: note disc · Resume · (the chevron disc in the corner) on one line
+        placeFootRows = (summary) => { if (summary) { sumRow.append(addNote, openFull); sumRow.hidden = false; } else { actsRow.append(addNote); moreRow.append(openFull); sumRow.hidden = true; } };
+        foot.append(shown, complete, moreRow, actsRow, sumRow, noteBox);     // undo / resume first, then Finish early + Add note (his order)
       }
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
       const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold-btn";
@@ -1902,7 +1904,7 @@ import { reportRange, buildReport } from "./report.js";
         chev.setAttribute("aria-label", open ? "Hide sets" : "Show sets");
       };
       const paintSummary = () => {                                      // a finished card opened: the sets in rows, unless opened all the way
-        const summary = block.classList.contains("done") && block.classList.contains("open") && !fullBlocks.has(selKey); block.classList.toggle("summary", summary); if (openFull) openFull.hidden = !summary;
+        const summary = block.classList.contains("done") && block.classList.contains("open") && !fullBlocks.has(selKey); block.classList.toggle("summary", summary); if (openFull) openFull.hidden = !summary; if (placeFootRows) placeFootRows(summary);
         const regrow = () => { for (const n of block.querySelectorAll("textarea.name")) { n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; } };   // the name field re-wraps when the card changes shape: show the whole name
         if (block.isConnected) regrow(); else setTimeout(regrow, 0);    // in the page already: at once, so the page does not change height a moment after it was drawn (the glide would chase it)
       };

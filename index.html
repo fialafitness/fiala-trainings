@@ -479,6 +479,14 @@
   .card-foot .foot-row.center { justify-content: center; min-height: 0; flex-wrap: wrap; gap: 8px 10px; }   /* undo / resume: room between them; the note row below keeps them clear of the corner chevron */
   .card-foot .foot-row.center > * { white-space: nowrap; }
   .card-foot .foot-row.center:empty { display: none; }
+  .card-foot .sum-row { display: grid; grid-template-columns: 36px 1fr 36px; align-items: center; column-gap: 8px; min-height: 40px; }   /* the opened finished card: note disc, Resume in the middle, the chevron disc at the right */
+  .card-foot .sum-row[hidden] { display: none; }
+  .card-foot .sum-row .add-note { width: 36px; height: 36px; min-height: 36px; padding: 0; justify-content: center; border-radius: 50%; }
+  .card-foot .sum-row .add-note > span:last-child { display: none; }
+  .card-foot .sum-row .add-note .ico svg { width: 18px; height: 18px; }
+  .card-foot .sum-row .resume-full { justify-self: center; }
+  .block.done.open.summary .card-foot .foot-row:not(.sum-row) { display: none; }
+  .block.done.open.summary .card-chev { bottom: 18px; }
   .add-note { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 4px; display: inline-flex; align-items: center; gap: 6px; }
   .finish-early { display: inline-flex; align-items: center; gap: 6px; }
   .finish-early svg { flex: 0 0 auto; }
@@ -1360,7 +1368,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=90";
+  import { boot } from "./app/main.js?v=91";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
