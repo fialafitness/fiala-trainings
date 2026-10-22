@@ -2704,8 +2704,9 @@ import { reportRange, buildReport } from "./report.js";
       if (sw.controller) sw.controller.postMessage({ type: "check" }); else settle();   // and a new release: the worker answers with the newest on the device
     });
   }
+  const pageRelease = () => { for (const s of document.querySelectorAll("script[type=module]")) { const m = /main\.js\?v=(\d+)/.exec(s.textContent || ""); if (m) return Number(m[1]); } return 0; };   // the release this page runs, off its own import line (import.meta.url loses the ?v= when the worker serves the script from a release cache)
   async function boot() {
-    try { const v = new URL(import.meta.url).searchParams.get("v"); if (v) { $("appVersion").textContent = "Version " + v; watchReleases(Number(v) || 0); } } catch (_) {}   // the build this phone runs, read off the script's own ?v=
+    try { const v = pageRelease(); if (v) { $("appVersion").textContent = "Version " + v; watchReleases(v); } } catch (_) {}   // the build this phone runs, at the bottom of Settings
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) S.view = saved;
     const page = lsGet("fiala.trainings.page"); if (page && page.open) pendingPage = page;   // read before any screen change clears it
     localBackend.load();                       // instant start from the device copy
