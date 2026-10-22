@@ -168,7 +168,8 @@ import { reportRange, buildReport } from "./report.js";
   function hideAllViews() {
     rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
     $("tabbar").hidden = true; document.body.classList.remove("tabs");
-    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vPackages", "vSettings", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
+    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
+    $("navDone").hidden = true;
   }
   function showLogin(msg) {
     S.signedIn = false; S.clientMode = false; S.myClientId = null; document.body.classList.remove("client");
@@ -184,7 +185,7 @@ import { reportRange, buildReport } from "./report.js";
   let settingsOpen = false;              // false | "settings" | "password" | "exercises" | "packages" | "number"
   let fromSettings = false;              // number/password opened from the Settings list: Back returns there
   let pendingPage = null;                // the settings page that was open when the page was last refreshed: it comes back after sign-in
-  const rememberPage = () => lsSet("fiala.trainings.page", settingsOpen ? { open: settingsOpen, from: !!fromSettings } : null);
+  const rememberPage = () => lsSet("fiala.trainings.page", settingsOpen ? { open: settingsOpen, from: !!fromSettings, ...(settingsOpen === "exercise" && exCurrent ? { name: exCurrent.name, key: exCurrent.key } : {}) } : null);
   // ---- appearance: auto (follow the phone) | light | dark. Saved on this device only.
   const THEME_KEY = "fiala.theme";
   const themeColours = { light: "#f5f5f7", dark: "#000000" };
@@ -336,10 +337,10 @@ import { reportRange, buildReport } from "./report.js";
   $("sessionPill").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t || S.clientMode || isTemplateClient(t.clientId)) return; t.inPerson = !t.inPerson; if (!t.inPerson) delete t.inPerson; touchState(t.id, "inPerson"); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); });
   function showExercises() {
     settingsOpen = "exercises"; hideAllViews(); $("vExercises").hidden = false; $("back").hidden = false; $("backLabel").textContent = fromSettings ? "Settings" : "Back"; $("brand").hidden = true; $("status").textContent = "";
-    exShown = 80; exOpenKey = null; renderExercises();
+    exShown = 80; renderExercises();
   }
   const videoForName = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = looseKey(ALIASES[s] || s); if (customVideos.has(looseKey(s))) return customVideos.get(looseKey(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
-  let exShown = 80, exOpenKey = null;
+  let exShown = 80;
   function exerciseMatches(q) {
     const s = squash(q);
     const all = ALL_NAMES.map((n, i) => [n, ALL_KEYS[i]]);
@@ -359,7 +360,7 @@ import { reportRange, buildReport } from "./report.js";
     const canAdd = s.length >= 2 && !hits.some(([, k]) => k === s) && !knownName(q) && (hits.length === 0 || q.trim().split(/\s+/).length >= 2);   // an old spelling of a listed exercise is not a new exercise
     $("exEmpty").hidden = !canAdd;
     const near = canAdd ? nearName(q) : null;
-    if (near) { $("exEmpty").innerHTML = ""; const b = document.createElement("button"); b.type = "button"; b.className = "btn tint"; b.textContent = "Did you mean “" + near + "”?"; b.addEventListener("click", () => { $("exSearch").value = near; exShown = 80; exOpenKey = null; renderExercises(); }); $("exEmpty").appendChild(b); }
+    if (near) { $("exEmpty").innerHTML = ""; const b = document.createElement("button"); b.type = "button"; b.className = "btn tint"; b.textContent = "Did you mean “" + near + "”?"; b.addEventListener("click", () => { $("exSearch").value = near; exShown = 80; renderExercises(); }); $("exEmpty").appendChild(b); }
     else if (canAdd) { $("exEmpty").innerHTML = ""; const b = document.createElement("button"); b.type = "button"; b.className = "btn tint"; b.textContent = "Add “" + tidyName(q) + "” to the database"; b.addEventListener("click", async () => { b.disabled = true; const ok = await addCustomName(q); if (!ok) { b.disabled = false; $("status").textContent = "Couldn’t add · run supabase/exercises.sql, or try again online"; return; } $("exSearch").value = tidyName(q); renderExercises(); }); $("exEmpty").appendChild(b); }
   }
   function exerciseRow(name, key) {
@@ -368,81 +369,59 @@ import { reportRange, buildReport } from "./report.js";
     const mine = customNames.has(key); const vid = videoForName(name);
     const pri = document.createElement("span"); pri.className = "pri"; const parts = splitName(name, subtitleFor(name)); pri.textContent = parts.title;
     if (parts.sub) { const st = document.createElement("span"); st.className = "subt"; st.textContent = parts.sub; pri.appendChild(st); }
-    const sec = document.createElement("span"); sec.className = "sec"; sec.innerHTML = (vid ? '<span class="dot">▶ video</span>' : "") + (vid && mine ? " · " : "") + (mine ? "yours" : "");
+    const sec = document.createElement("span"); sec.className = "sec"; sec.innerHTML = (vid ? '<span class="dot">\u25b6 video</span>' : "") + (vid && mine ? " \u00b7 " : "") + (mine ? "yours" : "");
     const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.innerHTML) left.append(sec);
-    const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "›";
+    const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a";
     b.append(left, chev);
-    const detail = document.createElement("div"); detail.className = "exdetail"; detail.hidden = key !== exOpenKey;
-    li.classList.toggle("open", key === exOpenKey);
-    if (!detail.hidden) buildExerciseDetail(detail, name, key);
-    b.addEventListener("click", () => {
-      const was = exOpenKey === key; const ul = $("exList");
-      const prev = ul.querySelector("li.open"); if (prev) { prev.classList.remove("open"); const d = prev.querySelector(".exdetail"); d.hidden = true; d.replaceChildren(); }
-      exOpenKey = was ? null : key;
-      if (!was) { li.classList.add("open"); buildExerciseDetail(detail, name, key); detail.hidden = false; li.scrollIntoView({ block: "nearest" }); }
-    });
-    li.append(b, detail); return li;
+    b.addEventListener("click", () => { showExercise(name, key); window.scrollTo(0, 0); });   // a row opens its own page, the way a list does on iPhone
+    li.append(b); return li;
   }
   const mkBtn = (text, cls, fn) => { const x = document.createElement("button"); x.type = "button"; x.className = cls; x.textContent = text; x.addEventListener("click", fn); return x; };
-  function buildExerciseDetail(box, name, key) {                               // tapped open: watch the video, or Edit
-    box.replaceChildren(); box.classList.remove("editing");
-    const vid = videoForName(name);
-    const player = document.createElement("div"); player.className = "player"; player.hidden = true;
-    const actions = document.createElement("div"); actions.className = "row-actions";
-    if (vid) actions.appendChild(mkBtn("\u25b6 Watch video", "btn tint", () => { if (!player.hidden) { player.hidden = true; player.replaceChildren(); return; } player.replaceChildren(); const f = document.createElement("iframe"); f.src = "https://www.youtube-nocookie.com/embed/" + vid + "?playsinline=1&rel=0&modestbranding=1"; f.allow = "accelerometer; encrypted-media; picture-in-picture"; f.allowFullscreen = true; player.appendChild(f); player.hidden = false; }));
-    actions.appendChild(mkBtn("Edit", "btn tint", () => buildExerciseEditor(box, name, key)));
-    box.append(player, actions);
+  // ---- one exercise, on its own page: the video on top, a form (Name, Subtitle, Video), Delete below; Done in the bar saves, Back leaves
+  let exCurrent = null;                                                       // { name, key } of the exercise the page shows
+  const exDirty = () => { if (!exCurrent) return false; const { name, key } = exCurrent, chosen = customSubs.has(key) ? customSubs.get(key) : null, vid = videoForName(name); return $("exName").value.trim() !== name || $("exSub").value.trim() !== (chosen == null ? autoSubtitle(name) : chosen) || $("exVideo").value.trim() !== (vid ? "https://youtu.be/" + vid : ""); };
+  const paintExHint = () => { const nm = $("exName").value.trim(), want = $("exSub").value.trim(), { title, sub } = splitName(nm, want); $("exHint").textContent = sub ? "Clients see \u201c" + title + "\u201d with \u201c" + sub + "\u201d under it." : want ? "The subtitle has to be the end of the name." : "Clients see the whole name on one line."; };
+  function showExercise(name, key) {
+    exCurrent = { name, key }; settingsOpen = "exercise"; hideAllViews(); $("vExercise").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Exercises"; $("brand").hidden = true; $("status").textContent = ""; $("navDone").hidden = false;
+    const vid = videoForName(name), chosen = customSubs.has(key) ? customSubs.get(key) : null;
+    $("exName").value = name; $("exSub").value = chosen == null ? autoSubtitle(name) : chosen; $("exVideo").value = vid ? "https://youtu.be/" + vid : "";
+    const player = $("exPlayer"); player.replaceChildren(); player.hidden = !vid;
+    if (vid) { const f = document.createElement("iframe"); f.src = "https://www.youtube-nocookie.com/embed/" + vid + "?playsinline=1&rel=0&modestbranding=1"; f.allow = "accelerometer; encrypted-media; picture-in-picture"; f.allowFullscreen = true; player.appendChild(f); }
+    paintExHint(); rememberPage();
   }
-  function buildExerciseEditor(box, name, key) {                               // everything about one exercise, then Save changes or Discard
-    box.replaceChildren(); box.classList.add("editing");
-    const vid = videoForName(name);
-    const field = (label, inp) => { const w = document.createElement("div"); w.className = "edit-field"; const c = document.createElement("span"); c.className = "cap"; c.textContent = label; w.append(c, inp); return w; };
-    const nameInp = document.createElement("input"); nameInp.value = name; nameInp.placeholder = "Name"; nameInp.setAttribute("autocapitalize", "sentences"); nameInp.setAttribute("autocomplete", "off");
-    const url = document.createElement("input"); url.type = "url"; url.placeholder = "Paste a YouTube link"; url.value = vid ? "https://youtu.be/" + vid : ""; url.setAttribute("autocomplete", "off"); url.setAttribute("autocapitalize", "none"); url.inputMode = "url";
-    const subInp = document.createElement("input"); subInp.placeholder = "None"; subInp.setAttribute("autocapitalize", "none"); subInp.setAttribute("autocomplete", "off");   // the ending of the name the client sees as a second, smaller line
-    const chosenSub = customSubs.has(key) ? customSubs.get(key) : null; subInp.value = chosenSub == null ? autoSubtitle(name) : chosenSub;
-    const subHint = document.createElement("span"); subHint.className = "hint";
-    const paintSubHint = () => { const nm = nameInp.value.trim(), want = subInp.value.trim(), { title, sub } = splitName(nm, want); subHint.textContent = sub ? "Clients see \u201c" + title + "\u201d with \u201c" + sub + "\u201d under it" : want ? "The subtitle has to be the end of the name" : "Clients see the whole name on one line"; };
-    for (const i of [nameInp, subInp]) i.addEventListener("input", paintSubHint); paintSubHint();
-    for (const i of [nameInp, subInp, url]) i.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); i.blur(); } });
-    const vidRow = document.createElement("div"); vidRow.className = "row-actions";
-    const rmVid = mkBtn("Remove video", "btn tint danger", () => { url.value = ""; rmVid.hidden = true; }); rmVid.hidden = !vid;
-    url.addEventListener("input", () => { rmVid.hidden = !url.value.trim(); });
-    vidRow.appendChild(rmVid);
-    const del = mkBtn("Delete exercise", "btn tint danger", async () => {
-      if (!(await askFirst({ title: "Delete \u201c" + name + "\u201d from the database?", text: (videoForName(name) ? "Its video goes with it. " : "") + "Workouts that use it keep the name.", yes: "Delete" }))) return;
-      const ok = await deleteExercise(key, name); if (!ok) { $("status").textContent = missingTable() ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t delete \u00b7 try again online"; return; }
-      exOpenKey = null; setStatus(); renderExercises();
-    });
-    const delRow = document.createElement("div"); delRow.className = "row-actions"; delRow.appendChild(del);
-    const foot = document.createElement("div"); foot.className = "edit-foot";
-    const save = mkBtn("Save changes", "btn sm", async () => {
-      const nn = tidyName(properName(nameInp.value)), link = url.value.trim();   // an old spelling means the exercise it names
-      if (!nn || !squash(nn)) { $("status").textContent = "Give it a name"; return; }
-      if (link && !youtubeId(link)) { $("status").textContent = "That doesn\u2019t look like a YouTube link"; return; }
-      if (nn !== name && squash(nn) !== key && knownName(nn)) { $("status").textContent = "There is already an exercise called \u201c" + nn + "\u201d"; return; }
-      const wantSub = subInp.value.trim(); if (wantSub && !splitName(nn, wantSub).sub) { $("status").textContent = "The subtitle has to be the end of the name"; return; }
-      save.disabled = true;
-      let cur = name;
-      if (nn !== name) { const ok = await renameExercise(key, name, nn); if (!ok) { save.disabled = false; $("status").textContent = missingTable() ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t rename \u00b7 try again online"; return; } cur = nn; }
-      const vkey = looseKey(cur), had = videoForName(cur), id = link ? youtubeId(link) : null;
-      let videoError = null;
-      if (!link && had) videoError = await saveVideo(vkey, "", "");                                   // an empty link stored = no video, the built-in one included
-      else if (id && id !== had) videoError = await saveVideo(vkey, link, id);
-      const nk2 = squash(cur); let subError = null;                                                   // the subtitle: his choice stored only when it differs from the automatic split
-      if (wantSub === autoSubtitle(cur)) { const gone = [nk2, key].filter((k, i, arr) => customSubs.has(k) && arr.indexOf(k) === i); if (gone.length) subError = await deleteSub(gone); }
-      else subError = await saveSub(nk2, wantSub, key);
-      exOpenKey = nk2; renderExercises();                                                              // the list shows what stands, rename included, before any complaint
-      if (subError) { $("status").textContent = /ft_exercise_subtitles/.test(subError.message || "") ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t save the subtitle"; return; }
-      if (videoError) { $("status").textContent = /ft_exercise_videos/.test(videoError.message || "") ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t save the video"; return; }
-      setStatus();
-    });
-    foot.append(save, mkBtn("Discard", "btn quiet", () => buildExerciseDetail(box, name, key)));
-    const subField = field("Subtitle", subInp); subField.appendChild(subHint);
-    box.append(field("Name", nameInp), subField, field("Video", url), vidRow, delRow, foot);
-    nameInp.focus({ preventScroll: true });
+  for (const id of ["exName", "exSub"]) $(id).addEventListener("input", paintExHint);
+  for (const id of ["exName", "exSub", "exVideo"]) $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $(id).blur(); } });
+  async function saveExercise() {                                             // Done: everything on the page that changed is written, then back to the list
+    if (!exCurrent) return; const { name, key } = exCurrent;
+    const nn = tidyName(properName($("exName").value)), link = $("exVideo").value.trim(), wantSub = $("exSub").value.trim();   // an old spelling means the exercise it names
+    if (!nn || !squash(nn)) { $("status").textContent = "Give it a name"; return; }
+    if (link && !youtubeId(link)) { $("status").textContent = "That doesn\u2019t look like a YouTube link"; return; }
+    if (nn !== name && squash(nn) !== key && knownName(nn)) { $("status").textContent = "There is already an exercise called \u201c" + nn + "\u201d"; return; }
+    if (wantSub && !splitName(nn, wantSub).sub) { $("status").textContent = "The subtitle has to be the end of the name"; return; }
+    if (!exDirty()) { showExercises(); window.scrollTo(0, 0); return; }
+    $("navDone").disabled = true;
+    let cur = name;
+    if (nn !== name) { const ok = await renameExercise(key, name, nn); if (!ok) { $("navDone").disabled = false; $("status").textContent = missingTable() ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t rename \u00b7 try again online"; return; } cur = nn; }
+    const vkey = looseKey(cur), had = videoForName(cur), id = link ? youtubeId(link) : null;
+    let videoError = null;
+    if (!link && had) videoError = await saveVideo(vkey, "", "");                                   // an empty link stored = no video, the built-in one included
+    else if (id && id !== had) videoError = await saveVideo(vkey, link, id);
+    const nk2 = squash(cur); let subError = null;                                                   // the subtitle: his choice stored only when it differs from the automatic split
+    if (wantSub === autoSubtitle(cur)) { const gone = [nk2, key].filter((k, i, arr) => customSubs.has(k) && arr.indexOf(k) === i); if (gone.length) subError = await deleteSub(gone); }
+    else subError = await saveSub(nk2, wantSub, key);
+    $("navDone").disabled = false;
+    const problem = subError && /ft_exercise_subtitles/.test(subError.message || "") ? "Run the Supabase script first (it is on your clipboard)" : subError ? "Couldn\u2019t save the subtitle" : videoError && /ft_exercise_videos/.test(videoError.message || "") ? "Run the Supabase script first (it is on your clipboard)" : videoError ? "Couldn\u2019t save the video" : "";
+    if (problem) { exCurrent = { name: cur, key: nk2 }; $("status").textContent = problem; return; }   // the rename stood: the page now shows the new name, the complaint stays in the bar
+    showExercises(); window.scrollTo(0, 0); setStatus();
   }
-  $("exSearch").addEventListener("input", () => { exShown = 80; exOpenKey = null; renderExercises(); });
+  $("navDone").addEventListener("click", () => { if (settingsOpen === "exercise") saveExercise(); });
+  $("exDelete").addEventListener("click", async () => {
+    if (!exCurrent) return; const { name, key } = exCurrent;
+    if (!(await askFirst({ title: "Delete \u201c" + name + "\u201d from the database?", text: (videoForName(name) ? "Its video goes with it. " : "") + "Workouts that use it keep the name.", yes: "Delete" }))) return;
+    const ok = await deleteExercise(key, name); if (!ok) { $("status").textContent = missingTable() ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t delete \u00b7 try again online"; return; }
+    setStatus(); showExercises(); window.scrollTo(0, 0);
+  });
+  $("exSearch").addEventListener("input", () => { exShown = 80; renderExercises(); });
   $("exMore").addEventListener("click", () => { const hits = exerciseMatches($("exSearch").value); const ul = $("exList"); for (const [name, key] of hits.slice(exShown, exShown + 80)) ul.appendChild(exerciseRow(name, key)); exShown += 80; $("exMore").hidden = hits.length <= exShown; });
   $("exSearch").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } });
   async function removeCustom(k) {
@@ -777,7 +756,8 @@ import { reportRange, buildReport } from "./report.js";
     if (notifOpen && !(next.name === "client" && next.id === notifOpen)) closeNotif();   // leaving the client: what was shown counts as seen
     reordering = false; S.view = next; lsSet("fiala.trainings.view", S.view); render(); window.scrollTo(0, 0);
     if (next.name === "training") holdWake(true); else dropWake(); }
-  $("back").addEventListener("click", () => {
+  $("back").addEventListener("click", async () => {
+    if (settingsOpen === "exercise") { if (exDirty() && !(await askFirst({ title: "Discard the changes?", text: "The exercise stays as it was.", yes: "Discard" }))) return; showExercises(); window.scrollTo(0, 0); return; }
     if (settingsOpen) {
       if (fromSettings && settingsOpen !== "settings") { showSettings(); window.scrollTo(0, 0); return; }
       settingsOpen = false; fromSettings = false; $("exList").querySelectorAll(".player iframe").forEach((f) => f.remove()); hideAllViews(); render(); window.scrollTo(0, 0); return;
@@ -1188,9 +1168,10 @@ import { reportRange, buildReport } from "./report.js";
     if (pendingPage && S.signedIn && !(S.clientMode && !S.myClientId)) {   // a refresh on a settings page lands back on it
       const p = pendingPage; pendingPage = null;
       const open = { settings: showSettings, number: showNumber, packages: showPackages, exercises: showExercises, password: showPassword }[p.open];
+      if (p.open === "exercise" && p.name) { fromSettings = !!p.from; showExercise(p.name, p.key || squash(p.name)); return; }
       if (open) { fromSettings = !!p.from; open(); return; }
     }
-    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : "vPassword").hidden = false; if (settingsOpen === "packages") renderPackages(); $("back").hidden = false; $("brand").hidden = true; } return; }
+    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : "vPassword").hidden = false; if (settingsOpen === "packages") renderPackages(); $("back").hidden = false; $("brand").hidden = true; } return; }
     if (S.sb && !S.signedIn) { showLogin($("loginMsg").textContent); return; }
     if (S.clientMode && !S.myClientId) { showWaiting(); return; }
     if (celebrating) { hideAllViews(); $("vCelebrate").hidden = false; $("back").hidden = true; $("brand").hidden = false; return; }   // "Nice work" stays up until it hands over to the client page, whatever refreshes meanwhile
@@ -1948,7 +1929,6 @@ import { reportRange, buildReport } from "./report.js";
       } else peekBlocks.delete(selKey);
       block.appendChild(card); rowsEl.appendChild(block);
     });
-    $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false;
     const back = Math.min(keepScroll, Math.max(0, sc.scrollHeight - sc.clientHeight)); if (Math.abs(sc.scrollTop - back) > 1) sc.scrollTop = back;   // a box measured mid-rebuild made the browser clamp the scroll to a page with no cards yet: put it back where he was
   }
 
@@ -2635,9 +2615,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!people.length) { const li = document.createElement("li"); li.className = "empty"; li.style.padding = "12px 16px"; li.textContent = "Add a client first."; ul.appendChild(li); }
     ul.hidden = false;
   });
-  $("delTraining").addEventListener("click", () => { $("delTraining").hidden = true; $("delTrainingConfirm").hidden = false; });
-  $("delTrainingNo").addEventListener("click", () => { $("delTrainingConfirm").hidden = true; $("delTraining").hidden = false; });
-  $("delTrainingYes").addEventListener("click", () => deleteTraining(S.view.id));
+  $("delTraining").addEventListener("click", async () => { const t = trainings.get(S.view.id); if (!t) return; const tpl = isTemplateClient(t.clientId); if (await askFirst({ title: tpl ? "Delete this template?" : "Delete this workout?", text: tpl ? "Workouts already made from it stay." : "It goes for good, with everything logged on it.", yes: "Delete" })) deleteTraining(S.view.id); });
 
   window.addEventListener("pagehide", flushAll);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushAll(); });

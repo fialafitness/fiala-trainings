@@ -284,6 +284,21 @@
   .nn-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .nn-text { font-size: 15px; line-height: 1.35; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .list .chev { color: var(--text-tertiary); margin-left: 8px; }
+  .list.actions { margin-top: 24px; }                                          /* the page's other actions, grouped the way Settings groups them: one list, one row each, the destructive one alone in red */
+  .list.actions + .list.actions, .use + .list.actions { margin-top: 16px; }
+  .list.actions li[hidden] { display: none; }
+  .list.actions button.danger { color: var(--danger); justify-content: center; }
+  .list.actions #tNoteBox { padding: 0 20px 16px; }
+  .list.actions #tNoteBox textarea { width: 100%; box-sizing: border-box; }
+  .list.form li { padding: 0; }                                                /* a form: a label and its field in each cell */
+  .list.form .cell { display: flex; flex-direction: column; gap: 3px; padding: 11px 20px 12px; cursor: text; }
+  .list.form .cap { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .list.form input { width: 100%; background: none; border: 0; border-radius: 0; padding: 0; min-height: 30px; font-size: 17px; letter-spacing: -0.01em; color: var(--text-primary); }
+  .list.form input:focus { outline: none; box-shadow: none; }
+  .group-foot { margin: 8px 20px 0; font-size: 13px; line-height: 1.35; color: var(--text-tertiary); }
+  .nav-action { appearance: none; border: 0; background: none; cursor: pointer; color: var(--brand); font-size: 17px; font-weight: 600; letter-spacing: -0.01em; padding: 8px 2px; -webkit-tap-highlight-color: transparent; }   /* Done, in the bar, the way a form page ends on iPhone */
+  .nav-action[hidden] { display: none; }
+  #exPlayer { margin: 0 0 16px; }
   .list li.more > div { min-height: 56px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .list li.more button { width: auto; min-height: 44px; padding: 0; color: var(--brand); gap: 10px; }   /* "Show more" / "Show less": tertiary actions inside the group */
   .list li.more button:only-child { margin-right: auto; }
@@ -937,7 +952,7 @@
   .pick-note b { font-weight: 500; color: var(--text-primary); }
   #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .contact-row, #vClient.tpl #cEmailWrap, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
   #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
-  #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
+  #vTraining.tpl #finishWrap, #vTraining.tpl #workoutActions, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
   .tpl-pill { justify-self: stretch; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 36px; border-radius: 50px;
     font-size: 14px; font-weight: 500; letter-spacing: 0; color: var(--text-primary); background: var(--field); transition: opacity 300ms ease; }   /* a link to the template: the same quiet bar as In person above it; the chevron says it opens */
@@ -1035,7 +1050,7 @@
   <div class="bar">
     <button class="back" id="back" hidden><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg><span id="backLabel"></span></button>
     <div class="brand" id="brand"><img class="logo-light" src="brand/lockup-black.svg" alt="Fiala Fitness"><img class="logo-dark" src="brand/lockup-white.svg" alt="Fiala Fitness"></div>
-    <div id="status"></div>
+    <div id="status"></div><button class="nav-action" id="navDone" type="button" hidden>Done</button>
   </div>
 </header>
 
@@ -1073,6 +1088,16 @@
     </div>
   </section>
 
+  <section id="vExercise" hidden>
+    <div class="player" id="exPlayer" hidden></div>
+    <ul class="list form" id="exForm">
+      <li><label class="cell"><span class="cap">Name</span><input id="exName" autocapitalize="sentences" autocomplete="off" placeholder="Name"></label></li>
+      <li><label class="cell"><span class="cap">Subtitle</span><input id="exSub" placeholder="None" autocapitalize="none" autocomplete="off"></label></li>
+      <li><label class="cell"><span class="cap">Video</span><input id="exVideo" type="url" placeholder="Paste a YouTube link" autocomplete="off" autocapitalize="none" inputmode="url"></label></li>
+    </ul>
+    <p class="group-foot" id="exHint"></p>
+    <ul class="list actions"><li><button type="button" class="danger" id="exDelete">Delete exercise</button></li></ul>
+  </section>
   <section id="vExercises" hidden>
     <h1>Exercises</h1>
     <input id="exSearch" type="search" placeholder="Search exercises" autocomplete="off" autocapitalize="none" autocorrect="off">
@@ -1260,26 +1285,24 @@
     <div class="finish" id="finishWrap" hidden>
       <button class="btn wide" id="finishBtn">Finish workout</button>
       <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn tint" id="unfinishBtn" type="button">Undo</button></div>
-      <div class="finished" id="skipLine"><button class="btn tint wide" id="skipBtn" type="button">Skip workout</button></div>
       <div class="finished" id="skippedLine" hidden><span class="muted" id="skippedText" style="font-size:17px"></span><button class="btn tint" id="unskipBtn" type="button">Undo</button></div>
     </div>
-    <div class="tnote" id="tNoteWrap" hidden>
-      <button class="btn tint" id="tNoteOpen" type="button">Add a note</button>
-      <div id="tNoteBox" hidden>
-        <textarea id="tNote" placeholder="A note about this session, for you only"></textarea>
-        <div class="note-actions"><button class="btn sm" id="tNoteSave" type="button">Save note</button><button class="btn quiet" id="tNoteDiscard" type="button">Discard</button></div>
-      </div>
-    </div>
+    <ul class="list actions" id="workoutActions">
+      <li id="skipLine"><button type="button" id="skipBtn"><span>Skip workout</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
+      <li id="tNoteWrap" hidden><button type="button" id="tNoteOpen"><span>Add a note</span><span class="sub"><span class="chev">&rsaquo;</span></span></button>
+        <div id="tNoteBox" hidden>
+          <textarea id="tNote" placeholder="A note about this session, for you only"></textarea>
+          <div class="note-actions"><button class="btn sm" id="tNoteSave" type="button">Save note</button><button class="btn quiet" id="tNoteDiscard" type="button">Discard</button></div>
+        </div>
+      </li>
+      <li class="trainer-only" id="copyRow"><button type="button" id="copyTraining"><span>Copy workout</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
+      <li class="trainer-only" id="templateRow"><button type="button" id="saveTemplate"><span>Save as template</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
+    </ul>
     <div class="use trainer-only" id="useWrap" hidden>
       <button class="btn" id="useBtn" type="button" style="width:100%">Use for a client</button>
       <ul class="list" id="usePick" hidden style="margin-top:12px"></ul>
     </div>
-    <div class="foot trainer-only">
-      <button class="btn tint" id="copyTraining">Copy workout</button>
-      <button class="btn tint" id="saveTemplate">Save as template</button>
-      <button class="btn tint danger" id="delTraining">Delete workout</button>
-      <span class="confirm" id="delTrainingConfirm" hidden><button class="btn tint danger" id="delTrainingYes">Delete</button> <button class="btn tint" id="delTrainingNo">Keep</button></span>
-    </div>
+    <ul class="list actions trainer-only" id="deleteList"><li><button type="button" class="danger" id="delTraining">Delete workout</button></li></ul>
   </section>
 </main>
 
@@ -1319,7 +1342,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=83";
+  import { boot } from "./app/main.js?v=84";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
