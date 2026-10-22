@@ -285,7 +285,6 @@
   .nn-text { font-size: 15px; line-height: 1.35; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .list .chev { color: var(--text-tertiary); margin-left: 8px; }
   .btn.soft, .btn.tint.wide.soft { font-weight: 400; }        /* the quiet pills under Finish workout: regular weight, the way an alert stacks its buttons */
-  .tnote { align-items: stretch; margin-top: 12px; }
   .foot.stack { display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin-top: 32px; padding-top: 24px; max-width: none; }   /* not the login form's narrow .stack: this one spans the page */
   .foot.stack .pair { display: flex; gap: 12px; }
   .foot.stack .pair .btn { flex: 1 1 0; width: auto; min-width: 0; }
@@ -1002,11 +1001,6 @@
   @media (prefers-reduced-motion: reduce) { .cele-check { animation: none; } .cal-view, .cal-track { transition: none !important; } }
   .finish .finished { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin-top: 12px; font-size: 17px; }   /* Skip / Undo under Finish workout: air between a capsule and the button. Scoped: a finished day in the week strip carries the same class */
   .finished span { color: var(--done); font-weight: 500; }
-  .tnote { margin-top: 16px; display: flex; flex-direction: column; align-items: center; }   /* the session note sits centred under the finish area */   /* the coach's note on this session, starting at the left like every action */
-  .tnote[hidden] { display: none; }
-  #tNoteBox { width: 100%; margin-top: 4px; }
-  #tNoteBox[hidden] { display: none; }
-  #tNoteBox textarea { width: 100%; box-sizing: border-box; }
   .notes .entry .ref { appearance: none; border: 0; background: none; width: auto; display: inline-flex; align-items: center; gap: 4px; padding: 0; margin-top: 2px; min-height: 24px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); cursor: pointer; }   /* "Back · Wed, Oct 7 ›": the session the note came with */
   .foot { margin-top: 40px; border-top: 1px solid var(--card-border); padding-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .confirm { color: var(--text-secondary); font-size: 17px; }
@@ -1300,13 +1294,6 @@
       <div class="finished" id="skipLine"><button class="btn tint wide soft" id="skipBtn" type="button">Skip workout</button></div>
       <div class="finished" id="skippedLine" hidden><span class="muted" id="skippedText" style="font-size:17px"></span><button class="btn tint" id="unskipBtn" type="button">Undo</button></div>
     </div>
-    <div class="tnote" id="tNoteWrap" hidden>
-      <button class="btn tint wide soft" id="tNoteOpen" type="button">Add a note</button>
-      <div id="tNoteBox" hidden>
-        <textarea id="tNote" placeholder="A note about this session, for you only"></textarea>
-        <div class="note-actions"><button class="btn sm" id="tNoteSave" type="button">Save note</button><button class="btn quiet" id="tNoteDiscard" type="button">Discard</button></div>
-      </div>
-    </div>
     <div class="use trainer-only" id="useWrap" hidden>
       <button class="btn" id="useBtn" type="button" style="width:100%">Use for a client</button>
       <ul class="list" id="usePick" hidden style="margin-top:12px"></ul>
@@ -1372,7 +1359,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=111";
+  import { boot } from "./app/main.js?v=112";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
