@@ -77,7 +77,7 @@ export const topSet = (row, timed, upTo) => { let best = null; const ws = (row &
 export const sameSet = (a, b) => !!a && !!b && a.w === b.w && a.rp === b.rp;
 // Correcting a logged number: the sets after it that still show the old number were copied from it ("untouched box = same as the set
 // before"), so they follow the correction. A later set with a different number was typed on purpose and stays.
-export const correctFrom = (arr, i, value) => { const out = [...(arr || [])]; while (out.length <= i) out.push(""); const old = String(out[i] == null ? "" : out[i]).trim(); out[i] = value; if (old) for (let j = i + 1; j < out.length; j++) if (String(out[j] == null ? "" : out[j]).trim() === old) out[j] = value; return out; };
+export const correctFrom = (arr, i, value, was) => { const out = [...(arr || [])]; while (out.length <= i) out.push(""); const old = String((was == null ? out[i] : was) == null ? "" : (was == null ? out[i] : was)).trim(); out[i] = value; /* was: what the box held when editing began, so backspacing through "" does not break the chain */ if (old) for (let j = i + 1; j < out.length; j++) if (String(out[j] == null ? "" : out[j]).trim() === old) out[j] = value; return out; };
 // Packages. A client's plan: { id, name, kind: "sessions" | "monthly", size, startedOn, adjust, until }.
 // A sessions package counts finished workouts marked "in person" since it started, plus the trainer's correction;
 // package 2 starts by itself once package 1 is full. A monthly plan is just a day it is active until.
@@ -114,7 +114,7 @@ export function validateBackup(d, knownClient) {
   const ids = new Set(cs.map((c) => c.id));
   for (const t of ts) {
     if (!isObj(t) || typeof t.id !== "string" || !t.id || typeof t.clientId !== "string" || !Array.isArray(t.rows)) throw new Error("bad training");
-    if (t.date != null && !/^\d{4}-\d{2}-\d{2}$/.test(String(t.date))) throw new Error("bad date");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(t.date || ""))) throw new Error("bad date");   // every workout has a day (the app's own backups always carry one)
     if (!ids.has(t.clientId) && !knownClient(t.clientId)) throw new Error("orphan training");
     for (const r of t.rows) if (!isObj(r) || typeof r.id !== "string") throw new Error("bad row");
   }

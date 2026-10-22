@@ -1,6 +1,6 @@
 // The monthly client report: overview, progress, sessions, notes, laid out on US Letter.
 import { today, localIso, fmtDay, clamp } from "./util.js";
-import { effDate, measurePlan } from "./model.js";
+import { effDate, measurePlan, topSet as modelTop, setCounts, setsOf } from "./model.js";
 import { noteEntries } from "./notes.js";
 import { pdfDoc } from "./pdf.js";
 
@@ -36,7 +36,7 @@ export function buildReport(kind, fonts, c, allTrainings) {                     
   const num = (v) => { const str = String(v == null ? "" : v).trim(); return /^\d+(?:[.,]\d+)?$/.test(str) ? parseFloat(str.replace(",", ".")) : null; };
   const better = (a, b, timed) => !b || (timed ? (a.rp || 0) > (b.rp || 0) || ((a.rp || 0) === (b.rp || 0) && (a.w || 0) > (b.w || 0))   // a hold: longer wins, then heavier
     : (a.w != null && (b.w == null || a.w > b.w || (a.w === b.w && (a.rp || 0) > (b.rp || 0)))) || (a.w == null && b.w == null && (a.rp || 0) > (b.rp || 0)));
-  const topSet = (row) => { let best = null; const timed = !!measurePlan(row.reps), done = clamp(parseInt(row.setsDone, 10) || 0, 0, 20); for (let i = 0; i < done; i++) { const st = { w: num((row.weights || [])[i]), rp: num((row.repsDone || [])[i]) }; if (st.w == null && st.rp == null) continue; if (better(st, best, timed)) best = st; } return best; };
+  const topSet = (row) => modelTop(row, !!measurePlan(row.reps));   // the same rule as the card and the overview: a completed set, or one with its reps logged
   const fmtSet = (st, tm) => tm ? (st.w != null ? st.w + " " + unit + " × " : "") + (st.rp != null ? st.rp + " " + tm.unit : "–")   // "30 sec", "50 lb × 30 sec"
     : (st.w != null ? st.w + " " + unit + (st.rp != null ? " × " + st.rp : "") : (st.rp != null ? st.rp + (st.rp === 1 ? " rep" : " reps") : "–"));
   const same = (a, b) => a.w === b.w && a.rp === b.rp;
@@ -64,9 +64,9 @@ export function buildReport(kind, fonts, c, allTrainings) {                     
     const st = status(x); doc.keep(42);                                      // a session's line stays with its first logged sets
     doc.row([{ x: M, text: fmtDay(effDate(x)), bold: true }, { x: M + 92, text: x.title || "Workout", bold: true, maxW: 290 }, { right: R, text: st, color: st === "Finished" ? fern : st === "Missed" || st === "Not done" ? warn : grey }], { size: 10.5, gap: 3 });
     if (x.completedAt) for (const row of x.rows || []) {
-      const done = clamp(parseInt(row.setsDone, 10) || 0, 0, 20), sets = [], tm = measurePlan(row.reps);
-      for (let i = 0; i < done; i++) { const w = String((row.weights || [])[i] || "").trim(), rp = String((row.repsDone || [])[i] || "").trim(); const wt = w ? (/^\d+(?:[.,]\d+)?$/.test(w) ? w + " " + unit : w) : ""; sets.push(tm ? (wt ? wt + " × " : "") + (rp ? rp + " " + tm.unit : "–") : (wt ? wt + (rp ? " × " + rp : "") : (rp ? rp + " reps" : "–"))); }
-      const lines = doc.wrap((done ? sets.join(", ") : "not started") + (row.earlyReason ? "  ·  finished early: " + row.earlyReason : "") + (row.clientNote ? "  ·  note from " + (row.clientNoteBy === "coach" ? "coach" : (String(c.name || "").trim().split(/\s+/)[0] || "client")) + ": " + row.clientNote : ""), 9.5, false, R - (M + 252));
+      const sets = [], tm = measurePlan(row.reps);
+      for (let i = 0; i < setsOf(row); i++) { if (!setCounts(row, i)) continue; const w = String((row.weights || [])[i] || "").trim(), rp = String((row.repsDone || [])[i] || "").trim(); const wt = w ? (/^\d+(?:[.,]\d+)?$/.test(w) ? w + " " + unit : w) : ""; sets.push(tm ? (wt ? wt + " × " : "") + (rp ? rp + " " + tm.unit : "–") : (wt ? wt + (rp ? " × " + rp : "") : (rp ? rp + " reps" : "–"))); }
+      const lines = doc.wrap((sets.length ? sets.join(", ") : "not started") + (row.earlyReason ? "  ·  finished early: " + row.earlyReason : "") + (row.clientNote ? "  ·  note from " + (row.clientNoteBy === "coach" ? "coach" : (String(c.name || "").trim().split(/\s+/)[0] || "client")) + ": " + row.clientNote : ""), 9.5, false, R - (M + 252));
       doc.row([{ x: M + 92, text: row.name || "Exercise", color: soft, maxW: 150 }, { x: M + 252, text: lines[0], color: soft }], { size: 9.5, gap: 2 });
       for (const ln of lines.slice(1)) doc.text(ln, { size: 9.5, indent: 198, gap: 2, color: soft });
     }
