@@ -903,10 +903,6 @@
   .note-actions { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
   .note-actions[hidden] { display: none; }
   .list.notes { padding: 2px 0; }
-  .wnote { margin-top: 6px; }                                        /* the coach's notes on this very workout: "Read note" under the date or the template pill */
-  .wnote[hidden] { display: none; }
-  #wNoteList { margin-top: 6px; }
-  #wNoteList[hidden] { display: none; }
   .notes .entry { padding: 12px 20px; }
   .notes .entry + .entry { border-top: 1px solid var(--card-border); }
   .notes .entry .when { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; color: var(--text-tertiary); }
@@ -1283,7 +1279,6 @@
       <div class="date-row"><button class="datefield" id="tDate" type="button"></button><div class="seg view-seg" id="viewSeg" role="radiogroup" aria-label="See it as" hidden><button type="button" role="radio" data-view="coach" class="on">Coach</button><button type="button" role="radio" data-view="client">Client</button></div><a class="msg-pill small client-only" id="trainerBtn2" href="#" hidden><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
       <div class="session-row" id="sessionRow" hidden><button class="session-pill" id="sessionPill" type="button" hidden></button></div>
       <button class="tpl-pill trainer-only" id="fromTpl" type="button" hidden><span id="fromTplText"></span><span class="chev">&rsaquo;</span></button>
-      <div class="wnote" id="wNote" hidden><button class="cnote-btn" id="wNoteBtn" type="button" aria-expanded="false"><span id="wNoteLab">Read note</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="list notes" id="wNoteList" hidden></div></div>
     </div>
     <input type="checkbox" switch id="hapticSwitch" class="vh" tabindex="-1" aria-hidden="true">
     <div class="rows" id="rows"></div>
@@ -1359,7 +1354,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=114";
+  import { boot } from "./app/main.js?v=115";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
