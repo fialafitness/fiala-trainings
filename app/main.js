@@ -141,7 +141,7 @@ import { reportRange, buildReport } from "./report.js";
     S.offlineEntry = "remembered"; settingsOpen = false; S.signedIn = true; S.sessionEmail = remembered.email || ""; S.clientMode = remembered.role !== "trainer";
     document.body.classList.toggle("client", S.clientMode); S.backend = S.clientMode ? clientBackend : cloudBackend; hideAllViews();
     if (S.clientMode) { $("clientFoot").hidden = false; if (!offlineFromMirror()) showLogin("You\u2019re offline. Connect once to sign in."); return; }
-    $("dataNote").textContent = "Synced to the cloud"; $("myExercises").hidden = false; $("packagesBtn").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false;
+    $("dataNote").textContent = "Synced to the cloud"; $("myExercises").hidden = false; $("packagesBtn").hidden = false; $("settingsBtn").hidden = false; $("catalogBtn").hidden = false; $("dataBtn").hidden = false; $("localFoot").hidden = false;
     S.offline = true; render(); setStatus();
   }
   async function resumeOnline() {
@@ -168,12 +168,12 @@ import { reportRange, buildReport } from "./report.js";
   function hideAllViews() {
     rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
     $("tabbar").hidden = true; document.body.classList.remove("tabs");
-    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
+    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
     $("navDone").hidden = true;
   }
   function showLogin(msg) {
     S.signedIn = false; S.clientMode = false; S.myClientId = null; reordering = false; document.body.classList.remove("client");
-    $("clientFoot").hidden = true; $("localFoot").hidden = true; $("myExercises").hidden = true; $("packagesBtn").hidden = true; $("settingsBtn").hidden = true; settingsOpen = false; fromSettings = false;
+    $("clientFoot").hidden = true; $("localFoot").hidden = true; $("myExercises").hidden = true; $("packagesBtn").hidden = true; $("settingsBtn").hidden = true; $("catalogBtn").hidden = true; $("dataBtn").hidden = true; settingsOpen = false; fromSettings = false;
     hideAllViews(); $("vLogin").hidden = false;
     $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("loginMsg").textContent = msg || "";
@@ -183,9 +183,9 @@ import { reportRange, buildReport } from "./report.js";
     $("suMsg").textContent = ""; $("suEmail").value = $("loginEmail").value.trim(); setTimeout(() => $("suName").focus(), 50);
   }
   let settingsOpen = false;              // false | "settings" | "password" | "exercises" | "packages" | "number"
-  let fromSettings = false;              // number/password opened from the Settings list: Back returns there
+  let fromSettings = false;              // false | "settings" | "catalog": the list page a sub-page (number, password, exercises, packages) was opened from; Back returns there
   let pendingPage = null;                // the settings page that was open when the page was last refreshed: it comes back after sign-in
-  const rememberPage = () => lsSet("fiala.trainings.page", settingsOpen ? { open: settingsOpen, from: !!fromSettings, ...(settingsOpen === "exercise" && exCurrent ? { name: exCurrent.name, key: exCurrent.key } : {}) } : null);
+  const rememberPage = () => lsSet("fiala.trainings.page", settingsOpen ? { open: settingsOpen, from: fromSettings || false, ...(settingsOpen === "exercise" && exCurrent ? { name: exCurrent.name, key: exCurrent.key } : {}) } : null);
   // ---- appearance: auto (follow the phone) | light | dark. Saved on this device only.
   const THEME_KEY = "fiala.theme";
   const themeColours = { light: "#f5f5f7", dark: "#000000" };
@@ -206,8 +206,16 @@ import { reportRange, buildReport } from "./report.js";
     settingsOpen = "settings"; fromSettings = false; hideAllViews(); $("vSettings").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
     const p = trainerPhone(); $("setNumberVal").textContent = p || "Not set"; $("setEmail").textContent = S.sessionEmail || "";
   }
+  function showCatalog() {                                          // what he coaches with and what he sells: the exercises and the packages
+    settingsOpen = "catalog"; fromSettings = false; hideAllViews(); $("vCatalog").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
+  }
+  function showData() {                                             // the backup and the restore
+    settingsOpen = "data"; fromSettings = false; hideAllViews(); $("vData").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
+  }
+  const parentLabel = () => (fromSettings === "catalog" ? "Catalog" : fromSettings ? "Settings" : "Back");
+  const showParent = () => (fromSettings === "catalog" ? showCatalog : showSettings)();
   function showNumber() {
-    settingsOpen = "number"; hideAllViews(); $("vNumber").hidden = false; $("back").hidden = false; $("backLabel").textContent = fromSettings ? "Settings" : "Back"; $("brand").hidden = true; $("status").textContent = "";
+    settingsOpen = "number"; hideAllViews(); $("vNumber").hidden = false; $("back").hidden = false; $("backLabel").textContent = parentLabel(); $("brand").hidden = true; $("status").textContent = "";
     $("myPhone").value = trainerPhone(); $("myPhoneMsg").textContent = "";
   }
   // the trainer's number is copied onto every client row (that is what a client can read)
@@ -222,7 +230,7 @@ import { reportRange, buildReport } from "./report.js";
   let packKind = "sessions", packInPerson = false, packEdit = null;   // the form: a new package, or (packEdit = id) one being edited
   const packageOf = (c) => (c && c.plan && c.plan.id ? packagesList().find((pk) => pk.id === c.plan.id) : null) || null;
   function showPackages() {
-    settingsOpen = "packages"; hideAllViews(); $("vPackages").hidden = false; $("back").hidden = false; $("backLabel").textContent = fromSettings ? "Settings" : "Back"; $("brand").hidden = true; $("status").textContent = "";
+    settingsOpen = "packages"; hideAllViews(); $("vPackages").hidden = false; $("back").hidden = false; $("backLabel").textContent = parentLabel(); $("brand").hidden = true; $("status").textContent = "";
     renderPackages();
   }
   function renderPackages() {
@@ -247,7 +255,7 @@ import { reportRange, buildReport } from "./report.js";
     for (const b of $("packInPerson").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.on === "1") === packInPerson);
   }
   const packFormReset = () => { packEdit = null; packKind = "sessions"; packInPerson = false; $("packName").value = ""; $("packSize").value = ""; };
-  $("packagesBtn").addEventListener("click", () => { fromSettings = true; showPackages(); window.scrollTo(0, 0); });   // from the Settings list: Back returns there
+  $("packagesBtn").addEventListener("click", () => { fromSettings = "catalog"; showPackages(); window.scrollTo(0, 0); });   // from the Settings list: Back returns there
   $("packKind").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; packKind = b.dataset.kind; renderPackages(); });
   $("packInPerson").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; packInPerson = b.dataset.on === "1"; renderPackages(); });
   $("packCancel").addEventListener("click", () => { packFormReset(); renderPackages(); });
@@ -336,7 +344,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   $("sessionPill").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t || S.clientMode || isTemplateClient(t.clientId)) return; t.inPerson = !t.inPerson; if (!t.inPerson) delete t.inPerson; touchState(t.id, "inPerson"); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); });
   function showExercises(keep) {
-    settingsOpen = "exercises"; hideAllViews(); $("vExercises").hidden = false; $("back").hidden = false; $("backLabel").textContent = fromSettings ? "Settings" : "Back"; $("brand").hidden = true; $("status").textContent = "";
+    settingsOpen = "exercises"; hideAllViews(); $("vExercises").hidden = false; $("back").hidden = false; $("backLabel").textContent = parentLabel(); $("brand").hidden = true; $("status").textContent = "";
     if (!keep) exShown = 80; renderExercises(); $("exPlayer").replaceChildren();   // a video playing on the exercise page stops when the list comes back
     if (keep && exCurrent) { const li = $("exList").querySelector('li[data-key="' + CSS.escape(exCurrent.key) + '"]'); if (li) li.scrollIntoView({ block: "center" }); }   // back from an exercise: the list as it was, the exercise in view
   }
@@ -483,7 +491,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   let pwTimer = 0;
   function showPassword() {
-    clearTimeout(pwTimer); settingsOpen = "password"; hideAllViews(); $("vPassword").hidden = false; $("back").hidden = false; $("backLabel").textContent = fromSettings ? "Settings" : "Back"; $("brand").hidden = true;
+    clearTimeout(pwTimer); settingsOpen = "password"; hideAllViews(); $("vPassword").hidden = false; $("back").hidden = false; $("backLabel").textContent = parentLabel(); $("brand").hidden = true;
     $("pwMsg").textContent = ""; $("pwNew").value = ""; $("pwNew2").value = ""; $("pwBtn").disabled = false; $("pwUser").value = S.sessionEmail; $("status").textContent = "";
   }
   function showRecovery() {
@@ -531,7 +539,7 @@ import { reportRange, buildReport } from "./report.js";
       return;
     }
     $("dataNote").textContent = "Synced to the cloud";
-    $("myExercises").hidden = false; $("packagesBtn").hidden = false; $("settingsBtn").hidden = false; $("localFoot").hidden = false; $("clientFoot").hidden = true;
+    $("myExercises").hidden = false; $("packagesBtn").hidden = false; $("settingsBtn").hidden = false; $("catalogBtn").hidden = false; $("dataBtn").hidden = false; $("localFoot").hidden = false; $("clientFoot").hidden = true;
     render(); setStatus();
     await syncDown();                                         // a success flushes the queue itself
     seedTemplates().catch(() => {});
@@ -599,12 +607,14 @@ import { reportRange, buildReport } from "./report.js";
     $("pwBtn").disabled = false;
     if (error) { msg.textContent = friendly(error); return; }
     msg.textContent = "Password changed."; $("pwNew").value = ""; $("pwNew2").value = "";
-    pwTimer = setTimeout(() => { if (settingsOpen === "password") { if (fromSettings) showSettings(); else { settingsOpen = false; hideAllViews(); render(); } } }, 1200);
+    pwTimer = setTimeout(() => { if (settingsOpen === "password") { if (fromSettings) showParent(); else { settingsOpen = false; hideAllViews(); render(); } } }, 1200);
   });
-  $("settingsBtn").addEventListener("click", () => { showSettings(); window.scrollTo(0, 0); });   // the pill sits at the bottom of a long list: the page opens at its top
-  $("changePw").addEventListener("click", () => { fromSettings = true; showPassword(); window.scrollTo(0, 0); });
-  $("myExercises").addEventListener("click", () => { fromSettings = true; showExercises(); window.scrollTo(0, 0); });
-  $("setNumber").addEventListener("click", () => { fromSettings = true; showNumber(); window.scrollTo(0, 0); });
+  $("settingsBtn").addEventListener("click", () => { showSettings(); window.scrollTo(0, 0); });   // the pills sit at the bottom of a long list: each page opens at its top
+  $("catalogBtn").addEventListener("click", () => { showCatalog(); window.scrollTo(0, 0); });
+  $("dataBtn").addEventListener("click", () => { showData(); window.scrollTo(0, 0); });
+  $("changePw").addEventListener("click", () => { fromSettings = "settings"; showPassword(); window.scrollTo(0, 0); });
+  $("myExercises").addEventListener("click", () => { fromSettings = "catalog"; showExercises(); window.scrollTo(0, 0); });
+  $("setNumber").addEventListener("click", () => { fromSettings = "settings"; showNumber(); window.scrollTo(0, 0); });
   $("myPhone").addEventListener("change", () => { setTrainerPhone($("myPhone").value); $("myPhoneMsg").textContent = phoneDigits($("myPhone").value) ? "Saved. Clients now see Message Michal." : "Saved. Without a number clients see no button."; });
   $("settingsBtn2").addEventListener("click", () => { showSettings(); window.scrollTo(0, 0); });
   $("forgotBtn").addEventListener("click", async () => {
@@ -761,7 +771,7 @@ import { reportRange, buildReport } from "./report.js";
   $("back").addEventListener("click", async () => {
     if (settingsOpen === "exercise") { if (exDirty() && !(await askFirst({ title: "Discard the changes?", text: "The exercise stays as it was.", yes: "Discard" }))) return; showExercises(true); return; }
     if (settingsOpen) {
-      if (fromSettings && settingsOpen !== "settings") { showSettings(); window.scrollTo(0, 0); return; }
+      if (fromSettings) { showParent(); window.scrollTo(0, 0); return; }
       settingsOpen = false; fromSettings = false; $("exPlayer").replaceChildren(); hideAllViews(); render(); window.scrollTo(0, 0); return;
     }
     if (S.view.name === "training") { const t = trainings.get(S.view.id); go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }); }
@@ -1169,11 +1179,12 @@ import { reportRange, buildReport } from "./report.js";
     if (S.recovering) { showRecovery(); return; }
     if (pendingPage && S.signedIn && !(S.clientMode && !S.myClientId) && (!S.sb || S.syncedOnce)) {   // a refresh on a settings page lands back on it — once the custom names, videos and subtitles are in
       const p = pendingPage; pendingPage = null;
-      const open = { settings: showSettings, number: showNumber, packages: showPackages, exercises: showExercises, password: showPassword }[p.open];
-      if (p.open === "exercise" && p.name) { fromSettings = !!p.from; showExercise(p.name, p.key || squash(p.name)); return; }
-      if (open) { fromSettings = !!p.from; open(); return; }
+      const open = { settings: showSettings, catalog: showCatalog, data: showData, number: showNumber, packages: showPackages, exercises: showExercises, password: showPassword }[p.open];
+      const from = p.from === true ? "settings" : (p.from || false);   // older devices wrote a yes/no
+      if (p.open === "exercise" && p.name) { fromSettings = from; showExercise(p.name, p.key || squash(p.name)); return; }
+      if (open) { fromSettings = from; open(); return; }
     }
-    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $("navDone").hidden = settingsOpen !== "exercise"; $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : "vPassword").hidden = false; if (settingsOpen === "packages") renderPackages(); $("back").hidden = false; $("brand").hidden = true; } return; }
+    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $("navDone").hidden = settingsOpen !== "exercise"; $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : settingsOpen === "catalog" ? "vCatalog" : settingsOpen === "data" ? "vData" : "vPassword").hidden = false; if (settingsOpen === "packages") renderPackages(); $("back").hidden = false; $("brand").hidden = true; } return; }
     if (S.sb && !S.signedIn) { showLogin($("loginMsg").textContent); return; }
     if (S.clientMode && !S.myClientId) { showWaiting(); return; }
     if (celebrating) { hideAllViews(); $("vCelebrate").hidden = false; $("back").hidden = true; $("brand").hidden = false; return; }   // "Nice work" stays up until it hands over to the client page, whatever refreshes meanwhile

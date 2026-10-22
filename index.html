@@ -1008,6 +1008,8 @@
   .foot-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin-left: -8px; }
   .foot-actions .btn { white-space: nowrap; }
   .foot-pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .foot-pills .pill { display: inline-flex; align-items: center; gap: 7px; }   /* a glyph and a word: the gear, the catalog grid, the data drum */
+  .foot-pills .pill svg { width: 16px; height: 16px; flex: none; }
   .foot-pills.reports { margin-top: 28px; }
   .rep-cap { font-size: 13px; color: var(--text-tertiary); margin-right: 2px; }   /* "Report PDF": this client's month, to mail yourself */
   select.pill { -webkit-appearance: none; appearance: none; padding-right: 30px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%236f6b99' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
@@ -1127,20 +1129,30 @@
   <section id="vSettings" hidden>
     <h1>Settings</h1>
     <ul class="list settings-list">
-      <li class="trainer-only"><button type="button" id="myExercises" hidden><span>Exercises</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
-      <li class="trainer-only"><button type="button" id="packagesBtn" hidden><span>Packages</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
       <li class="trainer-only"><button type="button" id="setNumber"><span>My number</span><span class="sub"><span class="val" id="setNumberVal"></span><span class="chev">&rsaquo;</span></span></button></li>
       <li><div class="srow"><span>Email</span><span class="sub"><span class="val" id="setEmail"></span></span></div></li>
       <li><div class="srow wrap"><span>Appearance</span><div class="seg" id="themeSeg" role="radiogroup" aria-label="Appearance"><button type="button" role="radio" data-theme="auto" class="on">Auto</button><button type="button" role="radio" data-theme="light">Light</button><button type="button" role="radio" data-theme="dark">Dark</button></div></div></li>
       <li><button type="button" id="changePw"><span>Change password</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
     </ul>
-    <h2 class="trainer-only">Your data</h2>
-    <ul class="list settings-list trainer-only">
+    <div class="foot"><button class="btn tint" id="signout" type="button">Sign out</button></div>
+    <p class="muted version" id="appVersion"></p>
+  </section>
+
+  <section id="vCatalog" hidden>
+    <h1>Catalog</h1>
+    <ul class="list settings-list">
+      <li><button type="button" id="myExercises" hidden><span>Exercises</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
+      <li><button type="button" id="packagesBtn" hidden><span>Packages</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
+    </ul>
+  </section>
+
+  <section id="vData" hidden>
+    <h1>Data</h1>
+    <ul class="list settings-list">
       <li><button type="button" id="backup"><span>Back up</span><span class="sub"><span class="val">Save a copy to this device</span></span></button></li>
       <li><button type="button" id="restore"><span>Restore</span><span class="sub"><span class="val">From a backup file</span></span></button></li>
     </ul>
-    <div class="foot"><button class="btn tint" id="signout" type="button">Sign out</button></div>
-    <p class="muted version" id="appVersion"></p>
+    <p class="muted" id="dataNote" style="margin:16px 0 0 2px">Saved on this device</p>
   </section>
 
   <section id="vNumber" hidden>
@@ -1203,8 +1215,7 @@
     <div class="listbar" id="inactiveBar" hidden><span class="muted">Inactive</span></div>
     <ul class="list inactive" id="inactiveList" hidden></ul>
     <div class="foot foot-col" id="localFoot" hidden>
-      <span class="muted" id="dataNote">Saved on this device</span>
-      <div class="foot-pills"><button class="pill" id="settingsBtn" type="button" hidden>Settings</button><input type="file" id="restoreFile" accept="application/json,.json" hidden></div>
+      <div class="foot-pills"><button class="pill" id="settingsBtn" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</button><button class="pill" id="catalogBtn" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>Catalog</button><button class="pill" id="dataBtn" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>Data</button><input type="file" id="restoreFile" accept="application/json,.json" hidden></div>
     </div>
   </section>
 
@@ -1354,7 +1365,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=116";
+  import { boot } from "./app/main.js?v=117";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
