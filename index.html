@@ -180,7 +180,7 @@
   }
   .bar { max-width: 680px; margin: 0 auto; padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .back {                                                   /* Apple's back capsule, in the app's own grey: a bold chevron and the place you came from; no shadow, no glass */
-    appearance: none; border: 1px solid var(--card-edge); padding: 0 16px 0 12px; border-radius: 50px;   /* the same hairline edge as every grey pill */
+    appearance: none; border: 0; padding: 0 16px 0 12px; border-radius: 50px;
     background: var(--glyph-fill);
     color: var(--text-primary); font: inherit; font-size: 17px; font-weight: 400; letter-spacing: -0.01em; cursor: pointer;   /* regular weight, like the other capsules */
     min-height: 40px; display: inline-flex; align-items: center; gap: 6px;
@@ -284,7 +284,6 @@
   .nn-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .nn-text { font-size: 15px; line-height: 1.35; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .list .chev { color: var(--text-tertiary); margin-left: 8px; }
-  .btn.tint, .card-foot .finish-early, .card-foot .add-note, .card-foot .resume, .card-foot .undo-set { border: 1px solid var(--card-edge); }   /* every grey pill carries the same hairline edge */
   .btn.soft, .btn.tint.wide.soft { font-weight: 400; }        /* the quiet pills under Finish workout: regular weight, the way an alert stacks its buttons */
   .tnote { align-items: stretch; margin-top: 12px; }
   .foot.stack { display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin-top: 32px; padding-top: 24px; max-width: none; }   /* not the login form's narrow .stack: this one spans the page */
@@ -1361,7 +1360,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=89";
+  import { boot } from "./app/main.js?v=90";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
