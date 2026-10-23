@@ -620,7 +620,8 @@
   body.client .block:not(.ahead):not(.done) .row .top .ex-icons { top: 4px; }   /* the discs sit on the centre line of the name's first line (10 px padding + half of 30 px = 25 px; the 42 px row centres at 21 + 4) */   /* the exercise is the biggest thing on the card */
   .row .top .name.has-sub { display: none; }                                         /* the client's name box steps aside for the view with the subtitle inside it */
   .row .top .name-view { white-space: pre-wrap; overflow-wrap: anywhere; }            /* the same type, the same wrapping as the box it stands in for */
-  .row .top .name-view .sub { color: var(--text-tertiary); }                          /* the subtitle in the grey of the superset letter: the only thing that changes */
+  .row .top .name-view .sub { color: var(--text-tertiary); font-weight: 500; }        /* the subtitle in the grey of the superset letter, one weight lighter than the name: 500 beside 600 on the folded cards */
+  body.client .block:not(.ahead):not(.done) .row .top .name-view .sub { font-weight: 600; }   /* 600 beside the open card's 700 */
   .exlist .subt, #exList .subt { margin-left: 6px; font-weight: 400; color: var(--text-tertiary); }
   .edit-field .hint { display: block; margin-top: 6px; font-size: 13px; line-height: 1.35; color: var(--text-tertiary); }
   body.client .block:not(.ahead):not(.done) .row .exwrap::before { content: attr(data-letter); position: absolute; left: 0; top: 10px; font-size: 26px; font-weight: 700; line-height: 30px; color: var(--text-tertiary); }
@@ -1368,7 +1369,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=123";
+  import { boot } from "./app/main.js?v=124";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
