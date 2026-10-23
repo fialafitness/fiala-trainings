@@ -1833,8 +1833,7 @@ import { reportRange, buildReport } from "./report.js";
           }
           if (g.rows.every((r) => r.done)) { openBlocks.delete(selKey); fullBlocks.delete(selKey); }
           setSel.delete(selKey); scheduleSave("trainings", t.id);
-          const finished = g.rows.every((r) => r.done), onward = () => { S.renderedTraining = null; render(); scrollToCard(g.key); };
-          setTimeout(() => { if (finished) acknowledge(g.key, onward); else onward(); }, 0);   // after the tap has flipped the switch (the iPhone tick): a finished exercise is checked and folded first, then the redraw and the glide
+          setTimeout(() => { S.renderedTraining = null; render(); scrollToCard(g.key); }, 0);   // after the tap has flipped the switch (the iPhone tick), then redraw and glide
         });
         const early = document.createElement("button"); early.type = "button"; early.className = "finish-early"; early.textContent = "Finish early";
         early.addEventListener("click", () => openFinishEarly(t, g, selKey));
@@ -2023,30 +2022,6 @@ import { reportRange, buildReport } from "./report.js";
       const el = row.closest(".block") || row, head = document.querySelector("header"), off = Math.max(0, head ? head.getBoundingClientRect().bottom : 0) + 12, sc = document.scrollingElement || document.documentElement;   // the header may be scrolled away: never a negative offset
       return Math.max(0, Math.min(sc.scrollTop + el.getBoundingClientRect().top - off, sc.scrollHeight - sc.clientHeight));
     });
-  }
-  function acknowledge(key, then) {                                 // the exercise (or superset) just finished: each badge fills green and a check draws over it, then the card folds to its summary while the glide sets off
-    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const block = document.querySelector('.block[data-key="' + CSS.escape(String(key)) + '"]');
-    if (reduce || !block) { then(); return; }
-    const labels = [...block.querySelectorAll(".row .top input.label")], slow = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ack-slow")) || 1;   // --ack-slow: slow motion for tuning the sequence
-    block.classList.add("acking");
-    labels.forEach((inp, i) => setTimeout(() => {
-      inp.classList.add("ack");
-      const top = inp.parentElement, mark = document.createElement("span"); mark.className = "ack-check";
-      mark.style.left = inp.offsetLeft + "px"; mark.style.top = inp.offsetTop + "px"; mark.style.width = inp.offsetWidth + "px"; mark.style.height = inp.offsetHeight + "px";
-      mark.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-      top.appendChild(mark);
-    }, i * 90 * slow));
-    const h0 = block.getBoundingClientRect().height;
-    setTimeout(() => {
-      then();                                                       // the redraw: the card is its summary now, and the glide is under way, following the card as it folds
-      const next = document.querySelector('.block[data-key="' + CSS.escape(String(key)) + '"]'); if (!next) return;
-      const h1 = next.getBoundingClientRect().height; if (!(h0 > h1 + 1)) return;
-      next.style.height = h0 + "px"; next.style.overflow = "hidden"; next.getBoundingClientRect();   // from the height it had, to the height it has: one eased fold
-      next.style.transition = "height " + Math.round(320 * slow) + "ms cubic-bezier(0.4, 0, 0.2, 1)"; next.style.height = h1 + "px";
-      const end = (e) => { if (e && e.target !== next) return; next.style.height = ""; next.style.overflow = ""; next.style.transition = ""; next.removeEventListener("transitionend", end); };
-      next.addEventListener("transitionend", end); setTimeout(end, 420 * slow);
-    }, (270 + (labels.length - 1) * 90) * slow);
   }
   function scrollToCard(key) {
     if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();   // the keyboard leaves first; the glide follows the page as it settles
