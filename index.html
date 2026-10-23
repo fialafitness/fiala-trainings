@@ -402,7 +402,11 @@
   .row { padding: 16px; }
   .group .row + .row { border-top: 1px solid var(--card-border); }
   .group .row .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
-  .row .top { display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: stretch; }
+  .row .top { display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: stretch; position: relative; }
+  .block.acking .row .top input.label.ack { background: var(--done); color: transparent; transition: background-color calc(200ms * var(--ack-slow, 1)) ease, color calc(120ms * var(--ack-slow, 1)) ease; }   /* finished: the badge fills green and its number steps aside for the check */
+  .ack-check { position: absolute; display: grid; place-items: center; color: var(--done-ink); pointer-events: none; }
+  .ack-check svg { width: 22px; height: 22px; stroke-dasharray: 24; stroke-dashoffset: 24; animation: ack-draw calc(200ms * var(--ack-slow, 1)) ease-out calc(70ms * var(--ack-slow, 1)) forwards; }
+  @keyframes ack-draw { to { stroke-dashoffset: 0; } }
   .block.done { --ss: var(--done); --ss-ink: var(--done-ink); }   /* finished: every badge, warm-up included, uses the done ink */
   .block.done .group { background: var(--done-tint); }
   .block.done:not(.open) .group { cursor: pointer; }
@@ -1368,7 +1372,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=119";
+  import { boot } from "./app/main.js?v=120";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
