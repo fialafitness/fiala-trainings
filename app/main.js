@@ -2257,9 +2257,13 @@ import { reportRange, buildReport } from "./report.js";
     if (ALIASES[r.name]) { r.name = ALIASES[r.name]; if (!S.clientMode) scheduleSave("trainings", t.id); }
     if (!S.clientMode && Array.isArray(r.alts) && r.alts.some((a) => ALIASES[a])) { r.alts = r.alts.map((a) => ALIASES[a] || a); scheduleSave("trainings", t.id); }
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
-    if (S.clientMode || previewClient) {                                                             // the client reads a long name as a title with its subtitle under it; the coach keeps the one editable line
+    if (S.clientMode || previewClient) {                                                             // the client reads the name as one run of text, its subtitle in the grey of the superset letter; the coach keeps the one editable line
       const parts = splitName(r.name, subtitleFor(r.name));
-      if (parts.sub) { q(".name").value = parts.title; const d = document.createElement("div"); d.className = "name-sub"; d.textContent = parts.sub; q(".name").insertAdjacentElement("afterend", d); }
+      if (parts.sub) {
+        const v = document.createElement("div"); v.className = "name name-view"; v.setAttribute("aria-hidden", "true");
+        v.append(parts.title + " "); const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = parts.sub; v.appendChild(sub);
+        q(".name").classList.add("has-sub"); q(".name").insertAdjacentElement("afterend", v);   // the box keeps the whole name for the reader; the eye gets the view
+      }
     }
     requestAnimationFrame(growName);
     q(".name").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
