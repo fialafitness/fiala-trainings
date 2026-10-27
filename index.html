@@ -975,7 +975,7 @@
   .paused-card b { font-weight: 500; font-size: 17px; letter-spacing: -0.01em; }
   .paused-card span { font-size: 15px; color: var(--text-secondary); line-height: 1.45; }
   .paused-card[hidden] { display: none; }
-  body.client.paused #weekBar, body.client.paused #calWrap, body.client.paused #week, body.client.paused #nextHead, body.client.paused #nextList, body.client.paused #histHead, body.client.paused #histList, body.client.paused #trainingEmpty { display: none; }
+  body.client.paused #weekBar, body.client.paused #calWrap, body.client.paused #week, body.client.paused #todayHead, body.client.paused #todayList, body.client.paused #nextHead, body.client.paused #nextList, body.client.paused #histHead, body.client.paused #histList, body.client.paused #trainingEmpty { display: none; }
   .list.inactive button > span:first-child { color: var(--text-secondary); }
   .list[hidden], .listbar[hidden] { display: none; }
   .seg.stages { display: flex; width: 100%; }
@@ -983,7 +983,7 @@
   .tpl-stage { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 14px 4px 8px; }
   .pick-note { margin: 12px 2px 0; font-size: 15px; color: var(--text-secondary); }
   .pick-note b { font-weight: 500; color: var(--text-primary); }
-  #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .contact-row, #vClient.tpl #cEmailWrap, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
+  #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .contact-row, #vClient.tpl #cEmailWrap, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #todayHead, #vClient.tpl #todayList, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
   #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
@@ -1302,6 +1302,8 @@
     <div data-tab="workouts" class="trainer-only start-pair"><button class="btn" id="newTraining">+ Workout</button><div id="fromWrap"><button class="btn tint" id="fromTemplate" type="button">Templates</button></div></div>
     <div data-tab="workouts" class="pick-note trainer-only" id="pickNote" hidden></div>
     <div data-tab="workouts" id="tplList" hidden></div>
+    <h2 data-tab="workouts" id="todayHead" hidden>Today</h2>
+    <ul data-tab="workouts" class="list" id="todayList" hidden></ul>
     <h2 data-tab="workouts" id="nextHead" hidden>Up next</h2>
     <ul data-tab="workouts" class="list" id="nextList" hidden></ul>
     <h2 data-tab="workouts" id="histHead" hidden>History</h2>
@@ -1402,7 +1404,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=142";
+  import { boot } from "./app/main.js?v=143";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
