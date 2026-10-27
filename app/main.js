@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, fromFile, pendingNoteRows, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, doneCount, timedPlan, measurePlan, convertWeight, stampUnit, toUnit, toTimeUnit, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, doneCount, timedPlan, measurePlan, convertWeight, stampUnit, toUnit, toTimeUnit, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -730,7 +730,12 @@ import { reportRange, buildReport } from "./report.js";
       if (effDate(other) > effDate(t)) continue;
       if (effDate(other) === effDate(t) && (other.createdAt || "") >= (t.createdAt || "")) continue;
       const r = other.rows.find((x) => canon(x.name) === name && ((x.weights || []).some((w, i) => setCounts(x, i) && String(w || "").trim() !== "") || (x.repsDone || []).some((v, i) => setCounts(x, i) && String(v || "").trim() !== "")));   // a session where a set of it really happened (a plank has no weight: its time counts)
-      if (r) { const cu = (clients.get(t.clientId) || {}).unit || "lb"; const only = (arr) => (arr || []).map((v, i) => (setCounts(r, i) ? v : "")); return { date: effDate(other) || other.date, weights: only(r.weights).map((v) => (r.unit && r.unit !== cu ? String(convertWeight(v, r.unit, cu)) : v)), reps: only(r.repsDone) }; }   // read in the client's unit today   // a weight typed into a set that never happened does not carry forward
+      if (r) {
+        const cu = (clients.get(t.clientId) || {}).unit || "lb"; const only = (arr) => (arr || []).map((v, i) => (setCounts(r, i) ? v : ""));
+        const was = measurePlan(r.reps), is = measurePlan(row.reps);                       // the plan's measure then and now: seconds suggested into a minutes box, or into a meters box, would be logged as they stand
+        const reps = (was ? was.unit : "") === (is ? is.unit : "") ? only(r.repsDone) : (!was || !is || was.unit === "m" || is.unit === "m") ? [] : only(r.repsDone).map((v) => { const n = parseFloat(String(v || "").replace(",", ".")); if (!Number.isFinite(n)) return ""; const c = was.unit === "min" ? n * 60 : n / 60; return Number.isInteger(c) ? String(c) : ""; });
+        return { date: effDate(other) || other.date, weights: only(r.weights).map((v) => (r.unit && r.unit !== cu ? String(convertWeight(v, r.unit, cu)) : v)), reps };
+      }   // read in the client's unit today   // a weight typed into a set that never happened does not carry forward
     }
     return null;
   }
@@ -1146,7 +1151,7 @@ import { reportRange, buildReport } from "./report.js";
     for (const t of all) { const m = templateMeta(t); if (!byProg.has(m.program)) byProg.set(m.program, []); byProg.get(m.program).push(t); }
     const wn = (n) => n + (n === 1 ? " workout" : " workouts");
     if (!prog) {                                             // level 1: programs
-      $("tplKicker").textContent = "Workout library"; $("cName").value = "Templates";
+      $("tplKicker").textContent = "Workout library"; $("cName").textContent = "Templates";
       const mine = (byProg.get(MY_TEMPLATES) || []).sort((x, y) => templateMeta(x).n - templateMeta(y).n);
       if (mine.length) { wrap.appendChild(h2("My templates")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...mine.map((t) => tplRow(t, !!pickFor))); wrap.appendChild(ul); }
       const progs = [...byProg.keys()].filter((p) => p !== MY_TEMPLATES).sort((x, y) => progRank(x) - progRank(y) || String(x).localeCompare(String(y)));
@@ -1156,7 +1161,7 @@ import { reportRange, buildReport } from "./report.js";
     }
     const items = byProg.get(prog) || [];
     if (!ph) {                                               // level 2: phases of a program
-      $("tplKicker").textContent = "Templates"; $("cName").value = prog;
+      $("tplKicker").textContent = "Templates"; $("cName").textContent = prog;
       const phases = new Map();
       for (const t of items) { const m = templateMeta(t); if (!phases.has(m.phase)) phases.set(m.phase, []); phases.get(m.phase).push(t); }
       wrap.appendChild(h2("Phases")); const ul = document.createElement("ul"); ul.className = "list";
@@ -1168,7 +1173,7 @@ import { reportRange, buildReport } from "./report.js";
     }
     const pitems = items.filter((t) => templateMeta(t).phase === ph);   // level 3: stage tabs + workouts
     const pn = (pitems.find((t) => templateMeta(t).phaseName) || { template: {} }).template.phaseName || "";
-    $("tplKicker").textContent = prog; $("cName").value = "Phase " + ph + (pn ? " · " + pn : "");
+    $("tplKicker").textContent = prog; $("cName").textContent = "Phase " + ph + (pn ? " · " + pn : "");
     const stages = [...new Set(pitems.map((t) => templateMeta(t).stage))].sort((x, y) => x - y);
     const cur = stages.includes(S.view.stage) ? S.view.stage : stages[0];
     const seg = document.createElement("div"); seg.className = "seg stages"; seg.setAttribute("role", "tablist");
@@ -1381,7 +1386,7 @@ import { reportRange, buildReport } from "./report.js";
       const k = canon(r.name); if (!k) continue;
       const e = map.get(k) || { name: String(r.name || "").trim(), count: 0, best: null, measure: measurePlan(r.reps), timed: !!measurePlan(r.reps) };
       let st = topSet(r, e.timed); if (!st) continue;
-      st = toUnit(st, r.unit, c.unit || "lb"); const mu = measurePlan(r.reps); if (e.measure && mu) st = toTimeUnit(st, mu.unit, e.measure.unit);   // every session read in the client's unit, holds in the unit of the latest plan
+      st = toUnit(st, r.unit, c.unit || "lb"); const mu = measurePlan(r.reps); if ((mu && mu.unit === "m") !== (e.measure && e.measure.unit === "m")) continue; if (e.measure && mu) st = toTimeUnit(st, mu.unit, e.measure.unit);   // a carry and a hold are not the same measure: the best of one is not the best of the other   // every session read in the client's unit, holds in the unit of the latest plan
       st.date = effDate(t); st.title = String(t.title || "").trim(); e.count++; if (betterSet(st, e.best, e.timed)) e.best = st; map.set(k, e);
     }
     return map;
@@ -1483,8 +1488,8 @@ import { reportRange, buildReport } from "./report.js";
     $("newTraining").textContent = isTpl ? "+ New template" : "+ New workout";
     if (!isTpl) { $("tplList").hidden = true; $("pickNote").hidden = true; $("newTraining").hidden = false; }   // a program page hid it; a client's page always has it
     $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !effPaused(c); $("pausedKicker").textContent = c.paused ? "Access paused" : "Plan ended";
-    if (isTpl) { $("cName").readOnly = true; $("overview").hidden = true; $("planCard").hidden = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }
-    $("cName").value = c.name; $("cName").readOnly = true; renderPlanCard(c); renderOverview(c); paintPlanDetails(c);
+    if (isTpl) { $("notifWrap").hidden = true; $("overview").hidden = true; $("planCard").hidden = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }   // the library has no notifications row: a client's count must not linger here
+    $("cName").textContent = c.name; renderPlanCard(c); renderOverview(c); paintPlanDetails(c);
     if (!S.clientMode) renderNotif(c); else $("notifWrap").hidden = true;
     if (document.activeElement !== $("cNameField")) $("cNameField").value = c.name || "";
     if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
@@ -1893,7 +1898,7 @@ import { reportRange, buildReport } from "./report.js";
         const moreRow = document.createElement("div"); moreRow.className = "foot-row center"; moreRow.append(undo, resume, openFull);
         sumRow = document.createElement("div"); sumRow.className = "foot-row sum-row"; sumRow.hidden = true;   // the opened finished card: note disc · Resume · (the chevron disc in the corner) on one line
         placeFootRows = (summary) => { if (summary) { sumRow.append(openFull, addNote); sumRow.hidden = false; } else { actsRow.append(addNote); moreRow.append(openFull); sumRow.hidden = true; } };
-        foot.append(shown, complete, moreRow, actsRow, sumRow, noteBox);     // undo / resume first, then Finish early + Add note (his order)
+        foot.append(shown, complete, moreRow, actsRow, noteBox, sumRow);     // undo / resume first, then Finish early + Add note (his order)
       }
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "done-btn";
       const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold-btn";
@@ -2134,7 +2139,7 @@ import { reportRange, buildReport } from "./report.js";
     q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; };
     const asClient = S.clientMode || previewClient;        // what to show; what to save still follows clientMode
-    const layoutIcons = () => { const n = (q(".vid-btn").hidden ? 0 : 1) + (asClient ? 0 : 1) + (q(".alt-btn").hidden ? 0 : 1); for (const el of q(".exwrap").querySelectorAll(".name")) el.style.paddingRight = (n ? 10 + n * 38 : 16) + "px"; growName(); };   // the name wraps before the icons (the client's view of it too)
+    const layoutIcons = () => { const n = (q(".vid-btn").hidden ? 0 : 1) + (asClient ? 0 : 1) + (q(".alt-btn").hidden ? 0 : 1); for (const el of q(".exwrap").querySelectorAll(".name")) { const px = (n ? 10 + n * 38 : 16) + "px"; el.style.paddingRight = px; el.style.setProperty("--iconpad", px); } growName(); };   // the name wraps before the icons (the client's view of it too)
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
     const markNamed = () => { if (S.clientMode) return; if (!trainerNamed.has(t.id)) trainerNamed.set(t.id, new Set()); trainerNamed.get(t.id).add(r.id); };
@@ -2454,9 +2459,9 @@ import { reportRange, buildReport } from "./report.js";
       rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || planNumber(r.reps);   // the set before, last time, else the plan's number (8–10 shows 10): what shows grey is what Complete set writes
       w.inputMode = (wText || nonNum(r.weights[sel] || carry.w || "")) ? "text" : "decimal";
       const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
-      let wWas = null, rpWas = null; w.addEventListener("focus", () => { wWas = String(r.weights[sel] || ""); }); rp.addEventListener("focus", () => { rpWas = String(r.repsDone[sel] || ""); });   // what the box held when editing began: the chain follows that, not every keystroke
-      w.addEventListener("input", (e) => { r.weights = correctFrom(r.weights, sel, e.target.value, wWas); if (!r.unit) r.unit = unit; mark(); paintLifts(); });   // NEW BEST lights up as it is typed; later sets that copied this number follow the correction
-      rp.addEventListener("input", (e) => { const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); r.repsDone = correctFrom(r.repsDone, sel, v, rpWas); e.target.value = v; mark(); paintLifts(); });
+      let wWas = null, rpWas = null, wFollow = [], rpFollow = []; w.addEventListener("focus", () => { wWas = String(r.weights[sel] || ""); wFollow = followFrom(r.weights, sel, wWas); }); rp.addEventListener("focus", () => { rpWas = String(r.repsDone[sel] || ""); rpFollow = followFrom(r.repsDone, sel, rpWas); });   // what the box held when editing began, and which later sets copied it: the whole correction reaches them, keystroke by keystroke
+      w.addEventListener("input", (e) => { r.weights = correctFrom(r.weights, sel, e.target.value, wWas, wFollow); if (!r.unit) r.unit = unit; mark(); paintLifts(); });   // NEW BEST lights up as it is typed; later sets that copied this number follow the correction
+      rp.addEventListener("input", (e) => { const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 4); r.repsDone = correctFrom(r.repsDone, sel, v, rpWas, rpFollow); e.target.value = v; mark(); paintLifts(); });
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); kbNext(); } });
       rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); kbNext(); } });   // on to the next exercise of the superset, else the keyboard goes
       const hand = perHand(r.name); q(".setlog .chip.stack:nth-child(1) .lab").textContent = hand ? "Weight / " + hand : "Weight";   // one dumbbell, one kettlebell: the label says what the number is per
@@ -2488,9 +2493,9 @@ import { reportRange, buildReport } from "./report.js";
           const ri = document.createElement("input"); ri.className = "sum-r"; ri.inputMode = "numeric"; ri.placeholder = tmS ? tmS.unit : "reps"; ri.setAttribute("aria-label", (tmS ? (tmS.unit === "m" ? "Meters" : "Seconds") : "Reps") + ", set " + (i + 1)); ri.autocomplete = "off";
           const runit = document.createElement("span"); runit.className = "sum-unit runit"; runit.textContent = runitWord;
           val.append(wi, unit, x, ri, runit); line.appendChild(val);
-          let wiWas = null, riWas = null; wi.addEventListener("focus", () => { wiWas = String((r.weights || [])[i] || ""); }); ri.addEventListener("focus", () => { riWas = String((r.repsDone || [])[i] || ""); });
-          wi.addEventListener("input", () => { r.weights = correctFrom(r.weights, i, wi.value, wiWas); if (!r.unit) r.unit = unitS; fit(wi); mark(); refresh(); });
-          ri.addEventListener("input", () => { const v = ri.value.replace(/[^0-9]/g, "").slice(0, 4); ri.value = v; r.repsDone = correctFrom(r.repsDone, i, v, riWas); fit(ri); mark(); refresh(); });
+          let wiWas = null, riWas = null, wiFollow = [], riFollow = []; wi.addEventListener("focus", () => { wiWas = String((r.weights || [])[i] || ""); wiFollow = followFrom(r.weights, i, wiWas); }); ri.addEventListener("focus", () => { riWas = String((r.repsDone || [])[i] || ""); riFollow = followFrom(r.repsDone, i, riWas); });
+          wi.addEventListener("input", () => { r.weights = correctFrom(r.weights, i, wi.value, wiWas, wiFollow); if (!r.unit) r.unit = unitS; fit(wi); mark(); refresh(); });
+          ri.addEventListener("input", () => { const v = ri.value.replace(/[^0-9]/g, "").slice(0, 4); ri.value = v; r.repsDone = correctFrom(r.repsDone, i, v, riWas, riFollow); fit(ri); mark(); refresh(); });
           for (const inp of [wi, ri]) inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
         }
         const ok = document.createElement("span"); ok.className = "sum-ok"; ok.textContent = "\u2713"; line.appendChild(ok);
@@ -2504,7 +2509,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- events ----------
   $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; S.renderedTraining = null; render(); });
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
-  $("cNameField").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.name = e.target.value; $("cName").value = c.name; scheduleSave("clients", c.id); });
+  $("cNameField").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.name = e.target.value; $("cName").textContent = c.name; scheduleSave("clients", c.id); });
   const growNotesBox = () => growBox($("cNotes"));
   $("cNotes").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; noteDraft.set(c.id, e.target.value); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
   $("noteSave").addEventListener("click", () => {
@@ -2562,8 +2567,9 @@ import { reportRange, buildReport } from "./report.js";
   });
   let detailsOpen = false, detailsFor = null;
   $("tabbar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b || b.dataset.tab === S.tab) return; S.tab = b.dataset.tab; render(); window.scrollTo(0, 0); });
-  document.addEventListener("focusin", (e) => { if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) document.body.classList.add("typing"); });
-  document.addEventListener("focusout", () => { setTimeout(() => { const a = document.activeElement; if (!a || !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) document.body.classList.remove("typing"); }, 80); });
+  const typingIn = (el) => !!el && /^(INPUT|TEXTAREA)$/.test(el.tagName) && !/^(date|month|checkbox|radio|file|range)$/.test(el.type || "");   // a keyboard is coming: a select or a date wheel is not typing
+  document.addEventListener("focusin", (e) => { if (typingIn(e.target)) document.body.classList.add("typing"); });
+  document.addEventListener("focusout", () => { setTimeout(() => { if (!typingIn(document.activeElement)) document.body.classList.remove("typing"); }, 80); });
   $("detailsBtn").addEventListener("click", () => { detailsOpen = !detailsOpen; $("detailsBody").hidden = !detailsOpen; $("detailsBtn").classList.toggle("open", detailsOpen); $("detailsBtn").setAttribute("aria-expanded", String(detailsOpen)); });
   $("newTraining").addEventListener("click", () => addTraining(S.view.id, null, today()));
   $("delClient").addEventListener("click", () => { $("delClient").hidden = true; $("delClientConfirm").hidden = false; });
@@ -2572,6 +2578,7 @@ import { reportRange, buildReport } from "./report.js";
 
   $("tTitle").addEventListener("input", (e) => { const t = trainings.get(S.view.id); if (!t) return; t.title = e.target.value.replace(/\n/g, " "); e.target.style.height = "auto"; e.target.style.height = Math.max(32, e.target.scrollHeight) + "px"; scheduleSave("trainings", t.id); });
   $("tTitle").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
+  for (const ev of ["focus", "blur"]) $("tTitle").addEventListener(ev, (e) => { const el = e.currentTarget; requestAnimationFrame(() => { el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); });   // the box changes its padding on focus: measured again so the letters are never clipped and no gap is left behind
   $("tDate").addEventListener("click", () => {
     const t = trainings.get(S.view.id); if (!t || S.clientMode || isTemplateClient(t.clientId)) return;
     const id = t.id;

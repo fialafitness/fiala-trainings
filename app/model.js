@@ -4,18 +4,21 @@ import { uid, clamp, localIso } from "./util.js";
 export const TEMPLATES_ID = "00000000-0000-4000-8000-0000000000f1";
 export const isTemplateClient = (id) => id === TEMPLATES_ID;
 export const effDate = (t) => t.completedAt ? localIso(new Date(t.completedAt)) : (t.date || "");
-export const freshRow = (r) => { const x = { ...r, id: uid(), weights: [], repsDone: [], setsDone: 0, done: false, alts: [...(r.alts || [])] }; delete x.earlyReason; delete x.clientNote; delete x.clientNoteBy; delete x.clientNoteAt; return x; };   // the plan, with nothing logged
+export const freshRow = (r) => { const x = { ...r, id: uid(), weights: [], repsDone: [], setsDone: 0, done: false, alts: [...(r.alts || [])] }; delete x.earlyReason; delete x.clientNote; delete x.clientNoteBy; delete x.clientNoteAt; delete x.unit; return x; };   // the plan, with nothing logged: the unit comes with the first weight the new client logs
 export const isEmptyWorkout = (t) => !!t && !t.completedAt && !t.skippedAt && !(t.rows || []).length && !String(t.title || "").trim() && !isTemplateClient(t.clientId);
 // A plan written in time ("30 sec", "45 s", "1 min", "60 sec / side") is logged as time held, not reps: { n: "30", unit: "sec" }.
 // A timed plan: the reps box says time, so the set log asks for time, not reps. Every spelling he uses: "30 sec", "30s", "30 seconds / side",
 // "1 min", "30-45 sec", "1:00", 30", and the words "hold" / "max hold" / "as long as possible". The exercise name never decides (a plank jack is reps).
 export const timedPlan = (reps) => {
   const s = String(reps || "");
+  const lead = /^\s*\d+\s*[x\u00d7]\s*/i.exec(s), base = lead ? lead[0].length : 0, first = s.slice(base).search(/\d/);   // the plan's own number is the first one ("3 x 30 sec" aside): "10 reps, 2 sec hold at top" is reps
+  const at = (i) => first < 0 || i === base + first;
   const m = /(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*\d+(?:[.,]\d+)?)?\s*(s|sec|secs|second|seconds|min|mins|minute|minutes)\b/i.exec(s);
-  if (m) return { n: m[1], unit: /^m/i.test(m[2]) ? "min" : "sec" };
-  const mm = /(?:^|[^\d:])(\d{1,2}):(\d{2})(?![\d:])/.exec(s); if (mm) return { n: String(parseInt(mm[1], 10) * 60 + parseInt(mm[2], 10)), unit: "sec" };   // "1:30" = 90 seconds
-  const q = /(\d+)\s*(?:"|\u2033|'')/.exec(s); if (q) return { n: q[1], unit: "sec" };                                                  // 30" = 30 seconds
-  if (/\b(hold|max\s*time|as long as possible|alap|for time)\b/i.test(s)) { const n = /\d+/.exec(s); return { n: n ? n[0] : "", unit: "sec" }; }   // "max hold": the box asks for the seconds
+  if (m && at(m.index)) return { n: m[1], unit: /^m/i.test(m[2]) ? "min" : "sec" };
+  const mm = /(?:^|[^\d:])(\d{1,2}):(\d{2})(?![\d:])/.exec(s); if (mm && at(s.indexOf(mm[1] + ":" + mm[2], mm.index))) return { n: String(parseInt(mm[1], 10) * 60 + parseInt(mm[2], 10)), unit: "sec" };   // "1:30" = 90 seconds
+  const q = /(\d+)\s*(?:"|\u2033|'')/.exec(s); if (q && at(q.index)) return { n: q[1], unit: "sec" };                                   // 30" = 30 seconds
+  const kw = /\b(hold|max\s*time|as long as possible|alap|for time)\b/i.exec(s);
+  if (kw && !/\brep/i.test(s)) { const n = /\d+/.exec(s); if (!n || n.index > kw.index) return { n: n ? n[0] : "", unit: "sec" }; }   // "max hold", "hold 30": the box asks for the seconds; "12 (hold 2s at bottom)" is reps
   return null;
 };
 // A distance plan ("40 m", "40m", "20-40 meters"): the box logs meters, like a hold logs seconds. measurePlan covers both.
@@ -23,13 +26,13 @@ export const distPlan = (reps) => { const m = /(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\
 export const measurePlan = (reps) => timedPlan(reps) || distPlan(reps);
 // Before the Time box existed, a plank's seconds were typed into the weight box ("45 sec"). On a timed exercise a weight that reads as a
 // time is the time: it moves to the time column (in the plan's unit) and the weight is bodyweight again. Idempotent: runs on every load and pull.
-export const timeAsWeight = (v) => { const tm = timedPlan(v); return tm && tm.n !== "" ? tm : null; };
+export const timeAsWeight = (v) => { const s = String(v || ""); if (!/\d\s*(sec|secs|second|seconds|min|mins|minute|minutes)\b|\d:\d{2}|\d\s*(?:"|\u2033|'')/i.test(s)) return null; const tm = timedPlan(s); return tm && tm.n !== "" ? tm : null; };   // only a spelled-out time: "25s" in a weight box is a pair of 25s, not 25 seconds
 // The number the plan puts in the box before anything is typed: "10" → 10, "8–10" or "6, 6, 4" → the highest, "10 / side" → 10,
 // "45 sec" → 45, "30-45 sec" → 45, "1:00" → 60; "max", "AMRAP" or a bare "hold" → nothing (the box asks). Whole numbers only.
 export const planNumber = (reps) => {
   const s = String(reps || ""), tm = timedPlan(s);
   if (tm && /\d+:\d{2}/.test(s)) return tm.n;
-  const nums = (s.replace(/\s*(\/|each|per)\s*(side|leg|arm)\b/gi, "").match(/\d+(?:[.,]\d+)?/g) || []).map((x) => parseFloat(x.replace(",", ".")));
+  const nums = (s.replace(/\s*(\/|each|per)\s*(side|leg|arm)\b/gi, "").replace(/@\s*\d+(?:[.,]\d+)?\s*%?|\d+(?:[.,]\d+)?\s*%|\brpe\s*\d+(?:[.,]\d+)?/gi, "").match(/\d+(?:[.,]\d+)?/g) || []).map((x) => parseFloat(x.replace(",", ".")));   // "8-10 @ 70%", "RPE 8": the load note is not a rep count
   if (!nums.length) return "";
   const top = Math.max(...nums); return Number.isInteger(top) ? String(top) : "";
 };
@@ -84,13 +87,14 @@ export const topSet = (row, timed, upTo) => { let best = null; const ws = (row &
 export const sameSet = (a, b) => !!a && !!b && a.w === b.w && a.rp === b.rp;
 // Correcting a logged number: the sets after it that still show the old number were copied from it ("untouched box = same as the set
 // before"), so they follow the correction. A later set with a different number was typed on purpose and stays.
-export const correctFrom = (arr, i, value, was) => { const out = [...(arr || [])]; while (out.length <= i) out.push(""); const old = String((was == null ? out[i] : was) == null ? "" : (was == null ? out[i] : was)).trim(); out[i] = value; /* was: what the box held when editing began, so backspacing through "" does not break the chain */ if (old) for (let j = i + 1; j < out.length; j++) if (String(out[j] == null ? "" : out[j]).trim() === old) out[j] = value; return out; };
+export const followFrom = (arr, i, was) => { const old = String(was == null ? "" : was).trim(); const out = []; if (old) for (let j = i + 1; j < (arr || []).length; j++) if (String(arr[j] == null ? "" : arr[j]).trim() === old) out.push(j); return out; };   // which later sets were copied from this one: decided when editing begins, so every keystroke of the correction reaches them
+export const correctFrom = (arr, i, value, was, follow) => { const out = [...(arr || [])]; while (out.length <= i) out.push(""); const js = follow || followFrom(out, i, was == null ? out[i] : was); out[i] = value; for (const j of js) if (j < out.length) out[j] = value; return out; };
 // Packages. A client's plan: { id, name, kind: "sessions" | "monthly", size, startedOn, adjust, until }.
 // A sessions package counts finished workouts marked "in person" since it started, plus the trainer's correction;
 // package 2 starts by itself once package 1 is full. A monthly plan is just a day it is active until.
 export const planProgress = (plan, list) => {
   if (!plan || plan.kind !== "sessions" || !(plan.size > 0)) return null;
-  const used = Math.max(0, list.filter((t) => t.inPerson && t.completedAt && effDate(t) >= (plan.startedOn || "")).length + (parseInt(plan.adjust, 10) || 0));
+  const used = Math.max(0, list.filter((t) => t.inPerson && t.completedAt && !t.skippedAt && t.missed !== true && effDate(t) >= (plan.startedOn || "")).length + (parseInt(plan.adjust, 10) || 0));   // the same workouts the session pill counts
   const size = plan.size, packNo = used === 0 ? 1 : Math.floor((used - 1) / size) + 1, inPack = used === 0 ? 0 : ((used - 1) % size) + 1;
   return { used, size, packNo, inPack, left: size - inPack, complete: used > 0 && used % size === 0 };
 };

@@ -1,6 +1,6 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
-import { timedPlan, distPlan, measurePlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, convertWeight, stampUnit, toUnit, toTimeUnit, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
+import { followFrom, timedPlan, distPlan, measurePlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, convertWeight, stampUnit, toUnit, toTimeUnit, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
 import { monthLater, daysLater } from "../app/util.js";
 const app = await load();
 const { fns, maps } = app;
@@ -229,4 +229,19 @@ test("a backup is refused when a field a screen reads as a list or an object is 
   for (const [why, b] of bad) { const d = base(); b(d); assert.throws(() => fns.validateBackup(d, () => false), Error, "should refuse: " + why); }
   const later = base(); later.format = 2; assert.throws(() => fns.validateBackup(later, () => false), /newer backup/);
   const old = base(); delete old.format; assert.doesNotThrow(() => fns.validateBackup(old, () => false), "a backup from before the format number");
+});
+
+test("a correction reaches the copied sets keystroke by keystroke; a plan's number is the first one; a weight box never reads as a time; the new client's unit is their own", () => {
+  const follow = followFrom(["100", "100", "100", "90"], 0, "100"); assert.deepStrictEqual(follow, [1, 2]);
+  let ws = correctFrom(["100", "100", "100", "90"], 0, "10", "100", follow); ws = correctFrom(ws, 0, "105", "100", follow);   // backspace, then a digit
+  assert.deepStrictEqual(ws, ["105", "105", "105", "90"], "the chain holds through the intermediate value");
+  assert.deepStrictEqual(timedPlan("10 reps, 2 sec hold at top"), null); assert.deepStrictEqual(timedPlan("12 (hold 2s at bottom)"), null); assert.deepStrictEqual(timedPlan("10 reps, 30 sec rest"), null);
+  assert.deepStrictEqual(timedPlan("30 sec"), { n: "30", unit: "sec" }); assert.deepStrictEqual(timedPlan("3 x 30 sec"), { n: "30", unit: "sec" }); assert.deepStrictEqual(timedPlan("hold 30"), { n: "30", unit: "sec" }); assert.deepStrictEqual(timedPlan("max hold"), { n: "", unit: "sec" }); assert.deepStrictEqual(timedPlan("1:30"), { n: "90", unit: "sec" });
+  assert.strictEqual(planNumber("8-10 @ 70%"), "10"); assert.strictEqual(planNumber("8 RPE 9"), "8"); assert.strictEqual(planNumber("6, 6, 4"), "6");
+  assert.strictEqual(timeAsWeight("25s"), null, "a pair of 25s"); assert.deepStrictEqual(timeAsWeight("45 sec"), { n: "45", unit: "sec" }); assert.deepStrictEqual(timeAsWeight("1:00"), { n: "60", unit: "sec" });
+  assert.ok(!("unit" in fns.freshRow({ id: "a", name: "Squat", sets: 3, reps: "5", unit: "lb", weights: ["100"] })));
+  const dup = fns.mergeNotes("Knee is sore", { log: [{ id: "x", at: null, text: "Knee is sore" }, { id: "y", at: "2026-10-13T10:00:00.000Z", text: "New" }] });
+  assert.deepStrictEqual(dup.log.map((n) => n.text), ["Knee is sore", "New"], "the old single note is not doubled by the other device's copy of it");
+  const plan = { id: "p", kind: "sessions", size: 10, startedOn: "2026-10-01" }, day = (d) => ({ inPerson: true, completedAt: "2026-10-" + d + "T18:00:00.000Z", date: "2026-10-" + d });
+  assert.strictEqual(planProgress(plan, [day("02"), { ...day("03"), skippedAt: "2026-10-03T10:00:00.000Z" }, { ...day("04"), missed: true }]).used, 1, "a finished-and-skipped record counts as the pill counts it: not at all");
 });
