@@ -42,6 +42,7 @@
     --header-border: rgba(0,0,0,0.04);  /* border-on-light-subtle */
     --field: #ffffff;                   /* a field on the grouped page is a white cell */
     --field-in: #f5f5f7;                /* a field inside a white card is grey */
+    --inset: #f2f2f4; --inset-field: #ffffff;   /* a superset: each exercise on a grey panel inside the white card, its boxes white on it */
     --glyph-fill: rgba(120,120,128,0.14); /* the circle behind a small symbol (secondary system fill) */
     --brand-soft: rgba(111,107,153,0.14); --danger-soft: rgba(166,58,70,0.11);   /* tinted capsules: the colour at a breath of opacity behind text in that colour */
     --glass: rgba(255,255,255,0.78); --glass-edge: rgba(0,0,0,0.08);   /* a floating bubble: frosted, the page showing through */
@@ -81,6 +82,7 @@
       --header-border: rgba(255,255,255,0.06);
       --field: rgba(255,255,255,0.08);
       --field-in: rgba(255,255,255,0.08);
+      --inset: rgba(255,255,255,0.045); --inset-field: rgba(255,255,255,0.10);
       --glyph-fill: rgba(255,255,255,0.12);
       --brand-soft: rgba(111,107,153,0.28); --danger-soft: rgba(224,100,112,0.2);
       --glass: rgba(44,44,46,0.72); --glass-edge: rgba(255,255,255,0.10);
@@ -120,6 +122,7 @@
     --header-border: rgba(255,255,255,0.06);
     --field: rgba(255,255,255,0.08);
     --field-in: rgba(255,255,255,0.08);
+    --inset: rgba(255,255,255,0.045); --inset-field: rgba(255,255,255,0.10);
     --glyph-fill: rgba(255,255,255,0.12);
     --brand-soft: rgba(111,107,153,0.28); --danger-soft: rgba(224,100,112,0.2);
     --glass: rgba(44,44,46,0.72); --glass-edge: rgba(255,255,255,0.10);
@@ -404,6 +407,10 @@
   .numpick button.cur { box-shadow: inset 0 0 0 1.5px var(--ss); }
   .row { padding: 16px; }
   .group .row + .row { border-top: 1px solid var(--card-border); }
+  .block:not(.done):not(.ahead) .group.multi .row { margin: 0 10px; padding: 14px 12px; background: var(--inset); border-radius: 16px; border-top: 0; --field: var(--inset-field); }   /* a superset being done: each exercise on its own panel, the boxes a step brighter on it */
+  .block:not(.done):not(.ahead) .group.multi .row + .row { margin-top: 8px; }
+  .block:not(.done):not(.ahead) .group.multi .tracker { padding-bottom: 12px; }
+  .block:not(.done):not(.ahead) .card-foot { margin: 12px 16px 0; padding: 14px 0 16px; border-top: 1px solid var(--card-border); }   /* the buttons under a hairline of their own, apart from the sets */
   .group .row .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
   .row .top { display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: stretch; }
   .block.done { --ss: var(--done); --ss-ink: var(--done-ink); }   /* finished: every badge, warm-up included, uses the done ink */
@@ -1387,7 +1394,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=134";
+  import { boot } from "./app/main.js?v=135";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

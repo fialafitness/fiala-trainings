@@ -41,7 +41,7 @@ async function prune() {                                            // the newes
 async function takeIn(got) {                                        // a complete release onto the device (unless it is there already); the newest pointer moves forward only
   if (!got || !got.n) return false;
   if (!(await hasRelease(got.n)) && !(await storeRelease(got.n, got.bundle))) return false;
-  try { if (got.n > (await current())) await metaSet("/current", got.n); } catch {}   // a full phone: the release is on the device even if the pointer could not be written
+  try { if (got.n > (await current())) await metaSet("/current", got.n); } catch { return false; }   // a full phone: the pointer could not move, so this open does not count on it
   await prune();
   return true;
 }
@@ -55,7 +55,7 @@ async function fetchBundle() {                                      // every fil
   if (!again.ok || (await releaseOf(again)) !== n) throw new Error("deploy in progress");
   return { n, bundle };
 }
-const pin = (event, n) => (event.resultingClientId ? metaSet("/client/" + event.resultingClientId, n).catch(() => {}) : Promise.resolve());   // this page runs on release n for as long as it is open
+const pin = (event, n) => (event.resultingClientId ? metaSet("/client/" + event.resultingClientId, n).then(() => true, () => false) : Promise.resolve(true));   // false: the page could not be pinned to its release   // this page runs on release n for as long as it is open
 async function check() {                                           // a page asks on resume: the server's page first (cheap, usually unchanged), the whole release only when it is newer than the device's
   const page = await fetch(new Request(PAGE, { cache: "no-cache" }));
   if (page.ok && (await releaseOf(page)) > (await current())) await takeIn(await fetchBundle());
@@ -89,8 +89,8 @@ async function openShell(event) {
   const got = fetchBundle();
   const fresh = await Promise.race([got.catch(() => null), new Promise((r) => setTimeout(() => r(null), WAIT))]);
   if (fresh && fresh.n >= (await current())) {                       // the server's release, at least as new as the device's: the page and everything it loads, one deploy
-    await takeIn(fresh); await pin(event, fresh.n);
-    return fresh.bundle.get(PAGE);
+    await takeIn(fresh);                                             // onto the device if it can be (a refused write still leaves this open consistent: its scripts come from the server too)
+    if (await pin(event, fresh.n)) return fresh.bundle.get(PAGE);    // pinned to its release; a pin the device refuses would hand this page the older scripts, so the device's release serves instead, whole
   }
   event.waitUntil(got.then(takeIn).catch(() => {}));                 // too late for this open (or older than what the device holds): kept for the next, never moving the newest pointer back
   const n = await current();
