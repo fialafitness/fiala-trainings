@@ -1495,7 +1495,7 @@ import { reportRange, buildReport } from "./report.js";
   function closeNotif() { if (!notifOpen) return; const c = clients.get(notifOpen); notifOpen = null; if (c) markWorkoutsSeen(c); }
   function renderNotif(c) {
     const wrap = $("notifWrap"), ul = $("notifList"), n = clientNews(c), total = n.done + n.notes.length, open = notifOpen === c.id;
-    wrap.hidden = false; $("notifCount").hidden = !total; $("notifCount").textContent = total; $("notifNone").hidden = !!total || open;
+    wrap.hidden = !open; $("notifCount").hidden = !total; $("notifCount").textContent = total;   // the number sits on the bell; the list shows while the bell is open
     $("notifBtn").setAttribute("aria-expanded", String(open)); ul.hidden = !open; if (!open) { ul.replaceChildren(); return; }
     const items = [];
     for (const t of n.workouts) {
