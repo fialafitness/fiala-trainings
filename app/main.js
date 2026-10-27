@@ -137,12 +137,24 @@ import { reportRange, buildReport } from "./report.js";
     if (!(S.view.name === "training" && trainings.has(S.view.id))) S.view = { name: "client", id: S.myClientId };
     render(); setStatus(); return true;
   }
-  function enterOffline(remembered) {     // no session could be read (token expired, no signal): use what the device knows
-    S.offlineEntry = "remembered"; settingsOpen = false; S.signedIn = true; S.sessionEmail = remembered.email || ""; S.clientMode = remembered.role !== "trainer";
-    document.body.classList.toggle("client", S.clientMode); S.backend = S.clientMode ? clientBackend : cloudBackend; hideAllViews();
-    if (S.clientMode) { $("clientFoot").hidden = false; if (!offlineFromMirror()) showLogin("You\u2019re offline. Connect once to sign in."); return; }
+  function paintRemembered(remembered, away) {   // what the device knows, on screen at once: the pages of the account that used it last; the server refreshes them in place (away: no signal, with the offline status)
+    S.signedIn = true; S.sessionEmail = remembered.email || ""; S.clientMode = remembered.role !== "trainer";
+    document.body.classList.toggle("client", S.clientMode); S.backend = S.clientMode ? clientBackend : cloudBackend;
+    if (away) { S.offlineEntry = "remembered"; S.offline = true; }
+    if (S.clientMode) {
+      const me = [...clients.values()].find((c) => !isTemplateClient(c.id) && norm(c.email) === norm(S.sessionEmail));
+      if (!me) { if (away) { hideAllViews(); showLogin("You\u2019re offline. Connect once to sign in."); } return false; }
+      $("clientFoot").hidden = false; S.myClientId = me.id;
+      if (!(S.view.name === "training" && trainings.has(S.view.id))) S.view = { name: "client", id: S.myClientId };
+      render(); setStatus(); return true;
+    }
     $("dataNote").textContent = "Synced to the cloud"; $("myExercises").hidden = false; $("packagesBtn").hidden = false; $("settingsBtn").hidden = false; $("catalogBtn").hidden = false; $("dataBtn").hidden = false; $("localFoot").hidden = false;
-    S.offline = true; render(); setStatus();
+    render(); setStatus(); return true;
+  }
+  const onScreenAs = (email) => S.signedIn && norm(S.sessionEmail) === norm(email || "") && (!S.clientMode || !!S.myClientId);   // this account's pages are already up: whatever comes next refreshes them in place, never a blank in between
+  function enterOffline(remembered) {     // no session could be read (token expired, no signal): use what the device knows
+    if (onScreenAs(remembered.email)) { S.offline = true; S.offlineEntry = "remembered"; setStatus(); return; }   // painted at boot already: only the status changes
+    paintRemembered(remembered, true);
   }
   async function resumeOnline() {
     if (!S.sb || !S.signedIn || S.resuming) return; S.resuming = true;
@@ -513,7 +525,7 @@ import { reportRange, buildReport } from "./report.js";
     try { await enterCloudNow(session); } finally { S.entering = false; }
   }
   async function enterCloudNow(session) {
-    const quiet = S.clientMode && S.offline && !!S.myClientId;    // the device copy is already on screen: swap in live data without a blank "Loading…"
+    let quiet = onScreenAs(session.user.email);                   // the device copy is already on screen for this account: live data swaps in without a blank "Loading…"
     settingsOpen = quiet ? settingsOpen : false;
     S.signedIn = true; S.sessionEmail = session.user.email || "";
     let trainer = await isTrainerAccount();
@@ -523,6 +535,7 @@ import { reportRange, buildReport } from "./report.js";
       else { S.offline = true; S.offlineEntry = "remembered"; showProblem("Couldn\u2019t reach the server \u00b7 check your signal and tap Try again"); return; }   // resumeOnline retries the entry
     } else lsSet("fiala.trainings.role", { email: S.sessionEmail, role: trainer ? "trainer" : "client" });
     S.offlineEntry = null;
+    if (quiet && S.clientMode !== (trainer !== true)) { quiet = false; settingsOpen = false; }   // painted as the other role: start the pages over
     if (S.pendingOwner && S.pendingOwner !== S.sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
       dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); fromFile.clear();
     }
@@ -542,9 +555,9 @@ import { reportRange, buildReport } from "./report.js";
     }
     $("dataNote").textContent = "Synced to the cloud";
     $("myExercises").hidden = false; $("packagesBtn").hidden = false; $("settingsBtn").hidden = false; $("catalogBtn").hidden = false; $("dataBtn").hidden = false; $("localFoot").hidden = false; $("clientFoot").hidden = true;
-    render(); setStatus();
-    await syncDown();                                         // a success flushes the queue itself
-    seedTemplates().catch(() => {});
+    if (!quiet) render(); setStatus();
+    const synced = await syncDown();                          // a success flushes the queue itself
+    if (synced && !S.offline) seedTemplates().catch(() => {});   // the built-in templates only once the server's copy is in: a failed first sync must never push fresh copies over edited ones
   }
 
   const hasAuthToken = () => { try { return !!localStorage.getItem("sb-umurkxqswcjmubeucrzw-auth-token"); } catch { return false; } };
@@ -1721,7 +1734,9 @@ import { reportRange, buildReport } from "./report.js";
     paintFinish(t);
     const rowsEl = $("rows");
     const active = document.activeElement;
-    if (S.renderedTraining === t.id && (S.asking || (rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")))) return; // never rebuild under a typing finger, nor under a confirm sheet
+    if (S.renderedTraining === t.id && (S.asking || (rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.tagName === "IFRAME")))) return; // never rebuild under a typing finger, a playing video, nor under a confirm sheet
+    const sigOf = () => JSON.stringify([t.rows, t.completedAt, t.skippedAt, t.date, t.inPerson, t.missed, (clients.get(t.clientId) || {}).unit, asClient, [...openBlocks], [...fullBlocks], [...peekBlocks], [...setSel], [...openExNotes], [...openNotes]]);
+    if (S.renderedTraining === t.id && sigOf() === paintedSig) return;   // a sync that changed nothing here: the cards stay as they are, open video, menus and half-typed notes included
     S.renderedTraining = t.id;
     const sc = document.scrollingElement || document.documentElement, keepScroll = sc.scrollTop;   // the cards are rebuilt in place (every sync does it): the page must not move while it is empty
     if (!S.clientMode && normalizeLabels(t)) scheduleSave("trainings", t.id);
@@ -1822,6 +1837,7 @@ import { reportRange, buildReport } from "./report.js";
           fullBlocks.delete(selKey); setSel.set(selKey, sel); scheduleSave("trainings", t.id); S.renderedTraining = null; render();
         });
         complete.addEventListener("click", () => {
+          if (performance.now() - completeAt < 350) return; completeAt = performance.now();   // the second tap of a double tap lands on the next card's button: it must not log a second set
           haptic();
           if (!current) { setSel.delete(selKey); setTimeout(() => { S.renderedTraining = null; render(); }, 0); return; }   // just go back to the current set
           const prevDone = doneSets;
@@ -1888,12 +1904,13 @@ import { reportRange, buildReport } from "./report.js";
         addNote.addEventListener("click", () => { if (!first.clientNote) { if (noteBox.hidden) openComposer(); else dropN.click(); return; } if (openExNotes.has(noteKey)) openExNotes.delete(noteKey); else openExNotes.add(noteKey); paintNote(); });
         edit.addEventListener("click", openComposer);
         del.addEventListener("click", async () => { if (!(await askFirst({ title: "Delete this note?", text: S.clientMode ? "" : "It goes from this exercise and from the notes list." }))) return; writeNote(""); openExNotes.delete(noteKey); paintNote(); });
-        ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; });
-        dropN.addEventListener("click", async () => { const typed = ta.value.trim(); if (typed && typed !== String(first.clientNote || "").trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; noteBox.hidden = true; ta.value = ""; });
-        saveN.addEventListener("click", async () => { const text = ta.value.trim(); if (!text && first.clientNote && !(await askFirst({ title: "Delete this note?", text: S.clientMode ? "" : "It goes from this exercise and from the notes list." }))) return; noteBox.hidden = true; writeNote(text); openExNotes.delete(noteKey); paintNote(); });   // saved and folded away: the dot says it is there; an emptied box is a delete and asks like one
+        ta.addEventListener("input", () => { cardNoteDraft.set(noteKey, ta.value); ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; });
+        dropN.addEventListener("click", async () => { const typed = ta.value.trim(); if (typed && typed !== String(first.clientNote || "").trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; cardNoteDraft.delete(noteKey); noteBox.hidden = true; ta.value = ""; });
+        saveN.addEventListener("click", async () => { const text = ta.value.trim(); if (!text && first.clientNote && !(await askFirst({ title: "Delete this note?", text: S.clientMode ? "" : "It goes from this exercise and from the notes list." }))) return; cardNoteDraft.delete(noteKey); noteBox.hidden = true; writeNote(text); openExNotes.delete(noteKey); paintNote(); });   // saved and folded away: the dot says it is there; an emptied box is a delete and asks like one
         paintNote();
+        if (cardNoteDraft.has(noteKey)) { ta.value = cardNoteDraft.get(noteKey); noteBox.hidden = false; requestAnimationFrame(() => { ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; }); }   // a note half written when the cards were rebuilt: back where it was
         openFull = document.createElement("button"); openFull.type = "button"; openFull.className = "resume resume-full"; openFull.hidden = true; openFull.textContent = "Resume this " + groupWord(g);   // from the summary to the working card
-        openFull.addEventListener("click", () => { if (resume && !resume.hidden) { resume.click(); return; } fullBlocks.add(selKey); paintSummary(); });   // finished early: resume for real; otherwise just the working card
+        openFull.addEventListener("click", () => { if (resume && !resume.hidden) { resume.click(); return; } fullBlocks.add(selKey); S.renderedTraining = null; render(); });   // rebuilt from the data: the summary and the working card never hold two different numbers   // finished early: resume for real; otherwise just the working card
         const actsRow = document.createElement("div"); actsRow.className = "foot-row"; actsRow.append(early, addNote);
         const moreRow = document.createElement("div"); moreRow.className = "foot-row center"; moreRow.append(undo, resume, openFull);
         sumRow = document.createElement("div"); sumRow.className = "foot-row sum-row"; sumRow.hidden = true;   // the opened finished card: note disc · Resume · (the chevron disc in the corner) on one line
@@ -1951,6 +1968,7 @@ import { reportRange, buildReport } from "./report.js";
       block.appendChild(card); rowsEl.appendChild(block);
     });
     const back = Math.min(keepScroll, Math.max(0, sc.scrollHeight - sc.clientHeight)); if (Math.abs(sc.scrollTop - back) > 1) sc.scrollTop = back;   // a box measured mid-rebuild made the browser clamp the scroll to a page with no cards yet: put it back where he was
+    paintedSig = sigOf();                                         // what the cards now show, tidied rows included
   }
 
   // Numbering rule: one exercise on a number is plain (2); two or more share letters (1a, 1b …).
@@ -2109,6 +2127,9 @@ import { reportRange, buildReport } from "./report.js";
   const openBlocks = new Set();           // finished cards the user opened with "Show sets"
   const fullBlocks = new Set();           // of those, the ones opened all the way ("Resume this exercise"): the working card instead of the summary
   const peekBlocks = new Set();   // client: exercises still to come that were tapped open to have a look
+  let paintedSig = "";              // what the cards on screen were built from: a redraw with the same picture is skipped
+  const cardNoteDraft = new Map();  // selKey -> a card note being written: it survives a rebuild of the cards (a sync, a set logged elsewhere)
+  let completeAt = 0;               // when Complete set last fired: the second tap of a double tap must not log a second set
   let previewClient = false;       // trainer: showing the workout as the client sees it (display only; saving stays the trainer's)
   function rowEl(t, r, group) {
     const el = document.createElement("div"); el.className = "row"; el.dataset.id = r.id;
@@ -2729,6 +2750,7 @@ import { reportRange, buildReport } from "./report.js";
     const page = lsGet("fiala.trainings.page"); if (page && page.open) pendingPage = page;   // read before any screen change clears it
     localBackend.load();                       // instant start from the device copy
     restorePending();                          // and whatever was still waiting to reach the server
+    try { const known = lsGet("fiala.trainings.role"); if (known && known.email && (clients.size || trainings.size)) paintRemembered(known, false); } catch (_) {}   // the last account's pages at once, from the device copy: no empty Clients page, no "Loading…" on the way
     holdWake(true);                            // opened straight onto a workout: keep the screen on from the first moment
     if (window.supabase && window.supabase.createClient) {
       S.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" } });
