@@ -1801,10 +1801,9 @@ import { reportRange, buildReport } from "./report.js";
         let sel = null;
         if (!isTpl) { sel = setSel.has(selKey) ? setSel.get(selKey) : doneSets; sel = clamp(sel, 0, total - 1); g.sel = sel; }
         const tr = document.createElement("div"); tr.className = "tracker"; tr.setAttribute("aria-label", "Sets");
-        const head = document.createElement("div"); head.className = "tr-head"; const chips = document.createElement("div"); chips.className = "tr-chips"; tr.append(head, chips);
-        const lab = document.createElement("span"); lab.className = "tr-label"; lab.textContent = total + (total === 1 ? " set" : " sets"); head.appendChild(lab);   // "4 sets", then the chips
+        const chips = document.createElement("div"); chips.className = "tr-chips"; tr.appendChild(chips);   // "Set 1 · Set 2 · Set 3": the chips say it all, no count above them
         for (let i = 0; i < total; i++) {
-          const b = document.createElement("button"); b.type = "button"; b.textContent = String(i + 1);
+          const b = document.createElement("button"); b.type = "button"; b.textContent = "Set " + (i + 1);
           if (isTpl) { b.classList.add("static"); b.tabIndex = -1; }
           else {
             if (i < doneSets) b.classList.add("done");
@@ -1831,7 +1830,7 @@ import { reportRange, buildReport } from "./report.js";
           const minus = document.createElement("button"); minus.type = "button"; minus.className = "step minus"; minus.textContent = "\u2212"; minus.setAttribute("aria-label", "One set fewer"); minus.disabled = total <= 1;
           const plus = document.createElement("button"); plus.type = "button"; plus.className = "step plus"; plus.textContent = "+"; plus.setAttribute("aria-label", "One set more"); plus.disabled = total >= 20;
           minus.addEventListener("click", () => setCount(total - 1)); plus.addEventListener("click", () => setCount(total + 1));
-          const steps = document.createElement("div"); steps.className = "tr-steps"; steps.append(minus, plus); head.appendChild(steps);
+          const steps = document.createElement("div"); steps.className = "tr-steps"; steps.append(minus, plus); tr.appendChild(steps);   // the coach's − / + sit at the end of the same row
         }
         tracker = tr;
       }
