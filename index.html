@@ -237,10 +237,10 @@
   .btn.tint.accent { color: var(--brand); }                                    /* the one accent capsule of a screen, like Apple's green on grey */
   .btn.ink { background: var(--ink); color: var(--ink-on); }                   /* Apple's strong monochrome button: black on light, white on dark */
   .btn.outline { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }   /* its outlined partner, like Pre-order next to Learn more */
-  .btn.tint.purple { color: var(--brand); }                                                             /* the grey pill with purple letters: the quiet partner of a purple button */
-  .start-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }           /* + Workout and Templates, side by side, half each */
-  .start-pair > * { min-width: 0; }
-  .start-pair .btn { width: 100%; }
+  .start-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }           /* + Workout and Templates, side by side, half each, the same height and type */
+  .start-pair > * { min-width: 0; display: flex; }
+  .start-pair .btn { width: 100%; min-height: 52px; height: 100%; padding: 12px 16px; font-size: 17px; font-weight: 500; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; }
+  .start-pair .btn.tint { color: var(--text-primary); }
   .start-pair > div[hidden] { display: none; }
   #vClient.tpl .start-pair { grid-template-columns: 1fr; }
   .btn.wide { width: 100%; min-height: 50px; padding: 0 16px; font-size: 17px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }   /* Finish workout: the page's main act, filled purple and full width; Skip under it stays the quiet grey capsule */
@@ -945,13 +945,13 @@
   .disc.open::after { display: none; }
   .details { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 8px; max-width: 420px; }
   .contact-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
-  .bell { position: relative; appearance: none; border: 0; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; background: var(--glyph-fill); color: var(--text-primary); display: inline-flex; align-items: center; justify-content: center; padding: 0; }   /* what clients did on their own: a bell, a number on it when there is something new */
-  .bell svg { width: 20px; height: 20px; }
+  .bell { position: relative; appearance: none; border: 0; cursor: pointer; width: 48px; height: 48px; border-radius: 50%; background: var(--glyph-fill); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); color: var(--text-primary); display: inline-flex; align-items: center; justify-content: center; padding: 0; }   /* what clients did on their own: a bell, a number on it when there is something new */
+  .bell svg { width: 22px; height: 22px; }
   .bell[aria-expanded="true"] { background: var(--brand); color: #fff; }
   .bell .count { position: absolute; top: -3px; right: -3px; display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--brand); color: #fff; font-size: 11px; font-weight: 600; box-shadow: 0 0 0 2px var(--surface); }
   .bell .count[hidden] { display: none; }
   .contact-row[hidden] { display: none; }
-  .msg-pill { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; min-height: 40px; border-radius: 50px; text-decoration: none; font-size: 15px; font-weight: 600; letter-spacing: 0; color: var(--ink-on);
+  .msg-pill { display: inline-flex; align-items: center; gap: 8px; padding: 0 20px; min-height: 48px; border-radius: 50px; text-decoration: none; font-size: 15px; font-weight: 600; letter-spacing: 0; color: var(--ink-on);
     background: var(--ink); transition: opacity 300ms ease, transform 300ms ease; }   /* the strong monochrome pill, like the Add button: prominent without spending purple */
   .msg-pill:hover { opacity: 0.92; }
   .msg-pill.small { min-height: 34px; padding: 0 14px; font-size: 14px; gap: 6px; }
@@ -1299,7 +1299,7 @@
       <div class="cal-wd" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
       <div class="cal-view" id="calView"><div class="cal-track" id="calTrack"></div></div>
     </div>
-    <div data-tab="workouts" class="trainer-only start-pair"><button class="btn" id="newTraining">+ Workout</button><div id="fromWrap"><button class="btn tint purple" id="fromTemplate" type="button">Templates</button></div></div>
+    <div data-tab="workouts" class="trainer-only start-pair"><button class="btn" id="newTraining">+ Workout</button><div id="fromWrap"><button class="btn tint" id="fromTemplate" type="button">Templates</button></div></div>
     <div data-tab="workouts" class="pick-note trainer-only" id="pickNote" hidden></div>
     <div data-tab="workouts" id="tplList" hidden></div>
     <h2 data-tab="workouts" id="nextHead" hidden>Up next</h2>
@@ -1402,7 +1402,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=139";
+  import { boot } from "./app/main.js?v=140";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
