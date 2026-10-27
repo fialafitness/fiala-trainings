@@ -9,7 +9,7 @@ begin
     where t.id = p_training and lower(coalesce(c.data ->> 'email', '')) = my_email()
   ) then raise exception 'not allowed'; end if;
   update ft_trainings
-    set data = case when p_finished then jsonb_set(jsonb_set(data, '{completedAt}', to_jsonb(now())), '{completedBy}', '"client"'::jsonb) else data - 'completedAt' - 'completedBy' end   -- completedBy: the coach's list can tell a client's own finish from one the coach logged
+    set data = case when p_finished then jsonb_set(jsonb_set(jsonb_set((data - 'skippedAt' - 'skipReason'), '{completedAt}', to_jsonb(now())), '{completedBy}', '"client"'::jsonb), '{missed}', 'false'::jsonb) else data - 'completedAt' - 'completedBy' end   -- finished beats skipped and missed   -- completedBy: the coach's list can tell a client's own finish from one the coach logged
     where id = p_training;
 end;
 $$;

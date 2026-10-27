@@ -17,6 +17,7 @@ const reasonOf = (e) => {
 };
 
 function key(kind, id) { return kind + "/" + id; }
+const seenDoc = new Map();                                        // "kind/id" -> the server copy the stamp belongs to: the base a two-device merge measures changes against
 function markDirty(kind, id) { const k = key(kind, id); dirty.set(k, (dirty.get(k) || 0) + 1); }
 // what still has to reach the server is written to the device too, so closing the app with no signal loses nothing
 function persistPending() {
@@ -38,7 +39,7 @@ function restorePending() {
   for (const id of p.skip || []) pendingSkip.add(id);
   for (const id of p.move || []) pendingMove.add(id);
   for (const id of p.miss || []) pendingMiss.add(id);
-  for (const id of new Set([...pendingMove, ...pendingMiss])) markDirty("trainings", id);   // sent again on this launch (the rule may have been missing last time)
+  for (const id of new Set([...pendingMove, ...pendingMiss, ...pendingNoteRows.keys(), ...pendingEarlyRows.keys()])) markDirty("trainings", id);   // sent again on this launch (the rule may have been missing last time)
   for (const [id, picks] of p.swap || []) pendingSwap.set(id, new Map([...(pendingSwap.get(id) || []), ...picks]));
   for (const [id, rows] of p.touched || []) trainerTouched.set(id, new Set([...(trainerTouched.get(id) || []), ...rows]));
   for (const [id, fields] of p.state || []) trainerState.set(id, new Set([...(trainerState.get(id) || []), ...fields]));
@@ -117,6 +118,16 @@ const cloudBackend = {
     const k = key(kind, id);
     const row = { id, data };
     if (kind === "trainings") row.client_id = data.clientId;
+    const base = seenDoc.get(k) ? JSON.parse(seenDoc.get(k)) : null, map = kind === "clients" ? clients : trainings;
+    const takeFields = (serverData) => {                      // two of his own devices: a field this one did not change since it last read the record takes the other device's value
+      if (!base || !serverData) return;
+      const skip = kind === "clients" ? ["id", "notes", "packages", "plan", "planHistory"] : ["id", "rows", "completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"];   // the fields with their own merge rules
+      const liveDoc = map.get(id);
+      for (const f of new Set([...Object.keys(serverData), ...Object.keys(base)])) {
+        if (skip.includes(f) || JSON.stringify(data[f]) !== JSON.stringify(base[f]) || JSON.stringify(serverData[f]) === JSON.stringify(data[f])) continue;   // changed here: ours stands
+        for (const target of [data, liveDoc]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; }
+      }
+    };
     const verbatim = () => fromFile.has(k);                    // restored from a backup: the file's copy replaces what the server holds, nothing of the server's is merged in (asked at merge time: a save already out when Restore was tapped must not merge into the restored record either)
     const mergeServerRows = (serverData) => {                 // take the client's weights/done/swaps for rows the trainer did not touch
       const touched = trainerTouched.get(id) || new Set(), named = trainerNamed.get(id) || new Set(), noted = trainerNoted.get(id) || new Set();   // three separate claims per row: the log, the name, the note — a coach who only wrote a note keeps nothing else
@@ -141,33 +152,42 @@ const cloudBackend = {
       };
       const takeNotes = (serverData) => {                      // another device may have written notes: keep both
         if (kind !== "clients" || !serverData) return;
-        const merged = mergeNotes(data.notes, serverData.notes, deletedNotes); data.notes = merged; const live = clients.get(id); if (live) live.notes = merged;
+        data.notes = mergeNotes(data.notes, serverData.notes, deletedNotes); const live = clients.get(id); if (live) live.notes = mergeNotes(live.notes, serverData.notes, deletedNotes);   // each copy merged from its own list: a note written while this save was out is not undone
         if (Array.isArray(serverData.packages) || Array.isArray(data.packages)) {                  // packages added on two devices: keep both
-          const have = new Set((data.packages || []).map((x) => x && x.id)), union = [...(data.packages || []), ...(serverData.packages || []).filter((x) => x && x.id && !have.has(x.id) && !deletedPackages.has(x.id))];   // one removed here stays removed
-          data.packages = union; if (live) live.packages = union;
+          const union = (mine) => { const have = new Set((mine || []).map((x) => x && x.id)); return [...(mine || []), ...(serverData.packages || []).filter((x) => x && x.id && !have.has(x.id) && !deletedPackages.has(x.id))]; };   // one removed here stays removed
+          data.packages = union(data.packages); if (live) live.packages = union(live.packages);
         }
         if (!planTouched.has(id)) for (const f of ["plan", "planHistory"]) for (const target of [data, live]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; }   // a plan set on another device stands, unless this one changed it
       };
       if (!seen && attempt === 0) {                               // no stamp (edited offline, app relaunched): read first, never write over the other side blind
         const existing = await withTimeout(S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle(), SAVE_WAIT);
         if (existing.error) throw existing.error;
-        if (existing.data) { if (!verbatim()) { if (kind === "trainings") { mergeServerRows(existing.data.data); takeState(existing.data.data); } takeNotes(existing.data.data); } seen = existing.data.updated_at; seenAt.set(k, seen); }
+        if (existing.data) { if (!verbatim()) { takeFields(existing.data.data); if (kind === "trainings") { mergeServerRows(existing.data.data); takeState(existing.data.data); } takeNotes(existing.data.data); } seen = existing.data.updated_at; seenAt.set(k, seen); }
       }
       let res;
       if (seen) res = await withTimeout(S.sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at"), SAVE_WAIT);
       else res = await withTimeout(S.sb.from(TABLE[kind]).upsert(row).select("updated_at"), SAVE_WAIT);
       if (res.error) {
+        if (res.error.code === "23505" && kind === "clients") {   // that email is on another client: the email goes back to what the server holds, the rest of the edit still lands
+          const srv = await withTimeout(S.sb.from(TABLE[kind]).select("data").eq("id", id).maybeSingle(), SAVE_WAIT);
+          const back = srv.data && srv.data.data ? srv.data.data.email || "" : ""; data.email = back; const live = clients.get(id); if (live) live.email = back;
+          S.failReason = "that email is already on another client"; if (attempt < 3) continue;
+        }
         if (res.error.code === "23505" || res.error.code === "22P02") res.error.fatal = true;   // another client has that email; an id the table cannot hold: no retry will change the answer
         if (/^22/.test(String(res.error.code || ""))) seenAt.delete(k);   // a bad stamp must not poison every retry
         throw res.error;
       }
-      if (res.data && res.data.length) { seenAt.set(k, res.data[0].updated_at); localBackend.save(); return; }
+      if (res.data && res.data.length) { seenAt.set(k, res.data[0].updated_at); seenDoc.set(k, JSON.stringify(data)); localBackend.save(); return; }
       // someone else (a client logging weights) saved first: take their weights, keep everything else, retry
       const fresh = await withTimeout(S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle(), SAVE_WAIT);
       if (fresh.error) throw fresh.error;
-      if (!fresh.data) { seenAt.delete(k); continue; }
+      if (!fresh.data) {
+        if (seen && !fromFile.has(k)) { map.delete(id); dirty.delete(k); seenAt.delete(k); seenDoc.delete(k); localBackend.save(); return; }   // a record this device had seen is gone from the server: deleted on another device; it is not brought back
+        seenAt.delete(k); continue;
+      }
       seenAt.set(k, fresh.data.updated_at);
-      if (verbatim()) continue;                                        // the file's copy, written again over the newer stamp
+      if (verbatim()) continue;
+      takeFields(fresh.data.data);                                        // the file's copy, written again over the newer stamp
       if (kind === "trainings") { mergeServerRows(fresh.data.data); takeState(fresh.data.data); }
       takeNotes(fresh.data.data);
     }
@@ -202,7 +222,7 @@ const clientBackend = {
       if (S.logSetMissing || (error && (error.code === "PGRST202" || /client_log_set/.test(error.message || "")))) {   // rule not installed yet: weights still get through the old way
         S.logSetMissing = true;
         ({ error } = await rpc("client_set_weights", { p_training: id, p_row: rid, p_weights: clean(oldWay(r)) }));
-        if (!error && r.done) { const d = await rpc("client_set_done", { p_training: id, p_row: rid, p_done: true }); error = d.error; }
+        if (!error) { const d = await rpc("client_set_done", { p_training: id, p_row: rid, p_done: !!r.done }); error = d.error; }   // a re-opened exercise lands as not done, the old way too
       }
       if (error && error.code === "P0001") { rows.delete(rid); scheduleSync(); continue; }
       if (error) throw error;
@@ -275,12 +295,12 @@ function mergeDown(map, kind, rows, complete, startedAt) {        // the server'
   const seen = new Set();
   for (const r of rows) {
     seen.add(r.id); if (dirty.has(key(kind, r.id))) continue;
-    if (kind === "trainings" && (pendingMove.has(r.id) || pendingMiss.has(r.id))) continue;   // the client's decision still has to reach the server: keep ours
+    if (kind === "trainings" && (pendingMove.has(r.id) || pendingMiss.has(r.id) || (pendingNoteRows.get(r.id) || new Set()).size || (pendingEarlyRows.get(r.id) || new Set()).size)) continue;   // the client's decision, note or reason still has to reach the server: keep ours
     if ((confirmedAt.get(key(kind, r.id)) || 0) > startedAt) continue;   // written after this read began: keep ours
     if (kind === "trainings" && S.templateDraft && S.templateDraft.dirty && S.templateDraft.id === r.id) continue;   // unsaved template edits
     if (kind === "trainings" && S.renderedTraining === r.id && (S.asking || ui.$("rows").contains(document.activeElement))) continue; // being edited right now, or a confirm sheet is up over it: next sync, stamp and all
     const rec = { ...r.data, id: r.id }; if (kind === "trainings") repairTimed(rec); map.set(r.id, rec);
-    if (!S.clientMode && r.updated_at) seenAt.set(key(kind, r.id), r.updated_at);   // the stamp travels with the record it describes
+    if (!S.clientMode && r.updated_at) { seenAt.set(key(kind, r.id), r.updated_at); seenDoc.set(key(kind, r.id), JSON.stringify(r.data)); }   // the stamp, and the copy it describes, travel with the record
     if (kind === "trainings") trainerState.delete(r.id);
   }
   if (complete) for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id)) && !((confirmedAt.get(key(kind, id)) || 0) > startedAt)) map.delete(id);   // only a full answer can say something is gone, and not about a record written after this read began

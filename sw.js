@@ -41,7 +41,7 @@ async function prune() {                                            // the newes
 async function takeIn(got) {                                        // a complete release onto the device (unless it is there already); the newest pointer moves forward only
   if (!got || !got.n) return false;
   if (!(await hasRelease(got.n)) && !(await storeRelease(got.n, got.bundle))) return false;
-  if (got.n > (await current())) await metaSet("/current", got.n);
+  try { if (got.n > (await current())) await metaSet("/current", got.n); } catch {}   // a full phone: the release is on the device even if the pointer could not be written
   await prune();
   return true;
 }
@@ -55,7 +55,7 @@ async function fetchBundle() {                                      // every fil
   if (!again.ok || (await releaseOf(again)) !== n) throw new Error("deploy in progress");
   return { n, bundle };
 }
-const pin = (event, n) => (event.resultingClientId ? metaSet("/client/" + event.resultingClientId, n) : Promise.resolve());   // this page runs on release n for as long as it is open
+const pin = (event, n) => (event.resultingClientId ? metaSet("/client/" + event.resultingClientId, n).catch(() => {}) : Promise.resolve());   // this page runs on release n for as long as it is open
 async function check() {                                           // a page asks on resume: the server's page first (cheap, usually unchanged), the whole release only when it is newer than the device's
   const page = await fetch(new Request(PAGE, { cache: "no-cache" }));
   if (page.ok && (await releaseOf(page)) > (await current())) await takeIn(await fetchBundle());

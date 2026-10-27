@@ -328,11 +328,35 @@ test("a save already out when Restore is tapped merges nothing of the server's i
   const saved = sb.tables.ft_trainings.get("T").data; assert.strictEqual(saved.title, "File"); assert.strictEqual(saved.completedAt, null); assert.deepStrictEqual(saved.rows[0].weights, ["100"]);
   assert.ok(!maps.fromFile.size && !maps.dirty.size);
 });
-test("a restored client the server refuses for good drops its marker with the queue entry", async () => {
+test("a client whose email the server refuses (it is on another client) keeps its other edits: the email goes back, the rest lands, the marker and the queue entry go", async () => {
   const sb = makeSupabase(); coach(sb);
-  maps.clients.set(U(2), { id: U(2), name: "Twin", email: "same@x.com" }); maps.seenAt.set("clients/" + U(2), "S0");
-  maps.fromFile.set("clients/" + U(2), 1); maps.dirty.set("clients/" + U(2), 1);
+  sb.seed("ft_clients", U(2), { id: U(2), name: "Twin", email: "old@x.com" }); maps.seenAt.set("clients/" + U(2), sb.tables.ft_clients.get(U(2)).updated_at);
+  maps.clients.set(U(2), { id: U(2), name: "Twin Renamed", email: "same@x.com" }); maps.fromFile.set("clients/" + U(2), 1); maps.dirty.set("clients/" + U(2), 1);
   sb.setFail({ table: "ft_clients", op: "update", times: 1, code: "23505", message: "duplicate key" });
   await fns.flushOne("clients", U(2)).catch(() => {});
-  assert.ok(!maps.fromFile.has("clients/" + U(2)) && !maps.dirty.has("clients/" + U(2))); assert.ok(app.get().failed);
+  const saved = sb.tables.ft_clients.get(U(2)).data;
+  assert.strictEqual(saved.email, "old@x.com", "the refused email went back to the server's"); assert.strictEqual(saved.name, "Twin Renamed", "the rest of the edit landed");
+  assert.strictEqual(maps.clients.get(U(2)).email, "old@x.com", "and the live copy shows it"); assert.match(app.get().failReason, /email/);
+  assert.ok(!maps.fromFile.has("clients/" + U(2)) && !maps.dirty.has("clients/" + U(2)));
+});
+test("two coach devices: a field this device did not change takes the other device's value on a conflict; a record deleted elsewhere is not brought back", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const stamp = sb.seed("ft_clients", "c1", { id: "c1", name: "Jane", email: "jane@x.com", unit: "lb", paused: false });
+  fns.mergeDown(maps.clients, "clients", [{ id: "c1", data: { id: "c1", name: "Jane", email: "jane@x.com", unit: "lb", paused: false }, updated_at: stamp }], true, Date.now());   // this device read the record
+  sb.seed("ft_clients", "c1", { id: "c1", name: "Jane Doe", email: "jane@x.com", unit: "lb", paused: true });   // the other device renamed and paused her meanwhile
+  const mine = maps.clients.get("c1"); mine.unit = "kg";                                                     // this device only switched the unit
+  await fns.cloudBackend.set("clients", "c1", JSON.parse(JSON.stringify(mine)));
+  const saved = sb.tables.ft_clients.get("c1").data;
+  assert.deepStrictEqual([saved.unit, saved.name, saved.paused], ["kg", "Jane Doe", true], "both devices' changes land"); assert.strictEqual(maps.clients.get("c1").name, "Jane Doe", "the live copy learns the rename");
+  sb.tables.ft_clients.delete("c1");                                                                         // deleted on the other device
+  mine.unit = "lb"; await fns.cloudBackend.set("clients", "c1", JSON.parse(JSON.stringify(mine)));
+  assert.ok(!sb.tables.ft_clients.has("c1"), "not written back"); assert.ok(!maps.clients.has("c1"), "and gone here too");
+});
+test("a client's card note and finish-early reason still queued when their rule was missing are sent again on the next launch, and a sync does not overwrite them meanwhile", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend });
+  const t = training("T", { rows: [{ ...row("r1"), clientNote: "Pinched", clientNoteBy: "client" }] }); maps.trainings.set("T", t);
+  maps.pendingNoteRows.set("T", new Set(["r1"])); fns.persistPending(); maps.dirty.clear(); fns.restorePending();
+  assert.ok(maps.dirty.has("trainings/T"), "queued again on launch");
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: training("T"), updated_at: "S1" }], true, Date.now());
+  assert.strictEqual(maps.trainings.get("T").rows[0].clientNote, "Pinched", "the server's copy without the note does not replace ours");
 });

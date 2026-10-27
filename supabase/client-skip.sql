@@ -10,7 +10,8 @@ begin
     where t.id = p_training and lower(coalesce(c.data ->> 'email', '')) = my_email()
   ) then raise exception 'not allowed'; end if;
   update ft_trainings
-    set data = case when p_skipped
+    set data = case when p_skipped and coalesce(data ->> 'completedAt', '') <> '' then data   -- a finished workout cannot be skipped
+      when p_skipped
       then (case when coalesce(p_reason, '') <> '' then jsonb_set(jsonb_set(data, '{skippedAt}', to_jsonb(now())), '{skipReason}', to_jsonb(left(p_reason, 40))) else jsonb_set(data, '{skippedAt}', to_jsonb(now())) - 'skipReason' end)
       else data - 'skippedAt' - 'skipReason' end
     where id = p_training;
