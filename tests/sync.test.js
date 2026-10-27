@@ -360,3 +360,13 @@ test("a client's card note and finish-early reason still queued when their rule 
   fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: training("T"), updated_at: "S1" }], true, Date.now());
   assert.strictEqual(maps.trainings.get("T").rows[0].clientNote, "Pinched", "the server's copy without the note does not replace ours");
 });
+test("a template's unsaved draft stays out of the device copy and comes back unsaved after a relaunch", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const tpl = training("tpl1", { clientId: TPL, title: "Upper A", rows: [row("r1")] }); maps.trainings.set("tpl1", tpl);
+  app.set({ templateDraft: { id: "tpl1", snapshot: JSON.stringify(tpl), dirty: false, saving: false }, view: { name: "training", id: "tpl1" } });
+  tpl.title = "Upper A, edited"; fns.scheduleSave("trainings", "tpl1");                                      // swallowed into the draft
+  assert.ok(app.get().templateDraft.dirty && !maps.dirty.has("trainings/tpl1"));
+  fns.localBackend.save(); const stored = JSON.parse(localStorage.getItem("fiala.trainings.v1")).trainings.tpl1;
+  assert.strictEqual(stored.title, "Upper A", "the device copy holds the template as saved");
+  const draft = JSON.parse(localStorage.getItem("fiala.trainings.draft")); assert.strictEqual(draft.doc.title, "Upper A, edited", "the draft is kept on its own");
+});
