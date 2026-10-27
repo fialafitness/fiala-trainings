@@ -1662,8 +1662,10 @@ import { reportRange, buildReport } from "./report.js";
     const soon = next.filter((t, i) => i === 0 || effDate(t) <= horizon);
     nextExtra = Math.max(0, Math.min(nextExtra, next.length - soon.length));
     const shown = next.slice(0, soon.length + nextExtra), left = next.length - shown.length;
-    $("nextHead").hidden = next.length === 0; $("nextList").hidden = next.length === 0;
-    $("nextList").replaceChildren(...shown.map((t, i) => rowOf(t, i === 0)));
+    const todays = shown.filter((t) => effDate(t) === iso(base)), later = shown.filter((t) => effDate(t) !== iso(base));   // today's workout on its own card, the days after it under "Up next"
+    $("todayHead").hidden = !todays.length; $("todayList").hidden = !todays.length; $("todayList").replaceChildren(...todays.map((t) => rowOf(t, true)));
+    $("nextHead").hidden = !later.length && left === 0; $("nextList").hidden = !later.length && left === 0;
+    $("nextList").replaceChildren(...later.map((t, i) => rowOf(t, i === 0 && !todays.length)));
     if (left > 0 || nextExtra > 0) {
       const li = document.createElement("li"); li.className = "more"; const bar = document.createElement("div");
       if (left > 0) {
