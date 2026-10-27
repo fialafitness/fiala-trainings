@@ -66,7 +66,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---- template drafts: editing a template changes nothing until "Save template"; a client's copy is always separate
   function draftFor(t) {
     if (S.clientMode || !isTemplateClient(t.clientId)) return null;
-    if (!S.templateDraft || S.templateDraft.id !== t.id) S.templateDraft = { id: t.id, snapshot: JSON.stringify(t), dirty: false, saving: false };
+    if (!S.templateDraft || S.templateDraft.id !== t.id) { normalizeLabels(t); for (const r of t.rows || []) if (ALIASES[r.name]) r.name = ALIASES[r.name]; S.templateDraft = { id: t.id, snapshot: JSON.stringify(t), dirty: false, saving: false }; }   // the tidying the build does is not an edit
     return S.templateDraft;
   }
   function paintDraftBar() {
@@ -184,6 +184,7 @@ import { reportRange, buildReport } from "./report.js";
     $("navDone").hidden = true;
   }
   function showLogin(msg) {
+    dropWake();
     S.signedIn = false; S.clientMode = false; S.myClientId = null; reordering = false; document.body.classList.remove("client");
     $("clientFoot").hidden = true; $("localFoot").hidden = true; $("myExercises").hidden = true; $("packagesBtn").hidden = true; $("settingsBtn").hidden = true; $("catalogBtn").hidden = true; $("dataBtn").hidden = true; settingsOpen = false; fromSettings = false;
     hideAllViews(); $("vLogin").hidden = false;
@@ -194,6 +195,12 @@ import { reportRange, buildReport } from "./report.js";
     hideAllViews(); $("vSignup").hidden = false; $("suForm").hidden = false; $("suDone").hidden = true; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("suMsg").textContent = ""; $("suEmail").value = $("loginEmail").value.trim(); setTimeout(() => $("suName").focus(), 50);
   }
+  const scrollMemo = new Map();          // page key -> how far it was scrolled when it was left: Back lands there (his rule: never at the top)
+  const viewKey = (v) => [v.name, v.id || "", v.program || "", v.phase || "", v.stage || ""].join("/");
+  const setTab = (v) => { S.tab = v; lsSet("fiala.trainings.tab", v); };   // the client page's tab, remembered across a reload
+  let dragging = false;                  // a client row is under the finger: no redraw of the list until it is put down
+  let kbSwitching = false;               // the keyboard bar's Aa/123 switch is re-focusing the box: that blur is not a leave
+  let exPainted = null;                  // { name, sub, video } the exercise page was painted with: edits are measured against these, not against data that may arrive later
   let backScroll = null;                 // where the Clients page (or the client's profile) was scrolled when Settings, Catalog or Data was opened: Back returns there, not to the top
   let settingsOpen = false;              // false | "settings" | "password" | "exercises" | "packages" | "number"
   let fromSettings = false;              // false | "settings" | "catalog": the list page a sub-page (number, password, exercises, packages) was opened from; Back returns there
@@ -330,7 +337,7 @@ import { reportRange, buildReport } from "./report.js";
     if (e.target.closest("#planCancel")) { planEdit = null; renderClient(); return; }
     if (e.target.closest("#planSave")) { c.plan.adjust = planEdit ? planEdit.adjust : c.plan.adjust; planEdit = null; planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); return; }
     if (e.target.closest(".plan-adjust, .plan-actions")) return;
-    detailsOpen = true; S.tab = "profile"; render(); $("detailsBody").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    detailsOpen = true; setTab("profile"); render(); $("detailsBody").scrollIntoView({ block: "nearest", behavior: "smooth" });
   });
   $("planSel").addEventListener("change", (e) => {
     const c = clients.get(S.view.id); if (!c || isTemplateClient(c.id)) return;
@@ -402,12 +409,13 @@ import { reportRange, buildReport } from "./report.js";
   const mkBtn = (text, cls, fn) => { const x = document.createElement("button"); x.type = "button"; x.className = cls; x.textContent = text; x.addEventListener("click", fn); return x; };
   // ---- one exercise, on its own page: the video on top, a form (Name, Subtitle, Video), Delete below; Done in the bar saves, Back leaves
   let exCurrent = null;                                                       // { name, key } of the exercise the page shows
-  const exDirty = () => { if (!exCurrent) return false; const { name, key } = exCurrent, chosen = customSubs.has(key) ? customSubs.get(key) : null, vid = videoForName(name); return $("exName").value.trim() !== name || $("exSub").value.trim() !== (chosen == null ? autoSubtitle(name) : chosen) || $("exVideo").value.trim() !== (vid ? "https://youtu.be/" + vid : ""); };
+  const exDirty = () => { if (!exCurrent || !exPainted) return false; return $("exName").value.trim() !== exPainted.name || $("exSub").value.trim() !== exPainted.sub || $("exVideo").value.trim() !== exPainted.video; };   // changed by him, not by data that arrived after the page was painted
   const paintExHint = () => { const nm = $("exName").value.trim(), want = $("exSub").value.trim(), { title, sub } = splitName(nm, want); $("exHint").textContent = sub ? "Clients see \u201c" + title + "\u201d with \u201c" + sub + "\u201d under it." : want ? "The subtitle has to be the end of the name." : "Clients see the whole name on one line."; };
   function showExercise(name, key) {
     exCurrent = { name, key }; settingsOpen = "exercise"; hideAllViews(); $("vExercise").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Exercises"; $("brand").hidden = true; $("status").textContent = ""; $("navDone").hidden = false;
     const vid = videoForName(name), chosen = customSubs.has(key) ? customSubs.get(key) : null;
     $("exName").value = name; $("exSub").value = chosen == null ? autoSubtitle(name) : chosen; $("exVideo").value = vid ? "https://youtu.be/" + vid : "";
+    exPainted = { name, sub: $("exSub").value.trim(), video: $("exVideo").value.trim() };
     const player = $("exPlayer"); player.replaceChildren(); player.hidden = !vid;
     if (vid) { const f = document.createElement("iframe"); f.src = "https://www.youtube-nocookie.com/embed/" + vid + "?playsinline=1&rel=0&modestbranding=1"; f.allow = "accelerometer; encrypted-media; picture-in-picture"; f.allowFullscreen = true; player.appendChild(f); }
     paintExHint(); rememberPage();
@@ -513,6 +521,7 @@ import { reportRange, buildReport } from "./report.js";
     if (S.sb) S.sb.auth.getUser().then(({ data }) => { $("recoveryUser").value = (data && data.user && data.user.email) || ""; }).catch(() => {}); $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
   }
   function showProblem(text) {
+    dropWake();
     settingsOpen = false; hideAllViews(); $("vWaiting").hidden = false; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("waitingText").textContent = text;
   }
@@ -776,17 +785,18 @@ import { reportRange, buildReport } from "./report.js";
   function dropWake() { clearTimeout(wakeTimer); wakeTimer = null; const w = wake; wake = null; if (w) w.release().catch(() => {}); }
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") holdWake(false); });
   document.addEventListener("pointerdown", () => { if (S.view.name === "training") holdWake(true); }, { passive: true });
-  function go(next) {
+  function go(next, back) {
     if (S.templateDraft && S.templateDraft.dirty && S.view.name === "training" && S.view.id === S.templateDraft.id) {
       S.pendingGo = next; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
     }
     if (!(next.name === "client" && isTemplateClient(next.id))) { pickFor = null; fillFor = null; }
+    scrollMemo.set(viewKey(S.view), window.scrollY);                                              // the page being left: Back brings it back here
     if (!S.clientMode && (!S.sb || S.syncedOnce) && S.view.name === "training" && !(next.name === "training" && next.id === S.view.id) && fillFor !== S.view.id) {   // leaving an empty workout behind discards it, like an empty note (not while it waits for a template, not before the first sync)
       const t = trainings.get(S.view.id); if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
     }
     if (notifOpen && !(next.name === "client" && next.id === notifOpen)) closeNotif();   // leaving the client: what was shown counts as seen
     for (const f of document.querySelectorAll("#rows .player iframe, #exPlayer iframe")) f.remove();   // a video left playing does not follow to the next page
-    reordering = false; S.view = next; lsSet("fiala.trainings.view", S.view); render(); setStatus(); window.scrollTo(0, 0);   // the header shows this page's save state, not the last page's complaint
+    reordering = false; S.view = next; lsSet("fiala.trainings.view", S.view); render(); setStatus(); window.scrollTo(0, back ? (scrollMemo.get(viewKey(next)) || 0) : 0);   // forward: the top; back: where that page was (the header shows this page's save state, not the last page's complaint)
     if (next.name === "training") holdWake(true); else dropWake(); }
   $("back").addEventListener("click", async () => {
     if (settingsOpen === "exercise") { if (exDirty() && !(await askFirst({ title: "Discard the changes?", text: "The exercise stays as it was.", yes: "Discard" }))) return; showExercises(true); return; }
@@ -796,10 +806,11 @@ import { reportRange, buildReport } from "./report.js";
       if (backScroll != null) window.scrollTo(0, backScroll); else { const foot = S.clientMode ? $("clientFoot") : $("localFoot"); if (!foot.hidden) foot.scrollIntoView({ block: "end" }); else window.scrollTo(0, 0); }   // back where the page was; after a refresh, at the pills it was opened from
       backScroll = null; return;
     }
-    if (S.view.name === "training") { const t = trainings.get(S.view.id); go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }); }
-    else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.phase) go({ name: "client", id: TEMPLATES_ID, program: S.view.program });
-    else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.program) go({ name: "client", id: TEMPLATES_ID });
-    else go({ name: "clients" });
+    if (S.view.name === "training") { const t = trainings.get(S.view.id); go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }, true); }
+    else if (S.view.name === "client" && isTemplateClient(S.view.id) && !S.view.program && pickFor) go(fillFor ? { name: "training", id: fillFor } : { name: "client", id: pickFor }, true);   // choosing a template for someone: Back is back to them
+    else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.phase) go({ name: "client", id: TEMPLATES_ID, program: S.view.program }, true);
+    else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.program) go({ name: "client", id: TEMPLATES_ID }, true);
+    else go({ name: "clients" }, true);
   });
 
   // ---------- render ----------
@@ -810,6 +821,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!el || el.tagName !== "INPUT" || el.readOnly) return "";
     if (el.closest(".boxes")) return "weights";
     if (el.closest(".setlog")) return el.classList.contains("w") ? "weights" : "repsdone";
+    if (el.classList.contains("sum-w")) return "weights"; if (el.classList.contains("sum-r")) return "repsdone";   // the opened finished card's set lines
     if (el.classList.contains("reps")) return "reps";
     if (el.classList.contains("tempo")) return "tempo";
     if (el.classList.contains("rest")) return "rest";
@@ -859,7 +871,7 @@ import { reportRange, buildReport } from "./report.js";
     const text = t.inputMode !== "text";
     const group = t.closest(".boxes") ? [...t.closest(".boxes").children] : [t];
     for (const b of group) b.inputMode = text ? "text" : "decimal";
-    t.blur(); setTimeout(() => t.focus(), 50);   // the phone reads the keyboard type when the box takes focus
+    kbSwitching = true; t.blur(); setTimeout(() => { t.focus(); setTimeout(() => { kbSwitching = false; }, 60); }, 50);   // the phone reads the keyboard type when the box takes focus; that blur is not a leave
   });
   kbNextBtn.addEventListener("click", kbNext);
   kbDone.addEventListener("click", () => { const t = kbTarget; if (t) t.blur(); else hideKb(); });   // the check: done with this box, the keyboard goes
@@ -1249,6 +1261,7 @@ import { reportRange, buildReport } from "./report.js";
     li.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 && e.pointerType === "mouse") return;
       if (!e.target.closest(".grip")) return;
+      dragging = true;
       const ul = li.parentElement, rows = [...ul.children], i = rows.indexOf(li);
       const rect = rows.map((r) => r.getBoundingClientRect()), h0 = rect[i].height, c0 = rect[i].top + h0 / 2;
       const minDy = rect[0].top - rect[i].top, maxDy = rect[rows.length - 1].bottom - rect[i].bottom;
@@ -1270,6 +1283,7 @@ import { reportRange, buildReport } from "./report.js";
         li.style.transform = "translateY(" + dy + "px)";
       };
       const end = () => {
+        dragging = false;
         li.removeEventListener("pointermove", move); li.removeEventListener("pointerup", end); li.removeEventListener("pointercancel", end);
         li.classList.remove("dragging"); rows.forEach((r) => { r.style.transform = ""; });
         moveClientTo(id, target);
@@ -1278,6 +1292,7 @@ import { reportRange, buildReport } from "./report.js";
     });
   }
   function renderClients() {
+    if (dragging) return;                                            // a row is under the finger: the list is redrawn once it is put down
     const list = activeList(), inactive = peopleList().filter((c) => c.paused);
     const tpl = clients.get(TEMPLATES_ID);
     $("tplCard").hidden = !tpl || S.clientMode;
@@ -1298,7 +1313,7 @@ import { reportRange, buildReport } from "./report.js";
         b.innerHTML = `<span class="nm"><span></span></span><span class="sub"></span>`;
         b.firstChild.firstChild.textContent = c.name; b.lastChild.textContent = words;   // no chevron: the row itself is the way in (his call)
         b.classList.toggle("news", !!newsWords(clientNews(c)));
-        b.addEventListener("click", () => { S.tab = "workouts"; go({ name: "client", id: c.id }); });
+        b.addEventListener("click", () => { setTab("workouts"); go({ name: "client", id: c.id }); });
         li.appendChild(b);
       }
       ul.appendChild(li);
@@ -1309,7 +1324,7 @@ import { reportRange, buildReport } from "./report.js";
     $("inactiveList").replaceChildren(...inactive.map((c) => {
       const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
       b.innerHTML = `<span></span><span class="sub">Paused</span>`; b.firstChild.textContent = c.name;
-      b.addEventListener("click", () => { S.tab = "workouts"; go({ name: "client", id: c.id }); }); li.appendChild(b); return li;
+      b.addEventListener("click", () => { setTab("workouts"); go({ name: "client", id: c.id }); }); li.appendChild(b); return li;
     }));
   }
   $("tplCard").addEventListener("click", () => go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }));
@@ -2303,7 +2318,7 @@ import { reportRange, buildReport } from "./report.js";
     bind(".reps", "reps"); bind(".tempo", "tempo", (v) => { setTimeout(paintTempo, 0); return v; });
     const timedAtPaint = JSON.stringify(measurePlan(r.reps));           // reps turned into "30 sec" (or back): the set log, its labels and the summary follow as soon as he leaves the box
     if (!asClient) q(".reps").addEventListener("blur", (e) => {
-      if (JSON.stringify(measurePlan(r.reps)) === timedAtPaint) return;
+      if (kbSwitching || JSON.stringify(measurePlan(r.reps)) === timedAtPaint) return;
       const nx = e.relatedTarget, field = nx && nx.closest && nx.closest('.row[data-id="' + r.id + '"]') ? ["name", "reps", "tempo", "rest", "label"].find((c) => nx.classList.contains(c)) : null;
       S.renderedTraining = null; render();
       if (field) { const row = $("rows").querySelector('.row[data-id="' + r.id + '"]'), inp = row && row.querySelector("." + field); if (inp) inp.focus({ preventScroll: true }); }   // he tapped the next box: it keeps the keyboard, no jump
@@ -2409,7 +2424,7 @@ import { reportRange, buildReport } from "./report.js";
         if (!earlier) continue;
         for (const x of other.rows || []) {
           if (canon(x.name) !== name) continue; let st = topSet(x, timed); if (!st) continue;
-          const xu = measurePlan(x.reps); if (timed && xu && tmNow && (xu.unit === "m") !== (tmNow.unit === "m")) continue;   // a carry and a hold are not the same measure
+          const xu = measurePlan(x.reps), kindOf = (u) => (!u ? "reps" : u.unit === "m" ? "m" : "time"); if (kindOf(xu) !== kindOf(tmNow)) continue;   // reps, a hold and a carry are three different measures: never compared number for number
           st = toUnit(st, x.unit, cu); if (timed && xu && tmNow) st = toTimeUnit(st, xu.unit, tmNow.unit); st.date = effDate(other); st.title = String(other.title || "").trim();
           if (betterSet(st, best, timed)) best = st;                   // equal numbers: the newest session keeps the title
           if (!last) last = st;
@@ -2422,7 +2437,7 @@ import { reportRange, buildReport } from "./report.js";
       box.hidden = !h; if (!h) return;
       const unit = (clients.get(t.clientId) || {}).unit || "lb", tm = measurePlan(r.reps);
       const fmt = tm ? (st) => (st.w != null ? st.w + " " + unit + " \u00d7 " : "") + st.rp + " " + tm.unit : (st) => st.w != null ? st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps");
-      const now = topSet(r, h.timed, (group.sel | 0) + 1), newBest = !!(now && betterSet(now, h.best, h.timed)), same = sameSet(h.last, h.best);   // the set under the finger counts for the gold preview as it is typed
+      const now = toUnit(topSet(r, h.timed, (group.sel | 0) + 1), r.unit, unit), newBest = !!(now && betterSet(now, h.best, h.timed)), same = sameSet(h.last, h.best);   // the set under the finger counts for the gold preview as it is typed
       q(".lift.best").classList.toggle("new", newBest); q(".lift.best b").textContent = fmt(newBest ? now : h.best); q(".lift.best .vh").textContent = newBest ? "New best " : "Personal best ";   // the read-out word follows the state
       q(".lift.last").hidden = !h.last; if (h.last) q(".lift.last b").textContent = fmt(h.last);   // both halves always, even when the best was the last session (his call)
       box._info = { last: h.last, best: h.best, now, newBest, same, fmt };
@@ -2435,7 +2450,7 @@ import { reportRange, buildReport } from "./report.js";
     };
     const liftRows = (i) => {                                          // the bubble, in words: every line that applies, best first
       const rows = [];
-      if (i.newBest) rows.push({ k: "New best", v: i.fmt(i.now), d: "Today" });
+      if (i.newBest) rows.push({ k: "New best", v: i.fmt(i.now), d: whenDay(effDate(t), true) || "Today" });
       rows.push({ k: i.newBest ? "Previous best" : "Personal best", v: i.fmt(i.best), d: whenDay(i.best.date, true) || "Earlier" });   // plain words (his ask); a session without a date still gets one
       if (i.last) rows.push({ k: "Last time", v: i.fmt(i.last), d: whenDay(i.last.date, true) || "Earlier" });                       // the same numbers twice when the best was the last session: honest
       return rows;
@@ -2551,7 +2566,13 @@ import { reportRange, buildReport } from "./report.js";
     if (was !== c.unit) for (const t of clientTrainings(c.id)) if (stampUnit(t, was)) scheduleSave("trainings", t.id);   // what was logged stays what it was: 100 lb does not become 100 kg
     for (const x of $("unitSeg").querySelectorAll("button")) x.classList.toggle("on", x === b);
   });
-  $("cEmail").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.email = e.target.value.trim().toLowerCase(); scheduleSave("clients", c.id); });
+  $("cEmail").addEventListener("input", (e) => {
+    const c = clients.get(S.view.id); if (!c) return; const v = e.target.value.trim().toLowerCase();
+    const dup = v && [...clients.values()].find((o) => o.id !== c.id && !isTemplateClient(o.id) && norm(o.email) === norm(v));   // one email, one client: the server refuses a second, so the box does too
+    e.target.classList.toggle("bad", !!dup); if (dup) { $("status").textContent = "That email is on " + (dup.name || "another client"); return; }
+    if (/That email is on/.test($("status").textContent)) $("status").textContent = "";
+    c.email = v; scheduleSave("clients", c.id);
+  });
   $("cEmail").addEventListener("blur", () => { const c = clients.get(S.view.id); if (c) $("detailsBtn").classList.toggle("needs", !c.email); });
   $("cPhone").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.phone = e.target.value.trim(); scheduleSave("clients", c.id); });
   $("cBirthday").addEventListener("change", (e) => { const c = clients.get(S.view.id); if (!c) return; c.birthday = e.target.value || ""; scheduleSave("clients", c.id); });
@@ -2587,7 +2608,7 @@ import { reportRange, buildReport } from "./report.js";
     paintMsg(c);
   });
   let detailsOpen = false, detailsFor = null;
-  $("tabbar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b || b.dataset.tab === S.tab) return; S.tab = b.dataset.tab; render(); window.scrollTo(0, 0); });
+  $("tabbar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b || b.dataset.tab === S.tab) return; setTab(b.dataset.tab); render(); window.scrollTo(0, 0); });
   const typingIn = (el) => !!el && /^(INPUT|TEXTAREA)$/.test(el.tagName) && !/^(date|month|checkbox|radio|file|range)$/.test(el.type || "");   // a keyboard is coming: a select or a date wheel is not typing
   document.addEventListener("focusin", (e) => { if (typingIn(e.target)) document.body.classList.add("typing"); });
   document.addEventListener("focusout", () => { setTimeout(() => { if (!typingIn(document.activeElement)) document.body.classList.remove("typing"); }, 80); });
@@ -2733,14 +2754,19 @@ import { reportRange, buildReport } from "./report.js";
   function watchReleases(mine) {               // a page iOS keeps alive for days still gets the next release: on coming back to the app, never mid-tap, mid-sheet or mid-typing
     const sw = navigator.serviceWorker; if (!mine || !sw || !sw.addEventListener) return;
     let newest = 0;
-    const settle = () => { if (newest > mine && document.visibilityState === "visible" && !S.asking && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || "")) location.reload(); };
-    sw.addEventListener("message", (e) => { if (e.data && e.data.type === "release") { newest = Math.max(newest, Number(e.data.current) || 0); settle(); } });
+    let resumedAt = 0;
+    const busy = () => S.asking || /^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || "") || !!(S.templateDraft && S.templateDraft.dirty) || (settingsOpen === "exercise" && exDirty()) || noteDraft.size > 0 || cardNoteDraft.size > 0 || !!(document.querySelector(".sheet-bg:not([hidden])"));   // a sheet, typing, or anything unsaved: no reload now
+    const settle = () => { if (newest > mine && !busy()) location.reload(); };
+    const ask = () => { if (sw.controller) sw.controller.postMessage({ type: "check" }); };
+    sw.addEventListener("message", (e) => { if (e.data && e.data.type === "release") { newest = Math.max(newest, Number(e.data.current) || 0); if (performance.now() - resumedAt < 800 && document.visibilityState === "visible") settle(); } });   // an answer right after coming back lands before the first tap; a later one waits for the next quiet moment
     let had = !!sw.controller;
-    sw.addEventListener("controllerchange", () => { if (had) { newest = Infinity; settle(); } had = true; });   // a newer worker took this page over: it was written for a newer page
+    sw.addEventListener("controllerchange", () => { if (had) ask(); had = true; });   // a newer worker took this page over: ask it what the newest release is (a worker change alone is no reason to reload)
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState !== "visible") return;
+      if (document.visibilityState !== "visible") { settle(); return; }                   // leaving the screen with a newer release known: the page comes back new
+      resumedAt = performance.now();
+      if (newest > mine) { settle(); return; }                                           // known from last time: now, before the first tap
       sw.getRegistration().then((reg) => reg && reg.update()).catch(() => {});   // a new worker, if one was deployed while the app slept
-      if (sw.controller) sw.controller.postMessage({ type: "check" }); else settle();   // and a new release: the worker answers with the newest on the device
+      ask();                                                                         // and a new release: the worker answers with the newest on the device
     });
   }
   const pageRelease = () => { for (const s of document.querySelectorAll("script[type=module]")) { const m = /main\.js\?v=(\d+)/.exec(s.textContent || ""); if (m) return Number(m[1]); } return 0; };   // the release this page runs, off its own import line (import.meta.url loses the ?v= when the worker serves the script from a release cache)
@@ -2748,6 +2774,7 @@ import { reportRange, buildReport } from "./report.js";
     try { const v = pageRelease(); if (v) { $("appVersion").textContent = "Version " + v; watchReleases(v); } } catch (_) {}   // the build this phone runs, at the bottom of Settings
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) S.view = saved;
     const page = lsGet("fiala.trainings.page"); if (page && page.open) pendingPage = page;   // read before any screen change clears it
+    const savedTab = lsGet("fiala.trainings.tab"); if (savedTab === "profile" || savedTab === "workouts") S.tab = savedTab;
     localBackend.load();                       // instant start from the device copy
     restorePending();                          // and whatever was still waiting to reach the server
     try { const known = lsGet("fiala.trainings.role"); if (known && known.email && (clients.size || trainings.size)) paintRemembered(known, false); } catch (_) {}   // the last account's pages at once, from the device copy: no empty Clients page, no "Loading…" on the way
@@ -2771,11 +2798,12 @@ import { reportRange, buildReport } from "./report.js";
         return;
       }
       const { data, error: sessionError } = first;
+      const hp = new URLSearchParams(location.hash.replace(/^#/, "")), linkErr = hp.get("error") || hp.get("error_code") ? (/expired|otp_expired/i.test((hp.get("error_description") || "") + (hp.get("error_code") || "")) ? "That link has expired. Ask for a new one." : "That link did not work. Ask for a new one.") : "";
       if (location.hash && /access_token|error/.test(location.hash)) history.replaceState(null, "", location.pathname);
       if (fromRecoveryLink && data && data.session) { S.recovering = true; showRecovery(); return; }
       if (data && data.session) { await enterCloud(data.session); }
       else if ((!navigator.onLine || isNetwork(sessionError)) && remembered && remembered.email) enterOffline(remembered);
-      else showLogin("");
+      else showLogin(linkErr);
       return;
     }
     // no library (blocked network): work from the device copy
@@ -2788,7 +2816,7 @@ import { reportRange, buildReport } from "./report.js";
   export function internals() {
     return {
       fns: { addTraining, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
-      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, planTouched, deletedNotes, deletedPackages, fromFile },
+      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
       reset: () => { resetState(); localStorage.clear(); },

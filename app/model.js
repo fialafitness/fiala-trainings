@@ -13,6 +13,7 @@ export const timedPlan = (reps) => {
   const s = String(reps || "");
   const lead = /^\s*\d+\s*[x\u00d7]\s*/i.exec(s), base = lead ? lead[0].length : 0, first = s.slice(base).search(/\d/);   // the plan's own number is the first one ("3 x 30 sec" aside): "10 reps, 2 sec hold at top" is reps
   const at = (i) => first < 0 || i === base + first;
+  const ms = /(\d+)\s*min(?:s|utes?)?\s*(\d+)\s*s(?:ec|ecs|econds?)?\b/i.exec(s); if (ms && at(ms.index)) return { n: String(parseInt(ms[1], 10) * 60 + parseInt(ms[2], 10)), unit: "sec" };   // "1 min 30 sec" = 90 seconds, like "1:30"
   const m = /(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*\d+(?:[.,]\d+)?)?\s*(s|sec|secs|second|seconds|min|mins|minute|minutes)\b/i.exec(s);
   if (m && at(m.index)) return { n: m[1], unit: /^m/i.test(m[2]) ? "min" : "sec" };
   const mm = /(?:^|[^\d:])(\d{1,2}):(\d{2})(?![\d:])/.exec(s); if (mm && at(s.indexOf(mm[1] + ":" + mm[2], mm.index))) return { n: String(parseInt(mm[1], 10) * 60 + parseInt(mm[2], 10)), unit: "sec" };   // "1:30" = 90 seconds
@@ -102,7 +103,7 @@ export const sessionNo = (plan, list, t) => {                      // "Session 3
   if (!plan || plan.kind !== "sessions" || !(plan.size > 0) || !t || !t.inPerson || t.skippedAt || t.missed === true || effDate(t) < (plan.startedOn || "")) return null;
   const by = (a, b) => effDate(a).localeCompare(effDate(b)) || (a.createdAt || "").localeCompare(b.createdAt || "");
   const since = list.filter((x) => x.inPerson && !x.skippedAt && x.missed !== true && effDate(x) >= (plan.startedOn || ""));
-  const done = since.filter((x) => x.completedAt).sort(by), planned = since.filter((x) => !x.completedAt).sort(by);
+  const todayIso = localIso(new Date()), done = since.filter((x) => x.completedAt).sort(by), planned = since.filter((x) => !x.completedAt && (x.id === t.id || effDate(x) >= todayIso)).sort(by);   // a planned workout left behind unfiled does not take a number from the ones ahead
   const p = t.completedAt ? done.findIndex((x) => x.id === t.id) + 1 : done.length + planned.findIndex((x) => x.id === t.id) + 1;
   const n = p + (parseInt(plan.adjust, 10) || 0); if (p < 1 || n < 1) return null;
   return { n: ((n - 1) % plan.size) + 1, size: plan.size, packNo: Math.floor((n - 1) / plan.size) + 1 };

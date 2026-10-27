@@ -245,3 +245,10 @@ test("a correction reaches the copied sets keystroke by keystroke; a plan's numb
   const plan = { id: "p", kind: "sessions", size: 10, startedOn: "2026-10-01" }, day = (d) => ({ inPerson: true, completedAt: "2026-10-" + d + "T18:00:00.000Z", date: "2026-10-" + d });
   assert.strictEqual(planProgress(plan, [day("02"), { ...day("03"), skippedAt: "2026-10-03T10:00:00.000Z" }, { ...day("04"), missed: true }]).used, 1, "a finished-and-skipped record counts as the pill counts it: not at all");
 });
+test("a planned workout left unfiled does not take a session number from the ones ahead; 'N min M sec' is seconds", () => {
+  const plan = { id: "p", kind: "sessions", size: 10, startedOn: "2026-01-01" };
+  const mk = (id, date, done) => ({ id, inPerson: true, date, createdAt: "2026-01-01T00:00:00.000Z", completedAt: done ? date + "T18:00:00.000Z" : null });
+  const old = mk("a", "2026-01-05", false), today = fns.localIso(new Date()), now = mk("b", today, false), list = [mk("z", "2026-01-02", true), old, now];
+  assert.strictEqual(sessionNo(plan, list, now).n, 2, "the overdue one does not count ahead of today's");
+  assert.deepStrictEqual(timedPlan("1 min 30 sec"), { n: "90", unit: "sec" });
+});

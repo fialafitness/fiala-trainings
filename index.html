@@ -564,6 +564,9 @@
   .alt-btn[hidden] { display: none; }
   .alt-btn.some { color: var(--text-primary); }
   .block.done:not(.open) .ex-icons { display: none; }
+  .block.done.open.summary .row .top .name { padding-right: 16px !important; }   /* the discs are gone from an opened finished card: the name takes the room back */
+  .list:empty { display: none; }                                                 /* an emptied list draws no hairline */
+  input.bad { box-shadow: inset 0 0 0 1.5px var(--danger); }
   .block.done:not(.open) .row .top .name { padding-right: 16px !important; }
   .alt-menu { left: -64px; right: 0; }
   .alt-menu { max-height: none; overflow: hidden; }
@@ -690,8 +693,9 @@
   .block.done .tracker button.cur { background: var(--done); border-color: var(--done); color: var(--done-ink); }
   .tracker button:hover { opacity: 0.85; }
   .tracker button.static { cursor: default; }                           /* a template just shows the count */
-  .tracker .step { width: 36px; height: 30px; background: transparent; color: var(--text-secondary); font-size: 18px; font-weight: 400; }
+  .tracker .step { position: relative; width: 36px; height: 30px; background: transparent; color: var(--text-secondary); font-size: 18px; font-weight: 400; }
   .tracker .step:disabled { opacity: 0.35; cursor: default; }
+  .tracker .step::before { content: ""; position: absolute; inset: -7px -4px; }   /* the − / + steppers: thumb-sized targets */
   .setlog { margin-top: 14px; }
   .setlog .chip.stack { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: 74px; padding: 10px 14px; text-align: left; }   /* a label on top, the number below */
   .setlog .chip.stack .lab { font-size: 13px; line-height: 1.2; color: var(--text-secondary); }
@@ -1051,6 +1055,8 @@
     .foot.stack .pair .btn { font-size: 15px; padding-left: 10px; padding-right: 10px; }
     .field-row { flex-wrap: wrap; }
     .sum-val { flex-wrap: wrap; white-space: normal; }
+    .setlog .chip.stack.editing .valrow input { font-size: 20px; }       /* the number does not pop when the box is tapped */
+    .start-row #addRow, .start-row #tplFill { font-size: 15px; padding-left: 10px; padding-right: 10px; }
     .row .top { grid-template-columns: 52px 1fr; }
     .row { --numw: 60px; }
     .row .sum { margin-left: 60px; }
@@ -1381,7 +1387,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=126";
+  import { boot } from "./app/main.js?v=127";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
