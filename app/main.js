@@ -1235,7 +1235,7 @@ import { reportRange, buildReport } from "./report.js";
     if (S.clientMode && effPaused(clients.get(S.myClientId))) S.view = { name: "client", id: S.myClientId };
     if (S.view.name === "client" && !clients.has(S.view.id)) S.view = S.clientMode ? { name: "client", id: S.myClientId } : { name: "clients" };
     if (S.view.name === "training" && !trainings.has(S.view.id)) S.view = S.clientMode ? { name: "client", id: S.myClientId } : { name: "clients" };
-    if (S.view.name !== "training") previewClient = false;
+    if (S.view.name !== "training" && previewClient) { previewClient = false; rememberPreview(); }
     if (!S.clientMode) document.body.classList.toggle("client", previewClient && S.view.name === "training" && !isTemplateClient(trainings.get(S.view.id).clientId));
     $("vClients").hidden = S.view.name !== "clients";
     $("vClient").hidden = S.view.name !== "client";
@@ -2154,7 +2154,9 @@ import { reportRange, buildReport } from "./report.js";
   let paintedSig = "";              // what the cards on screen were built from: a redraw with the same picture is skipped
   const cardNoteDraft = new Map();  // selKey -> a card note being written: it survives a rebuild of the cards (a sync, a set logged elsewhere)
   let completeAt = 0;               // when Complete set last fired: the second tap of a double tap must not log a second set
-  let previewClient = false;       // trainer: showing the workout as the client sees it (display only; saving stays the trainer's)
+  const PREVIEW_KEY = "fiala.preview";
+  let previewClient = (() => { try { return sessionStorage.getItem(PREVIEW_KEY) === "1"; } catch (_) { return false; } })();   // trainer: showing the workout as the client sees it (display only; saving stays the trainer's). A refresh keeps the view; a fresh open starts as the coach
+  const rememberPreview = () => { try { if (previewClient) sessionStorage.setItem(PREVIEW_KEY, "1"); else sessionStorage.removeItem(PREVIEW_KEY); } catch (_) {} };
   function rowEl(t, r, group) {
     const el = document.createElement("div"); el.className = "row"; el.dataset.id = r.id;
     el.innerHTML = `
@@ -2553,7 +2555,7 @@ import { reportRange, buildReport } from "./report.js";
   }
 
   // ---------- events ----------
-  $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; S.renderedTraining = null; render(); });
+  $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; rememberPreview(); S.renderedTraining = null; render(); });
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
   $("cNameField").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.name = e.target.value; $("cName").textContent = c.name; scheduleSave("clients", c.id); });
   const growNotesBox = () => growBox($("cNotes"));
