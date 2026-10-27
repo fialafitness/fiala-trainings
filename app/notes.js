@@ -13,6 +13,7 @@ export const noteEntries = (c) => {
 export const packNotes = (list) => ({ log: list.map((x) => ({ id: x.id === "legacy" ? uid() : x.id, at: x.at, text: x.text, ...(x.workout ? { workout: x.workout } : {}) })) });
 export const mergeNotes = (mine, theirs, deletedNotes) => {                          // another device saved first: keep both sets; what this device deleted stays deleted
   const a = noteEntries({ notes: mine }), b = noteEntries({ notes: theirs }), ids = new Set(a.map((x) => x.id));
-  const extra = b.filter((x) => x.id !== "legacy" && !ids.has(x.id) && !deletedNotes.has(x.id));
+  const legacy = a.find((x) => x.id === "legacy");
+  const extra = b.filter((x) => x.id !== "legacy" && !ids.has(x.id) && !deletedNotes.has(x.id) && !(legacy && x.at == null && x.text === legacy.text));   // the old single note, already folded into the other side's log: not a second copy
   return extra.length ? packNotes([...a, ...extra]) : mine;
 };

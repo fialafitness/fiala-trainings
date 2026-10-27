@@ -137,6 +137,7 @@ const cloudBackend = {
         if (kind !== "trainings" || !serverData) return;
         const mine = trainerState.get(id) || new Set();
         for (const f of ["completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"]) { if (mine.has(f)) continue; for (const target of [data, trainings.get(id)]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; } }
+        for (const target of [data, trainings.get(id)]) if (target && target.completedAt && (target.skippedAt || target.missed === true)) { delete target.skippedAt; delete target.skipReason; target.missed = false; }   // finished on one side, skipped on the other: finished stands, and the card and the session pill count the same workouts
       };
       const takeNotes = (serverData) => {                      // another device may have written notes: keep both
         if (kind !== "clients" || !serverData) return;
