@@ -1521,7 +1521,7 @@ import { reportRange, buildReport } from "./report.js";
     const c = clients.get(S.view.id);
     const isTpl = isTemplateClient(c.id);
     $("vClient").classList.toggle("tpl", isTpl); $("vClient").dataset.tab = S.tab;
-    $("newTraining").textContent = isTpl ? "+ New template" : "+ New workout";
+    $("newTraining").textContent = isTpl ? "+ Template" : "+ Workout";
     if (!isTpl) { $("tplList").hidden = true; $("pickNote").hidden = true; $("newTraining").hidden = false; }   // a program page hid it; a client's page always has it
     $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !effPaused(c); $("pausedKicker").textContent = c.paused ? "Access paused" : "Plan ended";
     if (isTpl) { $("notifWrap").hidden = true; $("overview").hidden = true; $("planCard").hidden = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }   // the library has no notifications row: a client's count must not linger here
