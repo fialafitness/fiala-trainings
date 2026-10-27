@@ -1975,7 +1975,7 @@ import { reportRange, buildReport } from "./report.js";
         const peeking = peekBlocks.has(selKey);
         const chev = document.createElement("button"); chev.type = "button"; chev.className = "card-chev"; chev.setAttribute("aria-label", peeking ? "Fold" : "Open");
         chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (peeking ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4") + '"/></svg>';
-        card.appendChild(chev);
+        if (peeking) { const cap = block.querySelector(".group-cap"); (cap || card).appendChild(chev); } else card.appendChild(chev);   // opened for a look: the fold chevron moves up onto the "Exercise N" heading, and the card keeps its whole width
         const unpeek = () => { peekBlocks.delete(selKey); S.renderedTraining = null; render(); };
         if (peeking) { block.classList.add("peek"); chev.addEventListener("click", unpeek); for (const top of card.querySelectorAll(".row .top")) top.addEventListener("click", (e) => { if (e.target.closest(".ex-icons")) return; unpeek(); }); }
         else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey); S.renderedTraining = null; render(); }); }
