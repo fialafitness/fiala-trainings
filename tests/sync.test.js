@@ -370,3 +370,27 @@ test("a template's unsaved draft stays out of the device copy and comes back uns
   assert.strictEqual(stored.title, "Upper A", "the device copy holds the template as saved");
   const draft = JSON.parse(localStorage.getItem("fiala.trainings.draft")); assert.strictEqual(draft.doc.title, "Upper A, edited", "the draft is kept on its own");
 });
+test("a sync that changes nothing keeps the very same objects, so the cards on screen keep writing to the live record; a changed sibling workout repaints the open one", () => {
+  app.reset(); app.set({ clientMode: false, renderedTraining: "A" });
+  const a = training("A"), b = training("B"); maps.trainings.set("A", a); maps.trainings.set("B", b);
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "A", data: training("A"), updated_at: "S1" }, { id: "B", data: training("B"), updated_at: "S1" }], true, Date.now());
+  assert.strictEqual(maps.trainings.get("A"), a, "the same object"); assert.strictEqual(app.get().renderedTraining, "A", "nothing to repaint");
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "A", data: training("A"), updated_at: "S1" }, { id: "B", data: training("B", { title: "Changed elsewhere" }), updated_at: "S2" }], true, Date.now());
+  assert.strictEqual(maps.trainings.get("A"), a, "A untouched"); assert.strictEqual(app.get().renderedTraining, null, "B changed: A's last/best lines are read again");
+});
+test("a record deleted this session can be restored from a backup: its stamp went with it", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const stamp = sb.seed("ft_trainings", U(10), training(U(10), { clientId: "c1" }), { client_id: "c1" });
+  fns.mergeDown(maps.trainings, "trainings", [{ id: U(10), data: training(U(10), { clientId: "c1" }), updated_at: stamp }], true, Date.now());
+  await fns.cloudBackend.del("trainings", U(10)); maps.trainings.delete(U(10));
+  assert.ok(!maps.seenAt.has("trainings/" + U(10)), "no stamp left behind");
+  const back = training(U(10), { clientId: "c1", title: "Back from the file" }); maps.trainings.set(U(10), back);
+  await fns.cloudBackend.set("trainings", U(10), JSON.parse(JSON.stringify(back)));
+  assert.strictEqual(sb.tables.ft_trainings.get(U(10)).data.title, "Back from the file", "restored, not treated as deleted elsewhere");
+});
+test("empty note and reason queues are neither written to the device nor re-marked on launch", () => {
+  app.reset(); app.set({ clientMode: true });
+  maps.pendingNoteRows.set("T", new Set()); fns.persistPending();
+  assert.deepStrictEqual(JSON.parse(localStorage.getItem("fiala.pending.v1")).rownotes, []);
+  maps.dirty.clear(); fns.restorePending(); assert.ok(!maps.dirty.has("trainings/T"));
+});

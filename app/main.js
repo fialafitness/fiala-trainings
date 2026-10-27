@@ -32,11 +32,12 @@ import { reportRange, buildReport } from "./report.js";
   const knownName = (n) => { const k = squash(properName(n)); return !!k && ((builtinKeys.has(k) && !hiddenKeys.has(k)) || customNames.has(k)); };
   let lastDbError = "";                   // the last Supabase message, so a screen can say "run the script" instead of "try again"
   const missingTable = () => /ft_exercise_hidden|ft_exercises|ft_exercise_videos|ft_exercise_subtitles/.test(lastDbError) && /not find|does not exist|schema cache/i.test(lastDbError);
+  const catalogDigest = new Map(), catalogBump = (name, m) => { const d = JSON.stringify([...m]); if (catalogDigest.get(name) !== d) { catalogDigest.set(name, d); S.renderedTraining = null; } };   // names, videos, subtitles or hidden entries changed: the cards on screen are built again once
   async function loadHidden() {
     if (!S.sb || !S.signedIn) return;
     const { data, error } = await S.sb.from("ft_exercise_hidden").select("name_key");
     if (error || !data) return;
-    hiddenKeys.clear(); for (const r of data) hiddenKeys.add(r.name_key); refreshNames();
+    hiddenKeys.clear(); for (const r of data) hiddenKeys.add(r.name_key); refreshNames(); catalogBump("hidden", hiddenKeys);
   }
   async function hideBuiltin(k) { const { error } = await S.sb.from("ft_exercise_hidden").upsert({ name_key: k }); if (error) { lastDbError = error.message || ""; return false; } hiddenKeys.add(k); refreshNames(); return true; }
   async function unhideBuiltin(k) { if (!hiddenKeys.has(k)) return true; const { error } = await S.sb.from("ft_exercise_hidden").delete().eq("name_key", k); if (error) { lastDbError = error.message || ""; return false; } hiddenKeys.delete(k); refreshNames(); return true; }
@@ -46,7 +47,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!S.sb || !S.signedIn) return;
     const { data, error } = await S.sb.from("ft_exercises").select("name_key,name");
     if (error || !data) return;
-    customNames.clear(); for (const r of data) customNames.set(r.name_key, r.name); refreshNames();
+    customNames.clear(); for (const r of data) customNames.set(r.name_key, r.name); refreshNames(); catalogBump("names", customNames);
   }
   async function addCustomName(name) {
     name = tidyName(properName(name)); const k = squash(name); if (!k || knownName(name)) return true;   // "Triceps pushdown" is "Tricep pushdown": nothing to add
@@ -69,21 +70,22 @@ import { reportRange, buildReport } from "./report.js";
     if (!S.templateDraft || S.templateDraft.id !== t.id) { normalizeLabels(t); for (const r of t.rows || []) if (ALIASES[r.name]) r.name = ALIASES[r.name]; S.templateDraft = { id: t.id, snapshot: JSON.stringify(t), dirty: false, saving: false }; }   // the tidying the build does is not an edit
     return S.templateDraft;
   }
+  const tidySave = (t) => { const d = S.templateDraft; if (isTemplateClient(t.clientId) && d && d.id === t.id && !d.dirty) { d.saving = true; scheduleSave("trainings", t.id); d.saving = false; d.snapshot = JSON.stringify(t); } else scheduleSave("trainings", t.id); };   // a label or a name tidied by the build: saved, never an "unsaved change"
   function paintDraftBar() {
     const d = S.templateDraft; const show = !!(d && d.dirty && S.view.name === "training" && S.view.id === d.id);
     $("draftBar").hidden = !show; document.body.classList.toggle("draft", show);
   }
   function saveDraft() {
     const d = S.templateDraft; if (!d) return;
-    const t = trainings.get(d.id); if (!t) { S.templateDraft = null; paintDraftBar(); return; }
+    const t = trainings.get(d.id); if (!t) { S.templateDraft = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); return; }
     d.dirty = false; d.saving = true; scheduleSave("trainings", d.id, 0); d.saving = false; d.snapshot = JSON.stringify(t); lsSet("fiala.trainings.draft", null);
-    paintDraftBar(); const n = S.pendingGo; S.pendingGo = null; if (n) go(n);
+    paintDraftBar(); const n = S.pendingGo; S.pendingGo = null; if (n) go(n.next, n.back);
   }
   function discardDraft() {
     const d = S.templateDraft; if (!d) return;
     if (trainings.has(d.id)) trainings.set(d.id, JSON.parse(d.snapshot));
     d.dirty = false; lsSet("fiala.trainings.draft", null); localBackend.save(); S.renderedTraining = null; paintDraftBar();
-    const n = S.pendingGo; S.pendingGo = null; if (n) go(n); else render();
+    const n = S.pendingGo; S.pendingGo = null; if (n) go(n.next, n.back); else render();
   }
   $("draftSave").addEventListener("click", saveDraft);
   $("draftDiscard").addEventListener("click", async () => { if (await askFirst({ title: "Discard the unsaved changes?", text: "The template stays as it was.", yes: "Discard" })) discardDraft(); });
@@ -111,7 +113,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!S.sb || !S.signedIn) return;
     const { data, error } = await S.sb.from("ft_exercise_subtitles").select("name_key,subtitle");
     if (error || !data) return;
-    customSubs.clear(); for (const r of data) customSubs.set(r.name_key, String(r.subtitle || ""));
+    customSubs.clear(); for (const r of data) customSubs.set(r.name_key, String(r.subtitle || "")); catalogBump("subs", customSubs);
   }
   async function saveSub(k, sub, oldKey) { const { error } = await S.sb.from("ft_exercise_subtitles").upsert({ name_key: k, subtitle: sub }); if (error) { lastDbError = error.message || ""; return error; } customSubs.set(k, sub); if (oldKey && oldKey !== k) await deleteSub([oldKey]); return null; }
   async function deleteSub(keys) { const { error } = await S.sb.from("ft_exercise_subtitles").delete().in("name_key", keys); if (error) { lastDbError = error.message || ""; return error; } for (const k of keys) customSubs.delete(k); return null; }
@@ -127,6 +129,7 @@ import { reportRange, buildReport } from "./report.js";
     if (error || !data) return;
     customVideos.clear(); videoRawKeys.clear();
     for (const r of data) { const k = ALIAS_LOOSE[r.name_key] || r.name_key; customVideos.set(k, r.video_id); if (!videoRawKeys.has(k)) videoRawKeys.set(k, new Set()); videoRawKeys.get(k).add(r.name_key); } // links saved under an old spelling follow the rename
+    catalogBump("videos", customVideos);
   }
 
   // ---- no signal: the device copy (saved after every successful sync) stands in until the server answers again
@@ -534,7 +537,7 @@ import { reportRange, buildReport } from "./report.js";
     try { await enterCloudNow(session); } finally { S.entering = false; }
   }
   async function enterCloudNow(session) {
-    let quiet = onScreenAs(session.user.email);                   // the device copy is already on screen for this account: live data swaps in without a blank "Loading…"
+    let quiet = onScreenAs(session.user.email) && $("vRecovery").hidden && $("vLogin").hidden && $("vWaiting").hidden;                   // the device copy is already on screen for this account: live data swaps in without a blank "Loading…"
     settingsOpen = quiet ? settingsOpen : false;
     S.signedIn = true; S.sessionEmail = session.user.email || "";
     let trainer = await isTrainerAccount();
@@ -696,6 +699,7 @@ import { reportRange, buildReport } from "./report.js";
       timers.clear(); chains.clear(); dirty.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); fromFile.clear(); S.failed = false;
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
+      S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar();
       S.offline = false; S.offlineEntry = null; S.pendingOwner = "";
       S.view = { name: "clients" }; showLogin("");
     };
@@ -787,10 +791,11 @@ import { reportRange, buildReport } from "./report.js";
   document.addEventListener("pointerdown", () => { if (S.view.name === "training") holdWake(true); }, { passive: true });
   function go(next, back) {
     if (S.templateDraft && S.templateDraft.dirty && S.view.name === "training" && S.view.id === S.templateDraft.id) {
-      S.pendingGo = next; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
+      S.pendingGo = { next, back }; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
     }
     if (!(next.name === "client" && isTemplateClient(next.id))) { pickFor = null; fillFor = null; }
     scrollMemo.set(viewKey(S.view), window.scrollY);                                              // the page being left: Back brings it back here
+    if (S.view.name === "training" && !(next.name === "training" && next.id === S.view.id)) for (const k of [...cardNoteDraft.keys()]) if (k.startsWith(S.view.id + "/")) cardNoteDraft.delete(k);   // a card note left half-written goes with the page
     if (!S.clientMode && (!S.sb || S.syncedOnce) && S.view.name === "training" && !(next.name === "training" && next.id === S.view.id) && fillFor !== S.view.id) {   // leaving an empty workout behind discards it, like an empty note (not while it waits for a template, not before the first sync)
       const t = trainings.get(S.view.id); if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
     }
@@ -849,7 +854,7 @@ import { reportRange, buildReport } from "./report.js";
     kbChips.replaceChildren();
     const chip = (label, fn) => { const b = document.createElement("button"); b.type = "button"; b.tabIndex = -1; b.textContent = label; b.addEventListener("click", fn); kbChips.appendChild(b); };
     const unitChip = (u) => chip(u, () => { const v = kbTarget.value.trim().replace(/\s*(sec|s|min|m)$/i, ""); if (v) kbSet(v + " " + u, true); }); // 60 → 60 sec, 4 min → 4 sec, 40 → 40 m
-    if (kind === "weights") { chip("Bodyweight", () => kbSet("BW")); if (!t.closest(".setlog")) unitChip("sec"); }   // the key says the word the box will show   // the set log has its own Time box: seconds never go in the weight
+    if (kind === "weights") { chip("Bodyweight", () => kbSet("BW")); if (!t.closest(".setlog") && !t.classList.contains("sum-w")) unitChip("sec"); }   // the key says the word the box will show   // the set log has its own Time box: seconds never go in the weight
     const sideChip = (w) => chip(w, () => { const v = kbTarget.value.trim().replace(/\s*(\/|each|per)\s*(side|leg|arm)$/i, ""); if (v) kbSet(v + " " + w, true); });   // 7 → "7 / side"
     if (kind === "reps") { sideChip("/ side"); unitChip("sec"); unitChip("m"); }
     if (kind === "tempo") { chip("X", () => kbInsert("X")); for (const w of ["Normal", "Controlled", "Slow"]) chip(w, () => kbSet(w, true)); for (const c of ["3010", "4010", "10X0", "41X0"]) chip(c, () => kbSet(c, true)); }
@@ -1754,7 +1759,7 @@ import { reportRange, buildReport } from "./report.js";
     if (S.renderedTraining === t.id && sigOf() === paintedSig) return;   // a sync that changed nothing here: the cards stay as they are, open video, menus and half-typed notes included
     S.renderedTraining = t.id;
     const sc = document.scrollingElement || document.documentElement, keepScroll = sc.scrollTop;   // the cards are rebuilt in place (every sync does it): the page must not move while it is empty
-    if (!S.clientMode && normalizeLabels(t)) scheduleSave("trainings", t.id);
+    if (!S.clientMode && normalizeLabels(t)) tidySave(t);
     t.rows.sort((a, b) => cmpLabel(a.label, b.label));
     if (closeOpenAlt) closeOpenAlt();
     rowsEl.replaceChildren();
@@ -1791,9 +1796,9 @@ import { reportRange, buildReport } from "./report.js";
         }
         block.appendChild(cap);
       }
-      const card = document.createElement("div"); card.className = "group";
+      const card = document.createElement("div"); card.className = "group" + (g.rows.length > 1 ? " multi" : "");   // a superset: each exercise on its own inset panel inside the one card
       const total = Math.max(...g.rows.map(setsOf));
-      if (!asClient && g.rows.length > 1) { const started = g.rows.filter((r) => doneCount(r) > 0); if (started.length && started.length < g.rows.length) { const lead = Math.min(...started.map((r) => doneCount(r))); for (const r of g.rows) if (doneCount(r) === 0 && !(r.repsDone || []).some((v) => String(v || "").trim()) && !(r.weights || []).some((v) => String(v || "").trim())) { r.setsDone = Math.min(lead, setsOf(r)); scheduleSave("trainings", t.id); } } }   // an exercise added to a card mid-way joins at the card's set, not at set 1
+      if (!asClient && g.rows.length > 1) { const started = g.rows.filter((r) => doneCount(r) > 0); if (started.length && started.length < g.rows.length && !started.every((r) => doneCount(r) >= setsOf(r))) { const lead = Math.min(...started.map((r) => doneCount(r))); for (const r of g.rows) if (doneCount(r) === 0 && !(r.repsDone || []).some((v) => String(v || "").trim()) && !(r.weights || []).some((v) => String(v || "").trim())) { r.setsDone = Math.max(0, Math.min(lead, setsOf(r) - 1)); scheduleSave("trainings", t.id); } } }   // an exercise added to a card mid-way joins at the card's set, not at set 1
       const doneSets = Math.min(...g.rows.map((r) => { const n = Math.min(doneCount(r), setsOf(r)); return n >= setsOf(r) ? total : n; }));   // doneCount: a row finished before the counter existed counts as all done   // a shorter row that is finished does not hold the others back
       const selKey = t.id + "/" + g.key;
       let tracker = null;
@@ -1919,7 +1924,7 @@ import { reportRange, buildReport } from "./report.js";
         addNote.addEventListener("click", () => { if (!first.clientNote) { if (noteBox.hidden) openComposer(); else dropN.click(); return; } if (openExNotes.has(noteKey)) openExNotes.delete(noteKey); else openExNotes.add(noteKey); paintNote(); });
         edit.addEventListener("click", openComposer);
         del.addEventListener("click", async () => { if (!(await askFirst({ title: "Delete this note?", text: S.clientMode ? "" : "It goes from this exercise and from the notes list." }))) return; writeNote(""); openExNotes.delete(noteKey); paintNote(); });
-        ta.addEventListener("input", () => { cardNoteDraft.set(noteKey, ta.value); ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; });
+        ta.addEventListener("input", () => { if (ta.value.trim()) cardNoteDraft.set(noteKey, ta.value); else cardNoteDraft.delete(noteKey); ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; });
         dropN.addEventListener("click", async () => { const typed = ta.value.trim(); if (typed && typed !== String(first.clientNote || "").trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; cardNoteDraft.delete(noteKey); noteBox.hidden = true; ta.value = ""; });
         saveN.addEventListener("click", async () => { const text = ta.value.trim(); if (!text && first.clientNote && !(await askFirst({ title: "Delete this note?", text: S.clientMode ? "" : "It goes from this exercise and from the notes list." }))) return; cardNoteDraft.delete(noteKey); noteBox.hidden = true; writeNote(text); openExNotes.delete(noteKey); paintNote(); });   // saved and folded away: the dot says it is there; an emptied box is a delete and asks like one
         paintNote();
@@ -2184,7 +2189,7 @@ import { reportRange, buildReport } from "./report.js";
     exwrap.dataset.letter = letter.toUpperCase(); el.style.setProperty("--letw", letter ? "42px" : "0px");
     let altMode = "list";
     const altList = () => (r.alts || []).filter(Boolean);
-    const paintAltBtn = () => { const n = altList().length, logged = doneCount(r) > 0 || (r.repsDone || []).some((v, i) => setCounts(r, i)); const show = (!asClient || n > 0) && !logged; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };   // a set logged under this name: the disc goes, the sets keep their exercise
+    const paintAltBtn = () => { const n = altList().length, logged = doneCount(r) > 0 || (r.repsDone || []).some((v, i) => setCounts(r, i)); const show = !asClient || (n > 0 && !logged); altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };   // a set logged under this name: the disc goes, the sets keep their exercise
     const outside = (e) => { if (!exwrap.contains(e.target)) closeAlt(); };
     const closeAlt = () => { altMenu.hidden = true; altMenu.replaceChildren(); altMode = "list"; document.removeEventListener("pointerdown", outside, true); if (closeOpenAlt === closeAlt) closeOpenAlt = null; };
     function swapTo(a) {
@@ -2296,8 +2301,8 @@ import { reportRange, buildReport } from "./report.js";
       pl.replaceChildren(f); pl.hidden = false; vidRow.hidden = false; vidBtn.classList.add("open"); vidBtn.title = "Hide video"; vidBtn.setAttribute("aria-pressed", "true");   // "Change video" sits under the open player (trainer)
     });
     paintVideo();
-    if (ALIASES[r.name]) { r.name = ALIASES[r.name]; if (!S.clientMode) scheduleSave("trainings", t.id); }
-    if (!S.clientMode && Array.isArray(r.alts) && r.alts.some((a) => ALIASES[a])) { r.alts = r.alts.map((a) => ALIASES[a] || a); scheduleSave("trainings", t.id); }
+    if (ALIASES[r.name]) { r.name = ALIASES[r.name]; if (!S.clientMode) tidySave(t); }
+    if (!S.clientMode && Array.isArray(r.alts) && r.alts.some((a) => ALIASES[a])) { r.alts = r.alts.map((a) => ALIASES[a] || a); tidySave(t); }
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
     if (S.clientMode || previewClient) {                                                             // the client reads the name as one run of text, its subtitle in the grey of the superset letter; the coach keeps the one editable line
       const parts = splitName(r.name, subtitleFor(r.name));
@@ -2548,7 +2553,7 @@ import { reportRange, buildReport } from "./report.js";
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
   $("cNameField").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.name = e.target.value; $("cName").textContent = c.name; scheduleSave("clients", c.id); });
   const growNotesBox = () => growBox($("cNotes"));
-  $("cNotes").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; noteDraft.set(c.id, e.target.value); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
+  $("cNotes").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; if (e.target.value.trim()) noteDraft.set(c.id, e.target.value); else noteDraft.delete(c.id); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
   $("noteSave").addEventListener("click", () => {
     const c = clients.get(S.view.id); if (!c) return;
     const text = String($("cNotes").value || "").trim(); if (!text) return;
@@ -2751,12 +2756,12 @@ import { reportRange, buildReport } from "./report.js";
   });
 
   // ---------- boot ----------
-  Object.assign(ui, { $, setStatus, render, showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadCustomSubs, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar });   // what the sync layer may call on the screens
+  Object.assign(ui, { $, setStatus, render, showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadCustomSubs, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar, seedTemplates });   // what the sync layer may call on the screens
   function watchReleases(mine) {               // a page iOS keeps alive for days still gets the next release: on coming back to the app, never mid-tap, mid-sheet or mid-typing
     const sw = navigator.serviceWorker; if (!mine || !sw || !sw.addEventListener) return;
     let newest = 0;
     let resumedAt = 0;
-    const busy = () => S.asking || /^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || "") || !!(S.templateDraft && S.templateDraft.dirty) || (settingsOpen === "exercise" && exDirty()) || noteDraft.size > 0 || cardNoteDraft.size > 0 || !!(document.querySelector(".sheet-bg:not([hidden])"));   // a sheet, typing, or anything unsaved: no reload now
+    const busy = () => S.asking || /^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || "") || !!(S.templateDraft && S.templateDraft.dirty && S.view.name === "training" && S.view.id === S.templateDraft.id) || (settingsOpen === "exercise" && exDirty()) || !!(S.view.name === "client" && noteDraft.get(S.view.id)) || [...cardNoteDraft.keys()].some((k) => k.startsWith(String(S.renderedTraining) + "/")) || !!(document.querySelector(".sheet-bg:not([hidden])"));   // a sheet, typing, or something unsaved on the page on screen: no reload now
     const settle = () => { if (newest > mine && !busy()) location.reload(); };
     const ask = () => { if (sw.controller) sw.controller.postMessage({ type: "check" }); };
     sw.addEventListener("message", (e) => { if (e.data && e.data.type === "release") { newest = Math.max(newest, Number(e.data.current) || 0); if (performance.now() - resumedAt < 800 && document.visibilityState === "visible") settle(); } });   // an answer right after coming back lands before the first tap; a later one waits for the next quiet moment
@@ -2779,15 +2784,15 @@ import { reportRange, buildReport } from "./report.js";
     localBackend.load();                       // instant start from the device copy
     try { const dr = lsGet("fiala.trainings.draft"); if (dr && dr.id && dr.doc && trainings.has(dr.id)) { S.templateDraft = { id: dr.id, snapshot: JSON.stringify(trainings.get(dr.id)), dirty: true, saving: false }; trainings.set(dr.id, dr.doc); } } catch (_) {}   // a template left with unsaved changes: back as it was, still unsaved
     restorePending();                          // and whatever was still waiting to reach the server
-    try { const known = lsGet("fiala.trainings.role"); if (known && known.email && (clients.size || trainings.size)) paintRemembered(known, false); } catch (_) {}   // the last account's pages at once, from the device copy: no empty Clients page, no "Loading…" on the way
     holdWake(true);                            // opened straight onto a workout: keep the screen on from the first moment
     if (window.supabase && window.supabase.createClient) {
       S.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" } });
+      try { const known = lsGet("fiala.trainings.role"); if (known && known.email && (clients.size || trainings.size)) paintRemembered(known, false); } catch (_) {}   // the last account's pages at once, from the device copy: no empty Clients page, no "Loading…" on the way
       $("status").textContent = "Loading\u2026";
       const fromRecoveryLink = /type=recovery/.test(location.hash);
       S.sb.auth.onAuthStateChange((event) => {
         if (event === "PASSWORD_RECOVERY") { S.recovering = true; showRecovery(); }
-        if (event === "SIGNED_OUT" && S.signedIn) { S.backend = null; S.offline = false; S.offlineEntry = null; S.pendingOwner = ""; try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); }
+        if (event === "SIGNED_OUT" && S.signedIn) { S.backend = null; S.offline = false; S.offlineEntry = null; S.pendingOwner = ""; S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); }
       });
       // no signal: the library retries the token refresh for up to 30 s before answering. Don't make anyone wait for that:
       // after 4 s show what the device knows, and switch to live data if the session comes through later.

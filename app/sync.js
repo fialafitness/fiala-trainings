@@ -21,7 +21,7 @@ const seenDoc = new Map();                                        // "kind/id" -
 function markDirty(kind, id) { const k = key(kind, id); dirty.set(k, (dirty.get(k) || 0) + 1); }
 // what still has to reach the server is written to the device too, so closing the app with no signal loses nothing
 function persistPending() {
-  lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].map(([id, r]) => [id, [...r]]), rownotes: [...pendingNoteRows].map(([id, r]) => [id, [...r]]),
+  lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]), rownotes: [...pendingNoteRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]),
     finish: [...pendingFinish], skip: [...pendingSkip], move: [...pendingMove], miss: [...pendingMiss], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]),
     touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]), noted: [...trainerNoted].map(([id, r]) => [id, [...r]]), state: [...trainerState].map(([id, f]) => [id, [...f]]),
     plans: [...planTouched], notesGone: [...deletedNotes], packagesGone: [...deletedPackages], fromFile: [...fromFile],   // the coach's intent about a client record: a plan changed, a note or package removed, a backup restored
@@ -39,7 +39,7 @@ function restorePending() {
   for (const id of p.skip || []) pendingSkip.add(id);
   for (const id of p.move || []) pendingMove.add(id);
   for (const id of p.miss || []) pendingMiss.add(id);
-  for (const id of new Set([...pendingMove, ...pendingMiss, ...pendingNoteRows.keys(), ...pendingEarlyRows.keys()])) markDirty("trainings", id);   // sent again on this launch (the rule may have been missing last time)
+  for (const id of new Set([...pendingMove, ...pendingMiss, ...[...pendingNoteRows].filter(([, r]) => r.size).map(([id]) => id), ...[...pendingEarlyRows].filter(([, r]) => r.size).map(([id]) => id)])) markDirty("trainings", id);   // sent again on this launch (the rule may have been missing last time)
   for (const [id, picks] of p.swap || []) pendingSwap.set(id, new Map([...(pendingSwap.get(id) || []), ...picks]));
   for (const [id, rows] of p.touched || []) trainerTouched.set(id, new Set([...(trainerTouched.get(id) || []), ...rows]));
   for (const [id, fields] of p.state || []) trainerState.set(id, new Set([...(trainerState.get(id) || []), ...fields]));
@@ -53,7 +53,7 @@ function restorePending() {
   S.pendingOwner = p.owner || "";
 }
 function scheduleSave(kind, id, delay = 500) {
-  if (kind === "trainings" && S.templateDraft && S.templateDraft.id === id && !S.templateDraft.saving) { S.templateDraft.dirty = true; lsSet("fiala.trainings.draft", { id, doc: trainings.get(id) }); ui.paintDraftBar(); return; }   // the draft lives on its own: a relaunch brings it back unsaved
+  if (kind === "trainings" && S.templateDraft && S.templateDraft.id === id && !S.templateDraft.saving) { S.templateDraft.dirty = true; lsSet("fiala.trainings.draft", { id, doc: trainings.get(id) }); persistPending(); ui.paintDraftBar(); return; }   // the draft lives on its own: a relaunch brings it back unsaved
   markDirty(kind, id); persistPending();
   const k = key(kind, id);
   clearTimeout(timers.get(k));
@@ -118,14 +118,16 @@ const cloudBackend = {
     const k = key(kind, id);
     const row = { id, data };
     if (kind === "trainings") row.client_id = data.clientId;
-    const base = seenDoc.get(k) ? JSON.parse(seenDoc.get(k)) : null, map = kind === "clients" ? clients : trainings;
+    let base = seenDoc.get(k) ? JSON.parse(seenDoc.get(k)) : null; const map = kind === "clients" ? clients : trainings;
     const takeFields = (serverData) => {                      // two of his own devices: a field this one did not change since it last read the record takes the other device's value
       if (!base || !serverData) return;
       const skip = kind === "clients" ? ["id", "notes", "packages", "plan", "planHistory"] : ["id", "rows", "completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"];   // the fields with their own merge rules
-      const liveDoc = map.get(id);
-      for (const f of new Set([...Object.keys(serverData), ...Object.keys(base)])) {
-        if (skip.includes(f) || JSON.stringify(data[f]) !== JSON.stringify(base[f]) || JSON.stringify(serverData[f]) === JSON.stringify(data[f])) continue;   // changed here: ours stands
-        for (const target of [data, liveDoc]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; }
+      for (const target of [data, map.get(id)]) {
+        if (!target) continue;
+        for (const f of new Set([...Object.keys(serverData), ...Object.keys(base)])) {
+          if (skip.includes(f) || JSON.stringify(target[f]) !== JSON.stringify(base[f]) || JSON.stringify(serverData[f]) === JSON.stringify(target[f])) continue;   // changed here (in this copy): ours stands
+          if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f];
+        }
       }
     };
     const verbatim = () => fromFile.has(k);                    // restored from a backup: the file's copy replaces what the server holds, nothing of the server's is merged in (asked at merge time: a save already out when Restore was tapped must not merge into the restored record either)
@@ -162,7 +164,7 @@ const cloudBackend = {
       if (!seen && attempt === 0) {                               // no stamp (edited offline, app relaunched): read first, never write over the other side blind
         const existing = await withTimeout(S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle(), SAVE_WAIT);
         if (existing.error) throw existing.error;
-        if (existing.data) { if (!verbatim()) { takeFields(existing.data.data); if (kind === "trainings") { mergeServerRows(existing.data.data); takeState(existing.data.data); } takeNotes(existing.data.data); } seen = existing.data.updated_at; seenAt.set(k, seen); }
+        if (existing.data) { if (!verbatim()) { takeFields(existing.data.data); if (kind === "trainings" && !isTemplateClient(data.clientId)) { mergeServerRows(existing.data.data); takeState(existing.data.data); } takeNotes(existing.data.data); } seen = existing.data.updated_at; seenAt.set(k, seen); }
       }
       let res;
       if (seen) res = await withTimeout(S.sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at"), SAVE_WAIT);
@@ -170,8 +172,10 @@ const cloudBackend = {
       if (res.error) {
         if (res.error.code === "23505" && kind === "clients") {   // that email is on another client: the email goes back to what the server holds, the rest of the edit still lands
           const srv = await withTimeout(S.sb.from(TABLE[kind]).select("data").eq("id", id).maybeSingle(), SAVE_WAIT);
+          if (srv.error) throw srv.error;
           const back = srv.data && srv.data.data ? srv.data.data.email || "" : ""; data.email = back; const live = clients.get(id); if (live) live.email = back;
-          S.failReason = "that email is already on another client"; if (attempt < 3) continue;
+          const box = ui.$ && ui.$("cEmail"); if (box && document.activeElement !== box && live && S.view.id === id) box.value = back;
+          S.failReason = "that email is already on another client"; if (ui.$) ui.$("status").textContent = "That email is on another client \u00b7 not saved"; if (attempt < 3) continue;
         }
         if (res.error.code === "23505" || res.error.code === "22P02") res.error.fatal = true;   // another client has that email; an id the table cannot hold: no retry will change the answer
         if (/^22/.test(String(res.error.code || ""))) seenAt.delete(k);   // a bad stamp must not poison every retry
@@ -182,13 +186,13 @@ const cloudBackend = {
       const fresh = await withTimeout(S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle(), SAVE_WAIT);
       if (fresh.error) throw fresh.error;
       if (!fresh.data) {
-        if (seen && !fromFile.has(k)) { map.delete(id); dirty.delete(k); seenAt.delete(k); seenDoc.delete(k); localBackend.save(); return; }   // a record this device had seen is gone from the server: deleted on another device; it is not brought back
+        if (seen && seenDoc.has(k) && !fromFile.has(k)) { map.delete(id); dirty.delete(k); seenAt.delete(k); seenDoc.delete(k); localBackend.save(); return; }   // a record this device had seen is gone from the server: deleted on another device; it is not brought back
         seenAt.delete(k); continue;
       }
       seenAt.set(k, fresh.data.updated_at);
       if (verbatim()) continue;
-      takeFields(fresh.data.data);                                        // the file's copy, written again over the newer stamp
-      if (kind === "trainings") { mergeServerRows(fresh.data.data); takeState(fresh.data.data); }
+      takeFields(fresh.data.data); base = JSON.parse(JSON.stringify(fresh.data.data)); seenDoc.set(k, JSON.stringify(fresh.data.data));   // the next conflict measures against this copy
+      if (kind === "trainings" && !isTemplateClient(data.clientId)) { mergeServerRows(fresh.data.data); takeState(fresh.data.data); }
       takeNotes(fresh.data.data);
     }
     throw new Error("save conflict");
@@ -196,7 +200,7 @@ const cloudBackend = {
   async del(kind, id) {
     const { error } = await withTimeout(S.sb.from(TABLE[kind]).delete().eq("id", id), SAVE_WAIT);
     if (error) throw error;
-    localBackend.save();
+    seenAt.delete(key(kind, id)); seenDoc.delete(key(kind, id)); localBackend.save();   // gone: no stamp to mistake a later restore for a deletion elsewhere
   },
 };
 
@@ -295,18 +299,19 @@ const clientBackend = {
 };
 function syncDown() { if (S.syncing) return S.syncing; S.syncing = syncDownNow().finally(() => { S.syncing = null; }); return S.syncing; }
 function mergeDown(map, kind, rows, complete, startedAt) {        // the server's answer into the local map, keeping what this device still has to send
-  const seen = new Set();
+  const seen = new Set(), viewed = trainings.get(S.renderedTraining), viewedClient = viewed ? viewed.clientId : null;
   for (const r of rows) {
     seen.add(r.id); if (dirty.has(key(kind, r.id))) continue;
     if (kind === "trainings" && (pendingMove.has(r.id) || pendingMiss.has(r.id) || (pendingNoteRows.get(r.id) || new Set()).size || (pendingEarlyRows.get(r.id) || new Set()).size)) continue;   // the client's decision, note or reason still has to reach the server: keep ours
     if ((confirmedAt.get(key(kind, r.id)) || 0) > startedAt) continue;   // written after this read began: keep ours
     if (kind === "trainings" && S.templateDraft && S.templateDraft.dirty && S.templateDraft.id === r.id) continue;   // unsaved template edits
     if (kind === "trainings" && S.renderedTraining === r.id && (S.asking || ui.$("rows").contains(document.activeElement))) continue; // being edited right now, or a confirm sheet is up over it: next sync, stamp and all
-    const rec = { ...r.data, id: r.id }; if (kind === "trainings") repairTimed(rec); map.set(r.id, rec);
+    const rec = { ...r.data, id: r.id }; if (kind === "trainings") repairTimed(rec);
+    const cur = map.get(r.id); if (!(cur && JSON.stringify(cur) === JSON.stringify(rec))) { map.set(r.id, rec); if (kind === "trainings" && viewedClient && rec.clientId === viewedClient && r.id !== S.renderedTraining) S.renderedTraining = null; }   // the same record stays the same object (the cards on screen hold it); another workout of the viewed client changed: its last/best lines are read again
     if (!S.clientMode && r.updated_at) { seenAt.set(key(kind, r.id), r.updated_at); seenDoc.set(key(kind, r.id), JSON.stringify(r.data)); }   // the stamp, and the copy it describes, travel with the record
     if (kind === "trainings") trainerState.delete(r.id);
   }
-  if (complete) for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id)) && !((confirmedAt.get(key(kind, id)) || 0) > startedAt)) map.delete(id);   // only a full answer can say something is gone, and not about a record written after this read began
+  if (complete) for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id)) && !((confirmedAt.get(key(kind, id)) || 0) > startedAt)) { map.delete(id); seenAt.delete(key(kind, id)); seenDoc.delete(key(kind, id)); }   // only a full answer can say something is gone, and not about a record written after this read began
 }
 async function syncDownNow() {
   if (!S.sb || !S.signedIn || !S.backend || S.seeding) return false;
@@ -362,6 +367,7 @@ async function syncDownNow() {
   S.offline = false;
   ui.render(); ui.setStatus();
   for (const k of dirty.keys()) if (!timers.has(k)) { const [kind, id] = k.split("/"); flushOne(kind, id); }
+  if (!S.clientMode && ui.seedTemplates) ui.seedTemplates().catch(() => {});   // the built-in templates, once the server's copy is in (a first sync that failed gets its turn later)
   return true;
 }
 function scheduleSync() { clearTimeout(S.syncTimer); S.syncTimer = setTimeout(() => { (S.offline ? ui.resumeOnline() : syncDown()).catch(() => {}); }, 300); }
