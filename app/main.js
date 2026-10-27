@@ -1980,7 +1980,7 @@ import { reportRange, buildReport } from "./report.js";
         if (peeking) { block.classList.add("peek"); chev.addEventListener("click", unpeek); for (const top of card.querySelectorAll(".row .top")) top.addEventListener("click", (e) => { if (e.target.closest(".ex-icons")) return; unpeek(); }); }
         else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey); S.renderedTraining = null; render(); }); }
       } else peekBlocks.delete(selKey);
-      block.appendChild(card); rowsEl.appendChild(block);
+      block.appendChild(card); if (!isTpl && !g.rows.every((r) => r.done)) block.appendChild(foot); rowsEl.appendChild(block);   // a working card ends on its last/best line; its buttons sit under it, on the page
     });
     const back = Math.min(keepScroll, Math.max(0, sc.scrollHeight - sc.clientHeight)); if (Math.abs(sc.scrollTop - back) > 1) sc.scrollTop = back;   // a box measured mid-rebuild made the browser clamp the scroll to a page with no cards yet: put it back where he was
     paintedSig = sigOf();                                         // what the cards now show, tidied rows included
