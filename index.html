@@ -479,7 +479,11 @@
   body.client .block.ahead .row .top .name { padding-right: 48px !important; }
   body.client .group-cap .card-chev { position: static; margin-left: auto; align-self: center; }   /* a peeked card: the fold chevron sits at the end of its heading line */
   .card-foot { padding: 4px 16px 16px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
-  .block > .card-foot { padding: 10px 2px 0; }                                  /* the working card's buttons, under the card: Complete set, then Finish early and Add note */
+  .card-acts { display: flex; flex-direction: column; gap: 8px; padding: 6px 6px 0; }                  /* under a working card: Finish early and Add note as quiet words, the note composer with them */
+  .card-acts .foot-row { display: flex; justify-content: space-between; align-items: center; min-height: 40px; }
+  .card-acts .finish-early, .card-acts .add-note { appearance: none; border: 0; background: none; box-shadow: none; border-radius: 0; padding: 0 2px; min-height: 40px; font-size: 15px; font-weight: 500; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
+  .card-acts .finish-early:active, .card-acts .add-note:active { opacity: 0.6; }
+  .card-acts .exnote { padding: 0; }
   .card-foot .foot-row { display: flex; justify-content: space-between; align-items: center; min-height: 40px; }
   .card-foot .foot-row.center { justify-content: center; min-height: 0; flex-wrap: wrap; gap: 8px 10px; }   /* undo / resume: room between them; the note row below keeps them clear of the corner chevron */
   .card-foot .foot-row.center > * { white-space: nowrap; }
@@ -1386,7 +1390,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=132";
+  import { boot } from "./app/main.js?v=133";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

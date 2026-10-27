@@ -1980,7 +1980,12 @@ import { reportRange, buildReport } from "./report.js";
         if (peeking) { block.classList.add("peek"); chev.addEventListener("click", unpeek); for (const top of card.querySelectorAll(".row .top")) top.addEventListener("click", (e) => { if (e.target.closest(".ex-icons")) return; unpeek(); }); }
         else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey); S.renderedTraining = null; render(); }); }
       } else peekBlocks.delete(selKey);
-      block.appendChild(card); if (!isTpl && !g.rows.every((r) => r.done)) block.appendChild(foot); rowsEl.appendChild(block);   // a working card ends on its last/best line; its buttons sit under it, on the page
+      block.appendChild(card);
+      if (!isTpl && !g.rows.every((r) => r.done)) {                 // a working card: Complete set stays in the card; Finish early and Add note sit under it on the page, as quiet words, the composer with them
+        const acts = foot.querySelector(".foot-row:not(.center)"), note = foot.querySelector(".exnote");
+        if (acts) { const out = document.createElement("div"); out.className = "card-acts"; out.appendChild(acts); if (note) out.appendChild(note); block.appendChild(out); }
+      }
+      rowsEl.appendChild(block);
     });
     const back = Math.min(keepScroll, Math.max(0, sc.scrollHeight - sc.clientHeight)); if (Math.abs(sc.scrollTop - back) > 1) sc.scrollTop = back;   // a box measured mid-rebuild made the browser clamp the scroll to a page with no cards yet: put it back where he was
     paintedSig = sigOf();                                         // what the cards now show, tidied rows included
