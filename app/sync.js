@@ -53,7 +53,7 @@ function restorePending() {
   S.pendingOwner = p.owner || "";
 }
 function scheduleSave(kind, id, delay = 500) {
-  if (kind === "trainings" && S.templateDraft && S.templateDraft.id === id && !S.templateDraft.saving) { S.templateDraft.dirty = true; ui.paintDraftBar(); return; }
+  if (kind === "trainings" && S.templateDraft && S.templateDraft.id === id && !S.templateDraft.saving) { S.templateDraft.dirty = true; lsSet("fiala.trainings.draft", { id, doc: trainings.get(id) }); ui.paintDraftBar(); return; }   // the draft lives on its own: a relaunch brings it back unsaved
   markDirty(kind, id); persistPending();
   const k = key(kind, id);
   clearTimeout(timers.get(k));
@@ -103,7 +103,7 @@ function flushOne(kind, id) {
 }
 const localBackend = {
   load() { const d = lsGet("fiala.trainings.v1") || { clients: {}, trainings: {} }; for (const c of Object.values(d.clients)) clients.set(c.id, c); for (const t of Object.values(d.trainings)) { repairTimed(t); trainings.set(t.id, t); } },
-  save() { const ok = lsSet("fiala.trainings.v1", { clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) });  S.deviceFull = !ok; },
+  save() { const ts = Object.fromEntries(trainings), d = S.templateDraft; if (d && d.dirty && d.snapshot && ts[d.id]) ts[d.id] = JSON.parse(d.snapshot); const ok = lsSet("fiala.trainings.v1", { clients: Object.fromEntries(clients), trainings: ts }); S.deviceFull = !ok; },   // the device copy holds the template as saved, never the draft
   async set() { this.save(); },
   async del() { this.save(); },
 };
@@ -135,7 +135,7 @@ const cloudBackend = {
       for (const sr of (serverData && serverData.rows) || []) {
         for (const target of [data, live]) {
           const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (!lr) continue;
-          if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; if (sr.setsDone != null) lr.setsDone = sr.setsDone; else delete lr.setsDone; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; }
+          if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; if (sr.unit === "kg" || sr.unit === "lb") lr.unit = sr.unit; if (sr.setsDone != null) lr.setsDone = sr.setsDone; else delete lr.setsDone; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; }
           if (!noted.has(sr.id)) { if (sr.clientNote) { lr.clientNote = String(sr.clientNote); if (sr.clientNoteBy) lr.clientNoteBy = String(sr.clientNoteBy); else delete lr.clientNoteBy; if (sr.clientNoteAt) lr.clientNoteAt = String(sr.clientNoteAt); else delete lr.clientNoteAt; } else { delete lr.clientNote; delete lr.clientNoteBy; delete lr.clientNoteAt; } }
           if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
         }
@@ -218,7 +218,10 @@ const clientBackend = {
     if (rows) for (const rid of [...rows]) {
       const r = rowOf(data, rid); if (!r) { rows.delete(rid); continue; }
       const sent = logOf(r); let error = null;
-      if (!S.logSetMissing) ({ error } = await rpc("client_log_set", { p_training: id, p_row: rid, p_weights: sent.w, p_reps: sent.rp, p_sets_done: sent.sd, p_done: sent.d }));
+      if (!S.logSetMissing) {
+        ({ error } = await rpc("client_log_set", { p_training: id, p_row: rid, p_weights: sent.w, p_reps: sent.rp, p_sets_done: sent.sd, p_done: sent.d, p_unit: r.unit === "kg" || r.unit === "lb" ? r.unit : null }));   // the unit the set was logged in
+        if (error && error.code === "PGRST202") ({ error } = await rpc("client_log_set", { p_training: id, p_row: rid, p_weights: sent.w, p_reps: sent.rp, p_sets_done: sent.sd, p_done: sent.d }));   // the rule from before the unit: still fine
+      }
       if (S.logSetMissing || (error && (error.code === "PGRST202" || /client_log_set/.test(error.message || "")))) {   // rule not installed yet: weights still get through the old way
         S.logSetMissing = true;
         ({ error } = await rpc("client_set_weights", { p_training: id, p_row: rid, p_weights: clean(oldWay(r)) }));

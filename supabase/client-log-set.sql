@@ -1,7 +1,8 @@
 -- Set-by-set logging for clients: weight AND reps per set, how many sets are done, and the row's done flag.
 -- Run once in the Supabase SQL Editor. Safe to run more than once.
 
-create or replace function client_log_set(p_training uuid, p_row text, p_weights jsonb, p_reps jsonb, p_sets_done int, p_done boolean)
+drop function if exists client_log_set(uuid, text, jsonb, jsonb, int, boolean);   -- the signature without the unit: one function only, or the API cannot choose
+create or replace function client_log_set(p_training uuid, p_row text, p_weights jsonb, p_reps jsonb, p_sets_done int, p_done boolean, p_unit text default null)
 returns void language plpgsql security definer set search_path = public as $$
 declare
   v_rows jsonb;
@@ -34,6 +35,7 @@ begin
       r := jsonb_set(r, '{repsDone}', p_reps);
       r := jsonb_set(r, '{setsDone}', to_jsonb(p_sets_done));
       r := jsonb_set(r, '{done}', to_jsonb(coalesce(p_done, false)));
+      if p_unit in ('lb', 'kg') then r := jsonb_set(r, '{unit}', to_jsonb(p_unit)); end if;   -- the unit the set was logged in: the coach's app reads it back as such
       v_found := true;
     end if;
     v_new := v_new || jsonb_build_array(r);
@@ -42,7 +44,7 @@ begin
   update ft_trainings set data = jsonb_set(data, '{rows}', v_new) where id = p_training;
 end;
 $$;
-revoke execute on function client_log_set(uuid, text, jsonb, jsonb, int, boolean) from public, anon;
-grant execute on function client_log_set(uuid, text, jsonb, jsonb, int, boolean) to authenticated;
+revoke execute on function client_log_set(uuid, text, jsonb, jsonb, int, boolean, text) from public, anon;
+grant execute on function client_log_set(uuid, text, jsonb, jsonb, int, boolean, text) to authenticated;
 
 select 'client-log-set.sql applied' as result;

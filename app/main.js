@@ -76,13 +76,13 @@ import { reportRange, buildReport } from "./report.js";
   function saveDraft() {
     const d = S.templateDraft; if (!d) return;
     const t = trainings.get(d.id); if (!t) { S.templateDraft = null; paintDraftBar(); return; }
-    d.dirty = false; d.saving = true; scheduleSave("trainings", d.id, 0); d.saving = false; d.snapshot = JSON.stringify(t);
+    d.dirty = false; d.saving = true; scheduleSave("trainings", d.id, 0); d.saving = false; d.snapshot = JSON.stringify(t); lsSet("fiala.trainings.draft", null);
     paintDraftBar(); const n = S.pendingGo; S.pendingGo = null; if (n) go(n);
   }
   function discardDraft() {
     const d = S.templateDraft; if (!d) return;
     if (trainings.has(d.id)) trainings.set(d.id, JSON.parse(d.snapshot));
-    d.dirty = false; localBackend.save(); S.renderedTraining = null; paintDraftBar();
+    d.dirty = false; lsSet("fiala.trainings.draft", null); localBackend.save(); S.renderedTraining = null; paintDraftBar();
     const n = S.pendingGo; S.pendingGo = null; if (n) go(n); else render();
   }
   $("draftSave").addEventListener("click", saveDraft);
@@ -734,7 +734,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   function deleteTraining(id) {
     const t = trainings.get(id); if (!t) return;
-    if (S.templateDraft && S.templateDraft.id === id) { S.templateDraft = null; S.pendingGo = null; paintDraftBar(); }
+    if (S.templateDraft && S.templateDraft.id === id) { S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); }
     trainings.delete(id); scheduleSave("trainings", id, 0);
     go({ name: "client", id: t.clientId });
   }
@@ -1793,6 +1793,7 @@ import { reportRange, buildReport } from "./report.js";
       }
       const card = document.createElement("div"); card.className = "group";
       const total = Math.max(...g.rows.map(setsOf));
+      if (!asClient && g.rows.length > 1) { const started = g.rows.filter((r) => doneCount(r) > 0); if (started.length && started.length < g.rows.length) { const lead = Math.min(...started.map((r) => doneCount(r))); for (const r of g.rows) if (doneCount(r) === 0 && !(r.repsDone || []).some((v) => String(v || "").trim()) && !(r.weights || []).some((v) => String(v || "").trim())) { r.setsDone = Math.min(lead, setsOf(r)); scheduleSave("trainings", t.id); } } }   // an exercise added to a card mid-way joins at the card's set, not at set 1
       const doneSets = Math.min(...g.rows.map((r) => { const n = Math.min(doneCount(r), setsOf(r)); return n >= setsOf(r) ? total : n; }));   // doneCount: a row finished before the counter existed counts as all done   // a shorter row that is finished does not hold the others back
       const selKey = t.id + "/" + g.key;
       let tracker = null;
@@ -1884,7 +1885,7 @@ import { reportRange, buildReport } from "./report.js";
         const noteIcon = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-6"/><path d="M18.4 2.6a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>';   // Apple's square-and-pencil, the Notes glyph
         early.insertAdjacentHTML("afterbegin", '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 14V2.5"/><path d="M3.5 3h8l-2 2.5 2 2.5h-8"/></svg>');
         const noteBox = document.createElement("div"); noteBox.className = "exnote"; noteBox.hidden = true;
-        const ta = document.createElement("textarea"); ta.rows = 1; ta.placeholder = "Something noticed on this exercise";
+        const ta = document.createElement("textarea"); ta.rows = 1; ta.maxLength = 500; ta.placeholder = "Something noticed on this exercise";
         const acts = document.createElement("div"); acts.className = "note-actions";
         const saveN = document.createElement("button"); saveN.type = "button"; saveN.className = "btn sm"; saveN.textContent = "Save note";
         const dropN = document.createElement("button"); dropN.type = "button"; dropN.className = "btn quiet"; dropN.textContent = "Discard";
@@ -2184,7 +2185,7 @@ import { reportRange, buildReport } from "./report.js";
     exwrap.dataset.letter = letter.toUpperCase(); el.style.setProperty("--letw", letter ? "42px" : "0px");
     let altMode = "list";
     const altList = () => (r.alts || []).filter(Boolean);
-    const paintAltBtn = () => { const n = altList().length; const show = !asClient || n > 0; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };
+    const paintAltBtn = () => { const n = altList().length, logged = doneCount(r) > 0 || (r.repsDone || []).some((v, i) => setCounts(r, i)); const show = (!asClient || n > 0) && !logged; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };   // a set logged under this name: the disc goes, the sets keep their exercise
     const outside = (e) => { if (!exwrap.contains(e.target)) closeAlt(); };
     const closeAlt = () => { altMenu.hidden = true; altMenu.replaceChildren(); altMode = "list"; document.removeEventListener("pointerdown", outside, true); if (closeOpenAlt === closeAlt) closeOpenAlt = null; };
     function swapTo(a) {
@@ -2436,7 +2437,7 @@ import { reportRange, buildReport } from "./report.js";
       const box = q(".lifts"), h = isTemplateClient(t.clientId) ? null : liftHistory();
       box.hidden = !h; if (!h) return;
       const unit = (clients.get(t.clientId) || {}).unit || "lb", tm = measurePlan(r.reps);
-      const fmt = tm ? (st) => (st.w != null ? st.w + " " + unit + " \u00d7 " : "") + st.rp + " " + tm.unit : (st) => st.w != null ? st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps");
+      const fmt = tm ? (st) => (st.w != null ? st.w + " " + unit + " \u00d7 " : "") + (tm.unit === "min" && !Number.isInteger(st.rp) ? Math.round(st.rp * 60) + " sec" : st.rp + " " + tm.unit) : (st) => st.w != null ? st.w + " " + unit + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps");
       const now = toUnit(topSet(r, h.timed, (group.sel | 0) + 1), r.unit, unit), newBest = !!(now && betterSet(now, h.best, h.timed)), same = sameSet(h.last, h.best);   // the set under the finger counts for the gold preview as it is typed
       q(".lift.best").classList.toggle("new", newBest); q(".lift.best b").textContent = fmt(newBest ? now : h.best); q(".lift.best .vh").textContent = newBest ? "New best " : "Personal best ";   // the read-out word follows the state
       q(".lift.last").hidden = !h.last; if (h.last) q(".lift.last b").textContent = fmt(h.last);   // both halves always, even when the best was the last session (his call)
@@ -2501,6 +2502,7 @@ import { reportRange, buildReport } from "./report.js";
       w.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); kbNext(); } });
       rp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); kbNext(); } });   // on to the next exercise of the superset, else the keyboard goes
       const hand = perHand(r.name); q(".setlog .chip.stack:nth-child(1) .lab").textContent = hand ? "Weight / " + hand : "Weight";   // one dumbbell, one kettlebell: the label says what the number is per
+      w.maxLength = 16; rp.maxLength = 16;
       wireChip(w, { empty: timed ? "Bodyweight" : "Log weight", hint: true, suffix: (v) => weightWord(v, r.unit || unit), show: showWeight });   // a hold with no weight is bodyweight; BW can still be typed or picked   // after the handlers above, so the words follow the tidied value; never logged before = the box asks
       const perSide = /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || ""));             // "10 / side": the label says so, the box holds the number
       q(".setlog .chip.stack:nth-child(2) .lab").textContent = (timed ? (timed.unit === "m" ? "Distance" : "Time") : "Reps") + (perSide ? " / side" : "");
@@ -2523,10 +2525,10 @@ import { reportRange, buildReport } from "./report.js";
         if (!counted) { const v = document.createElement("span"); v.className = "sum-val"; v.textContent = "Not done"; line.appendChild(v); }
         else {
           const val = document.createElement("span"); val.className = "sum-val";
-          const wi = document.createElement("input"); wi.className = "sum-w"; wi.inputMode = "decimal"; wi.placeholder = "Bodyweight"; wi.setAttribute("aria-label", "Weight, set " + (i + 1)); wi.autocomplete = "off";
+          const wi = document.createElement("input"); wi.className = "sum-w"; wi.maxLength = 16; wi.inputMode = "decimal"; wi.placeholder = "Bodyweight"; wi.setAttribute("aria-label", "Weight, set " + (i + 1)); wi.autocomplete = "off";
           const unit = document.createElement("span"); unit.className = "sum-unit";
           const x = document.createElement("span"); x.className = "sum-x"; x.textContent = "\u00d7";
-          const ri = document.createElement("input"); ri.className = "sum-r"; ri.inputMode = "numeric"; ri.placeholder = tmS ? tmS.unit : "reps"; ri.setAttribute("aria-label", (tmS ? (tmS.unit === "m" ? "Meters" : "Seconds") : "Reps") + ", set " + (i + 1)); ri.autocomplete = "off";
+          const ri = document.createElement("input"); ri.className = "sum-r"; ri.maxLength = 16; ri.inputMode = "numeric"; ri.placeholder = tmS ? tmS.unit : "reps"; ri.setAttribute("aria-label", (tmS ? (tmS.unit === "m" ? "Meters" : "Seconds") : "Reps") + ", set " + (i + 1)); ri.autocomplete = "off";
           const runit = document.createElement("span"); runit.className = "sum-unit runit"; runit.textContent = runitWord;
           val.append(wi, unit, x, ri, runit); line.appendChild(val);
           let wiWas = null, riWas = null, wiFollow = [], riFollow = []; wi.addEventListener("focus", () => { wiWas = String((r.weights || [])[i] || ""); wiFollow = followFrom(r.weights, i, wiWas); }); ri.addEventListener("focus", () => { riWas = String((r.repsDone || [])[i] || ""); riFollow = followFrom(r.repsDone, i, riWas); });
@@ -2729,7 +2731,7 @@ import { reportRange, buildReport } from "./report.js";
   function applyRestore({ cs, ts }) {                               // the file's copy, as it is: a record already here is replaced whole (the save carries a marker so nothing of the server's is merged in); one this device never had joins the usual way, keeping what a client logged on the server meanwhile
     const put = (map, kind, r) => {
       const had = map.has(r.id);
-      if (kind === "trainings" && S.templateDraft && S.templateDraft.id === r.id) { S.templateDraft = null; paintDraftBar(); }   // the template open as a draft: its save must be a real save
+      if (kind === "trainings" && S.templateDraft && S.templateDraft.id === r.id) { S.templateDraft = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); }   // the template open as a draft: its save must be a real save
       map.set(r.id, r); const k = key(kind, r.id);
       if (had) fromFile.set(k, (dirty.get(k) || 0) + 1);            // the version the next save gets: that write carries the file's copy
       scheduleSave(kind, r.id, 0);
@@ -2776,6 +2778,7 @@ import { reportRange, buildReport } from "./report.js";
     const page = lsGet("fiala.trainings.page"); if (page && page.open) pendingPage = page;   // read before any screen change clears it
     const savedTab = lsGet("fiala.trainings.tab"); if (savedTab === "profile" || savedTab === "workouts") S.tab = savedTab;
     localBackend.load();                       // instant start from the device copy
+    try { const dr = lsGet("fiala.trainings.draft"); if (dr && dr.id && dr.doc && trainings.has(dr.id)) { S.templateDraft = { id: dr.id, snapshot: JSON.stringify(trainings.get(dr.id)), dirty: true, saving: false }; trainings.set(dr.id, dr.doc); } } catch (_) {}   // a template left with unsaved changes: back as it was, still unsaved
     restorePending();                          // and whatever was still waiting to reach the server
     try { const known = lsGet("fiala.trainings.role"); if (known && known.email && (clients.size || trainings.size)) paintRemembered(known, false); } catch (_) {}   // the last account's pages at once, from the device copy: no empty Clients page, no "Loading…" on the way
     holdWake(true);                            // opened straight onto a workout: keep the screen on from the first moment
