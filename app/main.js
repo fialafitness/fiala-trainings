@@ -945,6 +945,9 @@ import { reportRange, buildReport } from "./report.js";
   const openExNotes = new Set();                                 // cards whose session note is unfolded (this session)
   const noteDraft = new Map();                                   // clientId -> what is typed in the notes box and not saved yet
   const growBox = (ta) => { ta.style.height = "auto"; ta.style.height = Math.max(96, ta.scrollHeight) + "px"; };
+  const regrowNames = () => { for (const el of document.querySelectorAll("#rows textarea.name, #tTitle")) { if (el.offsetParent === null) continue; el.style.height = "auto"; el.style.height = Math.max(el.id === "tTitle" ? 32 : 44, el.scrollHeight) + "px"; } };   // every name box measured again: a long name never clips to one line
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => requestAnimationFrame(regrowNames));   // the first paint can come before the font: measured in the fallback, measured again in Inter
+  let regrowTimer = null; window.addEventListener("resize", () => { clearTimeout(regrowTimer); regrowTimer = setTimeout(regrowNames, 120); });   // rotation, a split view, the keyboard
   const openMonths = new Set();          // History months the user opened: clientId/yyyy-mm
   const openNoteGroups = new Set(), armedNotes = new Set();
   const openNoteIds = new Set();                                 // long notes opened in full (this session)
@@ -1988,7 +1991,8 @@ import { reportRange, buildReport } from "./report.js";
       block.appendChild(card); rowsEl.appendChild(block);
     });
     const back = Math.min(keepScroll, Math.max(0, sc.scrollHeight - sc.clientHeight)); if (Math.abs(sc.scrollTop - back) > 1) sc.scrollTop = back;   // a box measured mid-rebuild made the browser clamp the scroll to a page with no cards yet: put it back where he was
-    paintedSig = sigOf();                                         // what the cards now show, tidied rows included
+    paintedSig = sigOf();
+    requestAnimationFrame(regrowNames);                               // once the cards are in the page, every name box at its true height                                         // what the cards now show, tidied rows included
   }
 
   // Numbering rule: one exercise on a number is plain (2); two or more share letters (1a, 1b …).
