@@ -142,7 +142,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   function paintRemembered(remembered, away) {   // what the device knows, on screen at once: the pages of the account that used it last; the server refreshes them in place (away: no signal, with the offline status)
     S.signedIn = true; S.sessionEmail = remembered.email || ""; S.clientMode = remembered.role !== "trainer";
-    document.body.classList.toggle("client", S.clientMode); S.backend = S.clientMode ? clientBackend : cloudBackend;
+    applyLook(); S.backend = S.clientMode ? clientBackend : cloudBackend;
     if (away) { S.offlineEntry = "remembered"; S.offline = true; }
     if (S.clientMode) {
       const me = [...clients.values()].find((c) => !isTemplateClient(c.id) && norm(c.email) === norm(S.sessionEmail));
@@ -553,7 +553,7 @@ import { reportRange, buildReport } from "./report.js";
     }
     S.pendingOwner = S.sessionEmail; persistPending();
     S.clientMode = trainer !== true;
-    document.body.classList.toggle("client", S.clientMode);
+    applyLook();
     S.backend = S.clientMode ? clientBackend : cloudBackend;
     if (!quiet) hideAllViews();
     if (S.clientMode) {
@@ -1236,7 +1236,7 @@ import { reportRange, buildReport } from "./report.js";
     if (S.view.name === "client" && !clients.has(S.view.id)) S.view = S.clientMode ? { name: "client", id: S.myClientId } : { name: "clients" };
     if (S.view.name === "training" && !trainings.has(S.view.id)) S.view = S.clientMode ? { name: "client", id: S.myClientId } : { name: "clients" };
     if (S.view.name !== "training" && previewClient) { previewClient = false; rememberPreview(); }
-    if (!S.clientMode) document.body.classList.toggle("client", previewClient && S.view.name === "training" && !isTemplateClient(trainings.get(S.view.id).clientId));
+    if (!S.clientMode) document.body.classList.toggle("client", previewing());
     $("vClients").hidden = S.view.name !== "clients";
     $("vClient").hidden = S.view.name !== "client";
     const tabs = S.view.name === "client" && !isTemplateClient(S.view.id); $("tabbar").hidden = !tabs; document.body.classList.toggle("tabs", tabs);
@@ -2155,6 +2155,8 @@ import { reportRange, buildReport } from "./report.js";
   const cardNoteDraft = new Map();  // selKey -> a card note being written: it survives a rebuild of the cards (a sync, a set logged elsewhere)
   let completeAt = 0;               // when Complete set last fired: the second tap of a double tap must not log a second set
   const PREVIEW_KEY = "fiala.preview";
+  const previewing = () => previewClient && S.view.name === "training" && trainings.has(S.view.id) && !isTemplateClient(trainings.get(S.view.id).clientId);   // the coach looking at a workout as the client: the page wears the client look
+  const applyLook = () => document.body.classList.toggle("client", S.clientMode || previewing());   // one place decides the look, so no entry step can strip it from cards built for the client
   let previewClient = (() => { try { return sessionStorage.getItem(PREVIEW_KEY) === "1"; } catch (_) { return false; } })();   // trainer: showing the workout as the client sees it (display only; saving stays the trainer's). A refresh keeps the view; a fresh open starts as the coach
   const rememberPreview = () => { try { if (previewClient) sessionStorage.setItem(PREVIEW_KEY, "1"); else sessionStorage.removeItem(PREVIEW_KEY); } catch (_) {} };
   function rowEl(t, r, group) {
