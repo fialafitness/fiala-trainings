@@ -47,7 +47,7 @@
     --brand-soft: rgba(111,107,153,0.14); --danger-soft: rgba(166,58,70,0.11);   /* tinted capsules: the colour at a breath of opacity behind text in that colour */
     --glass: rgba(255,255,255,0.78); --glass-edge: rgba(0,0,0,0.08);   /* a floating bubble: frosted, the page showing through */
     --glass-bar: rgba(255,255,255,0.5); --glass-bar-rim: rgba(255,255,255,0.9); --glass-bar-edge: rgba(0,0,0,0.07); --glass-bar-on: rgba(0,0,0,0.07);   /* a floating menu: liquid glass, readable over text */
-    --tab-fill: rgba(255,255,255,0.38); --tab-rim: rgba(255,255,255,0.85); --tab-edge: rgba(0,0,0,0.06); --tab-on: rgba(255,255,255,0.92); --tab-on-shadow: 0 1px 5px rgba(0,0,0,0.10), 0 0 0 0.5px rgba(0,0,0,0.04); --tab-shadow: 0 10px 30px rgba(0,0,0,0.14);   /* the tab bar: Apple's glass, the page showing straight through, the chosen tab a lit capsule */
+    --tab-fill: rgba(255,255,255,0.33); --tab-on: rgba(255,255,255,0.8); --tab-on-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.9), 0 0 0 0.5px rgba(0,0,0,0.03), 0 1px 4px rgba(0,0,0,0.06); --tab-shadow: inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(255,255,255,0.75), inset 0 0 0 0.5px rgba(255,255,255,0.35), 0 0 0 0.5px rgba(0,0,0,0.05), 0 4px 14px rgba(0,0,0,0.08);   /* the tab bar: Apple's glass, measured off the real thing: a third of white over the page, the chosen tab a white capsule with a lit rim */
     --placeholder: #d2d2d7;
     --brand: #6f6b99;                   /* app-purple — structure / interactive, EXACT */
     --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
@@ -88,7 +88,7 @@
       --brand-soft: rgba(111,107,153,0.28); --danger-soft: rgba(224,100,112,0.2);
       --glass: rgba(44,44,46,0.72); --glass-edge: rgba(255,255,255,0.10);
       --glass-bar: rgba(70,70,76,0.42); --glass-bar-rim: rgba(255,255,255,0.24); --glass-bar-edge: rgba(255,255,255,0.1); --glass-bar-on: rgba(255,255,255,0.13);
-      --tab-fill: rgba(255,255,255,0.08); --tab-rim: rgba(255,255,255,0.22); --tab-edge: rgba(255,255,255,0.09); --tab-on: rgba(255,255,255,0.14); --tab-on-shadow: inset 0 1px 0 rgba(255,255,255,0.10); --tab-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --tab-fill: rgba(255,255,255,0.15); --tab-on: rgba(0,0,0,0.42); --tab-on-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 2px 3px rgba(255,255,255,0.06), inset 0 0 0 0.5px rgba(255,255,255,0.08); --tab-shadow: inset 0 1px 0 rgba(255,255,255,0.27), inset 0 2px 3px rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.45), 0 0 0 1.5px rgba(255,255,255,0.09), 0 8px 24px rgba(0,0,0,0.25);   /* measured off Apple's dark bar: 15% white over the page, a lit rim, the chosen tab a darker capsule */
       --placeholder: rgba(255,255,255,0.35);
       --brand: #6f6b99;                 /* app-purple — the brand, exact in both modes */
       --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
@@ -129,7 +129,7 @@
     --brand-soft: rgba(111,107,153,0.28); --danger-soft: rgba(224,100,112,0.2);
     --glass: rgba(44,44,46,0.72); --glass-edge: rgba(255,255,255,0.10);
     --glass-bar: rgba(70,70,76,0.42); --glass-bar-rim: rgba(255,255,255,0.24); --glass-bar-edge: rgba(255,255,255,0.1); --glass-bar-on: rgba(255,255,255,0.13);
-    --tab-fill: rgba(255,255,255,0.08); --tab-rim: rgba(255,255,255,0.22); --tab-edge: rgba(255,255,255,0.09); --tab-on: rgba(255,255,255,0.14); --tab-on-shadow: inset 0 1px 0 rgba(255,255,255,0.10); --tab-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    --tab-fill: rgba(255,255,255,0.15); --tab-on: rgba(0,0,0,0.42); --tab-on-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 2px 3px rgba(255,255,255,0.06), inset 0 0 0 0.5px rgba(255,255,255,0.08); --tab-shadow: inset 0 1px 0 rgba(255,255,255,0.27), inset 0 2px 3px rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.45), 0 0 0 1.5px rgba(255,255,255,0.09), 0 8px 24px rgba(0,0,0,0.25);   /* measured off Apple's dark bar: 15% white over the page, a lit rim, the chosen tab a darker capsule */
     --placeholder: rgba(255,255,255,0.35);
     --brand: #6f6b99;                 /* app-purple — the brand, exact in both modes */
     --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
@@ -719,9 +719,9 @@
   .setlog .chip.stack.editing .valrow input { position: static; flex: 1 1 auto; width: 0; min-width: 3ch; height: auto; font-size: 22px; font-weight: 600; padding: 0; }
   .setlog .chip.stack.editing .valrow .val { display: none; }
   /* the bar: two tabs on a client's page, floating like Apple's, the glass of the date bubble */
-  #tabbar { position: fixed; left: 50%; bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 8px)); transform: translateX(-50%); z-index: 45; display: flex; gap: 4px; padding: 5px; border-radius: 50px; background: var(--tab-fill); -webkit-backdrop-filter: blur(30px) saturate(190%); backdrop-filter: blur(30px) saturate(190%); box-shadow: inset 0 1px 0 var(--tab-rim), inset 0 0 0 0.5px var(--tab-edge), var(--tab-shadow); }   /* where Apple's sits: into the home-indicator zone, a clear glass pill with the page showing straight through, a lit top rim */
+  #tabbar { position: fixed; left: 50%; bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 8px)); transform: translateX(-50%); z-index: 45; display: flex; gap: 4px; padding: 2px; border-radius: 50px; background: var(--tab-fill); -webkit-backdrop-filter: blur(2.5px) saturate(160%); backdrop-filter: blur(2.5px) saturate(160%); box-shadow: var(--tab-shadow); }   /* where Apple's sits: into the home-indicator zone; its glass: a light blur (the page stays readable through it), a thin tint, a lit rim */
   #tabbar[hidden] { display: none; }
-  #tabbar button { appearance: none; border: 0; background: none; min-width: 124px; height: 54px; padding: 0 18px; border-radius: 50px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0; color: var(--text-secondary); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 160ms ease, color 160ms ease; }
+  #tabbar button { appearance: none; border: 0; background: none; min-width: 124px; height: 56px; padding: 0 18px; border-radius: 50px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0; color: var(--text); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 160ms ease, color 160ms ease; }
   #tabbar button svg { width: 22px; height: 22px; }
   #tabbar button.on { background: var(--tab-on); color: var(--brand); box-shadow: var(--tab-on-shadow); }
   body.tabs #vClient { padding-bottom: 100px; }                                   /* the last thing on the page clears the bar */
@@ -1408,7 +1408,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=145";
+  import { boot } from "./app/main.js?v=146";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
