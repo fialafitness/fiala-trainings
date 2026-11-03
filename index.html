@@ -740,9 +740,8 @@
   #tabbar button.on { background: var(--tab-on); color: var(--brand); box-shadow: var(--tab-on-shadow); }
   body.tabs #vClient { padding-bottom: 100px; }                                   /* the last thing on the page clears the bar */
   body.typing #tabbar { display: none; }                                          /* the keyboard has the bottom */
-  #vClient:not(.tpl)[data-tab="workouts"] [data-tab]:not([data-tab="workouts"]), #vClient:not(.tpl)[data-tab="history"] [data-tab]:not([data-tab="history"]), #vClient:not(.tpl)[data-tab="profile"] [data-tab]:not([data-tab="profile"]), #vClient:not(.tpl)[data-tab="notes"] [data-tab]:not([data-tab="notes"]) { display: none !important; }   /* each tab shows its own things */
-  body.client #tabbar button { min-width: 100px; padding: 0 12px; }        /* the client: Workouts, History, Progress */
-  body:not(.client) #tabbar button { min-width: 78px; padding: 0 8px; }    /* the coach: Workouts, History, Progress, Notes */
+  #vClient:not(.tpl)[data-tab="workouts"] [data-tab]:not([data-tab="workouts"]), #vClient:not(.tpl)[data-tab="profile"] [data-tab]:not([data-tab="profile"]), #vClient:not(.tpl)[data-tab="notes"] [data-tab]:not([data-tab="notes"]) { display: none !important; }   /* each tab shows its own things */
+  body:not(.client) #tabbar button { min-width: 96px; padding: 0 10px; }   /* the coach has three tabs: Workouts, Progress, Notes */
   /* packages: the plan card on the client page, the In person pill on a workout, the Packages page */
   .plan-card { display: block; width: 100%; text-align: left; appearance: none; border: 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; background: var(--card); border-radius: var(--r-card); padding: 14px 16px 12px; margin-top: 16px; }
   .plan-card[hidden] { display: none; }
@@ -942,6 +941,8 @@
   .note-actions[hidden] { display: none; }
   .list.notes { padding: 2px 0; }
   #noteList .list.notes { margin-top: 12px; }
+  #histCard { margin-top: 12px; }
+  #vHistory .month:first-child { margin-top: 20px; }
   .note-head { margin: 24px 0 0; }   /* "This week", "October", "October 2025": the small caption, when every note is shown */
   .note-more { padding: 4px 20px 0; }
   .note-more button { appearance: none; border: 0; background: none; width: auto; min-height: 44px; padding: 0; font: inherit; font-size: 17px; color: var(--brand); display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }   /* "Show all · 12 more" / "Show less", like Up next */
@@ -1218,6 +1219,11 @@
       <span class="confirm" id="delClientConfirm" hidden>Deletes all their trainings too. <button class="btn tint danger" id="delClientYes">Delete</button> <button class="btn tint" id="delClientNo">Keep</button></span>
     </div>
   </section>
+  <section id="vHistory" hidden>
+    <h1 class="pagetitle">History</h1>
+    <div id="histList"></div>
+    <div class="empty" id="histEmpty" hidden>No past workouts yet.</div>
+  </section>
 
   <section id="vCatalog" hidden>
     <h1>Catalog</h1>
@@ -1334,8 +1340,7 @@
     <ul data-tab="workouts" class="list today" id="todayList" hidden></ul>
     <h2 data-tab="workouts" id="nextHead" hidden>Up next</h2>
     <ul data-tab="workouts" class="list" id="nextList" hidden></ul>
-    <div data-tab="history" id="histList"></div>
-    <div data-tab="history" class="empty" id="histEmpty" hidden>No past workouts yet.</div>
+    <ul data-tab="workouts" class="list" id="histCard" hidden><li><button type="button" id="histBtn"><span style="min-width:0"><span class="pri">History</span><span class="sec" id="histSub"></span></span><span class="chev">&rsaquo;</span></button></li></ul>
     <div data-tab="workouts" class="empty" id="trainingEmpty" hidden>No workouts yet.</div>
     <div data-tab="profile" class="foot-pills reports trainer-only" id="reportWrap"><span class="rep-cap">Report PDF</span><button class="pill" type="button" id="reportNow">This month</button><select class="pill" id="reportMonth" aria-label="Pick a month"><option value="">Pick a month</option></select></div>
     <div data-tab="notes" class="trainer-only" id="notesWrap">
@@ -1382,7 +1387,6 @@
 </div>
 <nav id="tabbar" aria-label="Sections" hidden>
   <button type="button" data-tab="workouts" class="on"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7.5v9M17.5 7.5v9M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg><span>Workouts</span></button>
-  <button type="button" data-tab="history"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 3.5V8h4.5"/><path d="M12 7.5V12l3 2"/></svg><span>History</span></button>
   <button type="button" data-tab="profile"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M5 15.5l4.5-5 3.5 3.5 6-6.5"/><path d="M15 7.5h4V11.5"/></svg><span>Progress</span></button>
   <button type="button" data-tab="notes" class="trainer-only"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h9l4 4V20a.5.5 0 0 1-.5.5h-12A.5.5 0 0 1 6 20z"/><path d="M15 3.5v4h4"/><path d="M9 12h6"/><path d="M9 16h6"/></svg><span>Notes</span><i class="tab-badge" id="notesBadge" hidden></i></button>
 </nav>
@@ -1428,7 +1432,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=160";
+  import { boot } from "./app/main.js?v=161";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

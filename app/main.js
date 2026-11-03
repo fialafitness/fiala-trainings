@@ -183,7 +183,7 @@ import { reportRange, buildReport } from "./report.js";
   function hideAllViews() { $("meDisc").hidden = true;
     rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
     $("tabbar").hidden = true; document.body.classList.remove("tabs");
-    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vClientCard", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
+    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vClientCard", "vHistory", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
     $("navDone").hidden = true;
   }
   function showLogin(msg) {
@@ -247,6 +247,41 @@ import { reportRange, buildReport } from "./report.js";
     for (const b of $("accessSeg").querySelectorAll("button")) b.classList.toggle("on", (c.paused ? "paused" : "active") === b.dataset.access);
     paintPlanDetails(c);
     $("delClientConfirm").hidden = true; $("delClient").hidden = false;
+  }
+  const openGroups = new Map();                                     // "<client>/<group>" -> opened or folded by hand this session
+  function showHistory() {                                          // the client's past workouts on their own page, by week, month and year, each group folding
+    const c = clients.get(S.view.id); if (!c || isTemplateClient(c.id)) return;
+    settingsOpen = "history"; fromSettings = false; hideAllViews(); $("vHistory").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
+    paintHistory();
+  }
+  function paintHistory() {
+    const c = clients.get(S.view.id); if (!c) return;
+    const rest = clientTrainings(c.id).filter((t) => t.completedAt || t.skippedAt).sort((a, b) => effDate(b).localeCompare(effDate(a)));
+    const hist = $("histList"); hist.replaceChildren(); $("histEmpty").hidden = rest.length > 0;
+    const t0 = today(), base = new Date(t0 + "T12:00:00"), monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7)); const mondayIso = localIso(monday);
+    const word = (n) => n + (n === 1 ? " workout" : " workouts");
+    const rows = (items) => { const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...items.map((t) => workoutRow(t))); return ul; };
+    const group = (key, title, items, open, build) => {              // a folding group: title · count ›; opened or closed by hand, it stays so for the session
+      const wrap = document.createElement("div"); wrap.className = "month";
+      const head = document.createElement("button"); head.type = "button"; head.innerHTML = "<span></span><span class=\"sub\"></span>"; head.firstChild.textContent = title; head.lastChild.textContent = word(items.length) + " \u203a";
+      const k = c.id + "/" + key, isOpen = openGroups.has(k) ? openGroups.get(k) : open;
+      const inner = build(items); inner.hidden = !isOpen;
+      head.addEventListener("click", () => { inner.hidden = !inner.hidden; openGroups.set(k, !inner.hidden); });
+      wrap.append(head, inner); return wrap;
+    };
+    const monthsOf = (items, firstOpen) => {                          // the months in a year, newest first
+      const m = new Map(); for (const t of items) { const k = effDate(t).slice(0, 7); if (!m.has(k)) m.set(k, []); m.get(k).push(t); }
+      const box = document.createElement("div"); let first = true;
+      for (const [k, its] of m) { box.appendChild(group(k, new Date(k + "-15T12:00:00").toLocaleDateString(undefined, { month: "long" }), its, first && firstOpen, rows)); first = false; }
+      return box;
+    };
+    const week = rest.filter((t) => effDate(t) >= mondayIso), older = rest.filter((t) => effDate(t) < mondayIso);
+    if (week.length) hist.appendChild(group("week", "This week", week, true, rows));
+    const byYear = new Map(); for (const t of older) { const y = effDate(t).slice(0, 4); if (!byYear.has(y)) byYear.set(y, []); byYear.get(y).push(t); }
+    for (const [y, items] of byYear) {
+      if (y === t0.slice(0, 4)) hist.appendChild(monthsOf(items, !week.length));            // this year: its months; the latest open when there is nothing from this week
+      else hist.appendChild(group(y, y, items, false, (its) => monthsOf(its, true)));       // an earlier year: folded, its months inside
+    }
   }
   function showCatalog() {                                          // what he coaches with and what he sells: the exercises and the packages
     settingsOpen = "catalog"; fromSettings = false; hideAllViews(); $("vCatalog").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
@@ -660,6 +695,7 @@ import { reportRange, buildReport } from "./report.js";
   $("myExercises").addEventListener("click", () => { fromSettings = "catalog"; showExercises(); window.scrollTo(0, 0); });
   $("setNumber").addEventListener("click", () => { fromSettings = "settings"; showNumber(); window.scrollTo(0, 0); });
   $("myPhone").addEventListener("change", () => { setTrainerPhone($("myPhone").value); $("myPhoneMsg").textContent = phoneDigits($("myPhone").value) ? "Saved. Clients now see Message Michal." : "Saved. Without a number clients see no button."; });
+  $("histBtn").addEventListener("click", () => { backScroll = window.scrollY; showHistory(); window.scrollTo(0, 0); });
   $("meDisc").addEventListener("click", () => { backScroll = window.scrollY; if (S.clientMode) showSettings(); else showClientCard(); window.scrollTo(0, 0); });   // the client's person disc in the bar: Settings, where Apple keeps the person
   $("forgotBtn").addEventListener("click", async () => {
     const email = $("loginEmail").value.trim();
@@ -1239,12 +1275,12 @@ import { reportRange, buildReport } from "./report.js";
     if (S.recovering) { showRecovery(); return; }
     if (pendingPage && S.signedIn && !(S.clientMode && !S.myClientId)) {   // a refresh on a settings page lands back on it at the first paint: no glimpse of the Clients page on the way
       const p = pendingPage; pendingPage = null; exStale = !!S.sb && !S.syncedOnce && (p.open === "exercises" || p.open === "exercise");
-      const open = { settings: showSettings, card: showClientCard, catalog: showCatalog, data: showData, number: showNumber, packages: showPackages, exercises: showExercises, password: showPassword }[p.open];
+      const open = { settings: showSettings, card: showClientCard, history: showHistory, catalog: showCatalog, data: showData, number: showNumber, packages: showPackages, exercises: showExercises, password: showPassword }[p.open];
       const from = p.from === true ? "settings" : (p.from || false);   // older devices wrote a yes/no
       if (p.open === "exercise" && p.name) { fromSettings = from; showExercise(p.name, p.key || squash(p.name)); return; }
       if (open) { fromSettings = from; open(); return; }
     }
-    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $("navDone").hidden = settingsOpen !== "exercise"; $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : settingsOpen === "card" ? "vClientCard" : settingsOpen === "catalog" ? "vCatalog" : settingsOpen === "data" ? "vData" : "vPassword").hidden = false; if (settingsOpen === "packages") renderPackages(); if (settingsOpen === "card") paintCard(); if (exStale && S.syncedOnce) { exStale = false; if (settingsOpen === "exercises") renderExercises(); else if (settingsOpen === "exercise" && exCurrent && !exDirty()) showExercise(exCurrent.name, exCurrent.key); } $("back").hidden = false; $("brand").hidden = true; } return; }
+    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $("navDone").hidden = settingsOpen !== "exercise"; $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : settingsOpen === "card" ? "vClientCard" : settingsOpen === "history" ? "vHistory" : settingsOpen === "catalog" ? "vCatalog" : settingsOpen === "data" ? "vData" : "vPassword").hidden = false; if (settingsOpen === "packages") renderPackages(); if (settingsOpen === "card") paintCard(); if (settingsOpen === "history") paintHistory(); if (exStale && S.syncedOnce) { exStale = false; if (settingsOpen === "exercises") renderExercises(); else if (settingsOpen === "exercise" && exCurrent && !exDirty()) showExercise(exCurrent.name, exCurrent.key); } $("back").hidden = false; $("brand").hidden = true; } return; }
     if (S.sb && !S.signedIn) { showLogin($("loginMsg").textContent); return; }
     if (S.clientMode && !S.myClientId) { showWaiting(); return; }
     if (celebrating) { hideAllViews(); $("vCelebrate").hidden = false; $("back").hidden = true; $("brand").hidden = false; return; }   // "Nice work" stays up until it hands over to the client page, whatever refreshes meanwhile
@@ -1534,6 +1570,45 @@ import { reportRange, buildReport } from "./report.js";
     for (const id of ids) if (!seen.includes(id)) { seen.push(id); changed = true; }
     if (changed) { c.seenNotes = seen; scheduleSave("clients", c.id); }
   }
+  const relDay = (iso) => {                                            // "Today", "Tomorrow", "In 4 days", "Yesterday", "3 days ago"
+    const n = Math.round((new Date(iso + "T12:00:00") - new Date(today() + "T12:00:00")) / 86400000);
+    if (!Number.isFinite(n)) return "";                                  // no date on the record: no caption
+    if (n === 0) return "Today"; if (n === 1) return "Tomorrow"; if (n === -1) return "Yesterday";
+    if (n > 1) return n < 14 ? "In " + n + " days" : "In " + Math.round(n / 7) + " weeks";
+    return n > -14 ? (-n) + " days ago" : Math.round(-n / 7) + " weeks ago";
+  };
+  function workoutRow(t, next) {                                        // one workout as a row: tick or Skipped, the day, the title; a tap opens it
+    const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
+    if (next) li.className = "next";
+    const cards = new Map();
+    t.rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!cards.has(k)) cards.set(k, true); if (!r.done) cards.set(k, false); });
+    const total = cards.size, done = [...cards.values()].filter(Boolean).length;
+    const d = new Date(effDate(t) + "T12:00:00");
+    const pri = document.createElement("span"); pri.className = "pri";
+    const skipped = !t.completedAt && !!t.skippedAt;
+    pri.textContent = (t.completedAt ? "\u2713 " : skipped ? (t.missed === true ? "Missed \u00b7 " : "Skipped \u00b7 " + (t.skipReason ? t.skipReason + " \u00b7 " : "")) : "") + d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    if (skipped) pri.style.color = "var(--text-tertiary)";
+    const sec = document.createElement("span"); sec.className = "sec";
+    sec.textContent = [t.title, !t.completedAt && done ? done + " of " + total + " done" : ""].filter(Boolean).join(" \u00b7 ");
+    const left = document.createElement("span"); left.style.minWidth = "0";
+    const overdue = next && !skipped && !t.completedAt && !!effDate(t) && effDate(t) < today();
+    const whenText = next ? (overdue ? "Missed \u00b7 " : "") + relDay(effDate(t)) : "";
+    if (whenText) { const when = document.createElement("span"); when.className = "when" + (overdue ? " missed" : ""); when.textContent = whenText; left.append(when); }
+    let acts = null;
+    if (overdue) {                                                       // the missed workout is the first thing to decide
+      acts = document.createElement("div"); acts.className = "missed-actions";
+      const doToday = document.createElement("button"); doToday.type = "button"; doToday.className = "btn tint"; doToday.textContent = "Do it today";
+      doToday.addEventListener("click", () => { t.date = today(); t.missed = false; t.skippedAt = null; touchState(t.id, "date", "missed", "skippedAt"); if (S.clientMode) { pendingMove.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
+      const skip = document.createElement("button"); skip.type = "button"; skip.className = "btn tint"; skip.textContent = "Skip";
+      skip.addEventListener("click", () => { t.skippedAt = now(); t.missed = false; touchState(t.id, "skippedAt", "missed"); if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
+      acts.append(doToday, skip);
+    }
+    left.append(pri); if (sec.textContent) left.append(sec);
+    const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a";
+    b.append(left, chev);
+    b.addEventListener("click", () => go({ name: "training", id: t.id }));
+    li.appendChild(b); if (acts) li.appendChild(acts); return li;       // the choices sit under the row
+  }
   function renderClient() {
     const c = clients.get(S.view.id);
     const isTpl = isTemplateClient(c.id);
@@ -1565,45 +1640,6 @@ import { reportRange, buildReport } from "./report.js";
     }
     if (!S.clientMode && (!S.sb || S.syncedOnce)) for (const t of clientTrainings(c.id)) if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }   // empty workouts left behind (an accidental tap on a day) go away, once the server's copy has been seen
     const list = clientTrainings(c.id);
-    const relDay = (iso) => {                                            // "Today", "Tomorrow", "In 4 days", "Yesterday", "3 days ago"
-      const n = Math.round((new Date(iso + "T12:00:00") - new Date(today() + "T12:00:00")) / 86400000);
-      if (!Number.isFinite(n)) return "";                                  // no date on the record: no caption
-      if (n === 0) return "Today"; if (n === 1) return "Tomorrow"; if (n === -1) return "Yesterday";
-      if (n > 1) return n < 14 ? "In " + n + " days" : "In " + Math.round(n / 7) + " weeks";
-      return n > -14 ? (-n) + " days ago" : Math.round(-n / 7) + " weeks ago";
-    };
-    const rowOf = (t, next) => {
-      const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
-      if (next) li.className = "next";
-      const cards = new Map();
-      t.rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!cards.has(k)) cards.set(k, true); if (!r.done) cards.set(k, false); });
-      const total = cards.size, done = [...cards.values()].filter(Boolean).length;
-      const d = new Date(effDate(t) + "T12:00:00");
-      const pri = document.createElement("span"); pri.className = "pri";
-      const skipped = !t.completedAt && !!t.skippedAt;
-      pri.textContent = (t.completedAt ? "\u2713 " : skipped ? (t.missed === true ? "Missed \u00b7 " : "Skipped \u00b7 " + (t.skipReason ? t.skipReason + " \u00b7 " : "")) : "") + d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-      if (skipped) pri.style.color = "var(--text-tertiary)";
-      const sec = document.createElement("span"); sec.className = "sec";
-      sec.textContent = [t.title, !t.completedAt && done ? done + " of " + total + " done" : ""].filter(Boolean).join(" \u00b7 ");
-      const left = document.createElement("span"); left.style.minWidth = "0";
-      const overdue = next && !skipped && !t.completedAt && !!effDate(t) && effDate(t) < today();
-      const whenText = next ? (overdue ? "Missed \u00b7 " : "") + relDay(effDate(t)) : "";
-      if (whenText) { const when = document.createElement("span"); when.className = "when" + (overdue ? " missed" : ""); when.textContent = whenText; left.append(when); }
-      let acts = null;
-      if (overdue) {                                                       // the missed workout is the first thing to decide
-        acts = document.createElement("div"); acts.className = "missed-actions";
-        const doToday = document.createElement("button"); doToday.type = "button"; doToday.className = "btn tint"; doToday.textContent = "Do it today";
-        doToday.addEventListener("click", () => { t.date = today(); t.missed = false; t.skippedAt = null; touchState(t.id, "date", "missed", "skippedAt"); if (S.clientMode) { pendingMove.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
-        const skip = document.createElement("button"); skip.type = "button"; skip.className = "btn tint"; skip.textContent = "Skip";
-        skip.addEventListener("click", () => { t.skippedAt = now(); t.missed = false; touchState(t.id, "skippedAt", "missed"); if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
-        acts.append(doToday, skip);
-      }
-      left.append(pri); if (sec.textContent) left.append(sec);
-      const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a";
-      b.append(left, chev);
-      b.addEventListener("click", () => go({ name: "training", id: t.id }));
-      li.appendChild(b); if (acts) li.appendChild(acts); return li;       // the choices sit under the row
-    };
 
     const base = new Date(); base.setHours(12, 0, 0, 0);
     const monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
@@ -1675,9 +1711,9 @@ import { reportRange, buildReport } from "./report.js";
     nextExtra = Math.max(0, Math.min(nextExtra, next.length - soon.length));
     const shown = next.slice(0, soon.length + nextExtra), left = next.length - shown.length;
     const todays = shown.filter((t) => effDate(t) === iso(base)), later = shown.filter((t) => effDate(t) !== iso(base));   // today's workout on its own card, the days after it under "Up next"
-    $("todayList").hidden = !todays.length; $("todayList").replaceChildren(...todays.map((t) => rowOf(t, true)));
+    $("todayList").hidden = !todays.length; $("todayList").replaceChildren(...todays.map((t) => workoutRow(t, true)));
     $("nextHead").hidden = !later.length && left === 0; $("nextList").hidden = !later.length && left === 0;
-    $("nextList").replaceChildren(...later.map((t, i) => rowOf(t, i === 0 && !todays.length)));
+    $("nextList").replaceChildren(...later.map((t, i) => workoutRow(t, i === 0 && !todays.length)));
     if (left > 0 || nextExtra > 0) {
       const li = document.createElement("li"); li.className = "more"; const bar = document.createElement("div");
       if (left > 0) {
@@ -1694,18 +1730,8 @@ import { reportRange, buildReport } from "./report.js";
       li.appendChild(bar); $("nextList").appendChild(li);
     }
 
-    const rest = list.filter((t) => !next.includes(t));                      // History: every past workout, flat, under This week / month / month-and-year headings
-    const hist = $("histList"); hist.replaceChildren(); $("histEmpty").hidden = rest.length > 0;
-    const hToday = today(), hBase = new Date(hToday + "T12:00:00"), hMonday = new Date(hBase); hMonday.setDate(hBase.getDate() - ((hBase.getDay() + 6) % 7)); const hMondayIso = localIso(hMonday);
-    const groups = new Map();
-    for (const t of rest) {
-      const day = effDate(t) || ""; let key, title;
-      if (day >= hMondayIso) { key = "week"; title = "This week"; }
-      else if (day.slice(0, 4) === hToday.slice(0, 4)) { key = day.slice(0, 7); title = new Date(day + "T12:00:00").toLocaleDateString(undefined, { month: "long" }); }
-      else { key = day.slice(0, 7); title = new Date(day + "T12:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" }); }
-      if (!groups.has(key)) groups.set(key, { title, items: [] }); groups.get(key).items.push(t);
-    }
-    for (const [, g] of groups) { const h = document.createElement("h2"); h.className = "note-head"; h.textContent = g.title; const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...g.items.map((t) => rowOf(t))); hist.append(h, ul); }
+    const rest = list.filter((t) => t.completedAt || t.skippedAt);           // History: a card under Up next; its page lays the past out by week, month and year
+    $("histCard").hidden = !rest.length; $("histSub").textContent = rest.length + (rest.length === 1 ? " workout" : " workouts");
     $("trainingEmpty").hidden = list.length > 0;
     $("delClientConfirm").hidden = true; $("delClient").hidden = false;
   }
@@ -2810,7 +2836,7 @@ import { reportRange, buildReport } from "./report.js";
     try { const v = pageRelease(); if (v) { $("appVersion").textContent = "Version " + v; watchReleases(v); } } catch (_) {}   // the build this phone runs, at the bottom of Settings
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) S.view = saved;
     const page = lsGet("fiala.trainings.page"); if (page && page.open) pendingPage = page;   // read before any screen change clears it
-    const savedTab = lsGet("fiala.trainings.tab"); if (["profile", "workouts", "notes", "history"].includes(savedTab)) S.tab = savedTab;
+    const savedTab = lsGet("fiala.trainings.tab"); if (["profile", "workouts", "notes"].includes(savedTab)) S.tab = savedTab;
     localBackend.load();                       // instant start from the device copy
     try { const dr = lsGet("fiala.trainings.draft"); if (dr && dr.id && dr.doc && trainings.has(dr.id)) { S.templateDraft = { id: dr.id, snapshot: JSON.stringify(trainings.get(dr.id)), dirty: true, saving: false }; trainings.set(dr.id, dr.doc); } } catch (_) {}   // a template left with unsaved changes: back as it was, still unsaved
     restorePending();                          // and whatever was still waiting to reach the server
