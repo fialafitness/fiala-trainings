@@ -50,6 +50,7 @@ function restorePending() {
   for (const [n, cid] of p.notesGone || []) deletedNotes.set(n, cid);
   for (const [pk, cid] of p.packagesGone || []) deletedPackages.set(pk, cid);
   for (const e of p.fromFile || []) { if (Array.isArray(e)) fromFile.set(e[0], Number(e[1]) || 0); else if (typeof e === "string") fromFile.set(e, 0); }   // older devices wrote the key alone
+  for (const [k, v] of [...fromFile]) { if (!dirty.has(k)) fromFile.delete(k); else if (v > dirty.get(k)) fromFile.set(k, dirty.get(k)); }   // a relaunch numbers a pending edit 1 again: the marker follows it, so the save that carries the file's copy clears it; a marker with no edit behind it would hand a later edit the restore's rights — dropped
   S.pendingOwner = p.owner || "";
 }
 function scheduleSave(kind, id, delay = 500) {
@@ -76,8 +77,9 @@ function flushOne(kind, id) {
     const version = dirty.get(k) || 0;
     const data = doc ? JSON.parse(JSON.stringify(doc)) : null;   // taken now, after any merge the previous run did
     let attempt = 0;
+    if (S.backend !== localBackend && !S.sb) { S.offline = true; return; }   // the cloud library never loaded (a first open with the network blocked): keep it queued, the next open with signal sends it
     if (S.backend !== localBackend && S.sb) {
-      const sess = await S.sb.auth.getSession().catch(() => null);
+      const sess = await withTimeout(S.sb.auth.getSession(), SAVE_WAIT).catch(() => null);   // a token refresh that never answers is no token
       if (!(sess && sess.data && sess.data.session)) { S.offline = true; return; }   // token not usable right now: keep it queued
     }
     for (;;) {
@@ -244,9 +246,10 @@ const clientBackend = {
     }
     if (pendingFinish.has(id)) {
       const finished = !!data.completedAt;
-      const { error } = await rpc("client_finish_training", { p_training: id, p_finished: finished });
+      let { error } = await rpc("client_finish_training", { p_training: id, p_finished: finished, p_at: finished ? data.completedAt || null : null });   // finished at the time the phone says, not when the upload got through
+      if (error && error.code === "PGRST202") ({ error } = await rpc("client_finish_training", { p_training: id, p_finished: finished }));   // the rule not updated yet: the old shape
       if (error && error.code !== "P0001") throw error;
-      if (error || !!live().completedAt === finished) pendingFinish.delete(id);              // Undo tapped while Finish was out: still queued, goes next
+      if (error || (!!live().completedAt === finished && (!finished || live().completedAt === data.completedAt))) pendingFinish.delete(id);   // Undo tapped while Finish was out, or finished again at a later time: still queued, goes next
     }
     if (pendingSkip.has(id)) {
       const skipped = !!data.skippedAt, reason = String(data.skipReason || "");
@@ -316,9 +319,9 @@ function mergeDown(map, kind, rows, complete, startedAt) {        // the server'
 async function syncDownNow() {
   if (!S.sb || !S.signedIn || !S.backend || S.seeding) return false;
   const startedAt = Date.now();
-  const sess = await S.sb.auth.getSession().catch(() => null);           // no usable token (refresh failed, cooldown): don't sync as a stranger
+  const sess = await withTimeout(S.sb.auth.getSession(), 8000).catch(() => null);   // no usable token (refresh failed, cooldown, or a refresh that never answers): don't sync as a stranger
   if (!(sess && sess.data && sess.data.session)) { S.offline = true; ui.setStatus(); return false; }
-  await Promise.all([ui.loadCustomVideos(), ui.loadHidden(), ui.loadCustomNames(), ui.loadCustomSubs()].map((p) => p.catch(() => {})));   // the exercise list and page paint from loaded names, videos and subtitles
+  await Promise.all([ui.loadCustomVideos(), ui.loadHidden(), ui.loadCustomNames(), ui.loadCustomSubs()].map((p) => withTimeout(p.catch(() => {}), S.catalogWait || 8000)));   // each catalog gets a deadline: one that never answers cannot hold the workouts back (its data still lands when it does)   // the exercise list and page paint from loaded names, videos and subtitles
   let c, t;
   if (S.clientMode) {
     const res = await withTimeout(S.sb.rpc("client_my_data"), 8000);
