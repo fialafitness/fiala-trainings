@@ -1,13 +1,17 @@
 -- Set-by-set logging for clients: weight AND reps per set, how many sets are done, and the row's done flag.
 -- Run once in the Supabase SQL Editor. Safe to run more than once.
 
-drop function if exists client_log_set(uuid, text, jsonb, jsonb, int, boolean);   -- the signature without the unit: one function only, or the API cannot choose
-create or replace function client_log_set(p_training uuid, p_row text, p_weights jsonb, p_reps jsonb, p_sets_done int, p_done boolean, p_unit text default null)
-returns void language plpgsql security definer set search_path = public as $$
+drop function if exists client_log_set(uuid, text, jsonb, jsonb, int, boolean);         -- the signatures without the unit and without the number: one function only, or the API cannot choose
+drop function if exists client_log_set(uuid, text, jsonb, jsonb, int, boolean, text);
+drop function if exists client_log_set(uuid, text, jsonb, jsonb, int, boolean, text, int);   -- an earlier shape of this one, which answered nothing
+create or replace function client_log_set(p_training uuid, p_row text, p_weights jsonb, p_reps jsonb, p_sets_done int, p_done boolean, p_unit text default null, p_seq int default null)
+returns int language plpgsql security definer set search_path = public as $$
 declare
   v_rows jsonb;
   v_new jsonb := '[]'::jsonb;
   v_found boolean := false;
+  v_stale boolean := false;
+  v_held int := null;
   r jsonb;
 begin
   if my_email() = '' then raise exception 'not signed in'; end if;
@@ -31,20 +35,27 @@ begin
   select coalesce(data -> 'rows', '[]'::jsonb) into v_rows from ft_trainings where id = p_training for update;
   for r in select * from jsonb_array_elements(v_rows) loop
     if r ->> 'id' = p_row then
+      v_found := true;
+      if jsonb_typeof(r -> 'logSeq') = 'number' then v_held := (r ->> 'logSeq')::int; end if;
+      if p_seq is not null and coalesce(v_held, 0) > p_seq then v_stale := true; end if;   -- an older request landing late (it timed out on the phone and a newer one got through, or another device is ahead): the newer result stands, and the answer says which number it holds
+      if not v_stale then
       r := jsonb_set(r, '{weights}', p_weights);
       r := jsonb_set(r, '{repsDone}', p_reps);
       r := jsonb_set(r, '{setsDone}', to_jsonb(p_sets_done));
       r := jsonb_set(r, '{done}', to_jsonb(coalesce(p_done, false)));
       if p_unit in ('lb', 'kg') then r := jsonb_set(r, '{unit}', to_jsonb(p_unit)); end if;   -- the unit the set was logged in: the coach's app reads it back as such
-      v_found := true;
+      if p_seq is not null then r := jsonb_set(r, '{logSeq}', to_jsonb(p_seq)); end if;    -- the number this result carries: the phone counts up from it
+      end if;
     end if;
     v_new := v_new || jsonb_build_array(r);
   end loop;
   if not v_found then raise exception 'row not found'; end if;
+  if v_stale then return v_held; end if;
   update ft_trainings set data = jsonb_set(data, '{rows}', v_new) where id = p_training;
+  return p_seq;   -- applied: the number this result carries (null for an older app that sends none)
 end;
 $$;
-revoke execute on function client_log_set(uuid, text, jsonb, jsonb, int, boolean, text) from public, anon;
-grant execute on function client_log_set(uuid, text, jsonb, jsonb, int, boolean, text) to authenticated;
+revoke execute on function client_log_set(uuid, text, jsonb, jsonb, int, boolean, text, int) from public, anon;
+grant execute on function client_log_set(uuid, text, jsonb, jsonb, int, boolean, text, int) to authenticated;
 
 select 'client-log-set.sql applied' as result;

@@ -462,3 +462,59 @@ test("finished again at a later time while the first finish was out: the later t
   await settle();
   assert.deepStrictEqual(sent, ["2026-11-02T18:04:00.000Z", "2026-11-02T18:05:30.000Z"], "both went, the later one last"); assert.ok(!maps.pendingFinish.has("T"));
 });
+test("a set-log that timed out on the phone and lands after a newer one is refused by the row's number: the newer result stands, and the number carries on across a relaunch", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend, saveWait: 40 });
+  const server = { seq: 0, w: null, calls: [] }; let calls = 0, release = null;
+  sb.rpcs.client_log_set = async (a) => {                              // the rule as client-log-set.sql has it: an older number than the one stored is ignored
+    calls++; if (calls === 1) await new Promise((r) => { release = r; });
+    server.calls.push([a.p_seq, a.p_weights[0]]); if (a.p_seq != null && a.p_seq < server.seq) return server.seq; server.seq = a.p_seq; server.w = a.p_weights; return a.p_seq;
+  };
+  const t = training("T", { rows: [row("r1", ["20"], ["5"], 1)] }); maps.trainings.set("T", t);
+  maps.dirty.set("trainings/T", 1); maps.pendingWeightRows.set("T", new Set(["r1"])); fns.flushOne("trainings", "T");
+  await tick(90);                                                     // the first request is stuck; the phone gave up on it and keeps the set queued
+  assert.ok(maps.pendingWeightRows.get("T").has("r1"), "still queued after the timeout");
+  t.rows[0].weights = ["30"]; maps.dirty.set("trainings/T", 2); fns.flushOne("trainings", "T"); await settle();   // corrected to 30: a newer request, through at once
+  assert.deepStrictEqual(server.w, ["30"]); assert.strictEqual(server.seq, 2);
+  release(); await tick(20);                                          // the stuck request finally reaches the server, carrying 20 and the older number
+  assert.deepStrictEqual(server.calls.map((c) => c[0]), [2, 1], "as they reached the server: the newer first, the stuck one last"); assert.deepStrictEqual(server.w, ["30"], "the late request was refused: 30 stands");
+  const stored = JSON.parse(localStorage.getItem("fiala.trainings.v1")).trainings.T.rows[0].logSeq; assert.strictEqual(stored, 2, "the number is on the device");
+  maps.trainings.clear(); fns.localBackend.load();                    // relaunch
+  maps.trainings.get("T").rows[0].weights = ["35"]; maps.dirty.set("trainings/T", 3); maps.pendingWeightRows.set("T", new Set(["r1"])); fns.flushOne("trainings", "T"); await settle();
+  assert.strictEqual(server.seq, 3, "and counts on from there");
+});
+test("a server row's number is taken by the coach's copy, and a copied workout starts without one", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const t = training("T", { rows: [row("r1", ["20"], ["5"], 1)] }); maps.trainings.set("T", t);
+  sb.seed("ft_trainings", "T", training("T", { rows: [{ ...row("r1", ["30"], ["5"], 1), logSeq: 4 }] }), { client_id: "c1" });
+  t.title = "Edited"; fns.scheduleSave("trainings", "T", 0); await settle();
+  assert.strictEqual(sb.tables.ft_trainings.get("T").data.rows[0].logSeq, 4, "the coach's save keeps the row's number"); assert.deepStrictEqual(sb.tables.ft_trainings.get("T").data.rows[0].weights, ["30"], "and the client's set");
+  assert.ok(!("logSeq" in fns.freshRow({ ...row("r1"), logSeq: 4 })), "a copied row starts without a number");
+});
+test("a request the server refuses because it already holds a higher number is not acknowledged: the row stays queued and goes again past that number", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend });
+  const server = { seq: 7, w: ["50"], calls: [] };
+  sb.rpcs.client_log_set = async (a) => { server.calls.push(a.p_seq); if (a.p_seq < server.seq) return server.seq; server.seq = a.p_seq; server.w = a.p_weights; return a.p_seq; };
+  const t = training("T", { rows: [{ ...row("r1", ["30"], ["5"], 1), logSeq: 2 }] }); maps.trainings.set("T", t);   // this phone's copy is behind: another device logged seqs 3 to 7
+  maps.dirty.set("trainings/T", 1); maps.pendingWeightRows.set("T", new Set(["r1"])); fns.flushOne("trainings", "T"); await settle();
+  assert.deepStrictEqual(server.calls, [3], "refused at 3"); assert.ok(maps.pendingWeightRows.get("T").has("r1") && maps.dirty.has("trainings/T"), "not acknowledged: still queued");
+  await tick(600); await settle();                                     // the usual half-second later it goes again
+  assert.deepStrictEqual(server.calls, [3, 8], "sent again past the server's 7"); assert.deepStrictEqual(server.w, ["30"], "this phone's latest values stand"); assert.strictEqual(t.rows[0].logSeq, 8);
+  assert.ok(!(maps.pendingWeightRows.get("T") || new Set()).has("r1") && !maps.dirty.has("trainings/T"), "then acknowledged");
+});
+test("the rule from before the number refuses the eighth argument: the request goes again in the old shape and is acknowledged", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend });
+  const shapes = []; sb.rpcs.client_log_set = async (a) => { shapes.push(Object.keys(a).length); if ("p_seq" in a) { const e = new Error("Could not find the function"); e.code = "PGRST202"; throw e; } return null; };
+  const t = training("T", { rows: [row("r1", ["30"], ["5"], 1)] }); maps.trainings.set("T", t);
+  maps.dirty.set("trainings/T", 1); maps.pendingWeightRows.set("T", new Set(["r1"])); fns.flushOne("trainings", "T"); await settle();
+  assert.deepStrictEqual(shapes, [8, 7]); assert.ok(!(maps.pendingWeightRows.get("T") || new Set()).has("r1"), "acknowledged the old way");
+});
+test("a row's number only goes up: the coach's edit of that row and a verbatim restore both carry the server's higher number", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const t = training("T", { rows: [{ ...row("r1", ["35"], ["5"], 1), logSeq: 1 }] }); maps.trainings.set("T", t);
+  sb.seed("ft_trainings", "T", training("T", { rows: [{ ...row("r1", ["30"], ["5"], 1), logSeq: 3 }] }), { client_id: "c1" });
+  maps.trainerTouched.set("T", new Set(["r1"])); fns.scheduleSave("trainings", "T", 0); await settle();   // the coach changed the row's weight: his claim on the log, not on the number
+  let srv = sb.tables.ft_trainings.get("T").data.rows[0]; assert.deepStrictEqual([srv.weights, srv.logSeq], [["35"], 3], "the coach's weight, the server's number");
+  srv.logSeq = 5; sb.tables.ft_trainings.get("T").updated_at = "2026-11-03T12:00:00Z";
+  maps.fromFile.set("trainings/T", (maps.dirty.get("trainings/T") || 0) + 1); t.rows[0].logSeq = 1; fns.scheduleSave("trainings", "T", 0); await settle();   // a restore from a file: verbatim, except the number
+  srv = sb.tables.ft_trainings.get("T").data.rows[0]; assert.strictEqual(srv.logSeq, 5, "the restore did not lower it");
+});

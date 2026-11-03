@@ -2031,7 +2031,7 @@ import { reportRange, buildReport } from "./report.js";
       card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.composedPath().some((n) => n.tagName === "BUTTON")) { block.classList.add("open"); openBlocks.add(selKey); paintFold(); paintSummary(); } });
       btn.addEventListener("click", () => {
         const next = !g.rows.every((r) => r.done);
-        const track = S.clientMode ? pendingDoneRows : trainerTouched;
+        const track = S.clientMode ? pendingWeightRows : trainerTouched;   // the client's Done goes with the row's log and its number, so a late older request cannot undo it
         if (!track.has(t.id)) track.set(t.id, new Set());
         for (const r of g.rows) { r.done = next; if (!next) markEarly(t, r, ""); track.get(t.id).add(r.id); }
         scheduleSave("trainings", t.id); paint();
