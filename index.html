@@ -966,8 +966,8 @@
   .notes .entry .when button, .notes .entry .more { min-height: 44px; margin-top: -8px; margin-bottom: -8px; }   /* Delete / Keep / More: thumb-sized targets in the same rows */
   .name-row { display: flex; align-items: center; gap: 12px; }
   .name-row .pagetitle { flex: 1; min-width: 0; }
-  .contact-row { display: flex; margin-top: 4px; }
-  .wide-msg { width: 100%; justify-content: center; min-height: 48px; background: var(--ink); color: var(--ink-on); }   /* Message Michal, full width under the name: black in the light, white in the dark, the play disc's ink */
+  .contact-row { display: flex; margin-top: 2px; }
+  .msg-pill.wide-msg { width: auto; min-height: 40px; padding: 0 16px; gap: 7px; font-size: 0.9375rem; font-weight: 500; background: var(--glyph-fill); color: var(--text-primary); box-shadow: none; }   /* a quiet action under the title, as under a name in Contacts: the Templates pill's grey, never the page's main act */
   .wide-msg[hidden] { display: none !important; }
   .disc { position: relative; flex: none; width: 36px; height: 36px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
     background: var(--field); color: var(--text-primary); transition: transform 220ms ease, opacity 300ms ease; }   /* a disclosure, not the page's primary action */
@@ -1327,7 +1327,7 @@
       <h1 id="cName" class="pagetitle"></h1>
     </div>
     <div class="contact-row" data-tab="workouts">
-      <a class="msg-pill wide-msg client-only" id="trainerBtn" href="#" hidden><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a>
+      <a class="msg-pill wide-msg client-only" id="trainerBtn" href="#" aria-label="Message Michal" hidden><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message</span></a>
       <a class="msg-pill wide-msg trainer-only" id="msgBtn" href="#" hidden><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="msgText">Message</span></a>
     </div>
     <div class="trainer-only notif" id="notifWrap" data-tab="workouts" hidden><ul class="list notif-list" id="notifList" hidden></ul></div>
@@ -1449,7 +1449,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=172";
+  import { boot } from "./app/main.js?v=173";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
