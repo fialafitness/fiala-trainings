@@ -935,6 +935,11 @@
   .note-actions { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
   .note-actions[hidden] { display: none; }
   .list.notes { padding: 2px 0; }
+  #noteList .list.notes { margin-top: 12px; }
+  .note-head { margin: 24px 0 0; }   /* "This week", "October", "October 2025": the small caption, when every note is shown */
+  .note-more { padding: 4px 20px 0; }
+  .note-more button { appearance: none; border: 0; background: none; width: auto; min-height: 44px; padding: 0; font: inherit; font-size: 17px; color: var(--brand); display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }   /* "Show all · 12 more" / "Show less", like Up next */
+  .note-more .sub { font-size: 15px; color: var(--text-tertiary); }
   .notes .entry { padding: 12px 20px; }
   .notes .entry + .entry { border-top: 1px solid var(--card-border); }
   .notes .entry .when { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; color: var(--text-tertiary); }
@@ -1420,7 +1425,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=156";
+  import { boot } from "./app/main.js?v=157";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

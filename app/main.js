@@ -966,7 +966,8 @@ import { reportRange, buildReport } from "./report.js";
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => requestAnimationFrame(regrowNames));   // the first paint can come before the font: measured in the fallback, measured again in Inter
   let regrowTimer = null; window.addEventListener("resize", () => { clearTimeout(regrowTimer); regrowTimer = setTimeout(regrowNames, 120); });   // rotation, a split view, the keyboard
   const openMonths = new Set();          // History months the user opened: clientId/yyyy-mm
-  const openNoteGroups = new Set(), armedNotes = new Set();
+  const armedNotes = new Set();
+  const allNotesOpen = new Set();                                // clients whose notes page is unfolded past the ten newest (this session)
   const openNoteIds = new Set();                                 // long notes opened in full (this session)
   // notes stay inside c.notes, the one key the server strips before a client's phone gets the record:
   // a string is the old single note (shown as "Earlier"), an object { log: [{ id, at, text }] } is the dated list
@@ -980,65 +981,64 @@ import { reportRange, buildReport } from "./report.js";
     const dropCardNote = (n) => { delete n.row.clientNote; delete n.row.clientNoteBy; delete n.row.clientNoteAt; if (!trainerNoted.has(n.training.id)) trainerNoted.set(n.training.id, new Set()); trainerNoted.get(n.training.id).add(n.row.id); scheduleSave("trainings", n.training.id); };
     const t = today(), base = new Date(t + "T12:00:00"), monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
     const mondayIso = localIso(monday), yIso = localIso(new Date(base.getTime() - 86400000));
-    const groups = new Map();                                                    // "This week", then this year's months, then years, then "Earlier"
-    for (const n of entries) {
-      const day = n.at ? localIso(new Date(n.at)) : "";
-      let key, title;
-      if (!day) { key = "earlier"; title = "Earlier"; }
-      else if (day >= mondayIso) { key = "week"; title = "This week"; }
-      else if (day.slice(0, 4) === t.slice(0, 4)) { key = day.slice(0, 7); title = new Date(day + "T12:00:00").toLocaleDateString(undefined, { month: "long" }); }
-      else { key = day.slice(0, 4); title = day.slice(0, 4); }
-      if (!groups.has(key)) groups.set(key, { title, items: [] }); groups.get(key).items.push(n);
-    }
-    // every group starts folded; what he opens stays open for the session
     const when = (n) => {
       if (!n.at) return "Earlier";
       const d = new Date(n.at), day = localIso(d);
       const dd = day === t ? "Today" : day === yIso ? "Yesterday" : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
       return dd + " \u00b7 " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
     };
-    for (const [key, g] of groups) {
-      const sec = document.createElement("div"); sec.className = "month";
-      const head = document.createElement("button"); head.type = "button";
-      head.innerHTML = "<span></span><span class=\"sub\"></span>";
-      head.firstChild.textContent = g.title; head.lastChild.textContent = g.items.length + (g.items.length === 1 ? " note" : " notes") + " \u203a";
-      const gk = c.id + "/" + key;
-      const card = document.createElement("div"); card.className = "list notes"; card.hidden = !openNoteGroups.has(gk);
-      for (const n of g.items) {
-        const row = document.createElement("div"); row.className = "entry";
-        const top = document.createElement("div"); top.className = "when";
-        const stamp = document.createElement("span"); stamp.innerHTML = "<b></b> \u00b7 "; stamp.firstChild.textContent = n.by === "coach" ? "Coach" : firstName; stamp.append(when(n));   // who wrote it, then when
-        const ask = document.createElement("span"); ask.className = "ask";
-        if (armedNotes.has(n.id)) {
-          const q = document.createElement("span"); q.textContent = "Delete this note?";
-          const go = document.createElement("button"); go.type = "button"; go.className = "go"; go.textContent = "Delete";
-          go.addEventListener("click", () => { armedNotes.delete(n.id); if (n.row) dropCardNote(n); else { deletedNotes.set(n.id, c.id); writeNotes(c, noteEntries(c).filter((x) => x.id !== n.id)); } renderNotes(c); });
-          const keep = document.createElement("button"); keep.type = "button"; keep.className = "keep"; keep.textContent = "Keep";
-          keep.addEventListener("click", () => { armedNotes.delete(n.id); renderNotes(c); });
-          ask.append(q, go, keep);
-        } else {
-          const del = document.createElement("button"); del.type = "button"; del.textContent = "Delete";
-          del.addEventListener("click", () => { armedNotes.clear(); armedNotes.add(n.id); renderNotes(c); const k = wrap.querySelector(".entry .keep"); if (k) k.focus({ preventScroll: true }); });
-          ask.appendChild(del);
-        }
-        top.append(stamp, ask);
-        let ref = null;
-        if (n.workout) {                                                       // written with a session: say which, and open it on a tap
-          ref = document.createElement("button"); ref.type = "button"; ref.className = "ref";
-          const d = /^\d{4}-\d{2}-\d{2}$/.test(n.workout.date) ? new Date(n.workout.date + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "";
-          ref.textContent = [n.exercise, n.workout.title || "Workout", d].filter(Boolean).join(" \u00b7 ") + " \u203a";   // a card note names its exercise too
-          ref.addEventListener("click", () => { if (trainings.has(n.workout.id)) go({ name: "training", id: n.workout.id }); });
-        }
-        const text = document.createElement("div"); text.className = "text"; text.textContent = n.text;
-        const opened = openNoteIds.has(n.id); text.classList.toggle("clamp", !opened);
-        const more = document.createElement("button"); more.type = "button"; more.className = "more"; more.textContent = opened ? "Less" : "More"; more.hidden = !opened;   // "More" appears once we know the note overflows
-        const toggle = () => { if (openNoteIds.has(n.id)) openNoteIds.delete(n.id); else openNoteIds.add(n.id); renderNotes(c); };
-        more.addEventListener("click", toggle);
-        text.addEventListener("click", () => { if (!more.hidden) toggle(); });
-        row.append(top); if (ref) row.append(ref); row.append(text, more); card.appendChild(row);
+    const entryEl = (n) => {
+      const row = document.createElement("div"); row.className = "entry";
+      const top = document.createElement("div"); top.className = "when";
+      const stamp = document.createElement("span"); stamp.innerHTML = "<b></b> \u00b7 "; stamp.firstChild.textContent = n.by === "coach" ? "You" : firstName; stamp.append(when(n));   // who wrote it, then when
+      const ask = document.createElement("span"); ask.className = "ask";
+      if (armedNotes.has(n.id)) {
+        const q = document.createElement("span"); q.textContent = "Delete this note?";
+        const go = document.createElement("button"); go.type = "button"; go.className = "go"; go.textContent = "Delete";
+        go.addEventListener("click", () => { armedNotes.delete(n.id); if (n.row) dropCardNote(n); else { deletedNotes.set(n.id, c.id); writeNotes(c, noteEntries(c).filter((x) => x.id !== n.id)); } renderNotes(c); });
+        const keep = document.createElement("button"); keep.type = "button"; keep.className = "keep"; keep.textContent = "Keep";
+        keep.addEventListener("click", () => { armedNotes.delete(n.id); renderNotes(c); });
+        ask.append(q, go, keep);
+      } else {
+        const del = document.createElement("button"); del.type = "button"; del.textContent = "Delete";
+        del.addEventListener("click", () => { armedNotes.clear(); armedNotes.add(n.id); renderNotes(c); const k = wrap.querySelector(".entry .keep"); if (k) k.focus({ preventScroll: true }); });
+        ask.appendChild(del);
       }
-      head.addEventListener("click", () => { if (card.hidden) openNoteGroups.add(gk); else openNoteGroups.delete(gk); card.hidden = !card.hidden; fitNotes(card); });
-      sec.append(head, card); wrap.appendChild(sec);
+      top.append(stamp, ask);
+      let ref = null;
+      if (n.workout) {                                                       // written with a session: say which, and open it on a tap
+        ref = document.createElement("button"); ref.type = "button"; ref.className = "ref";
+        const d = /^\d{4}-\d{2}-\d{2}$/.test(n.workout.date) ? new Date(n.workout.date + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "";
+        ref.textContent = [n.exercise, n.workout.title || "Workout", d].filter(Boolean).join(" \u00b7 ") + " \u203a";   // a card note names its exercise too
+        ref.addEventListener("click", () => { if (trainings.has(n.workout.id)) go({ name: "training", id: n.workout.id }); });
+      }
+      const text = document.createElement("div"); text.className = "text"; text.textContent = n.text;
+      const opened = openNoteIds.has(n.id); text.classList.toggle("clamp", !opened);
+      const more = document.createElement("button"); more.type = "button"; more.className = "more"; more.textContent = opened ? "Less" : "More"; more.hidden = !opened;   // "More" appears once we know the note overflows
+      const toggle = () => { if (openNoteIds.has(n.id)) openNoteIds.delete(n.id); else openNoteIds.add(n.id); renderNotes(c); };
+      more.addEventListener("click", toggle);
+      text.addEventListener("click", () => { if (!more.hidden) toggle(); });
+      row.append(top); if (ref) row.append(ref); row.append(text, more); return row;
+    };
+    const listOf = (items) => { const card = document.createElement("div"); card.className = "list notes"; for (const n of items) card.appendChild(entryEl(n)); return card; };
+    const moreRow = (label, sub, onTap) => { const d = document.createElement("div"); d.className = "note-more"; const b = document.createElement("button"); b.type = "button"; b.append(label); if (sub) { const sp = document.createElement("span"); sp.className = "sub"; sp.textContent = sub; b.appendChild(sp); } b.addEventListener("click", onTap); d.appendChild(b); return d; };
+    const LIMIT = 10, showAll = allNotesOpen.has(c.id);
+    if (!showAll) {                                                              // the ten newest, flat, like Notes: every note on the page, newest first
+      if (entries.length) wrap.appendChild(listOf(entries.slice(0, LIMIT)));
+      if (entries.length > LIMIT) wrap.appendChild(moreRow("Show all", (entries.length - LIMIT) + " more", () => { allNotesOpen.add(c.id); renderNotes(c); }));
+    } else {                                                                     // all of them, under week, month and year headings
+      const groups = new Map();
+      for (const n of entries) {
+        const day = n.at ? localIso(new Date(n.at)) : "";
+        let key, title;
+        if (!day) { key = "earlier"; title = "Earlier"; }
+        else if (day >= mondayIso) { key = "week"; title = "This week"; }
+        else if (day.slice(0, 4) === t.slice(0, 4)) { key = day.slice(0, 7); title = new Date(day + "T12:00:00").toLocaleDateString(undefined, { month: "long" }); }
+        else { key = day.slice(0, 7); title = new Date(day + "T12:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" }); }
+        if (!groups.has(key)) groups.set(key, { title, items: [] }); groups.get(key).items.push(n);
+      }
+      for (const [, g] of groups) { const h = document.createElement("h2"); h.className = "note-head"; h.textContent = g.title; wrap.append(h, listOf(g.items)); }
+      if (entries.length > LIMIT) wrap.appendChild(moreRow("Show less", "", () => { allNotesOpen.delete(c.id); renderNotes(c); }));
     }
     setTimeout(() => fitNotes(wrap), 0);
   }
