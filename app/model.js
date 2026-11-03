@@ -4,7 +4,7 @@ import { uid, clamp, localIso } from "./util.js";
 export const TEMPLATES_ID = "00000000-0000-4000-8000-0000000000f1";
 export const isTemplateClient = (id) => id === TEMPLATES_ID;
 export const effDate = (t) => t.completedAt ? localIso(new Date(t.completedAt)) : (t.date || "");
-export const freshRow = (r) => { const x = { ...r, id: uid(), weights: [], repsDone: [], setsDone: 0, done: false, alts: [...(r.alts || [])] }; delete x.earlyReason; delete x.clientNote; delete x.clientNoteBy; delete x.clientNoteAt; delete x.unit; return x; };   // the plan, with nothing logged: the unit comes with the first weight the new client logs
+export const freshRow = (r) => { const x = { ...r, id: uid(), weights: [], repsDone: [], setsDone: 0, done: false, alts: [...(r.alts || [])] }; delete x.earlyReason; delete x.clientNote; delete x.clientNoteBy; delete x.clientNoteAt; delete x.unit; delete x.logSeq; return x; };   // the plan, with nothing logged: the unit comes with the first weight the new client logs
 export const isEmptyWorkout = (t) => !!t && !t.completedAt && !t.skippedAt && !(t.rows || []).length && !String(t.title || "").trim() && !isTemplateClient(t.clientId);
 // A plan written in time ("30 sec", "45 s", "1 min", "60 sec / side") is logged as time held, not reps: { n: "30", unit: "sec" }.
 // A timed plan: the reps box says time, so the set log asks for time, not reps. Every spelling he uses: "30 sec", "30s", "30 seconds / side",
@@ -153,7 +153,7 @@ export function validateBackup(d, knownClient) {                  // the whole f
     for (const r of t.rows) {
       if (!isObj(r) || typeof r.id !== "string" || !r.id || rids.has(r.id)) throw new Error("bad row");
       if (!optStr(r.name) || !optStr(r.label) || !optStr(r.reps) || !optStr(r.rest) || !optStr(r.tempo) || !optStr(r.note) || !optStr(r.clientNote) || !optStr(r.earlyReason) || !optUnit(r.unit)) throw new Error("bad row");
-      if (!optNum(r.sets) || !optNum(r.setsDone) || !optBool(r.done) || !optStr(r.clientNoteBy) || !optWhen(r.clientNoteAt)) throw new Error("bad row");
+      if (!optNum(r.sets) || !optNum(r.setsDone) || !(r.logSeq === undefined || (Number.isInteger(r.logSeq) && r.logSeq >= 0 && r.logSeq < 2147483647)) || !optBool(r.done) || !optStr(r.clientNoteBy) || !optWhen(r.clientNoteAt)) throw new Error("bad row");
       if (!optList(r.weights, LIMIT.sets) || !optList(r.repsDone, LIMIT.sets) || !optList(r.alts, LIMIT.alts)) throw new Error("bad row");   // read with .map and .find on every screen
       if ((r.alts || []).some((a) => typeof a !== "string") || [...(r.weights || []), ...(r.repsDone || [])].some((w) => w != null && typeof w !== "string" && typeof w !== "number")) throw new Error("bad row");
       rids.add(r.id);

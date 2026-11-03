@@ -79,7 +79,7 @@ function flushOne(kind, id) {
     let attempt = 0;
     if (S.backend !== localBackend && !S.sb) { S.offline = true; return; }   // the cloud library never loaded (a first open with the network blocked): keep it queued, the next open with signal sends it
     if (S.backend !== localBackend && S.sb) {
-      const sess = await withTimeout(S.sb.auth.getSession(), SAVE_WAIT).catch(() => null);   // a token refresh that never answers is no token
+      const sess = await withTimeout(S.sb.auth.getSession(), saveDeadline()).catch(() => null);   // a token refresh that never answers is no token
       if (!(sess && sess.data && sess.data.session)) { S.offline = true; return; }   // token not usable right now: keep it queued
     }
     for (;;) {
@@ -112,8 +112,8 @@ const localBackend = {
 const touchState = (id, ...fields) => { if (S.clientMode) return; if (!trainerState.has(id)) trainerState.set(id, new Set()); for (const f of fields) trainerState.get(id).add(f); };
 const TABLE = { clients: "ft_clients", trainings: "ft_trainings" };
 const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r({ data: null, error: { message: "network timeout" } }), ms))]);
-const SAVE_WAIT = 15000;                                           // a save that never answers must not block every later save of the record: it times out like a read, and is retried
-const rpc = (name, args) => withTimeout(S.sb.rpc(name, args), SAVE_WAIT);
+const saveDeadline = () => S.saveWait || 15000;                       // a save that never answers must not block every later save of the record: it times out like a read, and is retried
+const rpc = (name, args) => withTimeout(S.sb.rpc(name, args), saveDeadline());
 
 const cloudBackend = {
   async set(kind, id, data) {
@@ -144,7 +144,12 @@ const cloudBackend = {
           if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
         }
       }
+      liftSeq(serverData);
       repairTimed(data); if (live) repairTimed(live);              // seconds the client's old app typed as a weight go to the time column before this write
+    };
+    const liftSeq = (serverData) => {                            // a row's number only ever goes up: the server's, when higher, is carried on even by a coach's edit of that row or a verbatim restore, so a request that timed out on the phone can never be accepted later
+      const live = trainings.get(id);
+      for (const sr of (serverData && serverData.rows) || []) { if (sr.logSeq == null) continue; for (const target of [data, live]) { const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (lr) lr.logSeq = Math.max(parseInt(sr.logSeq, 10) || 0, parseInt(lr.logSeq, 10) || 0); } }
     };
     for (let attempt = 0; attempt < 4; attempt++) {
       let seen = seenAt.get(k);
@@ -164,16 +169,16 @@ const cloudBackend = {
         if (!planTouched.has(id)) for (const f of ["plan", "planHistory"]) for (const target of [data, live]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; }   // a plan set on another device stands, unless this one changed it
       };
       if (!seen && attempt === 0) {                               // no stamp (edited offline, app relaunched): read first, never write over the other side blind
-        const existing = await withTimeout(S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle(), SAVE_WAIT);
+        const existing = await withTimeout(S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle(), saveDeadline());
         if (existing.error) throw existing.error;
-        if (existing.data) { if (!verbatim()) { takeFields(existing.data.data); if (kind === "trainings" && !isTemplateClient(data.clientId)) { mergeServerRows(existing.data.data); takeState(existing.data.data); } takeNotes(existing.data.data); } seen = existing.data.updated_at; seenAt.set(k, seen); }
+        if (existing.data) { if (!verbatim()) { takeFields(existing.data.data); if (kind === "trainings" && !isTemplateClient(data.clientId)) { mergeServerRows(existing.data.data); takeState(existing.data.data); } takeNotes(existing.data.data); } else if (kind === "trainings") liftSeq(existing.data.data); seen = existing.data.updated_at; seenAt.set(k, seen); }
       }
       let res;
-      if (seen) res = await withTimeout(S.sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at"), SAVE_WAIT);
-      else res = await withTimeout(S.sb.from(TABLE[kind]).upsert(row).select("updated_at"), SAVE_WAIT);
+      if (seen) res = await withTimeout(S.sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at"), saveDeadline());
+      else res = await withTimeout(S.sb.from(TABLE[kind]).upsert(row).select("updated_at"), saveDeadline());
       if (res.error) {
         if (res.error.code === "23505" && kind === "clients") {   // that email is on another client: the email goes back to what the server holds, the rest of the edit still lands
-          const srv = await withTimeout(S.sb.from(TABLE[kind]).select("data").eq("id", id).maybeSingle(), SAVE_WAIT);
+          const srv = await withTimeout(S.sb.from(TABLE[kind]).select("data").eq("id", id).maybeSingle(), saveDeadline());
           if (srv.error) throw srv.error;
           const back = srv.data && srv.data.data ? srv.data.data.email || "" : ""; data.email = back; const live = clients.get(id); if (live) live.email = back;
           const box = ui.$ && ui.$("cEmail"); if (box && document.activeElement !== box && live && S.view.id === id) box.value = back;
@@ -185,14 +190,14 @@ const cloudBackend = {
       }
       if (res.data && res.data.length) { seenAt.set(k, res.data[0].updated_at); seenDoc.set(k, JSON.stringify(data)); localBackend.save(); return; }
       // someone else (a client logging weights) saved first: take their weights, keep everything else, retry
-      const fresh = await withTimeout(S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle(), SAVE_WAIT);
+      const fresh = await withTimeout(S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle(), saveDeadline());
       if (fresh.error) throw fresh.error;
       if (!fresh.data) {
         if (seen && seenDoc.has(k) && !fromFile.has(k)) { map.delete(id); dirty.delete(k); seenAt.delete(k); seenDoc.delete(k); localBackend.save(); return; }   // a record this device had seen is gone from the server: deleted on another device; it is not brought back
         seenAt.delete(k); continue;
       }
       seenAt.set(k, fresh.data.updated_at);
-      if (verbatim()) continue;
+      if (verbatim()) { if (kind === "trainings") liftSeq(fresh.data.data); continue; }
       takeFields(fresh.data.data); base = JSON.parse(JSON.stringify(fresh.data.data)); seenDoc.set(k, JSON.stringify(fresh.data.data));   // the next conflict measures against this copy
       if (kind === "trainings" && !isTemplateClient(data.clientId)) { mergeServerRows(fresh.data.data); takeState(fresh.data.data); }
       takeNotes(fresh.data.data);
@@ -200,7 +205,7 @@ const cloudBackend = {
     throw new Error("save conflict");
   },
   async del(kind, id) {
-    const { error } = await withTimeout(S.sb.from(TABLE[kind]).delete().eq("id", id), SAVE_WAIT);
+    const { error } = await withTimeout(S.sb.from(TABLE[kind]).delete().eq("id", id), saveDeadline());
     if (error) throw error;
     seenAt.delete(key(kind, id)); seenDoc.delete(key(kind, id)); localBackend.save();   // gone: no stamp to mistake a later restore for a deletion elsewhere
   },
@@ -220,12 +225,19 @@ const clientBackend = {
     const clean = (a) => (a || []).map((w) => String(w == null ? "" : w).slice(0, 16));
     const oldWay = (r) => { const tm = timedPlan(r.reps); if (!tm) return r.weights; const ws = [...(r.weights || [])], rs = r.repsDone || []; for (let j = 0; j < Math.max(ws.length, rs.length); j++) if (!String(ws[j] == null ? "" : ws[j]).trim() && String(rs[j] == null ? "" : rs[j]).trim()) ws[j] = String(rs[j]).trim() + " " + tm.unit; return ws; };   // the old rule carries weights only: a hold's seconds travel as "45 sec" and the coach's app moves them back into the time column
     const logOf = (r) => (r ? { w: clean(r.weights), rp: clean(r.repsDone), sd: clamp(parseInt(r.setsDone, 10) || 0, 0, 20), d: !!r.done } : null);
-    const rows = pendingWeightRows.get(id);
+    const rows = pendingWeightRows.get(id), seqOf = new Map();
+    if (rows) {                                                   // every row's next number first, one device write, then the requests: the server keeps the highest number it has applied and refuses an older one, so a request that timed out here and lands late cannot undo a newer result
+      for (const rid of [...rows]) { const r = rowOf(data, rid), lr = rowOf(live(), rid); if (!r) continue; const seq = Math.max(parseInt(r.logSeq, 10) || 0, parseInt(lr && lr.logSeq, 10) || 0) + 1; r.logSeq = seq; if (lr) lr.logSeq = seq; seqOf.set(rid, seq); }
+      if (seqOf.size) localBackend.save();
+    }
+    let behind = false;                                           // a request refused because the server already holds a higher number: the row stays queued and goes again from that number
     if (rows) for (const rid of [...rows]) {
       const r = rowOf(data, rid); if (!r) { rows.delete(rid); continue; }
-      const sent = logOf(r); let error = null;
+      const sent = logOf(r), seq = seqOf.get(rid); let error = null, answer = null;
       if (!S.logSetMissing) {
-        ({ error } = await rpc("client_log_set", { p_training: id, p_row: rid, p_weights: sent.w, p_reps: sent.rp, p_sets_done: sent.sd, p_done: sent.d, p_unit: r.unit === "kg" || r.unit === "lb" ? r.unit : null }));   // the unit the set was logged in
+        const args = { p_training: id, p_row: rid, p_weights: sent.w, p_reps: sent.rp, p_sets_done: sent.sd, p_done: sent.d, p_unit: r.unit === "kg" || r.unit === "lb" ? r.unit : null };   // the unit the set was logged in
+        ({ data: answer, error } = await rpc("client_log_set", { ...args, p_seq: seq }));
+        if (error && error.code === "PGRST202") ({ error } = await rpc("client_log_set", args));   // the rule from before the number: still fine
         if (error && error.code === "PGRST202") ({ error } = await rpc("client_log_set", { p_training: id, p_row: rid, p_weights: sent.w, p_reps: sent.rp, p_sets_done: sent.sd, p_done: sent.d }));   // the rule from before the unit: still fine
       }
       if (S.logSetMissing || (error && (error.code === "PGRST202" || /client_log_set/.test(error.message || "")))) {   // rule not installed yet: weights still get through the old way
@@ -235,8 +247,11 @@ const clientBackend = {
       }
       if (error && error.code === "P0001") { rows.delete(rid); scheduleSync(); continue; }
       if (error) throw error;
+      const held = typeof answer === "number" ? answer : null;    // the rule answers with the row's number: ours when applied, a higher one when it refused
+      if (held != null && held > seq) { const lr = rowOf(live(), rid); if (lr) lr.logSeq = Math.max(parseInt(lr.logSeq, 10) || 0, held); behind = true; continue; }   // not applied: this phone's latest values go again, numbered past the server's
       if (same(logOf(rowOf(live(), rid)), sent)) rows.delete(rid);
     }
+    if (behind) scheduleSave("trainings", id);
     const swaps = pendingSwap.get(id);
     if (swaps && swaps.size) for (const [rid, name] of [...swaps.entries()]) {
       const { error } = await rpc("client_swap_exercise", { p_training: id, p_row: rid, p_name: name });
