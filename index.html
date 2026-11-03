@@ -285,7 +285,8 @@
   .list .n2 { font-size: 13px; line-height: 1.2; font-weight: 500; color: var(--text-secondary); }
   .list .n2[hidden] { display: none; }
   .list button.news .n2 { color: var(--text-primary); }
-  .notif { margin-top: 12px; }                                                    /* under the Message row: the list, while the bell is open */
+  .notif { margin-top: 4px; }                                                     /* under the Message row: what the client finished on their own, until he has looked */
+  .notif h2 { margin: 24px 0 10px; }
   .notif .count-old { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--brand); color: #fff; font-size: 12px; font-weight: 600; letter-spacing: 0; }
   .notif .notif-list { margin-top: 8px; }
   .notif .notif-list[hidden] { display: none; }
@@ -730,6 +731,9 @@
   /* the bar: two tabs on a client's page, floating like Apple's, the glass of the date bubble */
   #tabbar { position: fixed; left: 50%; bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 8px)); transform: translateX(-50%); z-index: 45; display: flex; gap: 4px; padding: 2px; border-radius: 50px; background: var(--tab-fill); -webkit-backdrop-filter: blur(2.5px) saturate(160%); backdrop-filter: blur(2.5px) saturate(160%); box-shadow: var(--tab-shadow); }   /* where Apple's sits: into the home-indicator zone; its glass: a light blur (the page stays readable through it), a thin tint, a lit rim */
   #tabbar[hidden] { display: none; }
+  #tabbar button { position: relative; }
+  .tab-badge { position: absolute; top: 5px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; font-style: normal; display: inline-flex; align-items: center; justify-content: center; }   /* unread notes: the count on the tab, as on Mail's */
+  .tab-badge[hidden] { display: none; }
   #tabbar button { appearance: none; border: 0; background: none; min-width: 124px; height: 56px; padding: 0 18px; border-radius: 50px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0; color: var(--text); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 160ms ease, color 160ms ease; }
   #tabbar button svg { width: 22px; height: 22px; }
   #tabbar button.on { background: var(--tab-on); color: var(--brand); box-shadow: var(--tab-on-shadow); }
@@ -941,6 +945,7 @@
   .note-more button { appearance: none; border: 0; background: none; width: auto; min-height: 44px; padding: 0; font: inherit; font-size: 17px; color: var(--brand); display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }   /* "Show all · 12 more" / "Show less", like Up next */
   .note-more .sub { font-size: 15px; color: var(--text-tertiary); }
   .notes .entry { padding: 12px 20px; }
+  .notes .entry.unseen .when b::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); margin-right: 7px; vertical-align: 1px; }   /* not read yet: the dot, as in Mail */
   .notes .entry + .entry { border-top: 1px solid var(--card-border); }
   .notes .entry .when { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; color: var(--text-tertiary); }
   .notes .entry .when .ask { display: flex; gap: 10px; align-items: center; white-space: nowrap; }
@@ -966,11 +971,6 @@
   .details { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 8px; max-width: 420px; }
   #vClientCard .details { margin-top: 20px; }
   .contact-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
-  .bell { position: relative; appearance: none; border: 0; cursor: pointer; width: 48px; height: 48px; border-radius: 50%; background: var(--glyph-fill); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); color: var(--text-primary); display: inline-flex; align-items: center; justify-content: center; padding: 0; }   /* what clients did on their own: a bell, a number on it when there is something new */
-  .bell svg { width: 22px; height: 22px; }
-  .bell[aria-expanded="true"] { background: var(--brand); color: #fff; }
-  .bell .count { position: absolute; top: -3px; right: -3px; display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--brand); color: #fff; font-size: 11px; font-weight: 600; box-shadow: 0 0 0 2px var(--surface); }
-  .bell .count[hidden] { display: none; }
   .contact-row[hidden] { display: none; }
   .msg-pill { display: inline-flex; align-items: center; gap: 8px; padding: 0 20px; min-height: 48px; border-radius: 50px; text-decoration: none; font-size: 15px; font-weight: 600; letter-spacing: 0; color: var(--ink-on);
     background: var(--ink); transition: opacity 300ms ease, transform 300ms ease; }   /* the strong monochrome pill, like the Add button: prominent without spending purple */
@@ -1305,7 +1305,7 @@
       <h1 id="cName" class="pagetitle"></h1>
     </div>
     <div class="contact-row client-only" id="trainerRow" data-tab="workouts" hidden><a class="msg-pill" id="trainerBtn" href="#"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a></div>
-    <div class="contact-row trainer-only" id="contactRow" data-tab="workouts" hidden><a class="msg-pill" id="msgBtn" href="#"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="msgText">Message</span></a><button type="button" class="bell" id="notifBtn" aria-label="Notifications" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="count" id="notifCount" hidden></span></button></div>
+    <div class="contact-row trainer-only" id="contactRow" data-tab="workouts" hidden><a class="msg-pill" id="msgBtn" href="#"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="msgText">Message</span></a></div>
     <div class="trainer-only notif" id="notifWrap" data-tab="workouts" hidden><ul class="list notif-list" id="notifList" hidden></ul></div>
     <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
     <div data-tab="workouts" class="plan-card" id="planCard" role="button" tabindex="0" hidden>
@@ -1381,7 +1381,7 @@
 <nav id="tabbar" aria-label="Sections" hidden>
   <button type="button" data-tab="workouts" class="on"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7.5v9M17.5 7.5v9M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg><span>Workouts</span></button>
   <button type="button" data-tab="profile"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M5 15.5l4.5-5 3.5 3.5 6-6.5"/><path d="M15 7.5h4V11.5"/></svg><span>Progress</span></button>
-  <button type="button" data-tab="notes" class="trainer-only"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h9l4 4V20a.5.5 0 0 1-.5.5h-12A.5.5 0 0 1 6 20z"/><path d="M15 3.5v4h4"/><path d="M9 12h6"/><path d="M9 16h6"/></svg><span>Notes</span></button>
+  <button type="button" data-tab="notes" class="trainer-only"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h9l4 4V20a.5.5 0 0 1-.5.5h-12A.5.5 0 0 1 6 20z"/><path d="M15 3.5v4h4"/><path d="M9 12h6"/><path d="M9 16h6"/></svg><span>Notes</span><i class="tab-badge" id="notesBadge" hidden></i></button>
 </nav>
 <div id="whenBg" hidden><div id="whenPop" role="dialog" aria-live="polite"></div></div>
 <div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
@@ -1425,7 +1425,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=157";
+  import { boot } from "./app/main.js?v=158";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
