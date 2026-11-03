@@ -251,7 +251,7 @@ const clientBackend = {
       if (held != null && held > seq) { const lr = rowOf(live(), rid); if (lr) lr.logSeq = Math.max(parseInt(lr.logSeq, 10) || 0, held); behind = true; continue; }   // not applied: this phone's latest values go again, numbered past the server's
       if (same(logOf(rowOf(live(), rid)), sent)) rows.delete(rid);
     }
-    if (behind) scheduleSave("trainings", id);
+    if (behind) scheduleSave("trainings", id, 0);                  // at once: the server has answered, there is nothing to wait for
     const swaps = pendingSwap.get(id);
     if (swaps && swaps.size) for (const [rid, name] of [...swaps.entries()]) {
       const { error } = await rpc("client_swap_exercise", { p_training: id, p_row: rid, p_name: name });

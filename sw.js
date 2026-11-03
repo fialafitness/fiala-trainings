@@ -15,13 +15,24 @@ const EXTRAS = ["./manifest.webmanifest", "./icon-192.png", "./icon-512.png", ".
 const LIB = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js";
 const FONTS = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap";
 const WAIT = 3500;                                                // how long an open waits for the whole release before the device copy stands in
-const KEEP = 2;                                                   // releases kept on the device: the newest, and the one before it for pages still running on it
+const KEEP = 2;                                                   // releases kept on the device: the newest, the one before it, and any a page still open runs on
 
 const relName = (n) => REL + n;
 const releaseOf = async (pageRes) => { const m = /main\.js\?v=(\d+)/.exec(await pageRes.clone().text()); return m ? Number(m[1]) : 0; };
 async function metaGet(k) { const c = await caches.open(META); const r = await c.match(k); return r ? Number(await r.text()) || 0 : 0; }
 async function metaSet(k, n) { const c = await caches.open(META); await c.put(k, new Response(String(n))); }
-const current = () => metaGet("/current");
+const current = () => metaGet("/current").catch(() => 0);          // a pointer that cannot be read is no pointer: the newest whole release on the device stands in
+async function liveIds() { try { return (await self.clients.matchAll({ type: "window", includeUncontrolled: true })).map((c) => c.id); } catch { return []; } }
+async function pinned() {                                           // the releases pages still open run on: never pruned from under them
+  const out = new Set(); for (const id of await liveIds()) { const n = await metaGet("/client/" + id).catch(() => 0); if (n) out.add(n); } return out;
+}
+const relNumbers = async () => (await caches.keys()).filter((k) => k.startsWith(REL)).map((k) => Number(k.slice(REL.length)) || 0).sort((a, b) => b - a);
+async function newestComplete() {                                   // the newest release that is whole on the device, pointer or no pointer
+  for (const n of await relNumbers()) if (await hasRelease(n)) return n;
+  return 0;
+}
+async function relMatch(n, url) { if (!n || !(await caches.has(relName(n)))) return null; return (await caches.open(relName(n))).match(url) || null; }   // a read never creates a release cache: an empty one would look like a release
+const deviceNewest = async () => Math.max(await current(), await newestComplete());   // the newest the device holds: the pointer, or a whole release the pointer could not be moved to
 async function hasRelease(n) {                                      // complete on the device: every file of the bundle
   if (!n || !(await caches.has(relName(n)))) return false;
   const c = await caches.open(relName(n));
@@ -33,17 +44,19 @@ async function storeRelease(n, bundle) {                            // whole or 
   try { await Promise.all([...bundle].map(([url, res]) => c.put(url, res.clone()))); return true; }
   catch { await caches.delete(name); return false; }
 }
-async function prune() {                                            // the newest KEEP releases stay; the old single-cache shell goes
-  const ns = (await caches.keys()).filter((k) => k.startsWith(REL)).map((k) => Number(k.slice(REL.length)) || 0).sort((a, b) => b - a);
-  for (const n of ns.slice(KEEP)) await caches.delete(relName(n));
+async function prune() {                                            // the newest KEEP whole releases stay, and any a page still open is pinned to; half ones below the newest whole are leftovers; the old single-cache shell goes
+  const ns = await relNumbers(), whole = [];
+  for (const n of ns) if (await hasRelease(n)) whole.push(n);
+  const keep = await pinned(); for (const n of whole.slice(0, KEEP)) keep.add(n);
+  for (const n of ns) { if (keep.has(n)) continue; if (whole.includes(n) || n < (whole[0] || 0)) await caches.delete(relName(n)); }   // a half one above the newest whole may be a download in progress: left alone
   if (ns.length) for (const k of await caches.keys()) if (k.startsWith("fiala-shell-")) await caches.delete(k);   // the old single-cache shell goes only once a release of the new kind is on the device
 }
 async function takeIn(got) {                                        // a complete release onto the device (unless it is there already); the newest pointer moves forward only
   if (!got || !got.n) return false;
   if (!(await hasRelease(got.n)) && !(await storeRelease(got.n, got.bundle))) return false;
-  try { if (got.n > (await current())) await metaSet("/current", got.n); } catch { return false; }   // a full phone: the pointer could not move, so this open does not count on it
-  await prune();
-  return true;
+  let moved = true; try { if (got.n > (await current())) await metaSet("/current", got.n); } catch { moved = false; }   // a full phone: the pointer could not move, so this open does not count on it
+  await prune();                                                      // pruned either way: a phone short of room is the one that must not pile releases up
+  return moved;
 }
 async function fetchBundle() {                                      // every file, checked with the server and downloaded in full: all or nothing, and all from ONE deploy
   const res = await Promise.all(BUNDLE.map((url) => fetch(new Request(url, { cache: "no-cache" }))));   // the host lets browsers keep files for 10 minutes: always ask it
@@ -55,15 +68,16 @@ async function fetchBundle() {                                      // every fil
   if (!again.ok || (await releaseOf(again)) !== n) throw new Error("deploy in progress");
   return { n, bundle };
 }
-const pin = (event, n) => (event.resultingClientId ? metaSet("/client/" + event.resultingClientId, n).then(() => true, () => false) : Promise.resolve(true));   // false: the page could not be pinned to its release   // this page runs on release n for as long as it is open
+async function pin(event, n) { try { if (event.resultingClientId) await metaSet("/client/" + event.resultingClientId, n); return true; } catch { return false; } }   // this page runs on release n for as long as it is open; false: the pin could not be written
 async function check() {                                           // a page asks on resume: the server's page first (cheap, usually unchanged), the whole release only when it is newer than the device's
   const page = await fetch(new Request(PAGE, { cache: "no-cache" }));
-  if (page.ok && (await releaseOf(page)) > (await current())) await takeIn(await fetchBundle());
+  if (page.ok && (await releaseOf(page)) > (await deviceNewest())) await takeIn(await fetchBundle());
 }
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     try { await takeIn(await fetchBundle()); } catch {}               // the app itself, whole, or nothing changes on the device
+    if (!(await newestComplete())) throw new Error("no whole release on the device");   // nothing to serve offline: this worker does not take over; the one before it (or the network) keeps serving until a download succeeds
     const a = await caches.open(ASSETS);
     await Promise.allSettled([...EXTRAS, LIB, FONTS].map(async (url) => { if (!(await a.match(url))) await a.add(new Request(url, { cache: "reload" })); }));   // nice to have offline; what is there already is refreshed quietly at use
     await self.skipWaiting();
@@ -72,7 +86,7 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("message", (event) => {                   // a page kept alive for days (iOS keeps the app open) asks whether a newer release is in: the answer is the newest on the device
   if (!event.data || event.data.type !== "check" || !event.source) return;
-  event.waitUntil((async () => { try { await check(); } catch {} event.source.postMessage({ type: "release", current: await current() }); })());
+  event.waitUntil((async () => { try { await check(); } catch {} event.source.postMessage({ type: "release", current: await deviceNewest() }); })());
 });
 
 self.addEventListener("activate", (event) => {
@@ -88,13 +102,13 @@ const isAsset = (url) => url.origin === self.location.origin || url.hostname ===
 async function openShell(event) {
   const got = fetchBundle();
   const fresh = await Promise.race([got.catch(() => null), new Promise((r) => setTimeout(() => r(null), WAIT))]);
-  if (fresh && fresh.n >= (await current())) {                       // the server's release, at least as new as the device's: the page and everything it loads, one deploy
+  if (fresh && fresh.n >= (await deviceNewest())) {                  // the server's release, at least as new as the device's: the page and everything it loads, one deploy
     await takeIn(fresh);                                             // onto the device if it can be (a refused write still leaves this open consistent: its scripts come from the server too)
     if (await pin(event, fresh.n)) return fresh.bundle.get(PAGE);    // pinned to its release; a pin the device refuses would hand this page the older scripts, so the device's release serves instead, whole
   }
   event.waitUntil(got.then(takeIn).catch(() => {}));                 // too late for this open (or older than what the device holds): kept for the next, never moving the newest pointer back
-  const n = await current();
-  if (n) { const page = await (await caches.open(relName(n))).match(PAGE); if (page) { await pin(event, n); return page; } }
+  const n = await newestComplete();                                   // the newest whole release on the device, whatever the pointer says: a pointer the device could not write or read never costs an open
+  if (n) { try { const page = await relMatch(n, PAGE); if (page) { await pin(event, n); return page; } } catch {} }
   return Response.error();
 }
 
@@ -110,8 +124,8 @@ self.addEventListener("fetch", (event) => {
     event.respondWith((async () => {
       const client = event.clientId ? await self.clients.get(event.clientId).catch(() => null) : null;
       if (client && !isShellPage(new URL(client.url))) return fetch(new Request(req, { cache: "no-cache" }));   // asked for by another page on this origin (a test copy): the network, checked with the server
-      const n = (event.clientId ? await metaGet("/client/" + event.clientId) : 0) || (await current());
-      const hit = n ? await (await caches.open(relName(n))).match(url.origin + url.pathname) : null;
+      let hit = null;
+      try { const n = (event.clientId ? await metaGet("/client/" + event.clientId).catch(() => 0) : 0) || (await newestComplete()); hit = await relMatch(n, url.origin + url.pathname); } catch { hit = null; }   // its own release, or (unpinned) the same newest whole release an open would get: never the page of one release with the scripts of another
       return hit || fetch(new Request(req, { cache: "no-cache" }));   // not on the device (a release pruned, a write refused): the server, which serves the newest deploy
     })());
     return;
