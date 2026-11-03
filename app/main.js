@@ -1525,6 +1525,8 @@ import { reportRange, buildReport } from "./report.js";
       b.firstChild.firstChild.textContent = "Finished " + (String(t.title || "").trim() || "a workout"); b.firstChild.lastChild.textContent = whenDay(effDate(t) || String(t.date || ""), true);
       b.addEventListener("click", () => go({ name: "training", id: t.id })); li.appendChild(b); return li;
     }));
+    let clear = wrap.querySelector(".news-clear");                        // Clear: looked at, without opening any of them — Apple's word in Notification Center
+    if (!clear) { clear = document.createElement("button"); clear.type = "button"; clear.className = "btn tint wide soft news-clear"; clear.textContent = "Clear"; clear.addEventListener("click", () => { const cc = clients.get(S.view.id); if (!cc) return; newsShown = null; markWorkoutsSeen(cc); renderClient(); }); wrap.appendChild(clear); }
     if (S.tab === "workouts") newsShown = c.id;
   }
   function markNotesSeen(c, ids) {                                         // the Notes tab was on screen: what it showed counts as read
