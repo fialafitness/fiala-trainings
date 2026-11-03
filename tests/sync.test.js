@@ -496,9 +496,7 @@ test("a request the server refuses because it already holds a higher number is n
   sb.rpcs.client_log_set = async (a) => { server.calls.push(a.p_seq); if (a.p_seq < server.seq) return server.seq; server.seq = a.p_seq; server.w = a.p_weights; return a.p_seq; };
   const t = training("T", { rows: [{ ...row("r1", ["30"], ["5"], 1), logSeq: 2 }] }); maps.trainings.set("T", t);   // this phone's copy is behind: another device logged seqs 3 to 7
   maps.dirty.set("trainings/T", 1); maps.pendingWeightRows.set("T", new Set(["r1"])); fns.flushOne("trainings", "T"); await settle();
-  assert.deepStrictEqual(server.calls, [3], "refused at 3"); assert.ok(maps.pendingWeightRows.get("T").has("r1") && maps.dirty.has("trainings/T"), "not acknowledged: still queued");
-  await tick(600); await settle();                                     // the usual half-second later it goes again
-  assert.deepStrictEqual(server.calls, [3, 8], "sent again past the server's 7"); assert.deepStrictEqual(server.w, ["30"], "this phone's latest values stand"); assert.strictEqual(t.rows[0].logSeq, 8);
+  assert.deepStrictEqual(server.calls, [3, 8], "refused at 3, then sent again at once past the server's 7"); assert.deepStrictEqual(server.w, ["30"], "this phone's latest values stand"); assert.strictEqual(t.rows[0].logSeq, 8);
   assert.ok(!(maps.pendingWeightRows.get("T") || new Set()).has("r1") && !maps.dirty.has("trainings/T"), "then acknowledged");
 });
 test("the rule from before the number refuses the eighth argument: the request goes again in the old shape and is acknowledged", async () => {
@@ -515,6 +513,6 @@ test("a row's number only goes up: the coach's edit of that row and a verbatim r
   maps.trainerTouched.set("T", new Set(["r1"])); fns.scheduleSave("trainings", "T", 0); await settle();   // the coach changed the row's weight: his claim on the log, not on the number
   let srv = sb.tables.ft_trainings.get("T").data.rows[0]; assert.deepStrictEqual([srv.weights, srv.logSeq], [["35"], 3], "the coach's weight, the server's number");
   srv.logSeq = 5; sb.tables.ft_trainings.get("T").updated_at = "2026-11-03T12:00:00Z";
-  maps.fromFile.set("trainings/T", (maps.dirty.get("trainings/T") || 0) + 1); t.rows[0].logSeq = 1; fns.scheduleSave("trainings", "T", 0); await settle();   // a restore from a file: verbatim, except the number
+  maps.fromFile.set("trainings/T", (maps.dirty.get("trainings/T") || 0) + 1); t.rows[0].logSeq = 1; fns.scheduleSave("trainings", "T", 0); await settle(); await tick(30); await settle();   // a restore from a file: verbatim, except the number
   srv = sb.tables.ft_trainings.get("T").data.rows[0]; assert.strictEqual(srv.logSeq, 5, "the restore did not lower it");
 });

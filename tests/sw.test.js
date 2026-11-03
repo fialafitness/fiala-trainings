@@ -12,15 +12,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function makeWorker() {
   const server = { version: 1, delay: 0, bodyDelay: 0, down: false, missing: new Set(), dieBody: null, etag: false, hits: [] };   // what app.test answers
-  const device = { failPut: null, writes: 0 };                                                                                   // what the phone's storage does
+  const device = { failPut: null, writes: 0, failOpen: null };                                                                   // what the phone's storage does; failOpen: a cache that cannot even be opened
   class Req extends Request { constructor(input, init) { super(typeof input === "string" ? new URL(input, SW_URL).href : input, init); } }
   const keyOf = (k) => new URL(typeof k === "string" ? k : k.url, SW_URL).href;          // exact, like the real Cache API: a query is another key
   const stores = new Map();
-  const keep = async (m, key, r, name) => { const body = await r.arrayBuffer(); if (device.failPut && key.endsWith(device.failPut)) throw new Error("QuotaExceededError"); if (String(name).startsWith(REL)) device.writes++; m.set(key, new Response(body, { status: r.status, headers: r.headers })); };   // writes: release files only
+  const refused = (key) => (Array.isArray(device.failPut) ? device.failPut : device.failPut ? [device.failPut] : []).some((s) => key.endsWith(s));
+  const keep = async (m, key, r, name) => { const body = await r.arrayBuffer(); if (refused(key)) throw new Error("QuotaExceededError"); if (String(name).startsWith(REL)) device.writes++; m.set(key, new Response(body, { status: r.status, headers: r.headers })); };   // writes: release files only
   const cacheFor = (name) => { if (!stores.has(name)) stores.set(name, new Map()); const m = stores.get(name); return {
     put: (k, r) => keep(m, keyOf(k), r, name), match: async (k) => { const r = m.get(keyOf(k)); return r ? r.clone() : undefined; }, delete: async (k) => m.delete(keyOf(k)),
     add: async (req) => { const r = await fetchImpl(req); if (!r.ok) throw new Error("add failed " + keyOf(req)); await keep(m, keyOf(req), r, name); }, keys: async () => [...m.keys()] }; };
-  const caches = { open: async (n) => cacheFor(n), has: async (n) => stores.has(n), keys: async () => [...stores.keys()], delete: async (n) => stores.delete(n) };
+  const caches = { open: async (n) => { if (device.failOpen === n) throw new Error("storage error"); return cacheFor(n); }, has: async (n) => stores.has(n), keys: async () => [...stores.keys()], delete: async (n) => stores.delete(n) };
   const body = (text, delay, die) => new ReadableStream({ start(c) { setTimeout(() => { const enc = new TextEncoder(); if (die) { c.enqueue(enc.encode(text.slice(0, 3))); c.error(new TypeError("network dropped")); } else { c.enqueue(enc.encode(text)); c.close(); } }, delay); } });
   async function fetchImpl(input) {
     const url = new URL(typeof input === "string" ? input : input.url); server.hits.push(url.pathname);
@@ -33,10 +34,11 @@ function makeWorker() {
     return new Response(body(text, bodyDelay, dieBody === url.pathname), { status: 200, headers: etag ? { etag: 'W/"' + version + "-" + url.pathname + '"' } : {} });
   }
   const clientsById = { page: { url: ORIGIN + "/" }, pageA: { url: ORIGIN + "/" }, pageB: { url: ORIGIN + "/" }, copy: { url: ORIGIN + "/_test.html" } }; const listeners = {};
-  const self = { addEventListener: (t, fn) => { listeners[t] = fn; }, skipWaiting: async () => {}, clients: { claim: async () => {}, get: async (id) => clientsById[id] }, location: { origin: ORIGIN, href: SW_URL } };
+  const live = new Set();                                                                  // pages open right now, as the worker sees them
+  const self = { addEventListener: (t, fn) => { listeners[t] = fn; }, skipWaiting: async () => {}, clients: { claim: async () => {}, get: async (id) => clientsById[id], matchAll: async () => [...live].map((id) => ({ id, url: clientsById[id].url })) }, location: { origin: ORIGIN, href: SW_URL } };
   const timer = (fn, ms) => setTimeout(fn, ms >= 1000 ? 60 : ms);        // the open's patience, shortened for the test
   new Function("self", "caches", "fetch", "Request", "Response", "URL", "setTimeout", src)(self, caches, fetchImpl, Req, Response, URL, timer);
-  const run = async (type) => { const w = []; listeners[type]({ waitUntil: (p) => w.push(p) }); await Promise.all(w); };
+  const run = async (type) => { const w = []; listeners[type]({ waitUntil: (p) => w.push(p) }); await Promise.all(w); };   // rejects as the browser would: an install whose work fails does not take over
   async function request(url, opts = {}) {
     const w = []; let out = null;
     const req = new Req(url, { method: opts.method || "GET" }); Object.defineProperty(req, "mode", { value: opts.mode || "cors" });
@@ -48,7 +50,7 @@ function makeWorker() {
   const relText = async (n, p) => { const r = rel(n) && rel(n).get(ORIGIN + p); return r ? r.clone().text() : null; };
   const current = async () => { const m = stores.get(META); const r = m && m.get(ORIGIN + "/current"); return r ? Number(await r.clone().text()) : 0; };
   const releases = () => [...stores.keys()].filter((k) => k.startsWith(REL)).map((k) => Number(k.slice(REL.length))).sort();
-  return { server, device, stores, rel, relText, current, releases, install: () => run("install"), activate: () => run("activate"), request,
+  return { server, device, stores, live, rel, relText, current, releases, install: () => run("install"), activate: () => run("activate"), request,
     open: (resultingClientId = "page") => request("./", { mode: "navigate", resultingClientId }), script: (clientId = "page") => request("./app/main.js?v=99", { clientId }), templates: () => request("./templates.json", { clientId: "page" }),
     hits: (p) => server.hits.filter((x) => x === p).length,
     check: async (clientId = "page") => { const replies = [], w = []; listeners.message({ data: { type: "check" }, source: { id: clientId, postMessage: (m) => replies.push(m) }, waitUntil: (p) => w.push(p) }); await Promise.allSettled(w); return replies; } };   // a page, back on screen, asking for news
@@ -193,4 +195,62 @@ test("a check during a deploy (the page says one release, a script another) keep
   assert.deepStrictEqual(await w.check(), [{ type: "release", current: 1 }]);
   assert.deepStrictEqual(w.releases(), [1], "nothing half-way lands");
   Object.defineProperty(real, "version", orig || { value: 3, writable: true, configurable: true });
+});
+
+test("a release a page still runs on is never pruned from under it, however many newer ones land; it goes once that page is closed", async () => {
+  const w = makeWorker(); await w.install(); await w.activate();
+  assert.strictEqual((await w.open("pageA")).text, PAGE(1)); w.live.add("pageA");       // page A is open on release 1
+  w.server.version = 2; assert.strictEqual((await w.open("pageB")).text, PAGE(2));
+  w.server.version = 3; assert.strictEqual((await w.open("pageC")).text, PAGE(3));
+  assert.deepStrictEqual(w.releases(), [1, 2, 3], "release 1 stays for page A");
+  const before = w.hits("/app/main.js"); assert.strictEqual((await w.script("pageA")).text, "/app/main.js v1", "page A still gets its own scripts"); assert.strictEqual(w.hits("/app/main.js"), before, "from the device, not the server");
+  w.server.down = true; assert.strictEqual((await w.request("./templates.json", { clientId: "pageA" })).text, "/templates.json v1", "and offline too");
+  w.live.delete("pageA"); w.server.down = false; w.server.version = 4; assert.strictEqual((await w.open("pageD")).text, PAGE(4));
+  assert.deepStrictEqual(w.releases(), [3, 4], "page A closed: its release goes with the next prune");
+});
+test("the newest pointer cannot be written: the open is served from the new release anyway, and an offline open from the newest whole release", async () => {
+  const w = makeWorker(); await w.install(); w.server.version = 2; w.device.failPut = "/current";
+  assert.strictEqual((await w.open()).text, PAGE(2)); assert.strictEqual((await w.script()).text, "/app/main.js v2");
+  assert.ok(w.rel(2), "the release is whole on the device"); assert.strictEqual(await w.current(), 1, "only the pointer is stale");
+  w.server.down = true; assert.strictEqual((await w.open("page2")).text, PAGE(2), "offline: the newest whole release, not the stale pointer's");
+  assert.strictEqual((await w.script("page2")).text, "/app/main.js v2");
+});
+test("a page pin cannot be written: the open is still served, from the newest whole release on the device, with its scripts", async () => {
+  const w = makeWorker(); await w.install(); w.server.version = 2; w.device.failPut = "/client/page";
+  assert.strictEqual((await w.open()).text, PAGE(2), "the release went onto the device whole, so the page comes from there even unpinned"); assert.strictEqual((await w.script()).text, "/app/main.js v2", "and its scripts follow the device's newest");
+  w.server.down = true; assert.strictEqual((await w.open()).text, PAGE(2)); assert.strictEqual((await w.script()).text, "/app/main.js v2");
+});
+test("the pointer cache cannot even be opened: an offline open and its scripts still come from the newest whole release", async () => {
+  const w = makeWorker(); await w.install(); w.server.version = 2; assert.strictEqual((await w.open()).text, PAGE(2));
+  w.device.failOpen = META; w.server.down = true;
+  assert.strictEqual((await w.open("page2")).text, PAGE(2)); assert.strictEqual((await w.script("page2")).text, "/app/main.js v2");
+});
+test("an install that leaves no whole release on the device does not take over; one that finds a release already there does", async () => {
+  const w = makeWorker(); w.server.down = true;
+  let failed = false; try { await w.install(); } catch { failed = true; }
+  assert.ok(failed, "nothing to serve offline: the worker before it keeps serving"); assert.deepStrictEqual(w.releases(), []);
+  w.server.down = false; await w.install(); assert.deepStrictEqual(w.releases(), [1]);
+  w.server.down = true; await w.install();                              // a newer worker arriving offline: release 1 is there, so it may take over
+});
+test("the pointer and the pin both refused (one full phone): the page and its scripts still come from one release, online and offline", async () => {
+  const w = makeWorker(); await w.install(); w.server.version = 2; w.device.failPut = ["/current", "/client/page", "/client/page2"];
+  assert.strictEqual((await w.open()).text, PAGE(2)); assert.strictEqual((await w.script()).text, "/app/main.js v2", "release 2's scripts with release 2's page, not the stale pointer's");
+  assert.strictEqual((await w.templates()).text, "/templates.json v2");
+  w.server.down = true; assert.strictEqual((await w.open("page2")).text, PAGE(2)); assert.strictEqual((await w.script("page2")).text, "/app/main.js v2");
+  assert.strictEqual(await w.current(), 1, "the pointer never moved"); assert.deepStrictEqual(w.releases(), [1, 2], "and the releases were pruned all the same");
+});
+test("a release the device refused leaves no empty cache behind, and a new worker arriving offline keeps the one whole release through its own pruning", async () => {
+  const w = makeWorker(); await w.install(); await w.activate();
+  w.server.version = 2; w.device.failPut = "/app/state.js"; assert.strictEqual((await w.open("pageA")).text, PAGE(2)); w.live.add("pageA"); assert.strictEqual((await w.script("pageA")).text, "/app/main.js v2");
+  w.server.version = 3; assert.strictEqual((await w.open("pageB")).text, PAGE(3)); w.live.add("pageB"); assert.strictEqual((await w.script("pageB")).text, "/app/main.js v3");
+  assert.deepStrictEqual(w.releases(), [1], "no empty release caches from the pages' script requests");
+  w.device.failPut = null; w.server.down = true; await w.install(); await w.activate();   // a newer worker, offline
+  assert.deepStrictEqual(w.releases(), [1], "the only whole release survives the new worker's pruning"); assert.strictEqual((await w.open("pageC")).text, PAGE(1), "and serves the next offline open");
+});
+test("a page kept alive hears the newest whole release even when the pointer is stuck", async () => {
+  const w = makeWorker(); await w.install(); await w.activate();
+  const page = await w.open(); assert.strictEqual(page.text, PAGE(1)); await page.settle();
+  w.server.version = 2; w.device.failPut = "/current";
+  assert.deepStrictEqual(await w.check(), [{ type: "release", current: 2 }], "release 2 is whole on the device: the page is told, pointer or no pointer");
+  assert.deepStrictEqual(await w.check(), [{ type: "release", current: 2 }]);
 });
