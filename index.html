@@ -966,9 +966,10 @@
   .notes .entry .when button, .notes .entry .more { min-height: 44px; margin-top: -8px; margin-bottom: -8px; }   /* Delete / Keep / More: thumb-sized targets in the same rows */
   .name-row { display: flex; align-items: center; gap: 12px; }
   .name-row .pagetitle { flex: 1; min-width: 0; }
-  .contact-row { display: flex; margin-top: 2px; }
-  .msg-pill.wide-msg { width: auto; min-height: 40px; padding: 0 16px; gap: 7px; font-size: 0.9375rem; font-weight: 500; background: var(--glyph-fill); color: var(--text-primary); box-shadow: none; }   /* a quiet action under the title, as under a name in Contacts: the Templates pill's grey, never the page's main act */
-  .wide-msg[hidden] { display: none !important; }
+  .msg-disc { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--ink); color: var(--ink-on); display: inline-flex; align-items: center; justify-content: center; text-decoration: none; transition: opacity 300ms ease, transform 300ms ease; }   /* Messages' bubble beside the name: black in the light, white in the dark, a size up from the person disc in the bar */
+  .msg-disc svg { width: 26px; height: 26px; }
+  .msg-disc:active { transform: scale(0.96); }
+  .msg-disc[hidden] { display: none !important; }
   .disc { position: relative; flex: none; width: 36px; height: 36px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
     background: var(--field); color: var(--text-primary); transition: transform 220ms ease, opacity 300ms ease; }   /* a disclosure, not the page's primary action */
   .disc:hover { opacity: 0.85; }
@@ -1021,7 +1022,7 @@
   .tpl-stage { font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 14px 4px 8px; }
   .pick-note { margin: 12px 2px 0; font-size: 0.9375rem; color: var(--text-secondary); }
   .pick-note b { font-weight: 500; color: var(--text-primary); }
-  #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .contact-row, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #todayList, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
+  #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .msg-disc, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #todayList, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
   #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
@@ -1325,10 +1326,8 @@
     <div class="kicker trainer-only" id="pausedKicker" hidden>Access paused</div>
     <div class="name-row">
       <h1 id="cName" class="pagetitle"></h1>
-    </div>
-    <div class="contact-row" data-tab="workouts">
-      <a class="msg-pill wide-msg client-only" id="trainerBtn" href="#" hidden><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Message Michal</span></a>
-      <a class="msg-pill wide-msg trainer-only" id="msgBtn" href="#" hidden><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c-3.3 0-6 2.2-6 5 0 1.5.8 2.8 2 3.7L3.5 13.5l2.8-1.2c.5.1 1.1.2 1.7.2 3.3 0 6-2.2 6-5s-2.7-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="msgText">Message</span></a>
+      <a class="msg-disc client-only" id="trainerBtn" href="#" data-tab="workouts" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh">Message Michal</span></a>
+      <a class="msg-disc trainer-only" id="msgBtn" href="#" data-tab="workouts" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh" id="msgText">Message</span></a>
     </div>
     <div class="trainer-only notif" id="notifWrap" data-tab="workouts" hidden><ul class="list notif-list" id="notifList" hidden></ul></div>
     <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
@@ -1449,7 +1448,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=174";
+  import { boot } from "./app/main.js?v=175";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
