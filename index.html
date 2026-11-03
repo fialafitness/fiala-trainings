@@ -640,10 +640,10 @@
   .row { --numw: 64px; --letw: 0px; }                   /* badge column + gap: where the name starts; letter width on an open client card */
   /* client, open card: the number lives in the caption above; the name is the headline; superset rows carry a letter */
   body.client .block.ahead .group-cap, body.client .block.done .group-cap { display: none; }
-  body.client .group-cap { align-items: center; gap: 2px 10px; margin: 0 0 10px 2px; }   /* the heading, its little i and the fold chevron on one centre line */
-  body.client .group-cap .num { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; text-transform: none; color: var(--text-primary); }
-  body.client .group-cap .num .kind { font-style: normal; color: var(--text-tertiary); }   /* "· Superset" in the description's grey */
-  body.client .group-cap .info { width: 20px; height: 20px; font-size: 13px; margin-left: 2px; align-self: center; }
+  body.client .group-cap { align-items: center; gap: 2px 8px; margin: 0 0 8px 2px; min-height: 20px; }   /* the heading, its little i and the fold chevron on one centre line */
+  body.client .group-cap .num { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; line-height: 20px; text-transform: uppercase; color: var(--text-secondary); }   /* the same small caption as SCHEDULE and UP NEXT: the exercise name is the biggest thing on the card */
+  body.client .group-cap .num .kind { font-style: normal; color: var(--text-tertiary); }   /* "· SUPERSET" a shade lighter */
+  body.client .group-cap .info { width: 18px; height: 18px; font-size: 12px; margin-left: 0; align-self: center; }   /* the little i, scaled to the caption, still a thumb-sized target */
   body.client .block:not(.ahead):not(.done) .row .top { grid-template-columns: 1fr; }
   body.client .block:not(.ahead):not(.done) .row .top .labwrap { display: none; }
   body.client .block:not(.ahead):not(.done) .row .top .name { font-size: 26px; line-height: 30px; font-weight: 700; padding-left: var(--letw); }
@@ -1415,7 +1415,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=152";
+  import { boot } from "./app/main.js?v=153";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
