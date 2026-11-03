@@ -244,7 +244,7 @@
   .btn.tint.accent { color: var(--brand-text); }                                    /* the one accent capsule of a screen, like Apple's green on grey */
   .btn.ink { background: var(--ink); color: var(--ink-on); }                   /* Apple's strong monochrome button: black on light, white on dark */
   .btn.outline { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }   /* its outlined partner, like Pre-order next to Learn more */
-  .start-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }           /* + Workout and Templates, side by side, half each, the same height and type */
+  .start-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }           /* + Workout and Templates, side by side, half each, the same height and type */
   .start-pair > * { min-width: 0; display: flex; }
   .start-pair .btn { width: 100%; min-height: 52px; height: 100%; padding: 12px 16px; font-size: 1.0625rem; font-weight: 500; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; }
   .start-pair .btn.tint { color: var(--text-primary); }
@@ -290,7 +290,7 @@
   .list .n2[hidden] { display: none; }
   .list button.news .n2 { color: var(--text-primary); }
   .notif { margin-top: 4px; }                                                     /* under the Message row: what the client finished on their own, until he has looked */
-  .notif h2 { margin: 24px 0 10px; }
+  .notif h2 { margin: 16px 0 12px; }   /* with the title's own 16 below it: 32 */
   .notif .news-clear { margin-top: 8px; }
   .notif .count-old { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--brand); color: #fff; font-size: 0.75rem; font-weight: 600; letter-spacing: 0; }
   .notif .notif-list { margin-top: 8px; }
@@ -747,7 +747,7 @@
   #vClient:not(.tpl)[data-tab="workouts"] [data-tab]:not([data-tab="workouts"]), #vClient:not(.tpl)[data-tab="profile"] [data-tab]:not([data-tab="profile"]), #vClient:not(.tpl)[data-tab="notes"] [data-tab]:not([data-tab="notes"]) { display: none !important; }   /* each tab shows its own things */
   body:not(.client) #tabbar button { min-width: 96px; padding: 0 10px; }   /* the coach has three tabs: Workouts, Progress, Notes */
   /* packages: the plan card on the client page, the In person pill on a workout, the Packages page */
-  .plan-card { display: block; width: 100%; text-align: left; appearance: none; border: 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; background: var(--card); border-radius: var(--r-card); padding: 14px 16px 12px; margin-top: 16px; }
+  .plan-card { display: block; width: 100%; text-align: left; appearance: none; border: 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; background: var(--card); border-radius: var(--r-card); padding: 14px 16px 12px; margin-top: 4px; }
   .plan-card[hidden] { display: none; }
   .plan-card:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   body.client .plan-card { cursor: default; }
@@ -804,7 +804,7 @@
   .list .pack-row .sub { color: var(--text-secondary); font-size: 0.875rem; }
   .list .pack-row .del { appearance: none; border: 0; background: none; color: var(--danger); font: inherit; font-size: 0.875rem; cursor: pointer; width: auto; flex: none; min-height: 44px; padding: 0; display: inline-flex; align-items: center; }   /* not the full-width list button */
   /* the client page overview: two numbers and an exercise lookup that shows the heaviest set ever */
-  .overview { margin: 16px 0 18px; }                                        /* room after the name or the message pill */
+  .overview { margin: 4px 0 18px; }                                         /* with the title's own 16 below it: 20 */
   .overview[hidden] { display: none; }
   .ov-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .ov-tile { background: var(--card); border-radius: var(--r-card); padding: 14px 16px 12px; }
@@ -903,7 +903,7 @@
   .week button.finished .dot { background: var(--done); border-color: var(--done); }   /* finished is always the fern */
   .week[hidden] { display: none; }
   /* month view: the week strip opened out to a whole month */
-  .week-bar { margin: 28px 0 8px; min-height: 36px; }
+  .week-bar { margin: 20px 0 -4px; min-height: 36px; }   /* the caption sits centred in a 36px row with the Month pill: 20 above the row puts its text 32 below the card, and 0 below leaves 12 to the week */
   .week-bar h2 { margin: 0; }
   .cal-disc { appearance: none; border: 0; background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 6px 0 10px; border-radius: 50px; color: var(--brand-text); font-size: 0.9375rem; font-weight: 500; letter-spacing: 0; transition: opacity 300ms ease; }
   .cal-disc:hover { opacity: 0.8; }
@@ -945,7 +945,7 @@
   .note-actions[hidden] { display: none; }
   .list.notes { padding: 2px 0; }
   #noteList .list.notes { margin-top: 12px; }
-  #histCard { margin-top: 28px; }   /* its own thing under Up next: a section's worth of air */
+  #histCard { margin-top: 32px; }   /* its own thing under Up next: a section's worth of air */
   #vHistory .month:first-child { margin-top: 20px; }
   .note-head { margin: 24px 0 0; }   /* "This week", "October", "October 2025": the small caption, when every note is shown */
   .note-more { padding: 4px 20px 0; }
@@ -1448,7 +1448,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=175";
+  import { boot } from "./app/main.js?v=176";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
