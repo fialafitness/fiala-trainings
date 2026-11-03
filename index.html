@@ -506,8 +506,10 @@
   .card-foot .sum-row .add-note .ico svg { width: 18px; height: 18px; }
   .block.done.open.summary .card-foot .foot-row:not(.sum-row) { display: none; }
   .block.peek .card-foot .complete, .block.peek .card-foot .add-note, .block.peek .card-foot .exnote, .block.peek .card-foot .client-note { display: none !important; }   /* a card still to come, opened for a look: nothing to log, no note here */
-  .block.peek .card-foot .foot-row:not(.center) { justify-content: center; }
-  .card-foot .foot-wait { min-height: 52px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 15px; font-weight: 500; color: var(--text-secondary); }   /* where Complete set would be: the one line that says why it is not here */
+  .block.peek .card-foot { padding-top: 4px; gap: 0; }
+  .block.peek .card-foot .foot-row:not(.center) { justify-content: center; min-height: 36px; }
+  .block.peek .card-foot .foot-row:not(.center) .finish-early { color: var(--brand); }   /* the one tappable thing here wears the tint, like Instructions above it; the sentence stays grey */
+  .card-foot .foot-wait { min-height: 30px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 15px; font-weight: 400; color: var(--text-secondary); }   /* where Complete set would be: the one line that says why it is not here, close over the Skip under it */
   .block.done.open.summary .card-chev { bottom: 18px; }
   .block.done.open.summary .ex-icons { display: none; }   /* a finished exercise: no discs at all — swapping, the video and instructions are for the one still to do */
   .block.done.open.summary .row .cnote { display: none; }   /* the Instructions line goes with it */
@@ -1414,7 +1416,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=149";
+  import { boot } from "./app/main.js?v=150";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
