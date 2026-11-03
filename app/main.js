@@ -1885,14 +1885,12 @@ import { reportRange, buildReport } from "./report.js";
           setSel.delete(selKey); scheduleSave("trainings", t.id);
           setTimeout(() => { S.renderedTraining = null; render(); scrollToCard(g.key); }, 0);   // after the tap has flipped the switch (the iPhone tick), then redraw and glide
         });
-        const early = document.createElement("button"); early.type = "button"; early.className = "finish-early"; early.textContent = "Finish early";
-        let skipping = false;
+        const skipping = doneSets === 0;                            // nothing completed on this card yet: finishing it is skipping it, and the word says so
+        const early = document.createElement("button"); early.type = "button"; early.className = "finish-early"; early.textContent = skipping ? "Skip " + groupWord(g) : "Finish early";
         early.addEventListener("click", () => openFinishEarly(t, g, selKey, skipping));
-        waitFoot = (curName) => {                                   // still to come: the one line that says why there is no button, and Skip in place of Finish early
-          skipping = true;
+        waitFoot = (curName) => {                                   // still to come, opened for a look: the one line that says why there is no button; nothing to tap — it is decided when it is current
           const wait = document.createElement("div"); wait.className = "foot-wait"; wait.textContent = "Finish " + curName + " first";
-          foot.prepend(wait);
-          early.replaceChildren(); early.insertAdjacentHTML("afterbegin", '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 3.5l6.5 4.5-6.5 4.5z"/><path d="M12.5 3.5v9"/></svg>'); early.append(document.createTextNode("Skip " + groupWord(g)));   // Apple's forward-to-end glyph
+          foot.prepend(wait); early.hidden = true;
         };
         resume = document.createElement("button"); resume.type = "button"; resume.className = "resume"; resume.hidden = true; resume.textContent = "Resume this " + groupWord(g);
         resume.addEventListener("click", () => {              // the remaining sets open again; what was logged stays, the reason goes
@@ -1902,7 +1900,7 @@ import { reportRange, buildReport } from "./report.js";
         const first = g.rows[0], noteKey = selKey;
         const addNote = document.createElement("button"); addNote.type = "button"; addNote.className = "add-note";
         const noteIcon = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-6"/><path d="M18.4 2.6a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>';   // Apple's square-and-pencil, the Notes glyph
-        early.insertAdjacentHTML("afterbegin", '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 14V2.5"/><path d="M3.5 3h8l-2 2.5 2 2.5h-8"/></svg>');
+        early.insertAdjacentHTML("afterbegin", skipping ? '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 3.5l6.5 4.5-6.5 4.5z"/><path d="M12.5 3.5v9"/></svg>' : '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 14V2.5"/><path d="M3.5 3h8l-2 2.5 2 2.5h-8"/></svg>');   // skip: Apple's forward-to-end glyph; finish early: the flag
         const noteBox = document.createElement("div"); noteBox.className = "exnote"; noteBox.hidden = true;
         const ta = document.createElement("textarea"); ta.rows = 1; ta.maxLength = 500; ta.placeholder = "Something noticed on this exercise";
         const acts = document.createElement("div"); acts.className = "note-actions";
