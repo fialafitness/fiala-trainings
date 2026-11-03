@@ -966,7 +966,6 @@ import { reportRange, buildReport } from "./report.js";
   const regrowNames = () => { for (const el of document.querySelectorAll("#rows textarea.name, #tTitle")) { if (el.offsetParent === null) continue; el.style.height = "auto"; el.style.height = Math.max(el.id === "tTitle" ? 32 : 44, el.scrollHeight) + "px"; } };   // every name box measured again: a long name never clips to one line
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => requestAnimationFrame(regrowNames));   // the first paint can come before the font: measured in the fallback, measured again in Inter
   let regrowTimer = null; window.addEventListener("resize", () => { clearTimeout(regrowTimer); regrowTimer = setTimeout(regrowNames, 120); });   // rotation, a split view, the keyboard
-  const openMonths = new Set();          // History months the user opened: clientId/yyyy-mm
   const armedNotes = new Set();
   const allNotesOpen = new Set();                                // clients whose notes page is unfolded past the ten newest (this session)
   const openNoteIds = new Set();                                 // long notes opened in full (this session)
@@ -1695,23 +1694,18 @@ import { reportRange, buildReport } from "./report.js";
       li.appendChild(bar); $("nextList").appendChild(li);
     }
 
-    const rest = list.filter((t) => !next.includes(t));
-    const months = new Map();
-    for (const t of rest) { const k = effDate(t).slice(0, 7); if (!months.has(k)) months.set(k, []); months.get(k).push(t); }
-    const hist = $("histList"); hist.replaceChildren();
-    $("histHead").hidden = rest.length === 0;
-    for (const [k, items] of months) {
-      const wrap = document.createElement("div"); wrap.className = "month";
-      const head = document.createElement("button"); head.type = "button";
-      const md = new Date(k + "-15T12:00:00");
-      head.innerHTML = "<span></span><span class=\"sub\"></span>";
-      head.firstChild.textContent = md.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-      head.lastChild.textContent = items.length + (items.length === 1 ? " workout" : " workouts") + " \u203a";
-      const mkey = c.id + "/" + k, ul = document.createElement("ul"); ul.className = "list"; ul.hidden = !openMonths.has(mkey);       // every month starts folded; a tap opens it, and it stays open across redraws
-      ul.replaceChildren(...items.map((t) => rowOf(t)));
-      head.addEventListener("click", () => { ul.hidden = !ul.hidden; if (ul.hidden) openMonths.delete(mkey); else openMonths.add(mkey); });
-      wrap.append(head, ul); hist.appendChild(wrap);
+    const rest = list.filter((t) => !next.includes(t));                      // History: every past workout, flat, under This week / month / month-and-year headings
+    const hist = $("histList"); hist.replaceChildren(); $("histEmpty").hidden = rest.length > 0;
+    const hToday = today(), hBase = new Date(hToday + "T12:00:00"), hMonday = new Date(hBase); hMonday.setDate(hBase.getDate() - ((hBase.getDay() + 6) % 7)); const hMondayIso = localIso(hMonday);
+    const groups = new Map();
+    for (const t of rest) {
+      const day = effDate(t) || ""; let key, title;
+      if (day >= hMondayIso) { key = "week"; title = "This week"; }
+      else if (day.slice(0, 4) === hToday.slice(0, 4)) { key = day.slice(0, 7); title = new Date(day + "T12:00:00").toLocaleDateString(undefined, { month: "long" }); }
+      else { key = day.slice(0, 7); title = new Date(day + "T12:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" }); }
+      if (!groups.has(key)) groups.set(key, { title, items: [] }); groups.get(key).items.push(t);
     }
+    for (const [, g] of groups) { const h = document.createElement("h2"); h.className = "note-head"; h.textContent = g.title; const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...g.items.map((t) => rowOf(t))); hist.append(h, ul); }
     $("trainingEmpty").hidden = list.length > 0;
     $("delClientConfirm").hidden = true; $("delClient").hidden = false;
   }
@@ -2816,7 +2810,7 @@ import { reportRange, buildReport } from "./report.js";
     try { const v = pageRelease(); if (v) { $("appVersion").textContent = "Version " + v; watchReleases(v); } } catch (_) {}   // the build this phone runs, at the bottom of Settings
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) S.view = saved;
     const page = lsGet("fiala.trainings.page"); if (page && page.open) pendingPage = page;   // read before any screen change clears it
-    const savedTab = lsGet("fiala.trainings.tab"); if (savedTab === "profile" || savedTab === "workouts" || savedTab === "notes") S.tab = savedTab;
+    const savedTab = lsGet("fiala.trainings.tab"); if (["profile", "workouts", "notes", "history"].includes(savedTab)) S.tab = savedTab;
     localBackend.load();                       // instant start from the device copy
     try { const dr = lsGet("fiala.trainings.draft"); if (dr && dr.id && dr.doc && trainings.has(dr.id)) { S.templateDraft = { id: dr.id, snapshot: JSON.stringify(trainings.get(dr.id)), dirty: true, saving: false }; trainings.set(dr.id, dr.doc); } } catch (_) {}   // a template left with unsaved changes: back as it was, still unsaved
     restorePending();                          // and whatever was still waiting to reach the server
