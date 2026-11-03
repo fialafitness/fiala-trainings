@@ -237,13 +237,15 @@ test("the coach's plan edit, a deleted note and a deleted package are kept on th
   const sb = makeSupabase(); coach(sb); sb.delayMs = 30;
   sb.seed("ft_clients", TPL, { id: TPL, name: "Templates", kind: "templates", packages: [{ id: "p1", name: "10 sessions", kind: "sessions", size: 10 }], notes: { log: [{ id: "n1", at: "2026-10-01T10:00:00.000Z", text: "Old" }] } });
   const tc = { id: TPL, name: "Templates", kind: "templates", packages: [], notes: { log: [] }, plan: { id: "x", kind: "monthly", until: "2026-11-15" } }; maps.clients.set(TPL, tc);
-  maps.planTouched.add(TPL); maps.deletedNotes.set("n1", TPL); maps.deletedPackages.set("p1", TPL); maps.fromFile.set("trainings/zzz", 7);
+  maps.planTouched.add(TPL); maps.deletedNotes.set("n1", TPL); maps.deletedPackages.set("p1", TPL); maps.dirty.set("trainings/zzz", 7); maps.fromFile.set("trainings/zzz", 7); maps.fromFile.set("trainings/stale", 3);   // zzz: a restored record with its edit still to go; stale: a marker whose write went before the relaunch
   fns.scheduleSave("clients", TPL, 0);
   await tick(5);                                                      // the save is on the wire
   const stored = JSON.parse(localStorage.getItem("fiala.pending.v1"));
-  assert.deepStrictEqual([stored.plans, stored.notesGone, stored.packagesGone, stored.fromFile], [[TPL], [["n1", TPL]], [["p1", TPL]], [["trainings/zzz", 7]]], "written to the device with the queue");
-  maps.planTouched.clear(); maps.deletedNotes.clear(); maps.deletedPackages.clear(); maps.fromFile.clear(); fns.restorePending();   // the app relaunched meanwhile
-  assert.ok(maps.planTouched.has(TPL) && maps.deletedNotes.get("n1") === TPL && maps.deletedPackages.get("p1") === TPL && maps.fromFile.get("trainings/zzz") === 7, "back after the relaunch");
+  assert.deepStrictEqual([stored.plans, stored.notesGone, stored.packagesGone, stored.fromFile], [[TPL], [["n1", TPL]], [["p1", TPL]], [["trainings/zzz", 7], ["trainings/stale", 3]]], "written to the device with the queue");
+  maps.planTouched.clear(); maps.deletedNotes.clear(); maps.deletedPackages.clear(); maps.fromFile.clear(); maps.dirty.delete("trainings/zzz"); fns.restorePending();   // the app relaunched meanwhile
+  assert.ok(maps.planTouched.has(TPL) && maps.deletedNotes.get("n1") === TPL && maps.deletedPackages.get("p1") === TPL, "back after the relaunch");
+  assert.strictEqual(maps.fromFile.get("trainings/zzz"), 1, "the marker follows the edit, which a relaunch numbers 1 again: the save that carries the file's copy will clear it");
+  assert.ok(!maps.fromFile.has("trainings/stale"), "a marker with no edit behind it is dropped: a later ordinary edit must not inherit the restore's rights");
   await settle();                                                    // the save landed: read first (no stamp), then the write
   const saved = sb.tables.ft_clients.get(TPL).data;
   assert.deepStrictEqual(saved.packages, [], "the deleted package did not come back"); assert.deepStrictEqual(saved.notes.log, [], "nor the deleted note"); assert.strictEqual(saved.plan.until, "2026-11-15", "and the plan edit stands");
@@ -393,4 +395,70 @@ test("empty note and reason queues are neither written to the device nor re-mark
   maps.pendingNoteRows.set("T", new Set()); fns.persistPending();
   assert.deepStrictEqual(JSON.parse(localStorage.getItem("fiala.pending.v1")).rownotes, []);
   maps.dirty.clear(); fns.restorePending(); assert.ok(!maps.dirty.has("trainings/T"));
+});
+
+test("a client's finish carries the phone's own time; the old rule without that argument is sent the old shape", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend });
+  const calls = []; sb.rpcs.client_finish_training = async (args) => { calls.push(args); if ("p_at" in args) { const e = new Error("Could not find the function"); e.code = "PGRST202"; throw e; } return null; };
+  const t = training("T", { completedAt: "2026-11-02T18:04:00.000Z" }); maps.trainings.set("T", t); maps.dirty.set("trainings/T", 1); maps.pendingFinish.add("T");
+  fns.flushOne("trainings", "T"); await settle();
+  assert.deepStrictEqual(calls.map((a) => a.p_at), ["2026-11-02T18:04:00.000Z", undefined], "the time went first; the rule that does not know it got the old shape");
+  assert.ok(!maps.pendingFinish.has("T"), "and the finish is done");
+  sb.rpcs.client_finish_training = async (args) => { calls.push(args); return null; };
+  maps.dirty.set("trainings/T", 2); maps.pendingFinish.add("T"); fns.flushOne("trainings", "T"); await settle();
+  assert.strictEqual(calls[calls.length - 1].p_at, "2026-11-02T18:04:00.000Z", "a rule that knows the time takes it: a Monday finish uploaded on Wednesday stays Monday's");
+});
+test("a catalog that never answers cannot hold the workouts back", async () => {
+  const sb = makeSupabase(); coach(sb); app.set({ catalogWait: 30 });
+  sb.seed("ft_trainings", "T", training("T"), { client_id: "c1" });
+  const from = sb.from; sb.from = (table) => table === "ft_exercise_hidden" ? { select: () => new Promise(() => {}) } : from(table);   // the hidden-exercises catalog hangs for ever
+  const started = Date.now(); await fns.syncDownNow();
+  assert.ok(maps.trainings.has("T"), "the workouts arrived"); assert.ok(Date.now() - started < 2000, "without waiting on the catalog");
+  sb.from = from; app.set({ catalogWait: 0 }); await settle();
+});
+test("with no cloud library on the page, a remembered client opens as the client, offline, and a queued change stays queued", async () => {
+  const sb = makeSupabase(); app.reset();
+  localStorage.setItem("fiala.trainings.role", JSON.stringify({ email: "jane@example.com", role: "client" }));
+  maps.clients.set("c1", { id: "c1", name: "Jane", email: "jane@example.com", unit: "lb" }); maps.trainings.set("T", training("T")); fns.localBackend.save();
+  maps.dirty.set("trainings/T", 1); fns.persistPending();
+  app.set({ sb: null, signedIn: false, clientMode: false, myClientId: null, backend: null, offline: false });
+  await fns.boot();
+  const st = app.get();
+  assert.ok(st.clientMode && st.myClientId === "c1" && st.signedIn, "the remembered role, not the coach's"); assert.ok(st.offline, "and offline, since the cloud is out of reach");
+  assert.ok(st.backend && st.backend !== fns.localBackend, "the cloud backend, so nothing is confirmed locally by mistake");
+  fns.flushOne("trainings", "T"); await settle();
+  assert.ok(maps.dirty.has("trainings/T"), "the change is still to go"); assert.ok(!app.get().failed, "and nothing is marked failed");
+});
+
+test("a finish uploaded days after the fact is still news for the coach, even after a later look; the first look by id marks everything older as seen", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const c = maps.clients.get("c1"); c.seenDoneAt = "2026-11-03T12:00:00.000Z";   // an older device last looked on Tuesday
+  maps.trainings.set("sat", training("sat", { date: "2026-10-31", completedAt: "2026-10-31T18:00:00.000Z", completedBy: "client" }));
+  assert.strictEqual(fns.clientNews(c).done, 0, "before the first look by id, the time stamp still rules: Saturday's was looked at");
+  maps.trainings.set("new", training("new", { date: "2026-11-04", completedAt: "2026-11-04T18:00:00.000Z", completedBy: "client" }));
+  assert.deepStrictEqual(fns.clientNews(c).workouts.map((t) => t.id), ["new"]); fns.markWorkoutsSeen(c);
+  assert.deepStrictEqual([...c.seenFinished].sort(), ["new", "sat"], "from now on by id: the one looked at and everything older");
+  maps.trainings.set("mon", training("mon", { date: "2026-11-02", completedAt: "2026-11-02T18:04:00.000Z", completedBy: "client" }));   // finished Monday offline, uploaded now with Monday's time
+  assert.deepStrictEqual(fns.clientNews(c).workouts.map((t) => t.id), ["mon"], "Monday's is news although it is older than the last look");
+  fns.markWorkoutsSeen(c); assert.strictEqual(fns.clientNews(c).done, 0); await settle();
+});
+test("a catalog answer from an earlier load that lands after a fresher one is dropped", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const from = sb.from; let release = null;
+  sb.from = (table) => table !== "ft_exercise_hidden" ? from(table) : { select: () => release ? Promise.resolve({ data: [{ name_key: "deadlift" }], error: null }) : new Promise((r) => { release = () => r({ data: [], error: null }); }) };
+  const first = fns.loadHidden();                                    // stalls
+  await fns.loadHidden();                                            // answers at once: Deadlift hidden
+  assert.ok(maps.hiddenKeys.has("deadlift"));
+  release(); await first;                                            // the stalled, older answer arrives: an empty list
+  assert.ok(maps.hiddenKeys.has("deadlift"), "the older answer did not roll the fresher one back");
+  sb.from = from;
+});
+test("finished again at a later time while the first finish was out: the later time is what reaches the server", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend }); sb.delayMs = 30;
+  const sent = []; sb.rpcs.client_finish_training = async (a) => { sent.push(a.p_at); return null; };
+  const t = training("T", { completedAt: "2026-11-02T18:04:00.000Z" }); maps.trainings.set("T", t); maps.dirty.set("trainings/T", 1); maps.pendingFinish.add("T");
+  fns.flushOne("trainings", "T"); await tick(5);                      // the 18:04 finish is on the wire
+  t.completedAt = "2026-11-02T18:05:30.000Z"; maps.dirty.set("trainings/T", 2); maps.pendingFinish.add("T"); fns.flushOne("trainings", "T");   // Undo, then Finish again
+  await settle();
+  assert.deepStrictEqual(sent, ["2026-11-02T18:04:00.000Z", "2026-11-02T18:05:30.000Z"], "both went, the later one last"); assert.ok(!maps.pendingFinish.has("T"));
 });

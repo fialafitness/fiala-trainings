@@ -33,10 +33,12 @@ import { reportRange, buildReport } from "./report.js";
   let lastDbError = "";                   // the last Supabase message, so a screen can say "run the script" instead of "try again"
   const missingTable = () => /ft_exercise_hidden|ft_exercises|ft_exercise_videos|ft_exercise_subtitles/.test(lastDbError) && /not find|does not exist|schema cache/i.test(lastDbError);
   const catalogDigest = new Map(), catalogBump = (name, m) => { const d = JSON.stringify([...m]); if (catalogDigest.get(name) !== d) { catalogDigest.set(name, d); S.renderedTraining = null; } };   // names, videos, subtitles or hidden entries changed: the cards on screen are built again once
+  const catalogSeq = {};                                               // per catalog: the number of the latest load, so a late answer from an earlier one is dropped
   async function loadHidden() {
     if (!S.sb || !S.signedIn) return;
+    const seq = (catalogSeq.loadHidden = (catalogSeq.loadHidden || 0) + 1);
     const { data, error } = await S.sb.from("ft_exercise_hidden").select("name_key");
-    if (error || !data) return;
+    if (error || !data || seq !== catalogSeq.loadHidden) return;   // a fresher load answered meanwhile: this older answer must not roll it back
     hiddenKeys.clear(); for (const r of data) hiddenKeys.add(r.name_key); refreshNames(); catalogBump("hidden", hiddenKeys);
   }
   async function hideBuiltin(k) { const { error } = await S.sb.from("ft_exercise_hidden").upsert({ name_key: k }); if (error) { lastDbError = error.message || ""; return false; } hiddenKeys.add(k); refreshNames(); return true; }
@@ -45,8 +47,9 @@ import { reportRange, buildReport } from "./report.js";
   const tidyName = (n) => { n = String(n || "").replace(/\s+/g, " ").trim(); return n ? n[0].toUpperCase() + n.slice(1) : ""; };
   async function loadCustomNames() {
     if (!S.sb || !S.signedIn) return;
+    const seq = (catalogSeq.loadCustomNames = (catalogSeq.loadCustomNames || 0) + 1);
     const { data, error } = await S.sb.from("ft_exercises").select("name_key,name");
-    if (error || !data) return;
+    if (error || !data || seq !== catalogSeq.loadCustomNames) return;   // a fresher load answered meanwhile: this older answer must not roll it back
     customNames.clear(); for (const r of data) customNames.set(r.name_key, r.name); refreshNames(); catalogBump("names", customNames);
   }
   async function addCustomName(name) {
@@ -111,8 +114,9 @@ import { reportRange, buildReport } from "./report.js";
   const subtitleFor = (name) => { const k = squash(name); return customSubs.has(k) ? customSubs.get(k) : null; };
   async function loadCustomSubs() {
     if (!S.sb || !S.signedIn) return;
+    const seq = (catalogSeq.loadCustomSubs = (catalogSeq.loadCustomSubs || 0) + 1);
     const { data, error } = await S.sb.from("ft_exercise_subtitles").select("name_key,subtitle");
-    if (error || !data) return;
+    if (error || !data || seq !== catalogSeq.loadCustomSubs) return;   // a fresher load answered meanwhile: this older answer must not roll it back
     customSubs.clear(); for (const r of data) customSubs.set(r.name_key, String(r.subtitle || "")); catalogBump("subs", customSubs);
   }
   async function saveSub(k, sub, oldKey) { const { error } = await S.sb.from("ft_exercise_subtitles").upsert({ name_key: k, subtitle: sub }); if (error) { lastDbError = error.message || ""; return error; } customSubs.set(k, sub); if (oldKey && oldKey !== k) await deleteSub([oldKey]); return null; }
@@ -125,8 +129,9 @@ import { reportRange, buildReport } from "./report.js";
   const youtubeId = (url) => { const m = String(url || "").match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; };
   async function loadCustomVideos() {
     if (!S.sb || !S.signedIn) return;
+    const seq = (catalogSeq.loadCustomVideos = (catalogSeq.loadCustomVideos || 0) + 1);
     const { data, error } = await S.sb.from("ft_exercise_videos").select("name_key,video_id");
-    if (error || !data) return;
+    if (error || !data || seq !== catalogSeq.loadCustomVideos) return;   // a fresher load answered meanwhile: this older answer must not roll it back
     customVideos.clear(); videoRawKeys.clear();
     for (const r of data) { const k = ALIAS_LOOSE[r.name_key] || r.name_key; customVideos.set(k, r.video_id); if (!videoRawKeys.has(k)) videoRawKeys.set(k, new Set()); videoRawKeys.get(k).add(r.name_key); } // links saved under an old spelling follow the rename
     catalogBump("videos", customVideos);
@@ -728,7 +733,7 @@ import { reportRange, buildReport } from "./report.js";
       S.view = { name: "clients" }; showLogin("");
     };
     const who = S.sessionEmail;
-    if (!S.signingOut) S.signingOut = S.sb.auth.signOut().catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });
+    if (!S.signingOut) S.signingOut = (S.sb ? S.sb.auth.signOut() : Promise.resolve({ error: null })).catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });
     const out = await withTimeout(S.signingOut, 8000);
     if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (S.signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && S.signedIn && S.sessionEmail === who) finish(); }); return; }
     finish();
@@ -757,7 +762,7 @@ import { reportRange, buildReport } from "./report.js";
       S.view = { name: "clients" }; showLogin("");
     };
     const who = S.sessionEmail;
-    if (!S.signingOut) S.signingOut = S.sb.auth.signOut().catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });
+    if (!S.signingOut) S.signingOut = (S.sb ? S.sb.auth.signOut() : Promise.resolve({ error: null })).catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });
     const out = await withTimeout(S.signingOut, 8000);
     if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (S.signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && S.signedIn && S.sessionEmail === who) finish(); }); return; }
     finish();
@@ -1511,9 +1516,11 @@ import { reportRange, buildReport } from "./report.js";
   function clientNews(c) {
     if (!c || isTemplateClient(c.id)) return { done: 0, notes: [], workouts: [] };
     const since = Date.parse(c.seenDoneAt || "") || 0, seen = new Set(Array.isArray(c.seenNotes) ? c.seenNotes : []);
+    const seenDone = Array.isArray(c.seenFinished) ? new Set(c.seenFinished) : null;   // by id since v166; a record from before carries only the time it was last looked at
     let done = 0; const notes = [], workouts = [];
     for (const t of clientTrainings(c.id)) {
-      if (t.completedBy === "client" && t.completedAt && (Date.parse(t.completedAt) || 0) > since) { done++; workouts.push(t); }
+      const fresh = seenDone ? !seenDone.has(t.id) : (Date.parse(t.completedAt) || 0) > since;   // a finish uploaded days after the fact (the phone's own time now travels with it) is still news
+      if (t.completedBy === "client" && t.completedAt && fresh) { done++; workouts.push(t); }
       for (const r of t.rows || []) if (r.clientNote && r.clientNoteBy === "client" && !seen.has(noteId(t, r))) notes.push({ id: noteId(t, r), t, r, at: r.clientNoteAt || "" });
     }
     notes.sort((a, b) => (b.at > a.at ? 1 : b.at < a.at ? -1 : 0));   // newest first
@@ -1535,7 +1542,13 @@ import { reportRange, buildReport } from "./report.js";
     if (n.notes.length) parts.push(n.notes.length === 1 ? "1 note" : n.notes.length + " notes");
     return parts.join(" \u00b7 ");
   }
-  function markWorkoutsSeen(c) { if (!clientNews(c).done) return; c.seenDoneAt = now(); scheduleSave("clients", c.id); }
+  function markWorkoutsSeen(c) {                                       // looked at: those ids are seen; the time stamp stays for an older coach device
+    const n = clientNews(c); if (!n.done) return;
+    const live = new Set(); for (const t of clientTrainings(c.id)) if (t.completedBy === "client" && t.completedAt) live.add(t.id);
+    const seen = (Array.isArray(c.seenFinished) ? c.seenFinished : clientTrainings(c.id).filter((t) => t.completedBy === "client" && t.completedAt && !n.workouts.includes(t)).map((t) => t.id)).filter((id) => live.has(id));   // first time by id: everything not news now counts as seen
+    for (const t of n.workouts) if (!seen.includes(t.id)) seen.push(t.id);
+    c.seenFinished = seen; c.seenDoneAt = now(); scheduleSave("clients", c.id);
+  }
   function markNoteSeen(c, id) {
     const all = new Set(); for (const t of clientTrainings(c.id)) for (const r of t.rows || []) if (r.clientNote && r.clientNoteBy === "client") all.add(noteId(t, r));
     const seen = (c.seenNotes || []).filter((x) => all.has(x));           // forget notes that are gone
@@ -2798,6 +2811,7 @@ import { reportRange, buildReport } from "./report.js";
     };
     for (const c of cs) put(clients, "clients", c);                 // the Templates record included, version number and all: a file from an older set makes the next launch repair and complete the built-in templates
     for (const t of ts) put(trainings, "trainings", t);
+    localBackend.save();                                             // the file's copy is on the device before the marker can matter: a relaunch before the flush must not carry the old record verbatim
   }
   $("restoreFile").addEventListener("change", async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f || S.clientMode) { e.target.value = ""; return; }
@@ -2869,7 +2883,9 @@ import { reportRange, buildReport } from "./report.js";
       else showLogin(linkErr);
       return;
     }
-    // no library (blocked network): work from the device copy
+    // no library (a first open with the network blocked): the remembered account's pages from the device copy, offline, every change kept for the cloud; a device that never signed in works locally
+    const known = lsGet("fiala.trainings.role");
+    if (known && known.email) { const shown = paintRemembered(known, true); $("catalogBtn").hidden = true; $("myExercises").hidden = true; if (shown !== false) setStatus(); return; }   // the catalog is edited in the cloud only; a client with no record here sees the login, with a quiet header
     S.backend = localBackend; $("localFoot").hidden = false; render(); setStatus();
     seedTemplates().catch(() => {});
   }
@@ -2878,7 +2894,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { addTraining, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },

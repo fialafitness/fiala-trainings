@@ -10,7 +10,8 @@ export const initial = () => ({
   deviceFull: false,                     // the last write of the device copy failed (storage full or blocked)
   sb: null, signedIn: false, syncTimer: null, clientMode: false, myClientId: null, recovering: false,
   syncedOnce: false,                     // this session has had one full answer from the server
-  logSetMissing: false, earlyMissing: false, moveMissing: false, missMissing: false, noteMissing: false,   // server rules not installed yet (supabase/*.sql)
+  logSetMissing: false, earlyMissing: false, moveMissing: false, missMissing: false, noteMissing: false,
+  catalogWait: 0,                     // tests shorten the catalogs' deadline (0 = the usual 8 s)   // server rules not installed yet (supabase/*.sql)
   syncing: null,                         // the sync in flight, if any
   offlineEntry: null, resuming: false, signingOut: null,
   sessionEmail: "", entering: false,

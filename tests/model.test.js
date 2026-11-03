@@ -31,6 +31,19 @@ test("last weights come from the most recent earlier session of the same exercis
   const last = fns.lastWeights(maps.trainings.get("cur"), maps.trainings.get("cur").rows[0]);
   assert.ok(last); assert.deepStrictEqual(last.weights, ["25"]);
 });
+test("last time's hold carries into a plan in the other time unit only when it converts whole; reps never carry into a timed plan", () => {
+  app.reset(); maps.clients.set("c1", { id: "c1", name: "Jane" });
+  const mk = (id, n, reps, done) => maps.trainings.set(id, { id, clientId: "c1", date: day(n), createdAt: "2026-10-05T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [{ id: id + "r", name: "Plank", reps, weights: [""], repsDone: done, setsDone: 1 }] });
+  const last = (reps) => { mk("cur", 0, reps, [""]); return fns.lastWeights(maps.trainings.get("cur"), maps.trainings.get("cur").rows[0]).reps; };
+  mk("old", -3, "45 sec", ["45"]);
+  assert.deepStrictEqual(last("1 min"), [""], "45 seconds is not a whole number of minutes: nothing is suggested, the plan's number shows");
+  mk("old", -3, "60 sec", ["120"]);
+  assert.deepStrictEqual(last("1 min"), ["2"], "120 seconds into a minutes plan is 2");
+  mk("old", -3, "2 min", ["2"]);
+  assert.deepStrictEqual(last("90 sec"), ["120"], "2 minutes into a seconds plan is 120");
+  mk("old", -3, "10 reps", ["10"]);
+  assert.deepStrictEqual(last("30 sec"), [], "ten reps are not seconds");
+});
 const U = (n) => "00000000-0000-4000-8000-" + String(n).padStart(12, "0");   // the server's id columns take uuids only
 test("a backup is accepted whole or refused whole", () => {
   app.reset();
