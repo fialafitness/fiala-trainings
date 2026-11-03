@@ -25,7 +25,7 @@
   :root {
     --text-primary: #1d1d1f;            /* Shark */
     --text-secondary: #6e6e73;          /* Steel */
-    --text-tertiary: #76767b;           /* Medium Gray */
+    --text-tertiary: #6b6b70;           /* Medium Gray, a shade deeper: 4.7:1 on the inset panels for the smallest captions */
     --r-card: 26px;                     /* cards, grouped lists, sheets — iOS inset-grouped corner */
     --r-field: 14px;                    /* inputs, fields, menus */
     --r-chip: 12px;                     /* small chips and day cells */
@@ -50,13 +50,14 @@
     --tab-fill: rgba(255,255,255,0.33); --tab-on: rgba(255,255,255,0.8); --tab-on-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.9), 0 0 0 0.5px rgba(0,0,0,0.03), 0 1px 4px rgba(0,0,0,0.06); --tab-shadow: inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(255,255,255,0.75), inset 0 0 0 0.5px rgba(255,255,255,0.35), 0 0 0 0.5px rgba(0,0,0,0.05), 0 4px 14px rgba(0,0,0,0.08);   /* the tab bar: Apple's glass, measured off the real thing: a third of white over the page, the chosen tab a white capsule with a lit rim */
     --placeholder: #d2d2d7;
     --brand: #6f6b99;                   /* app-purple — structure / interactive, EXACT */
+    --brand-text: #66628f;              /* the purple as text: a hair deeper so a 13px word on an inset panel reads 5:1; the fill stays exact */
     --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
     --brand-deep: #494664;              /* app-purple-deep — reserved for brand moments */
     --done: #3c7a4e;                    /* fern: a true, calm green; inked for white */
     --done-tint: rgba(60,122,78,0.08);  /* soft fern wash inside a finished card */
     --done-ink: #ffffff;
     --danger: #a63a46;                  /* Crimson deep — red text on light */
-    --gold: #b08a2e;                    /* the best lift: a quiet gold */
+    --gold: #7f621a;                    /* the best lift: a quiet gold, deep enough to read as small bold text (5:1 on a field) */
     --ink: #1d1d1f;                     /* the badge: black on light, white on dark */
     --ink-on: #ffffff;
     --btn-bg: var(--brand-fill);        /* the primary action wears the brand, as Fitness+ wears its green */
@@ -91,6 +92,7 @@
       --tab-fill: rgba(255,255,255,0.15); --tab-on: rgba(0,0,0,0.42); --tab-on-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 2px 3px rgba(255,255,255,0.06), inset 0 0 0 0.5px rgba(255,255,255,0.08); --tab-shadow: inset 0 1px 0 rgba(255,255,255,0.27), inset 0 2px 3px rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.45), 0 0 0 1.5px rgba(255,255,255,0.09), 0 8px 24px rgba(0,0,0,0.25);   /* measured off Apple's dark bar: 15% white over the page, a lit rim, the chosen tab a darker capsule */
       --placeholder: rgba(255,255,255,0.35);
       --brand: #6f6b99;                 /* app-purple — the brand, exact in both modes */
+      --brand-text: #a9a5d6;            /* the purple as text on dark: lifted to read 6:1 on a sheet, 7:1 on a card */
       --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
       --brand-deep: #494664;
       --done: #bfe8c2;                  /* fern glow: pale sage on dark */
@@ -132,6 +134,7 @@
     --tab-fill: rgba(255,255,255,0.15); --tab-on: rgba(0,0,0,0.42); --tab-on-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 2px 3px rgba(255,255,255,0.06), inset 0 0 0 0.5px rgba(255,255,255,0.08); --tab-shadow: inset 0 1px 0 rgba(255,255,255,0.27), inset 0 2px 3px rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.45), 0 0 0 1.5px rgba(255,255,255,0.09), 0 8px 24px rgba(0,0,0,0.25);   /* measured off Apple's dark bar: 15% white over the page, a lit rim, the chosen tab a darker capsule */
     --placeholder: rgba(255,255,255,0.35);
     --brand: #6f6b99;                 /* app-purple — the brand, exact in both modes */
+    --brand-text: #a9a5d6;            /* the purple as text on dark: lifted to read 6:1 on a sheet, 7:1 on a card */
     --brand-fill: #6f6b99;            /* the purple for filled pills, both modes */
     --brand-deep: #494664;
     --done: #bfe8c2;
@@ -157,7 +160,8 @@
   html { background: var(--surface); }
   html { height: 100%; } body { min-height: 100%; }   /* body grows with the page: the sticky header stays for the whole scroll, not just the first screen (a body one screen tall let it slide away, and the glide after Complete set measured against a header that was gone) */
   html { overflow-x: hidden; }                       /* an app never scrolls sideways (on html only: on body too it would make body the scroller, and window.scrollTo / tap-the-status-bar stop working) */
-  html { -webkit-text-size-adjust: 100%; overscroll-behavior-x: none; }   /* Safari: no text inflation when the phone turns, no sideways rubber band */
+  html { -webkit-text-size-adjust: 100%; overscroll-behavior-x: none; }   /* Safari: no text inflation when the phone turns, no sideways rubber band; the type follows the phone's Text Size setting through the root size (see fitText), the way a native app does, not through pinch */
+  #typeProbe { position: absolute; left: -9999px; top: 0; font: -apple-system-body; visibility: hidden; }   /* a hidden line in the system font: its size is the Text Size setting */
   body { touch-action: pan-x pan-y; }                /* scroll, never pinch or double-tap zoom: a zoomed page is what drifts side to side in Safari */
   main { overflow-x: clip; }
   body {
@@ -167,7 +171,7 @@
     background: var(--surface);
     color: var(--text-primary);
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    font-size: 17px;
+    font-size: 1.0625rem;
     line-height: 1.55;
     letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
@@ -188,7 +192,7 @@
   .back {                                                   /* Apple's back capsule, in the app's own grey: a bold chevron and the place you came from; no shadow, no glass */
     appearance: none; border: 0; padding: 0 16px 0 12px; border-radius: 50px;
     background: var(--glyph-fill);
-    color: var(--text-primary); font: inherit; font-size: 17px; font-weight: 400; letter-spacing: -0.01em; cursor: pointer;   /* regular weight, like the other capsules */
+    color: var(--text-primary); font: inherit; font-size: 1.0625rem; font-weight: 400; letter-spacing: -0.01em; cursor: pointer;   /* regular weight, like the other capsules */
     min-height: 40px; display: inline-flex; align-items: center; gap: 6px;
     max-width: 70%; white-space: nowrap; transition: opacity 300ms ease, transform 300ms ease;
   }
@@ -200,66 +204,66 @@
   .brand img { height: 26px; width: auto; display: block; }
   .brand .logo-light { display: var(--logo-light); }
   .brand .logo-dark { display: var(--logo-dark); }
-  #status { font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); white-space: nowrap; min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; text-align: right; }   /* a long message trims itself: Back and Done never leave the screen */
+  #status { font-size: 0.8125rem; letter-spacing: 0; color: var(--text-tertiary); white-space: nowrap; min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; text-align: right; }   /* a long message trims itself: Back and Done never leave the screen */
   #status.err { color: var(--danger); cursor: pointer; }
 
   main { max-width: 680px; margin: 0 auto; padding: 8px 16px 80px; }
-  h1, .pagetitle { font-size: 26px; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; margin: 20px 0 16px; text-wrap: balance; }
-  h2 { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 32px 0 12px; }
-  .muted { color: var(--text-tertiary); font-size: 13px; letter-spacing: 0; }
-  .notice { background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r-field); padding: 12px 16px; font-size: 13px; color: var(--text-secondary); margin: 12px 0 0; }
+  h1, .pagetitle { font-size: 1.625rem; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; margin: 20px 0 16px; text-wrap: balance; }
+  h2 { font-size: 0.8125rem; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 32px 0 12px; }
+  .muted { color: var(--text-tertiary); font-size: 0.8125rem; letter-spacing: 0; }
+  .notice { background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r-field); padding: 12px 16px; font-size: 0.8125rem; color: var(--text-secondary); margin: 12px 0 0; }
 
   input, textarea, button, select { font: inherit; color: inherit; letter-spacing: inherit; }
   input, textarea {
     width: 100%; min-width: 0;
     background: var(--field); border: 1px solid transparent; border-radius: var(--r-field);
-    padding: 12px 16px; font-size: 16px; line-height: 1.3; outline: none;
+    padding: 12px 16px; font-size: 1rem; line-height: 1.3; outline: none;
     transition: border-color 150ms ease, background-color 150ms ease;
   }
   input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 1; }
   input.hint::placeholder { color: var(--text-secondary); }
-  input:focus, textarea:focus { border-color: var(--brand); }
+  input:focus, textarea:focus { border-color: var(--brand-text); }
   textarea { resize: vertical; min-height: 96px; line-height: 1.55; }
   input[type="date"] { -webkit-appearance: none; appearance: none; }
   .pagetitle { width: 100%; padding: 0; overflow-wrap: anywhere; }                 /* a long name wraps like any title */
 
   .btn {
     appearance: none; border: 0; cursor: pointer; border-radius: 50px;
-    min-height: 44px; padding: 12px 32px; font-size: 17px; font-weight: 400; letter-spacing: 0.01em;
+    min-height: 44px; padding: 12px 32px; font-size: 1.0625rem; font-weight: 400; letter-spacing: 0.01em;
     background: var(--btn-bg); color: var(--btn-fg);
     transition: opacity 300ms ease;
   }
-  .btn.sm { min-height: 40px; padding: 10px 24px; font-size: 14px; }
+  .btn.sm { min-height: 40px; padding: 10px 24px; font-size: 0.875rem; }
   .btn:hover, .btn:active { opacity: 0.85; }
-  .btn.quiet { background: transparent; color: var(--brand); padding: 0 8px; }      /* tertiary: plain text in the tint */
+  .btn.quiet { background: transparent; color: var(--brand-text); padding: 0 8px; }      /* tertiary: plain text in the tint */
   .btn.danger { background: transparent; color: var(--danger); padding: 0 8px; }
   .btn.quiet:hover, .btn.danger:hover { opacity: 0.7; }
   /* in-page actions take a shape, as Apple's do: the tinted capsule, brand at a breath of opacity; red for the destructive ones. Bare text stays only in list rows, sheets and the top bar */
-  .btn.tint { background: var(--glyph-fill); color: var(--text-primary); width: auto; min-height: 40px; padding: 0 16px; font-size: 15px; font-weight: 500; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; }
+  .btn.tint { background: var(--glyph-fill); color: var(--text-primary); width: auto; min-height: 40px; padding: 0 16px; font-size: 0.9375rem; font-weight: 500; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; }
   .btn.tint.danger { color: var(--danger); }                                   /* the same grey, red ink */
-  .btn.tint.accent { color: var(--brand); }                                    /* the one accent capsule of a screen, like Apple's green on grey */
+  .btn.tint.accent { color: var(--brand-text); }                                    /* the one accent capsule of a screen, like Apple's green on grey */
   .btn.ink { background: var(--ink); color: var(--ink-on); }                   /* Apple's strong monochrome button: black on light, white on dark */
   .btn.outline { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }   /* its outlined partner, like Pre-order next to Learn more */
   .start-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }           /* + Workout and Templates, side by side, half each, the same height and type */
   .start-pair > * { min-width: 0; display: flex; }
-  .start-pair .btn { width: 100%; min-height: 52px; height: 100%; padding: 12px 16px; font-size: 17px; font-weight: 500; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; }
+  .start-pair .btn { width: 100%; min-height: 52px; height: 100%; padding: 12px 16px; font-size: 1.0625rem; font-weight: 500; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; }
   .start-pair .btn.tint { color: var(--text-primary); }
   .start-pair > div[hidden] { display: none; }
   #vClient.tpl .start-pair { grid-template-columns: 1fr; }
-  .btn.wide { width: 100%; min-height: 50px; padding: 0 16px; font-size: 17px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }   /* Finish workout: the page's main act, filled purple and full width; Skip under it stays the quiet grey capsule */
-  .btn.tint.wide { width: 100%; min-height: 50px; font-size: 17px; font-weight: 600; }
+  .btn.wide { width: 100%; min-height: 50px; padding: 0 16px; font-size: 1.0625rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }   /* Finish workout: the page's main act, filled purple and full width; Skip under it stays the quiet grey capsule */
+  .btn.tint.wide { width: 100%; min-height: 50px; font-size: 1.0625rem; font-weight: 600; }
   .btn.tint:hover, .btn.tint:active { opacity: 0.8; }
   .btn.tint svg { width: 16px; height: 16px; flex: none; }
-  .btn.tint.addname { min-height: 32px; padding: 0 12px; font-size: 13px; }
+  .btn.tint.addname { min-height: 32px; padding: 0 12px; font-size: 0.8125rem; }
   .start-row { display: flex; gap: 10px; margin-top: 16px; align-items: stretch; }   /* Apple's pair: one filled, one outlined, edge to edge; alone, the filled one takes the whole width */
-  .start-row #addRow, .start-row #tplFill { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 16px; font-size: 16px; font-weight: 600; margin: 0; white-space: nowrap; }
+  .start-row #addRow, .start-row #tplFill { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 16px; font-size: 1rem; font-weight: 600; margin: 0; white-space: nowrap; }
   .btn:disabled { opacity: 0.5; cursor: default; }
   .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible, .datefield:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   .cal button:focus-visible { outline-offset: -2px; }
 
   .stack { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
   .seg { display: inline-flex; border: 0; border-radius: 50px; padding: 2px; background: var(--glyph-fill); }   /* a track that reads on the page and in a card, in both themes */
-  .seg button { appearance: none; border: 0; background: transparent; color: var(--text-secondary); border-radius: 50px; min-height: 36px; padding: 0 20px; font-size: 14px; cursor: pointer; transition: background-color 150ms ease, color 150ms ease; }
+  .seg button { appearance: none; border: 0; background: transparent; color: var(--text-secondary); border-radius: 50px; min-height: 36px; padding: 0 20px; font-size: 0.875rem; cursor: pointer; transition: background-color 150ms ease, color 150ms ease; }
   .seg button.on { background: var(--seg-on); color: var(--text-primary); box-shadow: 0 1px 3px var(--seg-shadow); }   /* iOS segmented control: the chosen key is raised, not a black pill */
   body.client .trainer-only { display: none !important; }
   body.client .row .x, body.client .row .note { display: none; }
@@ -274,28 +278,28 @@
   .list button {
     appearance: none; border: 0; background: none; width: 100%; text-align: left; cursor: pointer;
     min-height: 56px; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    font-size: 17px; letter-spacing: -0.01em; color: var(--text-primary); transition: opacity 300ms ease;
+    font-size: 1.0625rem; letter-spacing: -0.01em; color: var(--text-primary); transition: opacity 300ms ease;
   }
   .list button:hover { opacity: 0.85; }
-  .list .sub { color: var(--text-tertiary); font-size: 13px; letter-spacing: 0; white-space: nowrap; }
+  .list .sub { color: var(--text-tertiary); font-size: 0.8125rem; letter-spacing: 0; white-space: nowrap; }
   .list button.news { position: relative; }                                   /* a client did something on their own: the unread dot, and words on the right */
   .list button.news::before { content: ""; position: absolute; left: 7px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--brand); }
   .list .nm { display: flex; flex-direction: column; gap: 3px; min-width: 0; }  /* the name, and under it what is new */
   .list .nm > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .list .n2 { font-size: 13px; line-height: 1.2; font-weight: 500; color: var(--text-secondary); }
+  .list .n2 { font-size: 0.8125rem; line-height: 1.2; font-weight: 500; color: var(--text-secondary); }
   .list .n2[hidden] { display: none; }
   .list button.news .n2 { color: var(--text-primary); }
   .notif { margin-top: 4px; }                                                     /* under the Message row: what the client finished on their own, until he has looked */
   .notif h2 { margin: 24px 0 10px; }
   .notif .news-clear { margin-top: 8px; }
-  .notif .count-old { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--brand); color: #fff; font-size: 12px; font-weight: 600; letter-spacing: 0; }
+  .notif .count-old { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--brand); color: #fff; font-size: 0.75rem; font-weight: 600; letter-spacing: 0; }
   .notif .notif-list { margin-top: 8px; }
   .notif .notif-list[hidden] { display: none; }
   .list button.nn { flex-direction: column; align-items: stretch; gap: 4px; }   /* a new note: exercise and day on top, the note underneath */
   .nn-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .nn-top .nn-ex { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nn-top .sub { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .nn-text { font-size: 15px; line-height: 1.35; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nn-text { font-size: 0.9375rem; line-height: 1.35; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .list .chev { color: var(--text-tertiary); margin-left: 8px; }
   .btn.soft, .btn.tint.wide.soft { font-weight: 400; }        /* the quiet pills under Finish workout: regular weight, the way an alert stacks its buttons */
   .foot.stack { display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin-top: 32px; padding-top: 24px; max-width: none; }   /* not the login form's narrow .stack: this one spans the page */
@@ -304,33 +308,33 @@
   #vTraining.tpl .foot.stack .pair { display: none; }
   .list.form li { padding: 0; }                                                /* a form: a label and its field in each cell */
   .list.form .cell { display: flex; flex-direction: column; gap: 3px; padding: 11px 20px 12px; cursor: text; }
-  .list.form .cap { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
-  .list.form input { width: 100%; background: none; border: 0; border-radius: 0; padding: 0; min-height: 30px; font-size: 17px; letter-spacing: -0.01em; color: var(--text-primary); }
+  .list.form .cap { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .list.form input { width: 100%; background: none; border: 0; border-radius: 0; padding: 0; min-height: 30px; font-size: 1.0625rem; letter-spacing: -0.01em; color: var(--text-primary); }
   .list.form input:focus { outline: none; box-shadow: none; }
-  .group-foot { margin: 8px 20px 0; font-size: 13px; line-height: 1.35; color: var(--text-tertiary); }
-  .nav-action { flex: none; appearance: none; border: 0; background: none; cursor: pointer; color: var(--brand); font-size: 17px; font-weight: 600; letter-spacing: -0.01em; padding: 8px 2px; -webkit-tap-highlight-color: transparent; }   /* Done, in the bar, the way a form page ends on iPhone */
+  .group-foot { margin: 8px 20px 0; font-size: 0.8125rem; line-height: 1.35; color: var(--text-tertiary); }
+  .nav-action { flex: none; appearance: none; border: 0; background: none; cursor: pointer; color: var(--brand-text); font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; padding: 8px 2px; -webkit-tap-highlight-color: transparent; }   /* Done, in the bar, the way a form page ends on iPhone */
   .nav-action[hidden] { display: none; }
   #exPlayer { margin: 0 0 16px; }
   .list li.more > div { min-height: 56px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-  .list li.more button { width: auto; min-height: 44px; padding: 0; color: var(--brand); gap: 10px; }   /* "Show more" / "Show less": tertiary actions inside the group */
+  .list li.more button { width: auto; min-height: 44px; padding: 0; color: var(--brand-text); gap: 10px; }   /* "Show more" / "Show less": tertiary actions inside the group */
   .list li.more button:only-child { margin-right: auto; }
-  .empty { color: var(--text-tertiary); font-size: 13px; letter-spacing: 0; padding: 16px 0 4px; }
+  .empty { color: var(--text-tertiary); font-size: 0.8125rem; letter-spacing: 0; padding: 16px 0 4px; }
   /* Templates card: the one place the brand purple carries a surface */
   .tplcard {
     appearance: none; border: 0; cursor: pointer; margin-top: 16px; width: 100%;
     display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 32px; min-height: 44px; border-radius: 50px;
-    font-size: 17px; font-weight: 400; letter-spacing: 0.01em; color: #fff;
+    font-size: 1.0625rem; font-weight: 400; letter-spacing: 0.01em; color: #fff;
     background: linear-gradient(135deg, var(--brand-fill) 0%, var(--brand-deep) 100%);
     box-shadow: 0 6px 16px rgba(73, 70, 100, 0.24), inset 0 1px 0 rgba(255,255,255,0.12); transition: opacity 300ms ease, transform 300ms ease;   /* the brand gradient: his signature, back by his ask (Oct 14) */
   }
   .tplcard:hover { opacity: 0.94; }
   .tplcard:active { transform: scale(0.99); }
   .tplcard[hidden] { display: none; }
-  .tc-chev { font-size: 20px; line-height: 1; color: rgba(255,255,255,0.72); flex: none; }
+  .tc-chev { font-size: 1.25rem; line-height: 1; color: rgba(255,255,255,0.72); flex: none; }
   .listbar { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin: 12px 0 4px; }
-  .listbar .muted { font-size: 13px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); padding-left: 4px; }
-  .listbar .btn.quiet { color: var(--text-tertiary); font-size: 15px; min-height: 44px; }
-  .list .rowline { min-height: 56px; padding: 6px 12px 6px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 17px; letter-spacing: -0.01em; color: var(--text-primary); }
+  .listbar .muted { font-size: 0.8125rem; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); padding-left: 4px; }
+  .listbar .btn.quiet { color: var(--text-tertiary); font-size: 0.9375rem; min-height: 44px; }
+  .list .rowline { min-height: 56px; padding: 6px 12px 6px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 1.0625rem; letter-spacing: -0.01em; color: var(--text-primary); }
   .list li.drag-row { touch-action: pan-y; user-select: none; -webkit-user-select: none; transition: transform 160ms ease; background: var(--card); }   /* the card itself still scrolls; only the grip drags */
   .list li.drag-row.dragging { transition: none; position: relative; z-index: 2; cursor: grabbing; background: var(--elevated); box-shadow: 0 10px 28px rgba(0,0,0,0.28); border-radius: var(--r-field); }
   #exSearch { -webkit-appearance: none; }
@@ -338,29 +342,29 @@
   .list .exdetail[hidden] { display: none; }
   .list .exdetail .player { margin-top: 0; }
   .list .exdetail .row-actions { display: flex; gap: 4px 12px; align-items: center; flex-wrap: wrap; }
-  .list .exdetail button { width: auto; min-height: 40px; padding: 0 8px; display: inline-flex; justify-content: center; font-size: 15px; letter-spacing: 0; }
+  .list .exdetail button { width: auto; min-height: 40px; padding: 0 8px; display: inline-flex; justify-content: center; font-size: 0.9375rem; letter-spacing: 0; }
   .list .exdetail button.btn.sm { padding: 0 20px; background: var(--btn-bg); color: var(--btn-fg); }
   .list .exdetail .danger-link { color: var(--danger); }
   .list .exdetail.editing { padding-top: 12px; gap: 12px; }                  /* one exercise, everything about it */
   .list .exdetail .edit-field { display: flex; flex-direction: column; gap: 5px; }
-  .list .exdetail .edit-field .cap { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin-left: 2px; }
+  .list .exdetail .edit-field .cap { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin-left: 2px; }
   .list .exdetail .edit-field input { width: 100%; }
   .list .exdetail .edit-foot { display: flex; align-items: center; gap: 12px; margin-top: 2px; }
   .list li.open > button { background: var(--elevated); }
   .list .sec .dot { color: var(--text-tertiary); }     /* metadata, not a control */
-  .list .rowline .grip { color: var(--text-tertiary); font-size: 22px; line-height: 1; min-width: 44px; min-height: 44px; margin: -6px -8px -6px 0; display: inline-flex; align-items: center; justify-content: center; touch-action: none; cursor: grab; }   /* the one drag handle, 44px to the finger */
+  .list .rowline .grip { color: var(--text-tertiary); font-size: 1.375rem; line-height: 1; min-width: 44px; min-height: 44px; margin: -6px -8px -6px 0; display: inline-flex; align-items: center; justify-content: center; touch-action: none; cursor: grab; }   /* the one drag handle, 44px to the finger */
   .list li.drag-row.dragging .grip { cursor: grabbing; }
 
   /* Training */
   .ttl { display: grid; grid-template-columns: 1fr; gap: 8px; align-items: start; margin-top: 20px; }
   .ttl .datefield { justify-self: start; }
   .ttl .date-row { justify-self: stretch; }
-  .ttl .title { font-size: 26px; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; background: transparent; padding: 0; border-radius: var(--r-field); resize: none; overflow: hidden; min-height: 32px; }
+  .ttl .title { font-size: 1.625rem; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; background: transparent; padding: 0; border-radius: var(--r-field); resize: none; overflow: hidden; min-height: 32px; }
   .ttl .title:focus { background: var(--field); padding: 8px 12px; }
-  .datefield { appearance: none; border: 0; cursor: pointer; width: auto; min-height: 36px; font-size: 13px; letter-spacing: 0; color: var(--text-primary); padding: 8px 12px; border-radius: var(--r-field); background: var(--field); font-family: inherit; transition: opacity 300ms ease; }
+  .datefield { appearance: none; border: 0; cursor: pointer; width: auto; min-height: 36px; font-size: 0.8125rem; letter-spacing: 0; color: var(--text-primary); padding: 8px 12px; border-radius: var(--r-field); background: var(--field); font-family: inherit; transition: opacity 300ms ease; }
   .datefield:hover { opacity: 0.85; }
   .datefield:disabled { cursor: default; opacity: 1; }
-  body.client .datefield:disabled { background: none; padding: 0; min-height: 0; border-radius: 0; font-size: 17px; line-height: 22px; color: var(--text-secondary); }   /* the client's date: a quiet line under the title, nothing to tap */
+  body.client .datefield:disabled { background: none; padding: 0; min-height: 0; border-radius: 0; font-size: 1.0625rem; line-height: 1.375rem; color: var(--text-secondary); }   /* the client's date: a quiet line under the title, nothing to tap */
   body.client .ttl { gap: 4px; }
   .sheet-bg { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; touch-action: none; overscroll-behavior: contain; }
   .sheet-bg[hidden] { display: none; }
@@ -369,27 +373,27 @@
   @keyframes sheetUp { from { transform: translateY(28px); } to { transform: translateY(0); } }
   @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
   .sheet-head { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin-bottom: 2px; }
-  .sheet-title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
-  .sheet .cal button.today .dn { background: none; color: var(--brand); font-weight: 600; }   /* in the picker: today is purple text, the chosen day is the filled one */
+  .sheet-title { font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; }
+  .sheet .cal button.today .dn { background: none; color: var(--brand-text); font-weight: 600; }   /* in the picker: today is purple text, the chosen day is the filled one */
   .sheet .cal button.sel .dn { background: var(--brand-fill); color: #fff; box-shadow: none; }
   .sheet .cal button.today.sel .dn { box-shadow: none; }
   /* "Finish early" asks first: what's done stays, the rest stays open, and they can say why */
   .sheet.ask { padding-top: 18px; }
-  .sheet.ask h3 { margin: 6px 0 6px; font-size: 26px; line-height: 30px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
-  .sheet.ask .lead { margin: 0 0 10px; font-size: 17px; color: var(--text-primary); }
-  .sheet.ask .fine { margin: 0; font-size: 15px; line-height: 1.4; color: var(--text-secondary); }
+  .sheet.ask h3 { margin: 6px 0 6px; font-size: 1.625rem; line-height: 1.875rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
+  .sheet.ask .lead { margin: 0 0 10px; font-size: 1.0625rem; color: var(--text-primary); }
+  .sheet.ask .fine { margin: 0; font-size: 0.9375rem; line-height: 1.4; color: var(--text-secondary); }
   .sheet.ask hr { border: 0; border-top: 1px solid var(--card-border); margin: 16px 0 14px; }
-  .sheet.ask .cap { margin: 0 0 10px; font-size: 15px; color: var(--text-secondary); }
+  .sheet.ask .cap { margin: 0 0 10px; font-size: 0.9375rem; color: var(--text-secondary); }
   /* the confirm sheet: nothing is deleted or discarded by accident; only its red button does it */
-  .sheet.confirm-sheet h3 { font-size: 22px; line-height: 28px; }
+  .sheet.confirm-sheet h3 { font-size: 1.375rem; line-height: 1.75rem; }
   .sheet.confirm-sheet .lead[hidden] { display: none; }
   .pick-sheet .list { margin-top: 14px; max-height: 50vh; overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }   /* "Copy workout to": a grouped list of clients inside the sheet */
   .pick-sheet .list { background: var(--sheet-list); border-color: transparent; }
   .pick-sheet .ask-actions { margin-top: 10px; }
   .ask-actions { display: grid; gap: 10px; margin-top: 18px; }
-  .ask-actions .btn { min-height: 50px; font-size: 17px; }
+  .ask-actions .btn { min-height: 50px; font-size: 1.0625rem; }
   .sheet.ask .reasons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .sheet.ask .reasons button { appearance: none; cursor: pointer; min-height: 44px; padding: 0 12px; border-radius: var(--r-field); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-primary); font-size: 15px; transition: opacity 300ms ease; }
+  .sheet.ask .reasons button { appearance: none; cursor: pointer; min-height: 44px; padding: 0 12px; border-radius: var(--r-field); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-primary); font-size: 0.9375rem; transition: opacity 300ms ease; }
   .sheet.ask .reasons button.on { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; font-weight: 600; }   /* the chosen one, like the current set */
   .sheet.ask .btn { width: 100%; margin-top: 18px; }
   .sheet.ask .btn.quiet { margin-top: 4px; }
@@ -397,12 +401,12 @@
 
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
   .block { --ss: var(--ink); --ss-ink: var(--ink-on); }   /* badges: black on light, white on dark — no card colour */
-    .group-cap { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; margin: 0 0 8px 2px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); }
+    .group-cap { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; margin: 0 0 8px 2px; font-size: 0.8125rem; letter-spacing: 0; color: var(--text-tertiary); }
   .group-cap b { font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-secondary); }
-  .group-cap .info { appearance: none; width: 18px; height: 18px; padding: 0; margin: 0; border: 1.5px solid currentColor; border-radius: 50%; background: none; color: var(--brand); font-family: Georgia, "Times New Roman", serif; font-style: italic; font-size: 12px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; align-self: center; }   /* Apple's circled i: tap for what a superset is */
+  .group-cap .info { appearance: none; width: 18px; height: 18px; padding: 0; margin: 0; border: 1.5px solid currentColor; border-radius: 50%; background: none; color: var(--brand-text); font-family: Georgia, "Times New Roman", serif; font-style: italic; font-size: 0.75rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; align-self: center; }   /* Apple's circled i: tap for what a superset is */
   .group-cap .info:active { opacity: 0.6; }
   .group-cap .info { position: relative; }
-  .group-cap .info::before { content: ""; position: absolute; inset: -12px; border-radius: 50%; }   /* the little i: a thumb-sized target around it */
+  .group-cap .info::before { content: ""; position: absolute; inset: -13px; border-radius: 50%; }   /* the little i: a thumb-sized target around it */
   .group { background: var(--card); border: 1.5px solid var(--card-edge); border-radius: var(--r-card); }   /* a white card on the grouped page; the outline is earned only when finished */
   .block.done .group { border-color: var(--done); }
   .labwrap { position: relative; }
@@ -413,7 +417,7 @@
   }
   .numpick button {
     appearance: none; border: 0; cursor: pointer; width: 44px; height: 44px; border-radius: var(--r-chip);
-    background: var(--field); color: var(--text-primary); font-size: 16px; font-weight: 500;
+    background: var(--field); color: var(--text-primary); font-size: 1rem; font-weight: 500;
   }
   .numpick button.cur { box-shadow: inset 0 0 0 1.5px var(--ss); }
   .row { padding: 16px; }
@@ -434,7 +438,7 @@
   .block.done:not(.open) .row .top input.label { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
   .block.done:not(.open) .card-foot { padding: 6px 16px 10px; }
   .block.done:not(.open) .done-btn { display: none; }   /* collapsed: only Show weights, centred; both return when opened */
-  .card-sum { display: none; padding: 0 16px 12px; font-size: 13px; color: var(--text-tertiary); }   /* "Finished · 3 of 3 sets" */
+  .card-sum { display: none; padding: 0 16px 12px; font-size: 0.8125rem; color: var(--text-tertiary); }   /* "Finished · 3 of 3 sets" */
   .block.done:not(.open) .card-sum { display: flex; flex-direction: column; justify-content: center; min-height: 58px; padding: 8px 64px 10px 16px; }   /* a status row tall enough for the disc to sit in, centred */
   .block.done .group { position: relative; }
   .block.done:not(.open) .card-foot { display: none; }                  /* folded: the status line is the bottom of the card */
@@ -458,24 +462,24 @@
   .block.done.open.summary .card-foot .complete, .block.done.open.summary .card-foot .finish-early, .block.done.open.summary .card-foot .resume:not(.resume-full) { display: none !important; }
   .block.done.open.summary .resume-full:not([hidden]) { display: inline-flex; }
   .sum-set { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px 0 8px; background: var(--field); border-radius: var(--r-field); }   /* one cell per set */
-  .sum-n { width: 28px; height: 28px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: var(--done); color: var(--done-ink); flex: none; }
-  .sum-val { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 5px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; overflow: hidden; }
-  .row-sum .sum-set input { appearance: none; border: 0; background: transparent; margin: 0; padding: 0 2px; min-height: 28px; height: 28px; width: 4ch; border-radius: 6px; font: inherit; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); text-align: left; }   /* the numbers are text until touched: a tap edits in place */
+  .sum-n { width: 28px; height: 28px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8125rem; font-weight: 600; background: var(--done); color: var(--done-ink); flex: none; }
+  .sum-val { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 5px; font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; overflow: hidden; }
+  .row-sum .sum-set input { appearance: none; border: 0; background: transparent; margin: 0; padding: 0 2px; min-height: 28px; height: 28px; width: 4ch; border-radius: 6px; font: inherit; font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); text-align: left; }   /* the numbers are text until touched: a tap edits in place */
   .row-sum .sum-set input::placeholder { color: var(--text-tertiary); font-weight: 500; }
-  .sum-measure { position: absolute; left: -9999px; top: 0; visibility: hidden; white-space: pre; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; padding: 0; pointer-events: none; }   /* the ruler the summary boxes are sized by */
+  .sum-measure { position: absolute; left: -9999px; top: 0; visibility: hidden; white-space: pre; font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums; padding: 0; pointer-events: none; }   /* the ruler the summary boxes are sized by */
   .sum-measure.ph { font-weight: 500; }
   .row-sum .sum-set input:focus { outline: none; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--brand); }
-  .sum-unit { color: var(--text-secondary); font-weight: 500; font-size: 14px; }
+  .sum-unit { color: var(--text-secondary); font-weight: 500; font-size: 0.875rem; }
   .sum-unit:empty { display: none; }
   .sum-x { color: var(--text-tertiary); font-weight: 500; }
-  .sum-ok { color: var(--done); font-weight: 700; font-size: 15px; flex: none; }
+  .sum-ok { color: var(--done); font-weight: 700; font-size: 0.9375rem; flex: none; }
   .sum-set.skip .sum-n { background: var(--glyph-fill); color: var(--text-tertiary); }
   .sum-set.skip .sum-val { color: var(--text-tertiary); font-weight: 500; }
   .sum-set.skip .sum-ok { visibility: hidden; }
   .block.done:not(.open) .card-chev { bottom: 11px; }                   /* chevron down, centred on the status row */
   .block.done.open .card-chev { bottom: 14px; }                         /* chevron up, bottom corner of the open card (the Sets line keeps − and +) */
   /* client: the card being done is open; the ones still to come fold to a line each, a tap opens one for a look */
-  .row .sum { display: none; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--text-tertiary); margin: 4px 0 0 64px; letter-spacing: 0; }
+  .row .sum { display: none; flex-wrap: wrap; align-items: center; font-size: 0.8125rem; color: var(--text-tertiary); margin: 4px 0 0 64px; letter-spacing: 0; }
   .row .sum .si + .si::before { content: "\00b7"; margin: 0 6px; }
   body.client .block.ahead .row .sum { display: flex; }
   body.client .block.ahead .group { cursor: pointer; }
@@ -495,9 +499,9 @@
   .card-chev.up .i-up { display: block; }
   body.client .block.ahead .card-chev { top: 12px; }
   body.client .block.ahead .row .top .name { padding-right: 48px !important; }
-  body.client .group-cap .card-chev { position: static; margin-left: auto; align-self: center; }   /* a peeked card: the fold chevron sits at the end of its heading line */
+  body.client .group-cap .card-chev { position: relative; right: auto; margin-left: auto; align-self: center; }   /* a peeked card: the fold chevron sits at the end of its heading line */
   .card-foot { padding: 4px 16px 16px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
-  .card-foot .foot-row:not(.center) .finish-early, .card-foot .foot-row:not(.center) .add-note { appearance: none; border: 0; background: none; box-shadow: none; border-radius: 0; padding: 0 2px; min-height: 36px; font-size: 15px; font-weight: 500; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }   /* under Complete set, inside the card: Finish early and Add note as quiet grey words, no pill */
+  .card-foot .foot-row:not(.center) .finish-early, .card-foot .foot-row:not(.center) .add-note { appearance: none; border: 0; background: none; box-shadow: none; border-radius: 0; padding: 0 2px; min-height: 36px; font-size: 0.9375rem; font-weight: 500; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }   /* under Complete set, inside the card: Finish early and Add note as quiet grey words, no pill */
   .card-foot .foot-row:not(.center) .finish-early:active, .card-foot .foot-row:not(.center) .add-note:active { opacity: 0.6; }
   .card-foot .foot-row { display: flex; justify-content: space-between; align-items: center; min-height: 40px; }
   .card-foot .foot-row.center { justify-content: center; min-height: 0; flex-wrap: wrap; gap: 8px 10px; }   /* undo / resume: room between them; the note row below keeps them clear of the corner chevron */
@@ -512,14 +516,14 @@
   .block.peek .card-foot .complete, .block.peek .card-foot .add-note, .block.peek .card-foot .exnote, .block.peek .card-foot .client-note { display: none !important; }   /* a card still to come, opened for a look: nothing to log, no note here */
   .block.peek .card-foot { padding-top: 4px; gap: 0; }
   .block.peek .card-foot .foot-row { display: none; }   /* nothing to tap on a card still to come: it is decided when it is current */
-  .card-foot .foot-wait { min-height: 34px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 15px; font-weight: 400; color: var(--text-secondary); }   /* where Complete set would be: the one line that says why it is not here, close over the Skip under it */
+  .card-foot .foot-wait { min-height: 34px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.9375rem; font-weight: 400; color: var(--text-secondary); }   /* where Complete set would be: the one line that says why it is not here, close over the Skip under it */
   .block.done.open.summary .card-chev { bottom: 18px; }
   .block.done.open.summary .ex-icons { display: none; }   /* a finished exercise: no discs at all — swapping, the video and instructions are for the one still to do */
   .block.done.open.summary .row .cnote { display: none; }   /* the Instructions line goes with it */
-  .add-note { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 4px; display: inline-flex; align-items: center; gap: 6px; }
+  .add-note { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand-text); font-size: 0.9375rem; min-height: 40px; padding: 0 4px; display: inline-flex; align-items: center; gap: 6px; }
   .finish-early { display: inline-flex; align-items: center; gap: 6px; }
   .finish-early svg { flex: 0 0 auto; }
-  .card-foot .finish-early, .card-foot .add-note, .card-foot .resume, .card-foot .undo-set { background: var(--glyph-fill); color: var(--text-primary); border-radius: 50px; min-height: 38px; padding: 0 14px; font-size: 14px; font-weight: 500; align-items: center; gap: 7px; }   /* the card's own actions: capsules too */
+  .card-foot .finish-early, .card-foot .add-note, .card-foot .resume, .card-foot .undo-set { background: var(--glyph-fill); color: var(--text-primary); border-radius: 50px; min-height: 38px; padding: 0 14px; font-size: 0.875rem; font-weight: 500; align-items: center; gap: 7px; }   /* the card's own actions: capsules too */
   .card-foot .finish-early, .card-foot .add-note { display: inline-flex; }
   .add-note .ico { position: relative; display: inline-flex; }
   .add-note .badge { position: absolute; top: -3px; right: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--card); }   /* the red dot: there is a note on this exercise */
@@ -528,21 +532,21 @@
   .exnote textarea { width: 100%; box-sizing: border-box; min-height: 44px; }
   .client-note { margin: 6px 0 8px; padding: 2px 0 2px 12px; border-left: 2px solid var(--brand); }                 /* the note on this exercise, this session */
   .client-note[hidden] { display: none; }
-  .client-note .cap { display: flex; align-items: center; gap: 14px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-tertiary); }
-  .client-note .cap button { appearance: none; border: 0; background: none; padding: 0; min-height: 24px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--brand); cursor: pointer; }
+  .client-note .cap { display: flex; align-items: center; gap: 14px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-tertiary); }
+  .client-note .cap button { appearance: none; border: 0; background: none; padding: 0; min-height: 24px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--brand-text); cursor: pointer; }
   .client-note .cap button.del { color: var(--danger); margin-left: auto; }
   .client-note .cap button { min-height: 44px; margin: -10px 0; }                 /* Edit / Delete: the words stay small, the target is thumb-sized */
-  .client-note .text { margin-top: 2px; font-size: 15px; line-height: 1.4; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .client-note .text { margin-top: 2px; font-size: 0.9375rem; line-height: 1.4; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
   .fold-btn {
     appearance: none; cursor: pointer; border-radius: 50px; min-height: 40px; padding: 10px 24px;
-    font-size: 14px; font-weight: 400; letter-spacing: 0.01em;
-    background: transparent; color: var(--brand); border: 0;
+    font-size: 0.875rem; font-weight: 400; letter-spacing: 0.01em;
+    background: transparent; color: var(--brand-text); border: 0;
     transition: opacity 300ms ease;
   }
   .fold-btn:hover { opacity: 0.85; }
   .done-btn {
     appearance: none; cursor: pointer; border-radius: 50px; min-height: 40px; padding: 10px 24px;
-    font-size: 14px; font-weight: 400; letter-spacing: 0.01em;
+    font-size: 0.875rem; font-weight: 400; letter-spacing: 0.01em;
     background: transparent; color: var(--text-secondary); border: 1px solid var(--card-border);
     transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, opacity 300ms ease;
   }
@@ -557,10 +561,10 @@
   .group .row .top input.label::placeholder { color: var(--ss-ink); opacity: 0.5; }
   .group .row .top input.label:focus { box-shadow: 0 0 0 2px var(--brand); border-color: transparent; }
   .row .top .exwrap { position: relative; }
-  .row .top .name { font-weight: 500; resize: none; overflow: hidden; min-height: 44px; padding: 10px 16px; line-height: 22px; display: block; }
+  .row .top .name { font-weight: 500; resize: none; overflow: hidden; min-height: 44px; padding: 10px 16px; line-height: 1.375rem; display: block; }
   .row .x {
     appearance: none; border: 0; background: none; color: var(--text-tertiary); cursor: pointer;
-    width: 40px; height: 44px; font-size: 20px; line-height: 1; border-radius: var(--r-chip); transition: opacity 300ms ease;
+    width: 40px; height: 44px; font-size: 1.25rem; line-height: 1; border-radius: var(--r-chip); transition: opacity 300ms ease;
   }
   .row .x:hover { opacity: 0.7; }
   .sugg, .alt-menu {                                          /* the same liquid glass as the tab bar and the bubble: every floating panel in the app is one material */
@@ -570,7 +574,7 @@
   }
   .sugg button, .alt-menu button {
     appearance: none; border: 0; background: none; width: 100%; text-align: left; cursor: pointer;
-    padding: 12px 16px; font-size: 16px; letter-spacing: -0.01em; color: var(--text-primary);
+    padding: 12px 16px; font-size: 1rem; letter-spacing: -0.01em; color: var(--text-primary);
   }
   .sugg button, .alt-menu button { border-radius: 11px; }
   .sugg button:hover, .sugg button:focus, .alt-menu button:hover, .alt-menu button:focus { background: var(--glass-bar-on); outline: none; }
@@ -597,28 +601,28 @@
   .block.done:not(.open) .row .top .name { padding-right: 16px !important; }
   .alt-menu { left: -64px; right: 0; }
   .alt-menu { max-height: none; overflow: hidden; }
-  .alt-menu .cur { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 16px; letter-spacing: -0.01em; color: var(--text-secondary); }
-  .alt-menu .cur .ck { color: var(--brand); font-weight: 600; }
+  .alt-menu .cur { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 1rem; letter-spacing: -0.01em; color: var(--text-secondary); }
+  .alt-menu .cur .ck { color: var(--brand-text); font-weight: 600; }
   .alt-menu .item { display: flex; align-items: stretch; }
   .alt-menu .item .pick { flex: 1; width: auto; }
-  .alt-menu .item .rm { width: 44px; flex: none; text-align: center; padding: 12px 0; color: var(--danger); font-size: 18px; line-height: 1; }
-  .alt-menu .add { color: var(--brand); }
+  .alt-menu .item .rm { width: 44px; flex: none; text-align: center; padding: 12px 0; color: var(--danger); font-size: 1.125rem; line-height: 1; }
+  .alt-menu .add { color: var(--brand-text); }
   .alt-menu .item.last { border-top: 1px solid var(--card-border); margin-top: 4px; padding-top: 4px; }
   .alt-menu .remove { color: var(--danger); }
   .alt-menu .alt-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; padding: 10px 4px 4px; border-top: 1px solid var(--glass-bar-edge); }   /* one line: Remove exercise on the left, Done on the right, each as wide as its words */
-  .alt-menu .alt-foot button { flex: 0 0 auto; width: auto; white-space: nowrap; min-height: 44px; padding: 10px 18px; text-align: center; font-size: 16px; font-weight: 500; border-radius: 50px; background: var(--glass-bar-on); color: var(--text-primary); }
+  .alt-menu .alt-foot button { flex: 0 0 auto; width: auto; white-space: nowrap; min-height: 44px; padding: 10px 18px; text-align: center; font-size: 1rem; font-weight: 500; border-radius: 50px; background: var(--glass-bar-on); color: var(--text-primary); }
   .alt-menu .alt-foot .remove { color: var(--danger); }
   .alt-menu .alt-foot .done { font-weight: 600; min-width: 96px; margin-left: auto; }
   .alt-menu .alt-input { width: calc(100% - 24px); margin: 8px 12px 6px; }
   .alt-menu .alt-hits:empty { display: none; }
   .alt-menu .alt-hits { max-height: 32vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-  .newname { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 13px; color: var(--text-tertiary); }
+  .newname { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 0.8125rem; color: var(--text-tertiary); }
   .newname[hidden] { display: none; }
-  .newname .btn.quiet.link { font-size: 14px; min-height: 36px; padding: 0 6px; }
+  .newname .btn.quiet.link { font-size: 0.875rem; min-height: 36px; padding: 0 6px; }
   .block.done:not(.open) .row .newname { display: none; }
   .vidrow { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
   .vidrow[hidden] { display: none; }
-  .vid-edit { appearance: none; border: 0; background: none; padding: 0 2px; cursor: pointer; margin-top: 0; margin-bottom: -4px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); min-height: 40px; line-height: 32px; }
+  .vid-edit { appearance: none; border: 0; background: none; padding: 0 2px; cursor: pointer; margin-top: 0; margin-bottom: -4px; font-size: 0.8125rem; letter-spacing: 0; color: var(--text-tertiary); min-height: 40px; line-height: 2rem; }
   .vid-form { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
   .vid-actions { display: flex; gap: 8px; align-items: center; }
   .block.done:not(.open) .row .vidrow, .block.done:not(.open) .row .vid-form { display: none; }
@@ -627,8 +631,8 @@
   .block.done:not(.open) .row .player { display: none; }
   /* reps and rest: two chips under the name that read as phrases ("8–10 reps", "60 sec transition"); the trainer types inside them */
   .specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
-  .chip { position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 44px; padding: 10px 10px; overflow: hidden; background: var(--field); border: 1px solid transparent; border-radius: var(--r-field); font-size: 16px; line-height: 1.3; cursor: text; transition: border-color 150ms ease, background-color 150ms ease; }
-  .chip:focus-within { border-color: var(--brand); }
+  .chip { position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 44px; padding: 10px 10px; overflow: hidden; background: var(--field); border: 1px solid transparent; border-radius: var(--r-field); font-size: 1rem; line-height: 1.3; cursor: text; transition: border-color 150ms ease, background-color 150ms ease; }
+  .chip:focus-within { border-color: var(--brand-text); }
   .chip .val { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* the words are real text; nothing is measured */
   .chip .val.ph { color: var(--placeholder); }
   .chip input { position: absolute; left: 0; top: 0; width: 1px; height: 1px; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; opacity: 0; pointer-events: none; text-align: right; font-weight: 500; transition: none; }   /* parked until the trainer taps the chip */
@@ -645,65 +649,65 @@
   /* client, open card: the number lives in the caption above; the name is the headline; superset rows carry a letter */
   body.client .block.ahead .group-cap, body.client .block.done .group-cap { display: none; }
   body.client .group-cap { align-items: center; gap: 2px 8px; margin: 0 0 8px 2px; min-height: 20px; }   /* the heading, its little i and the fold chevron on one centre line */
-  body.client .group-cap .num { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; line-height: 20px; text-transform: uppercase; color: var(--text-secondary); }   /* the same small caption as SCHEDULE and UP NEXT: the exercise name is the biggest thing on the card */
+  body.client .group-cap .num { font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.10em; line-height: 1.25rem; text-transform: uppercase; color: var(--text-secondary); }   /* the same small caption as SCHEDULE and UP NEXT: the exercise name is the biggest thing on the card */
   body.client .group-cap .num .kind { font-style: normal; color: var(--text-tertiary); }   /* "· SUPERSET" a shade lighter */
-  body.client .group-cap .info { width: 18px; height: 18px; font-size: 12px; margin-left: 0; align-self: center; }   /* the little i, scaled to the caption, still a thumb-sized target */
+  body.client .group-cap .info { width: 18px; height: 18px; font-size: 0.75rem; margin-left: 0; align-self: center; }   /* the little i, scaled to the caption, still a thumb-sized target */
   body.client .block:not(.ahead):not(.done) .row .top { grid-template-columns: 1fr; }
   body.client .block:not(.ahead):not(.done) .row .top .labwrap { display: none; }
-  body.client .block:not(.ahead):not(.done) .row .top .name { font-size: 26px; line-height: 30px; font-weight: 700; padding-left: var(--letw); }
+  body.client .block:not(.ahead):not(.done) .row .top .name { font-size: 1.625rem; line-height: 1.875rem; font-weight: 700; padding-left: var(--letw); }
   body.client .block:not(.ahead):not(.done) .row .top .ex-icons { top: 4px; }   /* the discs sit on the centre line of the name's first line (10 px padding + half of 30 px = 25 px; the 42 px row centres at 21 + 4) */   /* the exercise is the biggest thing on the card */
   .row .top .name.has-sub { display: none; }                                         /* the client's name box steps aside for the view with the subtitle inside it */
   .row .top .name-view { white-space: pre-wrap; overflow-wrap: anywhere; }            /* the same type, the same wrapping as the box it stands in for */
   .row .top .name-view .sub { color: var(--text-tertiary); font-weight: 500; }        /* the subtitle in the grey of the superset letter, one weight lighter than the name: 500 beside 600 on the folded cards */
   body.client .block:not(.ahead):not(.done) .row .top .name-view .sub { font-weight: 600; }   /* 600 beside the open card's 700 */
   .exlist .subt, #exList .subt { margin-left: 6px; font-weight: 400; color: var(--text-tertiary); }
-  .edit-field .hint { display: block; margin-top: 6px; font-size: 13px; line-height: 1.35; color: var(--text-tertiary); }
-  body.client .block:not(.ahead):not(.done) .row .exwrap::before { content: attr(data-letter); position: absolute; left: 0; top: 10px; font-size: 26px; font-weight: 700; line-height: 30px; color: var(--text-tertiary); }
+  .edit-field .hint { display: block; margin-top: 6px; font-size: 0.8125rem; line-height: 1.35; color: var(--text-tertiary); }
+  body.client .block:not(.ahead):not(.done) .row .exwrap::before { content: attr(data-letter); position: absolute; left: 0; top: 10px; font-size: 1.625rem; font-weight: 700; line-height: 1.875rem; color: var(--text-tertiary); }
   body.client .block:not(.ahead):not(.done) .row .sum, body.client .block:not(.ahead):not(.done) .row .tempo-wrap { margin-left: var(--letw); }
   body.client .row .top input.label, body.client .group .row .top input.label { background: var(--ss); color: var(--ss-ink); border-color: transparent; box-shadow: none; font-weight: 600; }
-  body.client .row .top .name { background: none; border-color: transparent; padding-left: 0; font-size: 19px; line-height: 24px; font-weight: 600; }
+  body.client .row .top .name { background: none; border-color: transparent; padding-left: 0; font-size: 1.1875rem; line-height: 1.5rem; font-weight: 600; }
   body.client .row .specs { display: none; }
-  body.client .row .sum { display: flex; margin: 0 0 0 var(--numw); font-size: 15px; color: var(--text-primary); }   /* reps and rest in the same ink as the name; the tempo line below is lighter */
+  body.client .row .sum { display: flex; margin: 0 0 0 var(--numw); font-size: 0.9375rem; color: var(--text-primary); }   /* reps and rest in the same ink as the name; the tempo line below is lighter */
   body.client .block:not(.ahead) .row .sum .sum-sets { display: none; }                      /* the chips above say how many sets */
   body.client .block:not(.ahead) .row .sum .si + .si::before { content: "\2022"; margin: 0 9px; color: var(--text-tertiary); font-size: 0.85em; }   /* reps • rest: a real bullet, room to breathe, wraps cleanly when long */
   body.client .block:not(.ahead) .row .sum .si.sum-sets + .si::before { content: none; }
-  body.client .block.ahead .row .sum { margin-top: 2px; font-size: 13px; color: var(--text-tertiary); }
+  body.client .block.ahead .row .sum { margin-top: 2px; font-size: 0.8125rem; color: var(--text-tertiary); }
   body.client .block.ahead .row .sum .sum-rest { display: none; }                          /* folded: sets and reps are enough */
   body.client .block.done:not(.open) .row .sum { display: none; }
   body.client .tempo-wrap { margin: 6px 0 0 var(--numw); }
-  body.client .tempo-tiles.words { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; background: none; border-radius: 0; padding: 0; font-size: 15px; color: var(--text-secondary); }   /* space, not dots, between the parts: the circles already set them apart */
-  body.client .tempo-tiles.words .si { font-size: 15px; line-height: 22px; margin: 0; color: var(--text-secondary); letter-spacing: 0; }   /* not the tile-label size */
+  body.client .tempo-tiles.words { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; background: none; border-radius: 0; padding: 0; font-size: 0.9375rem; color: var(--text-secondary); }   /* space, not dots, between the parts: the circles already set them apart */
+  body.client .tempo-tiles.words .si { font-size: 0.9375rem; line-height: 1.375rem; margin: 0; color: var(--text-secondary); letter-spacing: 0; }   /* not the tile-label size */
   body.client .tempo-tiles.words .si { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
-  body.client .tempo-tiles.words .si span { font-size: 15px; line-height: inherit; letter-spacing: 0; margin: 0; color: inherit; }   /* not the coach's tiny tile label */
+  body.client .tempo-tiles.words .si span { font-size: 0.9375rem; line-height: inherit; letter-spacing: 0; margin: 0; color: inherit; }   /* not the coach's tiny tile label */
   body.client .tempo-tiles.words .si svg { width: 22px; height: 22px; padding: 5px; box-sizing: border-box; border-radius: 50%; background: var(--glyph-fill); color: var(--text-secondary); stroke-width: 2; flex: none; }   /* the symbol in a filled circle, the way SF Symbols' circle variants sit in a list */
-  body.client .tempo-tiles .word { align-items: flex-start; text-align: left; padding: 0; min-height: 0; font-size: 15px; font-weight: 400; color: var(--text-secondary); }
+  body.client .tempo-tiles .word { align-items: flex-start; text-align: left; padding: 0; min-height: 0; font-size: 0.9375rem; font-weight: 400; color: var(--text-secondary); }
   body.client .tempo-tiles:not(.words) { background: none; padding: 0; }
   body.client .ex-icons .vid-btn { width: 36px; height: 36px; margin-right: 2px; border-radius: 50%; background: var(--ink); color: var(--ink-on); opacity: 1; }   /* a soft round play, like a TV app */
   body.client .ex-icons .vid-btn svg { width: 18px; height: 18px; }
   .tempo-wrap { margin-top: 12px; }
   .tempo-wrap[hidden] { display: none; }
-  .tempo-wrap input { width: 100%; text-align: center; padding: 10px 8px; min-height: 40px; font-size: 16px; }
+  .tempo-wrap input { width: 100%; text-align: center; padding: 10px 8px; min-height: 40px; font-size: 1rem; }
   .tempo-tiles { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--field); border-radius: var(--r-field); padding: 8px 2px; }
   body:not(.client) .tempo-tiles { cursor: pointer; }               /* the trainer taps the card itself to change it */
   .tempo-wrap input[hidden] { display: none; }
   .tempo-tiles[hidden] { display: none; }
-  .tempo-tiles .word { grid-column: 1 / -1; min-height: 28px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 500; }
+  .tempo-tiles .word { grid-column: 1 / -1; min-height: 28px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.9375rem; font-weight: 500; }
   .tempo-tiles .word.normal { color: var(--text-secondary); }        /* the default, nothing set: quieter */
   .tempo-tiles > div + div { border-left: 1px solid var(--card-border); }
   body.client .tempo-wrap input { display: none; }   /* the client sees only the card */
   .tempo-tiles > div { background: none; border-radius: 0; min-height: 38px; padding: 5px 4px 4px; text-align: center; display: flex; flex-direction: column; justify-content: flex-start; }
-  .tempo-tiles b { font-size: 15px; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .tempo-tiles span { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; letter-spacing: 0; line-height: 1; }
+  .tempo-tiles b { font-size: 0.9375rem; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tempo-tiles span { font-size: 0.625rem; color: var(--text-tertiary); margin-top: 2px; letter-spacing: 0; line-height: 1; }
   .block.done:not(.open) .row .tempo-wrap { display: none; }
   /* client: the trainer's note on an exercise sits under the tempo line as "See note"; a tap shows the words */
   .cnote { display: none; }
   body.client .row .cnote { display: block; margin: 6px 0 0 var(--numw); }
   body.client .block:not(.ahead):not(.done) .row .cnote { margin-left: var(--letw); }
   body.client .block.ahead .row .cnote, body.client .block.done:not(.open) .row .cnote, .cnote[hidden] { display: none; }
-  .cnote-btn { appearance: none; border: 0; background: none; padding: 0; min-height: 44px; margin: -6px 0; display: inline-flex; align-items: center; gap: 4px; font-size: 15px; color: var(--brand); cursor: pointer; }
+  .cnote-btn { appearance: none; border: 0; background: none; padding: 0; min-height: 44px; margin: -6px 0; display: inline-flex; align-items: center; gap: 4px; font-size: 0.9375rem; color: var(--brand-text); cursor: pointer; }
   .cnote-btn svg { transition: transform 200ms ease; }
   .cnote-btn.open svg { transform: rotate(180deg); }                 /* chevron turns up while the note is showing */
-  .cnote-text { margin: 4px 0 2px; padding: 2px 0 2px 12px; border-left: 2px solid var(--brand); font-size: 15px; line-height: 1.45; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }   /* the coach's words: ink, with a brand rule, so they read apart from the tempo line */
+  .cnote-text { margin: 4px 0 2px; padding: 2px 0 2px 12px; border-left: 2px solid var(--brand); font-size: 0.9375rem; line-height: 1.45; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }   /* the coach's words: ink, with a brand rule, so they read apart from the tempo line */
   .cnote-text[hidden] { display: none; }
   #kbbar .kb-chips { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   #kbbar .kb-chips::-webkit-scrollbar { display: none; }
@@ -711,33 +715,33 @@
   .tracker { padding: 14px 16px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }   /* one row: the set chips, and for the coach the − / + at its end */
   .tracker .tr-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
   .tracker .tr-steps { display: flex; gap: 6px; flex: none; align-self: center; }
-  .tracker button { appearance: none; cursor: pointer; width: auto; min-width: 44px; height: 40px; padding: 0 12px; border-radius: var(--r-chip); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-secondary); font-size: 15px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 2px; transition: opacity 300ms ease; }
+  .tracker button { appearance: none; cursor: pointer; width: auto; min-width: 44px; height: 40px; padding: 0 12px; border-radius: var(--r-chip); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-secondary); font-size: 0.9375rem; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 2px; transition: opacity 300ms ease; }
   .tracker button.done { border-color: var(--done); color: var(--done); background: var(--done-tint); }   /* a done set is a small "finished": fern outline, fern tick, faint fern wash */
-  .tracker button.done::after { content: "\2713"; font-size: 11px; margin-left: 4px; }
+  .tracker button.done::after { content: "\2713"; font-size: 0.6875rem; margin-left: 4px; }
   .tracker button.cur { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; font-weight: 600; }   /* the set you are on: the one purple thing on the card */
   .block.done .tracker button.cur { background: var(--done); border-color: var(--done); color: var(--done-ink); }
   .tracker button:hover { opacity: 0.85; }
   .tracker button.static { cursor: default; }                           /* a template just shows the count */
-  .tracker .step { position: relative; width: 36px; height: 30px; background: transparent; color: var(--text-secondary); font-size: 18px; font-weight: 400; }
+  .tracker .step { position: relative; width: 36px; height: 30px; background: transparent; color: var(--text-secondary); font-size: 1.125rem; font-weight: 400; }
   .tracker .step:disabled { opacity: 0.35; cursor: default; }
-  .tracker .step::before { content: ""; position: absolute; inset: -7px -4px; }   /* the − / + steppers: thumb-sized targets */
+  .tracker .step::before { content: ""; position: absolute; inset: -7px; }   /* the − / + steppers: thumb-sized targets */
   .setlog { margin-top: 14px; }
   .setlog .chip.stack { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: 74px; padding: 10px 14px; text-align: left; }   /* a label on top, the number below */
-  .setlog .chip.stack .lab { font-size: 13px; line-height: 1.2; color: var(--text-secondary); }
-  .setlog .chip.stack .valrow { display: flex; align-items: baseline; gap: 5px; min-width: 0; max-width: 100%; font-size: 22px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .setlog .chip.stack .lab { font-size: 0.8125rem; line-height: 1.2; color: var(--text-secondary); }
+  .setlog .chip.stack .valrow { display: flex; align-items: baseline; gap: 5px; min-width: 0; max-width: 100%; font-size: 1.375rem; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
   .setlog .chip.stack .valrow .val { font-weight: 600; }
-  .setlog .chip.stack .valrow .suffix { font-size: 15px; font-weight: 500; }
-  .setlog .chip.stack.editing .valrow input { position: static; flex: 1 1 auto; width: 0; min-width: 3ch; height: auto; font-size: 22px; font-weight: 600; padding: 0; }
+  .setlog .chip.stack .valrow .suffix { font-size: 0.9375rem; font-weight: 500; }
+  .setlog .chip.stack.editing .valrow input { position: static; flex: 1 1 auto; width: 0; min-width: 3ch; height: auto; font-size: 1.375rem; font-weight: 600; padding: 0; }
   .setlog .chip.stack.editing .valrow .val { display: none; }
   /* the bar: two tabs on a client's page, floating like Apple's, the glass of the date bubble */
   #tabbar { position: fixed; left: 50%; bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 8px)); transform: translateX(-50%); z-index: 45; display: flex; gap: 4px; padding: 2px; border-radius: 50px; background: var(--tab-fill); -webkit-backdrop-filter: blur(2.5px) saturate(160%); backdrop-filter: blur(2.5px) saturate(160%); box-shadow: var(--tab-shadow); }   /* where Apple's sits: into the home-indicator zone; its glass: a light blur (the page stays readable through it), a thin tint, a lit rim */
   #tabbar[hidden] { display: none; }
   #tabbar button { position: relative; }
-  .tab-badge { position: absolute; top: 5px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; font-style: normal; display: inline-flex; align-items: center; justify-content: center; }   /* unread notes: the count on the tab, as on Mail's */
+  .tab-badge { position: absolute; top: 5px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 0.6875rem; font-weight: 700; font-style: normal; display: inline-flex; align-items: center; justify-content: center; }   /* unread notes: the count on the tab, as on Mail's */
   .tab-badge[hidden] { display: none; }
-  #tabbar button { appearance: none; border: 0; background: none; min-width: 124px; height: 56px; padding: 0 18px; border-radius: 50px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0; color: var(--text); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 160ms ease, color 160ms ease; }
+  #tabbar button { appearance: none; border: 0; background: none; min-width: 124px; height: 56px; padding: 0 18px; border-radius: 50px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: inherit; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0; color: var(--text); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 160ms ease, color 160ms ease; }
   #tabbar button svg { width: 22px; height: 22px; }
-  #tabbar button.on { background: var(--tab-on); color: var(--brand); box-shadow: var(--tab-on-shadow); }
+  #tabbar button.on { background: var(--tab-on); color: var(--brand-text); box-shadow: var(--tab-on-shadow); }
   body.tabs #vClient { padding-bottom: 100px; }                                   /* the last thing on the page clears the bar */
   body.typing #tabbar { display: none; }                                          /* the keyboard has the bottom */
   #vClient:not(.tpl)[data-tab="workouts"] [data-tab]:not([data-tab="workouts"]), #vClient:not(.tpl)[data-tab="profile"] [data-tab]:not([data-tab="profile"]), #vClient:not(.tpl)[data-tab="notes"] [data-tab]:not([data-tab="notes"]) { display: none !important; }   /* each tab shows its own things */
@@ -747,7 +751,7 @@
   .plan-card[hidden] { display: none; }
   .plan-card:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   body.client .plan-card { cursor: default; }
-  .plan-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .plan-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
   .plan-head #planRight { color: var(--text-tertiary); letter-spacing: 0.04em; }
   .plan-bar { display: flex; gap: 4px; margin: 12px 0 10px; height: 8px; }
   .plan-bar[hidden] { display: none; }
@@ -757,11 +761,11 @@
   .plan-bar.cont { gap: 0; background: var(--glyph-fill); border-radius: 4px; overflow: hidden; }
   .plan-bar.cont i { flex: none; border-radius: 0; background: var(--brand); }
   .plan-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-top: 2px; }
-  .plan-foot b { display: block; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .plan-foot b { display: block; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text-primary); }
   .plan-foot b.over { color: var(--danger); }
-  .plan-foot span { display: block; margin-top: 4px; font-size: 13px; color: var(--text-secondary); }
+  .plan-foot span { display: block; margin-top: 4px; font-size: 0.8125rem; color: var(--text-secondary); }
   .plan-adjust { display: flex; align-items: center; gap: 8px; }
-  .plan-change { appearance: none; border: 0; background: var(--glyph-fill); border-radius: 50px; min-height: 36px; padding: 0 16px; font: inherit; font-size: 14px; font-weight: 500; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; }   /* a quiet grey pill, like the Coach / Client switch: one tap first, then the steps, nothing changes by accident */
+  .plan-change { appearance: none; border: 0; background: var(--glyph-fill); border-radius: 50px; min-height: 36px; padding: 0 16px; font: inherit; font-size: 0.875rem; font-weight: 500; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; }   /* a quiet grey pill, like the Coach / Client switch: one tap first, then the steps, nothing changes by accident */
   .plan-change:active { opacity: 0.7; }
   .plan-change[hidden] { display: none; }
   .plan-steps { display: flex; gap: 8px; }
@@ -770,61 +774,61 @@
   .plan-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--card-border); }
   .plan-actions[hidden] { display: none; }
   .plan-adjust[hidden] { display: none; }
-  .plan-adjust .step { appearance: none; border: 0; background: none; padding: 0; margin: 0; font: inherit; line-height: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--card-border); color: var(--text-secondary); font-size: 20px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .plan-adjust .step { appearance: none; border: 0; background: none; padding: 0; margin: 0; font: inherit; line-height: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--card-border); color: var(--text-secondary); font-size: 1.25rem; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .session-row { margin-top: 10px; }
   .session-row[hidden] { display: none; }
   #vTraining.tpl .session-row { display: none; }
-  .session-pill { appearance: none; border: 0; cursor: pointer; border-radius: 50px; min-height: 36px; padding: 0 14px; font-size: 14px; font-weight: 500; white-space: nowrap; background: var(--field); color: var(--text-secondary); display: flex; width: 100%; justify-content: center; align-items: center; gap: 7px; -webkit-tap-highlight-color: transparent; }   /* full width, so the state of the session is obvious at a glance (his ask) */
+  .session-pill { appearance: none; border: 0; cursor: pointer; border-radius: 50px; min-height: 36px; padding: 0 14px; font-size: 0.875rem; font-weight: 500; white-space: nowrap; background: var(--field); color: var(--text-secondary); display: flex; width: 100%; justify-content: center; align-items: center; gap: 7px; -webkit-tap-highlight-color: transparent; }   /* full width, so the state of the session is obvious at a glance (his ask) */
   .session-pill[hidden] { display: none; }
-  .session-pill i { display: none; font-style: normal; font-size: 12px; line-height: 1; }           /* the check appears only once it is on */
+  .session-pill i { display: none; font-style: normal; font-size: 0.75rem; line-height: 1; }           /* the check appears only once it is on */
   .session-pill.on { background: var(--ink); color: var(--ink-on); font-weight: 600; }             /* on: the ink chip, like a chosen filter in Apple's apps */
   .session-pill.on i { display: inline; }
-  body.client .session-pill.on { background: var(--field); color: var(--text-primary); border-radius: var(--r-field); min-height: 44px; padding: 0 14px; justify-content: space-between; font-size: 15px; font-weight: 600; }   /* the client reads it, in a quiet cell: words left, the package as a thin bar right */
+  body.client .session-pill.on { background: var(--field); color: var(--text-primary); border-radius: var(--r-field); min-height: 44px; padding: 0 14px; justify-content: space-between; font-size: 0.9375rem; font-weight: 600; }   /* the client reads it, in a quiet cell: words left, the package as a thin bar right */
   .mini-bar { display: flex; gap: 3px; width: 132px; flex: none; }
   .session-pill .mini-bar i, body.client .session-pill .mini-bar i { display: block; flex: 1 1 0; height: 4px; border-radius: 2px; background: var(--glyph-fill); font-size: 0; }   /* the segments are not the check glyph: they show */
   .session-pill .mini-bar i.on, body.client .session-pill .mini-bar i.on { background: var(--brand); }   /* the sessions done, in the brand purple like the plan card */
   body.client .session-pill { pointer-events: none; cursor: default; }
   body.client .session-pill i { display: none; }
-  .details select { width: 100%; max-width: 220px; appearance: none; -webkit-appearance: none; border: 1.5px solid var(--card-border); border-radius: var(--r-field); background: var(--field); color: var(--text-primary); padding: 8px 32px 8px 12px; font: inherit; font-size: 15px; background-image: linear-gradient(45deg, transparent 50%, var(--text-tertiary) 50%), linear-gradient(135deg, var(--text-tertiary) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  .details select { width: 100%; max-width: 220px; appearance: none; -webkit-appearance: none; border: 1.5px solid var(--card-border); border-radius: var(--r-field); background: var(--field); color: var(--text-primary); padding: 8px 32px 8px 12px; font: inherit; font-size: 0.9375rem; background-image: linear-gradient(45deg, transparent 50%, var(--text-tertiary) 50%), linear-gradient(135deg, var(--text-tertiary) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
   .until-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .until-row input { max-width: 170px; }
   .pack-form { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
   .list li.pack-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; cursor: pointer; }
   .list li.pack-row.editing { background: var(--elevated); }
   .pack-form .kicker { margin: 4px 0 0; }
-  .pack-form .pack-hint { margin: -2px 0 0 2px; font-size: 13px; }
+  .pack-form .pack-hint { margin: -2px 0 0 2px; font-size: 0.8125rem; }
   .pack-form .edit-foot { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
   .pack-form .edit-foot .btn:first-child { flex: 1 1 auto; }
-  .list .pack-row > div:first-child { flex: 1 1 auto; min-width: 0; font-size: 16px; }
+  .list .pack-row > div:first-child { flex: 1 1 auto; min-width: 0; font-size: 1rem; }
   .list .pack-row .sub { margin-top: 2px; }
-  .list .pack-row .sub { color: var(--text-secondary); font-size: 14px; }
-  .list .pack-row .del { appearance: none; border: 0; background: none; color: var(--danger); font: inherit; font-size: 14px; cursor: pointer; width: auto; flex: none; min-height: 44px; padding: 0; display: inline-flex; align-items: center; }   /* not the full-width list button */
+  .list .pack-row .sub { color: var(--text-secondary); font-size: 0.875rem; }
+  .list .pack-row .del { appearance: none; border: 0; background: none; color: var(--danger); font: inherit; font-size: 0.875rem; cursor: pointer; width: auto; flex: none; min-height: 44px; padding: 0; display: inline-flex; align-items: center; }   /* not the full-width list button */
   /* the client page overview: two numbers and an exercise lookup that shows the heaviest set ever */
   .overview { margin: 16px 0 18px; }                                        /* room after the name or the message pill */
   .overview[hidden] { display: none; }
   .ov-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .ov-tile { background: var(--card); border-radius: var(--r-card); padding: 14px 16px 12px; }
-  .ov-tile b { display: block; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text-primary); }
-  .ov-tile span { display: block; margin-top: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+  .ov-tile b { display: block; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .ov-tile span { display: block; margin-top: 4px; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
   .ov-pick { position: relative; margin-top: 10px; }
   .ov-pick input { width: 100%; box-sizing: border-box; padding-right: 44px; }
-  .ov-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border: 0; background: none; color: var(--text-tertiary); font-size: 22px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .ov-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border: 0; background: none; color: var(--text-tertiary); font-size: 1.375rem; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .ov-clear[hidden] { display: none; }
   .ov-best { margin-top: 10px; }
   .ov-best[hidden] { display: none; }
   .ov-tile.best { display: block; width: 100%; text-align: left; appearance: none; border: 0; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }   /* the heaviest set ever, a tile like the two above; a tap says when */
   .ov-tile.best b { color: var(--gold); }
   .ov-tile.best[hidden] { display: none; }
-  .ov-none { font-size: 15px; color: var(--text-secondary); }
+  .ov-none { font-size: 0.9375rem; color: var(--text-secondary); }
   .ov-none[hidden] { display: none; }
-  .lifts { display: flex; align-items: stretch; width: 100%; margin: 10px 0 -6px 0; min-height: 32px; border-radius: var(--r-chip); background: var(--field); font-size: 15px; line-height: 1.3; overflow: hidden; }   /* under the boxes: ONE full-width cell, the shape of the boxes above — a clock + the last session | a gold crown + the best; a tap opens the bubble in words */
+  .lifts { display: flex; align-items: stretch; width: 100%; margin: 10px 0 -6px 0; min-height: 32px; border-radius: var(--r-chip); background: var(--field); font-size: 0.9375rem; line-height: 1.3; overflow: hidden; }   /* under the boxes: ONE full-width cell, the shape of the boxes above — a clock + the last session | a gold crown + the best; a tap opens the bubble in words */
   .lifts[hidden] { display: none; }
   .lift { appearance: none; border: 0; background: none; padding: 0 10px; min-height: 40px; font: inherit; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; flex: 1 1 0; min-width: 0; transition: opacity 300ms ease; }
   .lift:active { opacity: 0.7; }
   .lift b { overflow: hidden; text-overflow: ellipsis; }
   .lift.last:not([hidden]) + .lift.best { position: relative; }
   .lift.last:not([hidden]) + .lift.best::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 1px; background: var(--text-tertiary); opacity: 0.35; }   /* the hairline between the halves */
-  .lifts.tight { font-size: 14px; } .lifts.tight .lift { padding: 0 6px; gap: 5px; }
+  .lifts.tight { font-size: 0.875rem; } .lifts.tight .lift { padding: 0 6px; gap: 5px; }
   .lifts.stack { flex-direction: column; }                                   /* a tiny screen with long numbers: the halves stack, the hairline turns */
   .lifts.stack .lift { min-height: 34px; }
   .lifts.stack .lift.last:not([hidden]) + .lift.best::before { left: 14px; right: 14px; top: 0; bottom: auto; width: auto; height: 1px; }
@@ -837,44 +841,44 @@
   #whenPop { display: grid; grid-template-columns: auto auto auto; column-gap: 8px; row-gap: 7px; align-items: baseline; }   /* three aligned columns: the word, the numbers, the day; a long day wraps, the numbers never do */
   #whenPop.plain { grid-template-columns: auto auto; }                        /* no words (the overview tile): the numbers and the day */
   #whenPop .wrow { display: contents; }
-  #whenPop .wk { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap; }
-  #whenPop b { font-size: 15px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  #whenPop .wd { font-size: 13px; color: var(--text-secondary); }
+  #whenPop .wk { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); white-space: nowrap; }
+  #whenPop b { font-size: 0.9375rem; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #whenPop .wd { font-size: 0.8125rem; color: var(--text-secondary); }
   #whenPop::before { content: ""; position: absolute; z-index: -1; top: -6px; left: var(--caret, 16px); width: 12px; height: 12px; background: inherit; -webkit-backdrop-filter: inherit; backdrop-filter: inherit; transform: translateX(-50%) rotate(45deg); box-shadow: inset 0.5px 0.5px 0 var(--glass-edge); }
   #whenPop.above::before { top: auto; bottom: -6px; box-shadow: inset -0.5px -0.5px 0 var(--glass-edge); }
   #whenPop.menu { display: flex; flex-direction: column; gap: 2px; padding: 6px; min-width: 220px; }   /* the same bubble with rows to tap (swap exercise) */
-  #whenPop .wopt { appearance: none; border: 0; background: none; text-align: left; padding: 11px 14px; border-radius: 11px; font: inherit; font-size: 16px; letter-spacing: -0.01em; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  #whenPop .wopt { appearance: none; border: 0; background: none; text-align: left; padding: 11px 14px; border-radius: 11px; font: inherit; font-size: 1rem; letter-spacing: -0.01em; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; }
   #whenPop .wopt:active, #whenPop .wopt:hover { background: var(--field); }
   @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
   .block.done:not(.open) .row .lifts, body.client .block.ahead .row .lifts { display: none; }
   .setlog .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .setlog.timed .pair .chip.stack:nth-child(2) { order: -1; }   /* a hold: Time first, Weight beside it */
   .setlog .chip .val.ph { color: var(--text-secondary); }                 /* last time's or the set before's numbers, until they are written down */
-  .setlog .chip.stack .valrow .val.hint { font-size: 17px; font-weight: 500; color: var(--text-tertiary); letter-spacing: 0; }   /* "Log weight" / "Log time": the first time ever, the box asks instead of suggesting */
+  .setlog .chip.stack .valrow .val.hint { font-size: 1.0625rem; font-weight: 500; color: var(--text-tertiary); letter-spacing: 0; }   /* "Log weight" / "Log time": the first time ever, the box asks instead of suggesting */
   .row .weights { display: none; }                  /* the per-set grid is replaced by logging one set at a time */
   .card-foot .done-btn { display: none; }
   .card-foot .complete { width: 100%; display: inline-flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
   .vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   #hapticSwitch { position: fixed; top: 0; left: 0; margin: 0; opacity: 0; pointer-events: none; }   /* the switch behind Complete set takes focus on the tap: fixed, it is always in view, so the page never jumps to it */
-  .finish-early { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 4px; }
+  .finish-early { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand-text); font-size: 0.9375rem; min-height: 40px; padding: 0 4px; }
   .block.done:not(.open) .tracker, .block.done:not(.open) .row .setlog, .block.done:not(.open) .complete, .block.done .finish-early:not(.undo-set), .block.done:not(.open) .undo-set, .block.done:not(.open) .add-note, .block.done:not(.open) .exnote { display: none; }
   .block.done .card-foot .complete { display: none; }                   /* a finished card logs nothing more until it is resumed */
-  .resume { display: none; appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; min-height: 40px; padding: 0 8px; }
+  .resume { display: none; appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand-text); font-size: 0.9375rem; min-height: 40px; padding: 0 8px; }
   .block.done.open .resume:not([hidden]) { display: inline-block; }     /* the undo for "Finish early": only on an opened, finished-early card */
   .undo-set[hidden] { display: none; }
-  .complete.quiet-back { width: auto; background: transparent; color: var(--brand); border: 0; min-height: 40px; padding: 10px 24px; font-size: 15px; }
+  .complete.quiet-back { width: auto; background: transparent; color: var(--brand-text); border: 0; min-height: 40px; padding: 10px 24px; font-size: 0.9375rem; }
   .complete[hidden] { display: none; }
   .weights { margin-top: 16px; }
-  .weights .cap { font-size: 13px; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; display: flex; justify-content: space-between; gap: 8px; }
+  .weights .cap { font-size: 0.8125rem; font-weight: 500; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; display: flex; justify-content: space-between; gap: 8px; }
   .weights .cap span:last-child { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-tertiary); }
   .weights .boxes { display: flex; gap: 8px; flex-wrap: wrap; }
   .weights input { flex: 1 1 52px; max-width: 80px; text-align: center; padding: 12px 4px; font-weight: 500; }
   /* bar that rides above the phone keyboard while a reps / tempo / weight box is being typed in */
   #kbbar { position: fixed; left: 0; right: 0; top: 0; z-index: 50; display: flex; align-items: center; gap: 6px; padding: 8px 6px; background: var(--kb-bg); -webkit-backdrop-filter: blur(30px) saturate(1.3); backdrop-filter: blur(30px) saturate(1.3); }   /* one more row of the keyboard: its translucent ground (the page shows through, as it does through the keyboard), its keys */
   #kbbar[hidden] { display: none; }
-  #kbbar button { appearance: none; border: 0; cursor: pointer; min-height: 46px; min-width: 58px; padding: 0 14px; border-radius: 9px; background: var(--kb-key); color: var(--kb-ink); font-size: 18px; font-weight: 400; letter-spacing: 0; white-space: nowrap; box-shadow: 0 1px 0 var(--kb-shadow); -webkit-tap-highlight-color: transparent; }   /* the keyboard's own key: its height, its corner, its shadow line */
+  #kbbar button { appearance: none; border: 0; cursor: pointer; min-height: 46px; min-width: 58px; padding: 0 14px; border-radius: 9px; background: var(--kb-key); color: var(--kb-ink); font-size: 1.125rem; font-weight: 400; letter-spacing: 0; white-space: nowrap; box-shadow: 0 1px 0 var(--kb-shadow); -webkit-tap-highlight-color: transparent; }   /* the keyboard's own key: its height, its corner, its shadow line */
   #kbbar button:active { filter: brightness(1.15); }
-  #kbbar .kb-mode { font-variant-numeric: tabular-nums; width: 46px; min-width: 46px; padding: 0; flex: none; font-size: 17px; }   /* Aa / 123: a compact square key, the way Sheets does it */
+  #kbbar .kb-mode { font-variant-numeric: tabular-nums; width: 46px; min-width: 46px; padding: 0; flex: none; font-size: 1.0625rem; }   /* Aa / 123: a compact square key, the way Sheets does it */
   #kbbar .kb-chips { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; }
   #kbbar .kb-next { margin-left: auto; min-width: 74px; flex: none; }                                                            /* on to the next box: a plain key */
   #kbbar .kb-next[hidden] { display: none; }
@@ -886,13 +890,13 @@
   .note[hidden] { display: none; }
   .note-field { font-style: italic; min-height: 44px; resize: none; overflow: hidden; }
   .add { margin-top: 16px; }
-  .pill.big { min-height: 44px; padding: 0 22px; font-size: 16px; }   /* the one pill that starts a workout: a size up */
+  .pill.big { min-height: 44px; padding: 0 22px; font-size: 1rem; }   /* the one pill that starts a workout: a size up */
   #tplFill { display: block; margin-top: 10px; }                     /* on its own line under the pill; gone once the first exercise is in */
   .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
   .week button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: var(--r-chip); padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-secondary); transition: background-color 150ms ease; }
   .week button:hover { background: var(--field); }
-  .week .wd { font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
-  .week .dn { font-size: 17px; font-weight: 500; color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .week .wd { font-size: 0.6875rem; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
+  .week .dn { font-size: 1.0625rem; font-weight: 500; color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .week button.today .dn { background: var(--ink); color: var(--ink-on); }   /* today: a fact, not an action — black on light, white on dark, as in Apple's Fitness strip */
   .week .dot { width: 30px; height: 8px; border-radius: 50px; border: 1.5px solid transparent; }   /* a longer bar reads as a workout, not a dot */
   .week button.planned .dot { border: 1px solid var(--text-tertiary); }   /* scheduled: a hairline, quiet but there */
@@ -901,13 +905,13 @@
   /* month view: the week strip opened out to a whole month */
   .week-bar { margin: 28px 0 8px; min-height: 36px; }
   .week-bar h2 { margin: 0; }
-  .cal-disc { appearance: none; border: 0; background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 6px 0 10px; border-radius: 50px; color: var(--brand); font-size: 15px; font-weight: 500; letter-spacing: 0; transition: opacity 300ms ease; }
+  .cal-disc { appearance: none; border: 0; background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 6px 0 10px; border-radius: 50px; color: var(--brand-text); font-size: 0.9375rem; font-weight: 500; letter-spacing: 0; transition: opacity 300ms ease; }
   .cal-disc:hover { opacity: 0.8; }
   .cal-disc svg { transition: transform 220ms ease; }
   .cal-disc.open svg { transform: rotate(180deg); }
   @media (prefers-reduced-motion: reduce) { .cal-disc svg { transition: none; } }
   .cal-right { display: inline-flex; align-items: center; gap: 2px; }
-  .cal-today { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand); font-size: 15px; font-weight: 500; min-height: 36px; padding: 0 10px; border-radius: 50px; transition: opacity 300ms ease; }
+  .cal-today { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand-text); font-size: 0.9375rem; font-weight: 500; min-height: 36px; padding: 0 10px; border-radius: 50px; transition: opacity 300ms ease; }
   .cal-today:hover { opacity: 0.8; }
   .cal-today[hidden] { display: none; }
   .cal-view { position: relative; overflow: hidden; touch-action: pan-y; transition: height 280ms ease; }
@@ -917,23 +921,23 @@
   .cal-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin: 4px 0 6px; }
   .cal-head > .mnav:first-child { justify-self: start; }
   .cal-right { justify-self: end; }
-  .cal-title { font-size: 17px; font-weight: 500; letter-spacing: -0.01em; color: var(--text-primary); }
-  .mnav { appearance: none; border: 0; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; background: transparent; color: var(--brand); font-size: 24px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; padding: 0 0 3px; transition: opacity 300ms ease; }
+  .cal-title { font-size: 1.0625rem; font-weight: 500; letter-spacing: -0.01em; color: var(--text-primary); }
+  .mnav { appearance: none; border: 0; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; background: transparent; color: var(--brand-text); font-size: 1.5rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; padding: 0 0 3px; transition: opacity 300ms ease; }
   .mnav:hover { opacity: 0.85; }
   .cal-wd { display: grid; grid-template-columns: repeat(7, 1fr); margin: 6px 0 2px; }
-  .cal-wd span { text-align: center; font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
+  .cal-wd span { text-align: center; font-size: 0.6875rem; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
   .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; }
   .cal button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: var(--r-chip); padding: 6px 0 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
   .cal button:hover { background: var(--field); }
   .cal button.out { visibility: hidden; }
-  .cal .dn { font-size: 15px; font-weight: 500; color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .cal .dn { font-size: 0.9375rem; font-weight: 500; color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .cal button.today .dn { background: var(--ink); color: var(--ink-on); }
   .cal .dot { width: 22px; height: 6px; border-radius: 50px; border: 1.5px solid transparent; }
   .cal button.planned .dot { border: 1px solid var(--text-tertiary); }
   .cal button.finished .dot { background: var(--done); border-color: var(--done); }
   .month { margin-top: 12px; }
-  .month > button { appearance: none; border: 0; background: none; width: 100%; cursor: pointer; display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 0 4px; font-size: 17px; color: var(--text-primary); }
-  .month > button .sub { color: var(--text-tertiary); font-size: 13px; }
+  .month > button { appearance: none; border: 0; background: none; width: 100%; cursor: pointer; display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 0 4px; font-size: 1.0625rem; color: var(--text-primary); }
+  .month > button .sub { color: var(--text-tertiary); font-size: 0.8125rem; }
   .month .list { margin-top: 8px; }
   .month .month { margin-left: 16px; }
   /* client notes: a composer, then the saved notes by week, month and year */
@@ -945,19 +949,19 @@
   #vHistory .month:first-child { margin-top: 20px; }
   .note-head { margin: 24px 0 0; }   /* "This week", "October", "October 2025": the small caption, when every note is shown */
   .note-more { padding: 4px 20px 0; }
-  .note-more button { appearance: none; border: 0; background: none; width: auto; min-height: 44px; padding: 0; font: inherit; font-size: 17px; color: var(--brand); display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }   /* "Show all · 12 more" / "Show less", like Up next */
-  .note-more .sub { font-size: 15px; color: var(--text-tertiary); }
+  .note-more button { appearance: none; border: 0; background: none; width: auto; min-height: 44px; padding: 0; font: inherit; font-size: 1.0625rem; color: var(--brand-text); display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }   /* "Show all · 12 more" / "Show less", like Up next */
+  .note-more .sub { font-size: 0.9375rem; color: var(--text-tertiary); }
   .notes .entry { padding: 12px 20px; }
   .notes .entry.unseen .when b::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); margin-right: 7px; vertical-align: 1px; }   /* not read yet: the dot, as in Mail */
   .notes .entry + .entry { border-top: 1px solid var(--card-border); }
-  .notes .entry .when { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; color: var(--text-tertiary); }
+  .notes .entry .when { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 0.8125rem; color: var(--text-tertiary); }
   .notes .entry .when .ask { display: flex; gap: 10px; align-items: center; white-space: nowrap; }
-  .notes .entry .when button { appearance: none; border: 0; background: none; width: auto; display: inline-block; padding: 0; min-height: 28px; font-size: 13px; letter-spacing: 0; text-align: center; color: var(--text-tertiary); cursor: pointer; }
+  .notes .entry .when button { appearance: none; border: 0; background: none; width: auto; display: inline-block; padding: 0; min-height: 28px; font-size: 0.8125rem; letter-spacing: 0; text-align: center; color: var(--text-tertiary); cursor: pointer; }
   .notes .entry .when button.go { color: var(--danger); }
-  .notes .entry .when button.keep { color: var(--brand); }
-  .notes .entry .text { margin-top: 4px; font-size: 15px; line-height: 1.45; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .notes .entry .when button.keep { color: var(--brand-text); }
+  .notes .entry .text { margin-top: 4px; font-size: 0.9375rem; line-height: 1.45; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
   .notes .entry .text.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }   /* a long note shows three lines until opened */
-  .notes .entry .more { appearance: none; border: 0; background: none; width: auto; display: inline-block; padding: 0; margin-top: 2px; min-height: 28px; font-size: 14px; letter-spacing: 0; color: var(--brand); cursor: pointer; }
+  .notes .entry .more { appearance: none; border: 0; background: none; width: auto; display: inline-block; padding: 0; margin-top: 2px; min-height: 28px; font-size: 0.875rem; letter-spacing: 0; color: var(--brand-text); cursor: pointer; }
   .notes .entry .more[hidden] { display: none; }
   .notes .entry .when button, .notes .entry .more { min-height: 44px; margin-top: -8px; margin-bottom: -8px; }   /* Delete / Keep / More: thumb-sized targets in the same rows */
   .name-row { display: flex; align-items: center; gap: 12px; }
@@ -971,14 +975,21 @@
   .disc.open { transform: rotate(180deg); }
   .disc.needs::after { content: ""; position: absolute; top: -1px; right: -1px; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); border: 2px solid var(--surface); }   /* needs attention: red, like a badge */
   .disc.open::after { display: none; }
+  /* every control a thumb lands on offers 44pt, whatever it draws: the halo is part of the button for hit-testing */
+  .mnav, .ov-clear, .ex-icons button, .notes .entry .when button, .seg button, .datefield, .card-foot .foot-row:not(.center) .finish-early, .card-foot .foot-row:not(.center) .add-note { position: relative; }
+  .mnav::before, .ov-clear::before, .ex-icons button::before, .card-chev::before, .disc::before { content: ""; position: absolute; inset: -4px; }
+  .hdr-disc::before { inset: -2px; }
+  .seg button::before, .datefield::before, .card-foot .foot-row:not(.center) .finish-early::before, .card-foot .foot-row:not(.center) .add-note::before { content: ""; position: absolute; inset: -4px 0; }
+  .notes .entry .when button::before { content: ""; position: absolute; inset: -8px -4px; }
+  .lift, .btn.sm, .cal-disc { min-height: 44px; }
   .details { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 8px; max-width: 420px; }
   #vClientCard .details { margin-top: 20px; }
   .contact-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
   .contact-row[hidden] { display: none; }
-  .msg-pill { display: inline-flex; align-items: center; gap: 8px; padding: 0 20px; min-height: 48px; border-radius: 50px; text-decoration: none; font-size: 15px; font-weight: 600; letter-spacing: 0; color: var(--ink-on);
+  .msg-pill { display: inline-flex; align-items: center; gap: 8px; padding: 0 20px; min-height: 48px; border-radius: 50px; text-decoration: none; font-size: 0.9375rem; font-weight: 600; letter-spacing: 0; color: var(--ink-on);
     background: var(--ink); transition: opacity 300ms ease, transform 300ms ease; }   /* the strong monochrome pill, like the Add button: prominent without spending purple */
   .msg-pill:hover { opacity: 0.92; }
-  .msg-pill.small { min-height: 34px; padding: 0 14px; font-size: 14px; gap: 6px; }
+  .msg-pill.small { min-height: 34px; padding: 0 14px; font-size: 0.875rem; gap: 6px; }
   .msg-pill[hidden] { display: none; }
   .client-only { display: none; }
   body.client .client-only { display: flex; }
@@ -987,76 +998,76 @@
   #vTraining.tpl .date-row { display: none; }
   .view-seg { margin-left: auto; }                       /* trainer: see the workout the way the client will */
   .view-seg[hidden] { display: none; }
-  .view-seg button { padding: 0 14px; min-height: 32px; font-size: 13px; }
+  .view-seg button { padding: 0 14px; min-height: 32px; font-size: 0.8125rem; }
   .msg-pill:active { transform: scale(0.98); }
   .details[hidden] { display: none; }
   .field-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 2px; }
-  .field-row .muted { font-size: 15px; }
-  .field-row input[type="date"] { width: auto; font-size: 16px; padding: 8px 12px; color: var(--text-primary); }
-  .kicker { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 6px 1px; }
+  .field-row .muted { font-size: 0.9375rem; }
+  .field-row input[type="date"] { width: auto; font-size: 1rem; padding: 8px 12px; color: var(--text-primary); }
+  .kicker { font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 6px 1px; }
   .kicker[hidden] { display: none; }
   .paused-card { display: flex; flex-direction: column; gap: 6px; margin-top: 24px; padding: 18px 20px; background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r-card); }
-  .paused-card b { font-weight: 500; font-size: 17px; letter-spacing: -0.01em; }
-  .paused-card span { font-size: 15px; color: var(--text-secondary); line-height: 1.45; }
+  .paused-card b { font-weight: 500; font-size: 1.0625rem; letter-spacing: -0.01em; }
+  .paused-card span { font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.45; }
   .paused-card[hidden] { display: none; }
   body.client.paused #weekBar, body.client.paused #calWrap, body.client.paused #week, body.client.paused #todayList, body.client.paused #nextHead, body.client.paused #nextList, body.client.paused #histHead, body.client.paused #histList, body.client.paused #trainingEmpty { display: none; }
   .list.inactive button > span:first-child { color: var(--text-secondary); }
   .list[hidden], .listbar[hidden] { display: none; }
   .seg.stages { display: flex; width: 100%; }
   .seg.stages button { flex: 1; padding: 0 8px; }
-  .tpl-stage { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 14px 4px 8px; }
-  .pick-note { margin: 12px 2px 0; font-size: 15px; color: var(--text-secondary); }
+  .tpl-stage { font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 14px 4px 8px; }
+  .pick-note { margin: 12px 2px 0; font-size: 0.9375rem; color: var(--text-secondary); }
   .pick-note b { font-weight: 500; color: var(--text-primary); }
   #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .contact-row, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #todayList, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
   #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
   .tpl-pill { justify-self: stretch; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 36px; border-radius: 50px;
-    font-size: 14px; font-weight: 500; letter-spacing: 0; color: var(--text-primary); background: var(--field); transition: opacity 300ms ease; }   /* a link to the template: the same quiet bar as In person above it; the chevron says it opens */
+    font-size: 0.875rem; font-weight: 500; letter-spacing: 0; color: var(--text-primary); background: var(--field); transition: opacity 300ms ease; }   /* a link to the template: the same quiet bar as In person above it; the chevron says it opens */
   .tpl-pill:hover { opacity: 0.92; }
   .tpl-pill[hidden] { display: none; }
   .tpl-pill span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 0 1 auto; }   /* a long template name ends in an ellipsis, never pushes the page wider */
-  .tpl-pill .chev { color: var(--text-tertiary); flex: none; font-size: 16px; line-height: 1; }
-  .list li.last-used button .pri::after { content: " \00b7  last used"; font-size: 13px; color: var(--text-tertiary); font-weight: 400; }
+  .tpl-pill .chev { color: var(--text-tertiary); flex: none; font-size: 1rem; line-height: 1; }
+  .list li.last-used button .pri::after { content: " \00b7  last used"; font-size: 0.8125rem; color: var(--text-tertiary); font-weight: 400; }
   .list li.flash { animation: flash 1200ms ease; }
   @keyframes flash { 0% { background: rgba(111,107,153,0.28); } 100% { background: transparent; } }
   #draftBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: center; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--elevated); border-top: 1px solid var(--card-border); box-shadow: 0 -6px 20px rgba(0,0,0,0.10); }
   #draftBar[hidden], #draftBar.kb { display: none; }
-  #draftBar .draft-text { flex: 1; font-size: 15px; color: var(--text-secondary); }
+  #draftBar .draft-text { flex: 1; font-size: 0.9375rem; color: var(--text-secondary); }
   #draftBar.nudge { animation: nudge 500ms ease; }
   @keyframes nudge { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-8px); } 60% { transform: translateY(0); } 80% { transform: translateY(-4px); } }
   body.draft main { padding-bottom: 96px; }
   .list .pri { display: block; }
-  .list .sec { display: block; font-size: 13px; color: var(--text-tertiary); letter-spacing: 0; margin-top: 2px; }
+  .list .sec { display: block; font-size: 0.8125rem; color: var(--text-tertiary); letter-spacing: 0; margin-top: 2px; }
   .list li.next button { padding: 16px 20px; }                                   /* the very next workout stands out: when, then the day, bigger */
-  .list li.next .when { display: block; margin-bottom: 3px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand); }
+  .list li.next .when { display: block; margin-bottom: 3px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand-text); }
   .list.today { margin-top: 32px; }                                                                   /* today's card stands where its heading stood */
-  .list.today li.next .when { font-size: 13px; font-weight: 500; letter-spacing: 0.10em; margin-bottom: 6px; }   /* "TODAY" in the cell, the size of a section heading */
+  .list.today li.next .when { font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.10em; margin-bottom: 6px; }   /* "TODAY" in the cell, the size of a section heading */
   .list li.next .when.missed { color: var(--danger); }                       /* a missed session: the one red caption */
-  .list li.next .pri { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
-  .list li.next .sec { font-size: 15px; color: var(--text-secondary); margin-top: 3px; }
+  .list li.next .pri { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
+  .list li.next .sec { font-size: 0.9375rem; color: var(--text-secondary); margin-top: 3px; }
   .list li.next .missed-actions { display: flex; gap: 10px; padding: 4px 20px 14px; margin-top: -4px; }   /* a missed workout: decide right here */
-  .list li.next .missed-actions button { width: auto; min-height: 38px; padding: 0 14px; font-size: 14px; color: var(--text-primary); }
+  .list li.next .missed-actions button { width: auto; min-height: 38px; padding: 0 14px; font-size: 0.875rem; color: var(--text-primary); }
   .finish { margin-top: 32px; }
   .cele { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 24px; padding: 40px 0; }
   .cele h1 { margin: 0; }
   .cele-actions { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; max-width: 280px; }   /* Back (ink-filled) over Message (ink-outlined, coach only), one width: the Pre-order / Learn more pair */
   a.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
   a.btn[hidden] { display: none; }
-  .cele p { margin: 0; font-size: 17px; color: var(--text-secondary); max-width: 320px; }
-  .cele-check { width: 96px; height: 96px; border-radius: 50%; background: var(--done); color: var(--done-ink); font-size: 48px; display: flex; align-items: center; justify-content: center; animation: pop 600ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .cele p { margin: 0; font-size: 1.0625rem; color: var(--text-secondary); max-width: 320px; }
+  .cele-check { width: 96px; height: 96px; border-radius: 50%; background: var(--done); color: var(--done-ink); font-size: 3rem; display: flex; align-items: center; justify-content: center; animation: pop 600ms cubic-bezier(0.22, 1, 0.36, 1); }
   @keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .cele-check { animation: none; } .cal-view, .cal-track { transition: none !important; } }
-  .finish .finished { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin-top: 12px; font-size: 17px; }   /* Skip / Undo under Finish workout: air between a capsule and the button. Scoped: a finished day in the week strip carries the same class */
+  .finish .finished { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin-top: 12px; font-size: 1.0625rem; }   /* Skip / Undo under Finish workout: air between a capsule and the button. Scoped: a finished day in the week strip carries the same class */
   .finished span { color: var(--done); font-weight: 500; }
-  .notes .entry .ref { appearance: none; border: 0; background: none; width: auto; display: inline-flex; align-items: center; gap: 4px; padding: 0; margin-top: 2px; min-height: 24px; font-size: 13px; letter-spacing: 0; color: var(--text-tertiary); cursor: pointer; }   /* "Back · Wed, Oct 7 ›": the session the note came with */
+  .notes .entry .ref { appearance: none; border: 0; background: none; width: auto; display: inline-flex; align-items: center; gap: 4px; padding: 0; margin-top: 2px; min-height: 24px; font-size: 0.8125rem; letter-spacing: 0; color: var(--text-tertiary); cursor: pointer; }   /* "Back · Wed, Oct 7 ›": the session the note came with */
   .foot { margin-top: 40px; border-top: 1px solid var(--card-border); padding-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .confirm { color: var(--text-secondary); font-size: 17px; }
+  .confirm { color: var(--text-secondary); font-size: 1.0625rem; }
   .foot.foot-col { flex-direction: column; align-items: flex-start; gap: 10px; }
   .auth-split { display: flex; align-items: center; gap: 4px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--card-border); max-width: 360px; }
-  .auth-split .muted { font-size: 15px; }
-  .btn.quiet.link { color: var(--brand); padding: 0 6px; font-weight: 500; }
-  .foot.foot-col .muted { font-size: 13px; }
+  .auth-split .muted { font-size: 0.9375rem; }
+  .btn.quiet.link { color: var(--brand-text); padding: 0 6px; font-weight: 500; }
+  .foot.foot-col .muted { font-size: 0.8125rem; }
   .foot-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin-left: -8px; }
   .foot-actions .btn { white-space: nowrap; }
   .foot-pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -1064,24 +1075,24 @@
   .foot-pills .pill svg { width: 16px; height: 16px; flex: none; }
   #localFoot .foot-pills { align-self: stretch; flex-wrap: nowrap; }                 /* the three pages, side by side across the whole width, each a third */
   #localFoot .foot-pills .pill { flex: 1 1 0; justify-content: center; padding: 0 10px; min-width: 0; overflow: hidden; }
-  @media (max-width: 359px) { #localFoot .foot-pills .pill { padding: 0 6px; gap: 5px; font-size: 13px; } }   /* the narrowest phones: the three words still fit their thirds */
+  @media (max-width: 359px) { #localFoot .foot-pills .pill { padding: 0 6px; gap: 5px; font-size: 0.8125rem; } }   /* the narrowest phones: the three words still fit their thirds */
   .foot-pills.reports { margin-top: 28px; }
-  .rep-cap { font-size: 13px; color: var(--text-tertiary); margin-right: 2px; }   /* "Report PDF": this client's month, to mail yourself */
+  .rep-cap { font-size: 0.8125rem; color: var(--text-tertiary); margin-right: 2px; }   /* "Report PDF": this client's month, to mail yourself */
   select.pill { -webkit-appearance: none; appearance: none; padding-right: 30px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%236f6b99' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
-  .pill { appearance: none; border: 0; cursor: pointer; border-radius: 50px; min-height: 36px; padding: 0 16px; font-size: 14px; font-weight: 500; letter-spacing: 0; white-space: nowrap;
+  .pill { appearance: none; border: 0; cursor: pointer; border-radius: 50px; min-height: 36px; padding: 0 16px; font-size: 0.875rem; font-weight: 500; letter-spacing: 0; white-space: nowrap;
     background: var(--field); color: var(--text-primary); transition: opacity 300ms ease, transform 120ms ease; }   /* secondary: a grey pill with the brand as its text */
   .pill:hover { opacity: 0.85; }
   .pill:active { transform: scale(0.98); }
   .pill[hidden] { display: none; }
   .pill:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   .settings-list { max-width: 480px; }
-  .version { margin: 20px 0 0 2px; font-size: 13px; color: var(--text-tertiary); }   /* which build this phone is running: the number after ?v= in index.html */
-  .settings-list .srow { min-height: 56px; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 17px; letter-spacing: -0.01em; color: var(--text-primary); }
+  .version { margin: 20px 0 0 2px; font-size: 0.8125rem; color: var(--text-tertiary); }   /* which build this phone is running: the number after ?v= in index.html */
+  .settings-list .srow { min-height: 56px; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 1.0625rem; letter-spacing: -0.01em; color: var(--text-primary); }
   .settings-list button > span:first-child, .settings-list .srow > span:first-child { flex: none; }
-  .settings-list .sub { display: inline-flex; align-items: center; min-width: 0; font-size: 15px; }
+  .settings-list .sub { display: inline-flex; align-items: center; min-width: 0; font-size: 0.9375rem; }
   .settings-list .val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .settings-list .srow.wrap { flex-wrap: wrap; row-gap: 8px; }
-  .settings-list .seg button { width: auto; min-height: 32px; padding: 0 12px; font-size: 13px; letter-spacing: 0; display: inline-flex; justify-content: center; color: var(--text-secondary); transition: background-color 150ms ease, color 150ms ease; }
+  .settings-list .seg button { width: auto; min-height: 32px; padding: 0 12px; font-size: 0.8125rem; letter-spacing: 0; display: inline-flex; justify-content: center; color: var(--text-secondary); transition: background-color 150ms ease, color 150ms ease; }
   .settings-list .seg button:hover { opacity: 1; }
   .settings-list .seg button.on { background: var(--seg-on); color: var(--text-primary); box-shadow: 0 1px 3px var(--seg-shadow); }
   body.client .settings-list .trainer-only + li { border-top: 0; }
@@ -1091,20 +1102,20 @@
   @media (max-width: 400px) {
     .alt-menu { left: -60px; }
     .setlog .chip.stack { padding: 10px 10px; }
-    .setlog .chip.stack .valrow { font-size: 20px; }                      /* "Bodyweight" fits the box whole */
-    .chip .suffix { font-size: 13px; }
+    .setlog .chip.stack .valrow { font-size: 1.25rem; }                      /* "Bodyweight" fits the box whole */
+    .chip .suffix { font-size: 0.8125rem; }
     .alt-menu .alt-foot { flex-wrap: wrap; }
-    .foot.stack .pair .btn { font-size: 15px; padding-left: 10px; padding-right: 10px; }
+    .foot.stack .pair .btn { font-size: 0.9375rem; padding-left: 10px; padding-right: 10px; }
     .field-row { flex-wrap: wrap; }
     .sum-val { flex-wrap: wrap; white-space: normal; }
-    .setlog .chip.stack.editing .valrow input { font-size: 20px; }       /* the number does not pop when the box is tapped */
-    .start-row #addRow, .start-row #tplFill { font-size: 15px; padding-left: 10px; padding-right: 10px; }
+    .setlog .chip.stack.editing .valrow input { font-size: 1.25rem; }       /* the number does not pop when the box is tapped */
+    .start-row #addRow, .start-row #tplFill { font-size: 0.9375rem; padding-left: 10px; padding-right: 10px; }
     .row .top { grid-template-columns: 52px 1fr; }
     .row { --numw: 60px; }
     .row .sum { margin-left: 60px; }
     .specs { gap: 6px; }
     .specs .chip { padding: 10px 6px; }
-    .tempo-tiles span { font-size: 9px; }
+    .tempo-tiles span { font-size: 0.5625rem; }
     .tempo-tiles { padding: 8px 0; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -1118,7 +1129,7 @@
   <div class="bar">
     <button class="back" id="back" hidden><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg><span id="backLabel"></span></button>
     <div class="brand" id="brand"><img class="logo-light" src="brand/mark-black.svg" alt="Fiala Fitness"><img class="logo-dark" src="brand/mark-white.svg" alt="Fiala Fitness"></div>
-    <div id="status"></div><button class="disc hdr-disc" id="meDisc" type="button" aria-label="Settings" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-3.8 4-5.6 7.5-5.6s6.5 1.8 7.5 5.6"/></svg></button><button class="nav-action" id="navDone" type="button" hidden>Done</button>
+    <div id="status" role="status" aria-live="polite"></div><button class="disc hdr-disc" id="meDisc" type="button" aria-label="Settings" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-3.8 4-5.6 7.5-5.6s6.5 1.8 7.5 5.6"/></svg></button><button class="nav-action" id="navDone" type="button" hidden>Done</button>
   </div>
 </header>
 
@@ -1129,7 +1140,7 @@
       <input id="loginEmail" type="email" placeholder="Email" autocomplete="username" inputmode="email" autocapitalize="none" required>
       <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" required>
       <button class="btn" type="submit" id="loginBtn" style="width:100%">Sign in</button>
-      <p class="muted" id="loginMsg"></p>
+      <p class="muted" id="loginMsg" aria-live="polite"></p>
       <button class="btn quiet" type="button" id="forgotBtn" style="width:100%">Forgot password?</button>
     </form>
     <div class="auth-split"><span class="muted">First time here?</span><button class="btn quiet link" type="button" id="createBtn">Create an account</button></div>
@@ -1169,7 +1180,7 @@
   <section id="vExercises" hidden>
     <h1>Exercises</h1>
     <input id="exSearch" type="search" placeholder="Search exercises" autocomplete="off" autocapitalize="none" autocorrect="off">
-    <div class="muted" id="exCount" style="margin:10px 2px 8px;font-size:13px"></div>
+    <div class="muted" id="exCount" style="margin:10px 2px 8px;font-size:0.8125rem"></div>
     <ul class="list" id="exList"></ul>
     <button class="btn quiet add" id="exMore" type="button" hidden>Show more</button>
     <div class="empty" id="exEmpty" hidden></div>
@@ -1364,7 +1375,7 @@
       <button class="btn wide" id="finishBtn">Finish workout</button>
       <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn tint" id="unfinishBtn" type="button">Undo</button></div>
       <div class="finished" id="skipLine"><button class="btn tint wide soft" id="skipBtn" type="button">Skip workout</button></div>
-      <div class="finished" id="skippedLine" hidden><span class="muted" id="skippedText" style="font-size:17px"></span><button class="btn tint" id="unskipBtn" type="button">Undo</button></div>
+      <div class="finished" id="skippedLine" hidden><span class="muted" id="skippedText" style="font-size:1.0625rem"></span><button class="btn tint" id="unskipBtn" type="button">Undo</button></div>
     </div>
     <div class="use trainer-only" id="useWrap" hidden>
       <button class="btn" id="useBtn" type="button" style="width:100%">Use for a client</button>
@@ -1385,6 +1396,7 @@
     <div class="cal" id="dpGrid"></div>
   </div>
 </div>
+<span id="typeProbe" aria-hidden="true">A</span>
 <nav id="tabbar" aria-label="Sections" hidden>
   <button type="button" data-tab="workouts" class="on"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7.5v9M17.5 7.5v9M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg><span>Workouts</span></button>
   <button type="button" data-tab="profile"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M5 15.5l4.5-5 3.5 3.5 6-6.5"/><path d="M15 7.5h4V11.5"/></svg><span>Progress</span></button>
@@ -1432,7 +1444,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=168";
+  import { boot } from "./app/main.js?v=169";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
