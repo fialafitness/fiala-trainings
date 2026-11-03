@@ -2675,7 +2675,7 @@ import { reportRange, buildReport } from "./report.js";
     return true;
   }
   function paintMsg(c) {
-    const ok = fillMsg($("msgBtn"), $("msgText"), c); $("msgBtn").hidden = !ok || S.clientMode; $("msgText").textContent = "Message"; $("msgBtn").setAttribute("aria-label", "Message " + (((c && c.name) || "").trim().split(/\s+/)[0] || "client"));   // the word alone under the name, as in Contacts; VoiceOver hears whom
+    const ok = fillMsg($("msgBtn"), $("msgText"), c); $("msgBtn").hidden = !ok || S.clientMode; $("msgBtn").removeAttribute("aria-label");   // "Message Jane": the first name on the pill
   }
   $("cPhone").addEventListener("blur", () => { const c = clients.get(S.view.id); if (c) paintMsg(c); });
   $("accessSeg").addEventListener("click", (e) => {
