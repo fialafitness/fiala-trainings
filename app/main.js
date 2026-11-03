@@ -816,7 +816,8 @@ import { reportRange, buildReport } from "./report.js";
     if (!S.clientMode && (!S.sb || S.syncedOnce) && S.view.name === "training" && !(next.name === "training" && next.id === S.view.id) && fillFor !== S.view.id) {   // leaving an empty workout behind discards it, like an empty note (not while it waits for a template, not before the first sync)
       const t = trainings.get(S.view.id); if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
     }
-    if (notifOpen && !(next.name === "client" && next.id === notifOpen)) closeNotif();   // leaving the client: what was shown counts as seen
+    notesFresh = null;
+    if (newsShown && !(next.name === "client" && next.id === newsShown)) { const c = clients.get(newsShown); newsShown = null; if (c) markWorkoutsSeen(c); }   // leaving the client: the New list he saw counts as looked at
     for (const f of document.querySelectorAll("#rows .player iframe, #exPlayer iframe")) f.remove();   // a video left playing does not follow to the next page
     reordering = false; S.view = next; lsSet("fiala.trainings.view", S.view); render(); setStatus(); window.scrollTo(0, back ? (scrollMemo.get(viewKey(next)) || 0) : 0);   // forward: the top; back: where that page was (the header shows this page's save state, not the last page's complaint)
     if (next.name === "training") holdWake(true); else dropWake(); }
@@ -972,7 +973,7 @@ import { reportRange, buildReport } from "./report.js";
   // notes stay inside c.notes, the one key the server strips before a client's phone gets the record:
   // a string is the old single note (shown as "Earlier"), an object { log: [{ id, at, text }] } is the dated list
   const writeNotes = (c, list) => { c.notes = packNotes(list); scheduleSave("clients", c.id); };   // only ever from Save / Delete: a redraw never writes
-  function renderNotes(c) {
+  function renderNotes(c, unseen = new Set()) {                      // unseen: card notes the coach has not read yet, marked with a dot
     const wrap = $("noteList"); wrap.replaceChildren(); if (S.clientMode) return;
     const onCards = [];                                                          // notes written on the exercise cards (by the client or by him), shown here with his own
     for (const tr of clientTrainings(c.id)) for (const r of tr.rows || []) if (r.clientNote) onCards.push({ id: "row/" + tr.id + "/" + r.id, at: r.clientNoteAt || (tr.date ? tr.date + "T12:00:00" : null), text: r.clientNote, by: r.clientNoteBy || "client", exercise: String(r.name || ""), workout: { id: tr.id, title: String(tr.title || ""), date: effDate(tr) || String(tr.date || "") }, row: r, training: tr });
@@ -988,7 +989,7 @@ import { reportRange, buildReport } from "./report.js";
       return dd + " \u00b7 " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
     };
     const entryEl = (n) => {
-      const row = document.createElement("div"); row.className = "entry";
+      const row = document.createElement("div"); row.className = "entry"; row.classList.toggle("unseen", unseen.has(n.id));
       const top = document.createElement("div"); top.className = "when";
       const stamp = document.createElement("span"); stamp.innerHTML = "<b></b> \u00b7 "; stamp.firstChild.textContent = n.by === "coach" ? "You" : firstName; stamp.append(when(n));   // who wrote it, then when
       const ask = document.createElement("span"); ask.className = "ask";
@@ -1512,32 +1513,26 @@ import { reportRange, buildReport } from "./report.js";
     if (i >= 0) { const selKey = t.id + "/" + groupKey(x.r.label, i); openBlocks.add(selKey); openExNotes.add(selKey); }
     go({ name: "training", id: t.id }); followRow(x.r.id);
   }
-  let notifOpen = null;                                                   // the client whose Notifications panel is open; closing it (or leaving the page) marks the workouts seen
-  function closeNotif() { if (!notifOpen) return; const c = clients.get(notifOpen); notifOpen = null; if (c) markWorkoutsSeen(c); }
-  function renderNotif(c) {
-    const wrap = $("notifWrap"), ul = $("notifList"), n = clientNews(c), total = n.done + n.notes.length, open = notifOpen === c.id;
-    wrap.hidden = !open; $("notifCount").hidden = !total; $("notifCount").textContent = total;   // the number sits on the bell; the list shows while the bell is open
-    $("notifBtn").setAttribute("aria-expanded", String(open)); ul.hidden = !open; if (!open) { ul.replaceChildren(); return; }
-    const items = [];
-    for (const t of n.workouts) {
+  let notesFresh = null;                                                  // { id, ids }: the notes that were unread when the Notes tab was opened, dotted until he leaves
+  let newsShown = null;                                                   // the client whose "New" list was on screen: leaving the page counts as having looked
+  function renderNotif(c) {                                               // the Workouts tab: workouts the client finished on their own and the coach has not looked at, a short "New" list at the top
+    const wrap = $("notifWrap"), ul = $("notifList"), n = clientNews(c);
+    wrap.hidden = !n.workouts.length; ul.hidden = !n.workouts.length; if (!n.workouts.length) { ul.replaceChildren(); return; }
+    let head = wrap.querySelector("h2"); if (!head) { head = document.createElement("h2"); wrap.prepend(head); } head.textContent = "New";
+    ul.replaceChildren(...n.workouts.map((t) => {
       const li = document.createElement("li"), b = document.createElement("button"); b.type = "button";
       b.innerHTML = '<span class="nm"><span></span><span class="n2"></span></span><span class="sub"><span class="chev">&rsaquo;</span></span>';
       b.firstChild.firstChild.textContent = "Finished " + (String(t.title || "").trim() || "a workout"); b.firstChild.lastChild.textContent = whenDay(effDate(t) || String(t.date || ""), true);
-      b.addEventListener("click", () => go({ name: "training", id: t.id })); li.appendChild(b); items.push(li);
-    }
-    for (const x of n.notes) {
-      const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; b.className = "nn";
-      b.innerHTML = '<span class="nn-top"><span class="nn-ex"></span><span class="sub"></span></span><span class="nn-text"></span>';
-      b.querySelector(".nn-ex").textContent = "Note on " + (String(x.r.name || "").trim() || "an exercise");
-      const day = whenDay(effDate(x.t) || String(x.t.date || ""), true); b.querySelector(".sub").textContent = [day, String(x.t.title || "").trim()].filter(Boolean).join(" \u00b7 ");
-      b.querySelector(".sub").insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
-      b.querySelector(".nn-text").textContent = x.r.clientNote;
-      b.addEventListener("click", () => openClientNote(c, x)); li.appendChild(b); items.push(li);
-    }
-    if (!items.length) { const li = document.createElement("li"); li.className = "empty"; li.style.padding = "12px 16px"; li.textContent = "Nothing new"; items.push(li); }
-    ul.replaceChildren(...items);
+      b.addEventListener("click", () => go({ name: "training", id: t.id })); li.appendChild(b); return li;
+    }));
+    if (S.tab === "workouts") newsShown = c.id;
   }
-  $("notifBtn").addEventListener("click", () => { const c = clients.get(S.view.id); if (!c) return; if (notifOpen === c.id) closeNotif(); else notifOpen = c.id; renderClient(); });
+  function markNotesSeen(c, ids) {                                         // the Notes tab was on screen: what it showed counts as read
+    const all = new Set(); for (const t of clientTrainings(c.id)) for (const r of t.rows || []) if (r.clientNote && r.clientNoteBy === "client") all.add(noteId(t, r));
+    const seen = (c.seenNotes || []).filter((x) => all.has(x)); let changed = false;
+    for (const id of ids) if (!seen.includes(id)) { seen.push(id); changed = true; }
+    if (changed) { c.seenNotes = seen; scheduleSave("clients", c.id); }
+  }
   function renderClient() {
     const c = clients.get(S.view.id);
     const isTpl = isTemplateClient(c.id);
@@ -1557,7 +1552,11 @@ import { reportRange, buildReport } from "./report.js";
     document.body.classList.toggle("paused", !!(effPaused(c) && S.clientMode));
     if (document.activeElement !== $("cNotes")) $("cNotes").value = noteDraft.get(c.id) || "";
     $("noteActions").hidden = !String($("cNotes").value).trim(); growNotesBox();
-    renderNotes(c);
+    const news = clientNews(c), unseen = new Set(news.notes.map((x) => x.id));
+    if (S.clientMode || S.tab !== "notes") notesFresh = null;
+    else if (!notesFresh || notesFresh.id !== c.id) { notesFresh = { id: c.id, ids: new Set(unseen) }; if (unseen.size) markNotesSeen(c, unseen); }   // the tab just opened: what was unread keeps its dot for this visit, and counts as read from now
+    renderNotes(c, notesFresh ? notesFresh.ids : unseen);
+    const badge = $("notesBadge"); badge.hidden = S.clientMode || !unseen.size || S.tab === "notes"; badge.textContent = String(unseen.size);
     if (!S.clientMode) {                                                        // the report row: the last two years of months to pick from
       const sel = $("reportMonth"), base = new Date(today() + "T12:00:00"); sel.replaceChildren(new Option("Pick a month", ""));
       for (let i = 1; i <= 24; i++) { const d = new Date(base.getFullYear(), base.getMonth() - i, 1, 12); sel.appendChild(new Option(d.toLocaleDateString(undefined, { month: "long", year: "numeric" }), localIso(d).slice(0, 7))); }
