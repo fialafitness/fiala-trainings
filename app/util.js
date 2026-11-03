@@ -4,6 +4,7 @@ export const now = () => new Date().toISOString();
 export const today = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
 export const localIso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 export const fmtDate = (s) => { if (!s) return ""; const [y, m, d] = s.split("-").map(Number); const dt = new Date(y, m - 1, d); const opts = { month: "short", day: "numeric" }; if (y !== new Date().getFullYear()) opts.year = "numeric"; return dt.toLocaleDateString(undefined, opts); };
+export const fmtDayLong = (s) => { if (!s) return ""; const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d, 12).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric", ...(y !== new Date().getFullYear() ? { year: "numeric" } : {}) }); };   // "Wednesday, Nov 4": the client's workout page, the way Apple writes a day under a title
 export const fmtDay = (s) => { if (!s) return ""; const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d, 12).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", ...(y !== new Date().getFullYear() ? { year: "numeric" } : {}) }); };
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 export const norm = (s) => String(s || "").trim().toLowerCase();

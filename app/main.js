@@ -1,7 +1,7 @@
 // Fiala Trainings — the app. Loaded by index.html as an ES module; boot() starts it.
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, fromFile, pendingNoteRows, ui, planTouched } from "./state.js";
-import { uid, now, today, localIso, fmtDate, fmtDay, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
+import { uid, now, today, localIso, fmtDate, fmtDay, fmtDayLong, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
 import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, doneCount, timedPlan, measurePlan, convertWeight, stampUnit, toUnit, toTimeUnit, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
@@ -1747,8 +1747,8 @@ import { reportRange, buildReport } from "./report.js";
 
   function renderTraining(t) {
     if (document.activeElement !== $("tTitle")) { $("tTitle").value = t.title || ""; requestAnimationFrame(() => { const el = $("tTitle"); el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); }
-    $("tDate").textContent = fmtDay(t.date || today());
     const asClient = S.clientMode || previewClient; paintSessionPill(t, asClient);
+    $("tDate").textContent = (asClient ? fmtDayLong : fmtDay)(t.date || today());   // the client reads "Wednesday, Nov 4" as a plain line under the title; the coach keeps the date field to tap
     $("tTitle").readOnly = asClient; $("tDate").disabled = asClient;
     const isTpl = isTemplateClient(t.clientId);
     if (isTpl) draftFor(t);
@@ -2612,7 +2612,7 @@ import { reportRange, buildReport } from "./report.js";
   const phoneDigits = (p) => { let d = String(p || "").replace(/\D/g, ""); if (!d) return ""; if (String(p).trim().startsWith("+")) return d; if (d.length === 10) return "1" + d; if (d.length === 11 && d[0] === "1") return d; return d.length >= 7 ? d : ""; };
   function paintTrainerMsg(c) {
     const tel = c ? phoneDigits(c.trainerPhone) : ""; const wa = c && (c.chat || "sms") === "whatsapp";
-    for (const id of ["trainerBtn", "trainerBtn2"]) { const a = $(id); if (!tel || !S.clientMode) { a.hidden = true; if (id === "trainerBtn") $("trainerRow").hidden = true; continue; } a.hidden = false; if (id === "trainerBtn") $("trainerRow").hidden = false; a.href = wa ? "https://wa.me/" + tel : "sms:+" + tel; if (wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); } }
+    for (const id of ["trainerBtn"]) { const a = $(id); if (!tel || !S.clientMode) { a.hidden = true; if (id === "trainerBtn") $("trainerRow").hidden = true; continue; } a.hidden = false; if (id === "trainerBtn") $("trainerRow").hidden = false; a.href = wa ? "https://wa.me/" + tel : "sms:+" + tel; if (wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); } }
   }
   // the coach's "Message <first name>" link: sms: or WhatsApp, by the client's chat setting. Returns false when there is no number to reach.
   function fillMsg(a, textEl, c) {
