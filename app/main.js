@@ -2675,7 +2675,7 @@ import { reportRange, buildReport } from "./report.js";
     return true;
   }
   function paintMsg(c) {
-    const ok = fillMsg($("msgBtn"), $("msgText"), c); $("msgBtn").hidden = !ok || S.clientMode; $("msgBtn").removeAttribute("aria-label");   // "Message Jane": the first name on the pill
+    const ok = fillMsg($("msgBtn"), $("msgText"), c); $("msgBtn").hidden = !ok || S.clientMode;   // the hidden words "Message Jane" are the disc's name for VoiceOver
   }
   $("cPhone").addEventListener("blur", () => { const c = clients.get(S.view.id); if (c) paintMsg(c); });
   $("accessSeg").addEventListener("click", (e) => {
