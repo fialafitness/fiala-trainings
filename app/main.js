@@ -1708,6 +1708,8 @@ import { reportRange, buildReport } from "./report.js";
     $("finishWrap").hidden = t.rows.length === 0;
     const done = !!t.completedAt, skipped = !done && !!t.skippedAt;
     $("finishBtn").hidden = done || skipped; $("finishedLine").hidden = !done;
+    const left = document.body.classList.contains("client") && t.rows.some((r) => !r.done);   // the client's page: with an exercise still open, finishing is finishing early — a quiet pill like Skip workout, not the purple act
+    const fb = $("finishBtn"); fb.textContent = left ? "Finish early" : "Finish workout"; fb.classList.toggle("tint", left); fb.classList.toggle("soft", left);
     $("skipLine").hidden = done || skipped; $("skippedLine").hidden = !skipped;
     if (skipped) $("skippedText").textContent = (t.missed === true ? "Missed" : "Skipped") + (t.skipReason ? " \u00b7 " + t.skipReason : "");
     if (done) { const d = new Date(t.completedAt); $("finishedText").textContent = "\u2713 Finished \u00b7 " + d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); }
