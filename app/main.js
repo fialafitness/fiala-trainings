@@ -147,7 +147,7 @@ import { reportRange, buildReport } from "./report.js";
     if (S.clientMode) {
       const me = [...clients.values()].find((c) => !isTemplateClient(c.id) && norm(c.email) === norm(S.sessionEmail));
       if (!me) { if (away) { hideAllViews(); showLogin("You\u2019re offline. Connect once to sign in."); } return false; }
-      $("clientFoot").hidden = false; S.myClientId = me.id;
+      S.myClientId = me.id;
       if (!(S.view.name === "training" && trainings.has(S.view.id))) S.view = { name: "client", id: S.myClientId };
       render(); setStatus(); return true;
     }
@@ -180,7 +180,7 @@ import { reportRange, buildReport } from "./report.js";
     } catch { return null; }
   }
 
-  function hideAllViews() {
+  function hideAllViews() { $("meDisc").hidden = true;
     rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
     $("tabbar").hidden = true; document.body.classList.remove("tabs");
     for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
@@ -189,7 +189,7 @@ import { reportRange, buildReport } from "./report.js";
   function showLogin(msg) {
     dropWake();
     S.signedIn = false; S.clientMode = false; S.myClientId = null; reordering = false; document.body.classList.remove("client");
-    $("clientFoot").hidden = true; $("localFoot").hidden = true; $("myExercises").hidden = true; $("packagesBtn").hidden = true; $("settingsBtn").hidden = true; $("catalogBtn").hidden = true; $("dataBtn").hidden = true; settingsOpen = false; fromSettings = false;
+    $("localFoot").hidden = true; $("myExercises").hidden = true; $("packagesBtn").hidden = true; $("settingsBtn").hidden = true; $("catalogBtn").hidden = true; $("dataBtn").hidden = true; settingsOpen = false; fromSettings = false;
     hideAllViews(); $("vLogin").hidden = false;
     $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("loginMsg").textContent = msg || "";
@@ -559,14 +559,13 @@ import { reportRange, buildReport } from "./report.js";
     if (S.clientMode) {
       for (const id of [...clients.keys()]) if (isTemplateClient(id) || norm(clients.get(id).email) !== norm(S.sessionEmail)) clients.delete(id);   // the device copy may belong to someone else
       const mineIds = new Set(clients.keys()); for (const id of [...trainings.keys()]) if (!mineIds.has(trainings.get(id).clientId)) trainings.delete(id);
-      $("clientFoot").hidden = false;
       if (!quiet) $("status").textContent = "Loading\u2026";
       await syncDown();                                       // a success flushes the queue itself
       setStatus();
       return;
     }
     $("dataNote").textContent = "Synced to the cloud";
-    $("myExercises").hidden = false; $("packagesBtn").hidden = false; $("settingsBtn").hidden = false; $("catalogBtn").hidden = false; $("dataBtn").hidden = false; $("localFoot").hidden = false; $("clientFoot").hidden = true;
+    $("myExercises").hidden = false; $("packagesBtn").hidden = false; $("settingsBtn").hidden = false; $("catalogBtn").hidden = false; $("dataBtn").hidden = false; $("localFoot").hidden = false;
     if (!quiet) render(); setStatus();
     const synced = await syncDown();                          // a success flushes the queue itself
     if (synced && !S.offline) seedTemplates().catch(() => {});   // the built-in templates only once the server's copy is in: a failed first sync must never push fresh copies over edited ones
@@ -643,7 +642,7 @@ import { reportRange, buildReport } from "./report.js";
   $("myExercises").addEventListener("click", () => { fromSettings = "catalog"; showExercises(); window.scrollTo(0, 0); });
   $("setNumber").addEventListener("click", () => { fromSettings = "settings"; showNumber(); window.scrollTo(0, 0); });
   $("myPhone").addEventListener("change", () => { setTrainerPhone($("myPhone").value); $("myPhoneMsg").textContent = phoneDigits($("myPhone").value) ? "Saved. Clients now see Message Michal." : "Saved. Without a number clients see no button."; });
-  $("settingsBtn2").addEventListener("click", () => { backScroll = window.scrollY; showSettings(); window.scrollTo(0, 0); });
+  $("meDisc").addEventListener("click", () => { backScroll = window.scrollY; showSettings(); window.scrollTo(0, 0); });   // the client's person disc in the bar: Settings, where Apple keeps the person
   $("forgotBtn").addEventListener("click", async () => {
     const email = $("loginEmail").value.trim();
     if (!email) { $("loginMsg").textContent = "Type your email first, then tap Forgot password."; return; }
@@ -808,7 +807,7 @@ import { reportRange, buildReport } from "./report.js";
     if (settingsOpen) {
       if (fromSettings) { showParent(); window.scrollTo(0, 0); return; }
       settingsOpen = false; fromSettings = false; $("exPlayer").replaceChildren(); hideAllViews(); render();
-      if (backScroll != null) window.scrollTo(0, backScroll); else { const foot = S.clientMode ? $("clientFoot") : $("localFoot"); if (!foot.hidden) foot.scrollIntoView({ block: "end" }); else window.scrollTo(0, 0); }   // back where the page was; after a refresh, at the pills it was opened from
+      if (backScroll != null) window.scrollTo(0, backScroll); else { const foot = $("localFoot"); if (!S.clientMode && !foot.hidden) foot.scrollIntoView({ block: "end" }); else window.scrollTo(0, 0); }   // back where the page was; after a refresh, at the pills it was opened from
       backScroll = null; return;
     }
     if (S.view.name === "training") { const t = trainings.get(S.view.id); go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }, true); }
@@ -1245,6 +1244,7 @@ import { reportRange, buildReport } from "./report.js";
     $("vTraining").hidden = S.view.name !== "training";
     $("back").hidden = S.view.name === "clients" || (S.clientMode && S.view.name === "client");
     $("brand").hidden = !(S.view.name === "clients" || (S.clientMode && S.view.name === "client"));
+    $("meDisc").hidden = !(S.clientMode && S.view.name === "client");   // the person disc: on the client's home, both tabs, nowhere else
     if (S.view.name === "clients") { S.renderedTraining = null; renderClients(); }
     else if (S.view.name === "client") { S.renderedTraining = null; $("backLabel").textContent = isTemplateClient(S.view.id) && S.view.phase ? S.view.program : (isTemplateClient(S.view.id) && S.view.program ? "Templates" : "Clients"); renderClient(); }
     else { const t = trainings.get(S.view.id); $("backLabel").textContent = S.clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
