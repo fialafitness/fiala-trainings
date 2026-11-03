@@ -1029,14 +1029,15 @@ import { reportRange, buildReport } from "./report.js";
     for (const el of root.querySelectorAll(".entry .text.clamp")) { const more = el.nextElementSibling; if (more && more.classList.contains("more")) more.hidden = !(el.scrollHeight > el.clientHeight + 1); }
   }
   const groupWord = (g) => g.key === "w" ? "warmup" : g.rows.length === 2 ? "superset" : g.rows.length === 3 ? "tri-set" : g.rows.length > 3 ? "giant set" : "exercise";
-  function openFinishEarly(t, g, selKey) {
+  function openFinishEarly(t, g, selKey, skip) {   // skip: an exercise still to come, nothing logged — the same sheet, worded as a skip
     const total = Math.max(...g.rows.map(setsOf));
     const did = Math.min(...g.rows.map((r) => { const n = Math.min(doneCount(r), setsOf(r)); return n >= setsOf(r) ? total : n; }));   // a shorter row that is finished does not hold the others back
     const left = total - did, word = (n) => n + (n === 1 ? " set" : " sets");
     es = { t, g, selKey, reason: "" }; S.asking = true;                                      // a sync must not swap the record under the sheet
-    $("esTitle").textContent = "Finish this " + groupWord(g) + "?";
+    $("esTitle").textContent = (skip ? "Skip this " : "Finish this ") + groupWord(g) + "?";
     $("esLead").textContent = did > 0 ? did + " of " + word(total) + " completed." : "No sets completed yet.";
-    $("esFine").textContent = (did > 0 ? "What you logged stays saved. " : "") + "The remaining " + word(left) + " will stay incomplete.";
+    $("esFine").textContent = skip ? "Its " + word(left) + " will stay incomplete." : (did > 0 ? "What you logged stays saved. " : "") + "The remaining " + word(left) + " will stay incomplete.";
+    $("esGo").textContent = skip ? "Skip" : "Finish & move on";
     for (const b of $("esReasons").querySelectorAll("button")) { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); }
     $("earlySheet").hidden = false;
     setTimeout(() => { if (es) $("esGo").focus({ preventScroll: true }); }, 0);
@@ -1848,7 +1849,7 @@ import { reportRange, buildReport } from "./report.js";
       if (tracker) card.appendChild(tracker);
       rowEls.forEach((e) => card.appendChild(e));
       const foot = document.createElement("div"); foot.className = "card-foot";
-      let resume = null, openFull = null, sumRow = null, placeFootRows = null;   // undo for "Finish early": shown on the opened card while it is finished early; openFull: from the summary to the working card; sumRow: the summary's one-line foot
+      let resume = null, openFull = null, sumRow = null, placeFootRows = null, waitFoot = null;   // waitFoot: a card still to come, opened for a look — no logging until the one in progress is finished; undo for "Finish early": shown on the opened card while it is finished early; openFull: from the summary to the working card; sumRow: the summary's one-line foot
       if (total > 0 && !isTpl) {
         const sel = g.sel, current = sel === doneSets && doneSets < total;
         const complete = document.createElement("label"); complete.htmlFor = "hapticSwitch"; complete.className = "btn complete"; complete.setAttribute("role", "button"); complete.tabIndex = 0;   // a label for the hidden switch: the tap itself gives the haptic on iPhone
@@ -1883,7 +1884,14 @@ import { reportRange, buildReport } from "./report.js";
           setTimeout(() => { S.renderedTraining = null; render(); scrollToCard(g.key); }, 0);   // after the tap has flipped the switch (the iPhone tick), then redraw and glide
         });
         const early = document.createElement("button"); early.type = "button"; early.className = "finish-early"; early.textContent = "Finish early";
-        early.addEventListener("click", () => openFinishEarly(t, g, selKey));
+        let skipping = false;
+        early.addEventListener("click", () => openFinishEarly(t, g, selKey, skipping));
+        waitFoot = (curName) => {                                   // still to come: the one line that says why there is no button, and Skip in place of Finish early
+          skipping = true;
+          const wait = document.createElement("div"); wait.className = "foot-wait"; wait.textContent = "Finish " + curName + " first";
+          foot.prepend(wait);
+          early.replaceChildren(); early.insertAdjacentHTML("afterbegin", '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 3.5l6.5 4.5-6.5 4.5z"/><path d="M12.5 3.5v9"/></svg>'); early.append(document.createTextNode("Skip " + groupWord(g)));   // Apple's forward-to-end glyph
+        };
         resume = document.createElement("button"); resume.type = "button"; resume.className = "resume"; resume.hidden = true; resume.textContent = "Resume this " + groupWord(g);
         resume.addEventListener("click", () => {              // the remaining sets open again; what was logged stays, the reason goes
           for (const r of g.rows) { r.done = clamp(parseInt(r.setsDone, 10) || 0, 0, 20) >= setsOf(r); markEarly(t, r, ""); const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
@@ -1946,13 +1954,16 @@ import { reportRange, buildReport } from "./report.js";
       const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold-btn";
       const sum = document.createElement("div"); sum.className = "card-sum";
       const paintSum = (all) => {
-        sum.replaceChildren(); if (resume) resume.hidden = true; if (!all) return;
+        sum.replaceChildren(); if (resume) resume.hidden = true; if (!all) { block.classList.remove("skipped"); return; }
         const did = Math.min(...g.rows.map((r) => { const n = Math.min(doneCount(r), setsOf(r)); return n >= setsOf(r) ? Math.max(...g.rows.map(setsOf)) : n; }));
         const early = g.rows.some((r) => r.done && Math.min(doneCount(r), setsOf(r)) < setsOf(r));   // doneCount: a row finished before the counter existed is simply finished
         if (resume) resume.hidden = !early;
         const sets = (n) => n + " of " + total + (total === 1 ? " set" : " sets");
         const line = (text) => { const d = document.createElement("div"); d.textContent = text; sum.appendChild(d); };
         if (!early) { line("Finished \u00b7 " + sets(total)); return; }
+        const why0 = (g.rows.find((r) => r.earlyReason) || {}).earlyReason || "";
+        block.classList.toggle("skipped", did === 0);
+        if (did === 0) { line("Skipped" + (why0 ? " \u00b7 " + why0 : "")); return; }   // nothing logged: skipped, not "finished early · 0 of 4" — and the card stays grey, not fern
         line("Finished early \u00b7 " + sets(did));
         const left = total - did, why = (g.rows.find((r) => r.earlyReason) || {}).earlyReason || "";
         line(left + (left === 1 ? " set" : " sets") + " not completed" + (why ? " \u00b7 " + why : ""));
@@ -1987,6 +1998,7 @@ import { reportRange, buildReport } from "./report.js";
         chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (peeking ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4") + '"/></svg>';
         if (peeking) { const cap = block.querySelector(".group-cap"); (cap || card).appendChild(chev); } else card.appendChild(chev);   // opened for a look: the fold chevron moves up onto the "Exercise N" heading, and the card keeps its whole width
         const unpeek = () => { peekBlocks.delete(selKey); S.renderedTraining = null; render(); };
+        if (peeking && waitFoot) { const cur = groups.find((x) => x.key === currentKey) || {}; waitFoot(cur.key === "w" ? "the warmup" : /^\d+$/.test(String(cur.key)) ? "Exercise " + cur.key : "the current " + groupWord(cur.rows ? cur : g)); }   // "Finish Exercise 1 first": the one in progress, by the name on its card
         if (peeking) { block.classList.add("peek"); chev.addEventListener("click", unpeek); for (const top of card.querySelectorAll(".row .top")) top.addEventListener("click", (e) => { if (e.target.closest(".ex-icons")) return; unpeek(); }); }
         else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey); S.renderedTraining = null; render(); }); }
       } else peekBlocks.delete(selKey);
