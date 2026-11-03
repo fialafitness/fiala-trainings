@@ -183,7 +183,7 @@ import { reportRange, buildReport } from "./report.js";
   function hideAllViews() { $("meDisc").hidden = true;
     rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
     $("tabbar").hidden = true; document.body.classList.remove("tabs");
-    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
+    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vClientCard", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
     $("navDone").hidden = true;
   }
   function showLogin(msg) {
@@ -229,6 +229,24 @@ import { reportRange, buildReport } from "./report.js";
   function showSettings() {
     settingsOpen = "settings"; fromSettings = false; hideAllViews(); $("vSettings").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
     const p = trainerPhone(); $("setNumberVal").textContent = p || "Not set"; $("setEmail").textContent = S.sessionEmail || "";
+  }
+  function showClientCard() {                                       // the coach's card for this client: everything about the person on one page, like a contact's card
+    const c = clients.get(S.view.id); if (!c || S.clientMode || isTemplateClient(c.id)) return;
+    settingsOpen = "card"; fromSettings = false; hideAllViews(); $("vClientCard").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
+    paintCard();
+  }
+  function paintCard() {                                            // the card's fields from the record; a field being typed in is left alone
+    const c = clients.get(S.view.id); if (!c) return;
+    $("cardName").textContent = c.name || "Client";
+    if (document.activeElement !== $("cNameField")) $("cNameField").value = c.name || "";
+    if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
+    if (document.activeElement !== $("cPhone")) $("cPhone").value = c.phone || "";
+    if (document.activeElement !== $("cBirthday")) $("cBirthday").value = c.birthday || "";
+    for (const b of $("chatSeg").querySelectorAll("button")) b.classList.toggle("on", (c.chat || "sms") === b.dataset.chat);
+    for (const b of $("unitSeg").querySelectorAll("button")) b.classList.toggle("on", (c.unit || "lb") === b.dataset.unit);
+    for (const b of $("accessSeg").querySelectorAll("button")) b.classList.toggle("on", (c.paused ? "paused" : "active") === b.dataset.access);
+    paintPlanDetails(c);
+    $("delClientConfirm").hidden = true; $("delClient").hidden = false;
   }
   function showCatalog() {                                          // what he coaches with and what he sells: the exercises and the packages
     settingsOpen = "catalog"; fromSettings = false; hideAllViews(); $("vCatalog").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
@@ -340,7 +358,7 @@ import { reportRange, buildReport } from "./report.js";
     if (e.target.closest("#planCancel")) { planEdit = null; renderClient(); return; }
     if (e.target.closest("#planSave")) { c.plan.adjust = planEdit ? planEdit.adjust : c.plan.adjust; planEdit = null; planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); return; }
     if (e.target.closest(".plan-adjust, .plan-actions")) return;
-    detailsOpen = true; setTab("profile"); render(); $("detailsBody").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    backScroll = window.scrollY; showClientCard(); window.scrollTo(0, 0);   // the plan lives on the client's card
   });
   $("planSel").addEventListener("change", (e) => {
     const c = clients.get(S.view.id); if (!c || isTemplateClient(c.id)) return;
@@ -642,7 +660,7 @@ import { reportRange, buildReport } from "./report.js";
   $("myExercises").addEventListener("click", () => { fromSettings = "catalog"; showExercises(); window.scrollTo(0, 0); });
   $("setNumber").addEventListener("click", () => { fromSettings = "settings"; showNumber(); window.scrollTo(0, 0); });
   $("myPhone").addEventListener("change", () => { setTrainerPhone($("myPhone").value); $("myPhoneMsg").textContent = phoneDigits($("myPhone").value) ? "Saved. Clients now see Message Michal." : "Saved. Without a number clients see no button."; });
-  $("meDisc").addEventListener("click", () => { backScroll = window.scrollY; showSettings(); window.scrollTo(0, 0); });   // the client's person disc in the bar: Settings, where Apple keeps the person
+  $("meDisc").addEventListener("click", () => { backScroll = window.scrollY; if (S.clientMode) showSettings(); else showClientCard(); window.scrollTo(0, 0); });   // the client's person disc in the bar: Settings, where Apple keeps the person
   $("forgotBtn").addEventListener("click", async () => {
     const email = $("loginEmail").value.trim();
     if (!email) { $("loginMsg").textContent = "Type your email first, then tap Forgot password."; return; }
@@ -1221,12 +1239,12 @@ import { reportRange, buildReport } from "./report.js";
     if (S.recovering) { showRecovery(); return; }
     if (pendingPage && S.signedIn && !(S.clientMode && !S.myClientId)) {   // a refresh on a settings page lands back on it at the first paint: no glimpse of the Clients page on the way
       const p = pendingPage; pendingPage = null; exStale = !!S.sb && !S.syncedOnce && (p.open === "exercises" || p.open === "exercise");
-      const open = { settings: showSettings, catalog: showCatalog, data: showData, number: showNumber, packages: showPackages, exercises: showExercises, password: showPassword }[p.open];
+      const open = { settings: showSettings, card: showClientCard, catalog: showCatalog, data: showData, number: showNumber, packages: showPackages, exercises: showExercises, password: showPassword }[p.open];
       const from = p.from === true ? "settings" : (p.from || false);   // older devices wrote a yes/no
       if (p.open === "exercise" && p.name) { fromSettings = from; showExercise(p.name, p.key || squash(p.name)); return; }
       if (open) { fromSettings = from; open(); return; }
     }
-    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $("navDone").hidden = settingsOpen !== "exercise"; $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : settingsOpen === "catalog" ? "vCatalog" : settingsOpen === "data" ? "vData" : "vPassword").hidden = false; if (settingsOpen === "packages") renderPackages(); if (exStale && S.syncedOnce) { exStale = false; if (settingsOpen === "exercises") renderExercises(); else if (settingsOpen === "exercise" && exCurrent && !exDirty()) showExercise(exCurrent.name, exCurrent.key); } $("back").hidden = false; $("brand").hidden = true; } return; }
+    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $("navDone").hidden = settingsOpen !== "exercise"; $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : settingsOpen === "card" ? "vClientCard" : settingsOpen === "catalog" ? "vCatalog" : settingsOpen === "data" ? "vData" : "vPassword").hidden = false; if (settingsOpen === "packages") renderPackages(); if (settingsOpen === "card") paintCard(); if (exStale && S.syncedOnce) { exStale = false; if (settingsOpen === "exercises") renderExercises(); else if (settingsOpen === "exercise" && exCurrent && !exDirty()) showExercise(exCurrent.name, exCurrent.key); } $("back").hidden = false; $("brand").hidden = true; } return; }
     if (S.sb && !S.signedIn) { showLogin($("loginMsg").textContent); return; }
     if (S.clientMode && !S.myClientId) { showWaiting(); return; }
     if (celebrating) { hideAllViews(); $("vCelebrate").hidden = false; $("back").hidden = true; $("brand").hidden = false; return; }   // "Nice work" stays up until it hands over to the client page, whatever refreshes meanwhile
@@ -1244,7 +1262,9 @@ import { reportRange, buildReport } from "./report.js";
     $("vTraining").hidden = S.view.name !== "training";
     $("back").hidden = S.view.name === "clients" || (S.clientMode && S.view.name === "client");
     $("brand").hidden = !(S.view.name === "clients" || (S.clientMode && S.view.name === "client"));
-    $("meDisc").hidden = !(S.clientMode && S.view.name === "client");   // the person disc: on the client's home, both tabs, nowhere else
+    $("meDisc").hidden = !(S.view.name === "client" && !isTemplateClient(S.view.id));   // the person disc: on a client's page, every tab, nowhere else — Settings for the client, the card for the coach
+    $("meDisc").setAttribute("aria-label", S.clientMode ? "Settings" : "Client card");
+    if (S.clientMode && S.tab === "notes") setTab("workouts");   // Notes is the coach's tab
     if (S.view.name === "clients") { S.renderedTraining = null; renderClients(); }
     else if (S.view.name === "client") { S.renderedTraining = null; $("backLabel").textContent = isTemplateClient(S.view.id) && S.view.phase ? S.view.program : (isTemplateClient(S.view.id) && S.view.program ? "Templates" : "Clients"); renderClient(); }
     else { const t = trainings.get(S.view.id); $("backLabel").textContent = S.clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
@@ -1526,19 +1546,10 @@ import { reportRange, buildReport } from "./report.js";
     if (!isTpl) { $("tplList").hidden = true; $("pickNote").hidden = true; $("newTraining").hidden = false; }   // a program page hid it; a client's page always has it
     $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !effPaused(c); $("pausedKicker").textContent = c.paused ? "Access paused" : "Plan ended";
     if (isTpl) { $("notifWrap").hidden = true; $("overview").hidden = true; $("planCard").hidden = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }   // the library has no notifications row: a client's count must not linger here
-    $("cName").textContent = c.name; renderPlanCard(c); renderOverview(c); paintPlanDetails(c);
+    $("cName").textContent = c.name; renderPlanCard(c); renderOverview(c);
+    $("meDisc").classList.toggle("needs", !S.clientMode && !c.email);   // no sign-in email yet: the red dot on the card disc
     if (!S.clientMode) renderNotif(c); else $("notifWrap").hidden = true;
-    if (document.activeElement !== $("cNameField")) $("cNameField").value = c.name || "";
-    if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
-    if (document.activeElement !== $("cPhone")) $("cPhone").value = c.phone || "";
-    if (document.activeElement !== $("cBirthday")) $("cBirthday").value = c.birthday || "";
-    if (detailsFor !== c.id) { detailsFor = c.id; detailsOpen = false; }
-    $("detailsBody").hidden = !detailsOpen; $("detailsBtn").classList.toggle("open", detailsOpen); $("detailsBtn").setAttribute("aria-expanded", String(detailsOpen));
-    $("detailsBtn").classList.toggle("needs", !c.email);
-    for (const b of $("chatSeg").querySelectorAll("button")) b.classList.toggle("on", (c.chat || "sms") === b.dataset.chat);
     paintMsg(c); paintTrainerMsg(c);
-    for (const b of $("unitSeg").querySelectorAll("button")) b.classList.toggle("on", (c.unit || "lb") === b.dataset.unit);
-    for (const b of $("accessSeg").querySelectorAll("button")) b.classList.toggle("on", (c.paused ? "paused" : "active") === b.dataset.access);
     $("pausedCard").hidden = !(effPaused(c) && S.clientMode);
     $("pausedText").textContent = phoneDigits(c.trainerPhone) ? "Your workouts are on hold for now. Message Michal when you’re ready to pick up again." : "Your workouts are on hold for now. Michal will switch them back on when you’re ready to pick up again.";
     $("pausedCard").firstElementChild.textContent = !c.paused && effPaused(c) ? "Plan ended" : "Access paused";
@@ -2577,7 +2588,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- events ----------
   $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; rememberPreview(); S.renderedTraining = null; render(); });
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
-  $("cNameField").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.name = e.target.value; $("cName").textContent = c.name; scheduleSave("clients", c.id); });
+  $("cNameField").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.name = e.target.value; $("cName").textContent = c.name; $("cardName").textContent = c.name || "Client"; scheduleSave("clients", c.id); });
   const growNotesBox = () => growBox($("cNotes"));
   $("cNotes").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; if (e.target.value.trim()) noteDraft.set(c.id, e.target.value); else noteDraft.delete(c.id); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
   $("noteSave").addEventListener("click", () => {
@@ -2605,7 +2616,7 @@ import { reportRange, buildReport } from "./report.js";
     if (/That email is on/.test($("status").textContent)) $("status").textContent = "";
     c.email = v; scheduleSave("clients", c.id);
   });
-  $("cEmail").addEventListener("blur", () => { const c = clients.get(S.view.id); if (c) $("detailsBtn").classList.toggle("needs", !c.email); });
+  $("cEmail").addEventListener("blur", () => { const c = clients.get(S.view.id); if (c) $("meDisc").classList.toggle("needs", !c.email); });
   $("cPhone").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.phone = e.target.value.trim(); scheduleSave("clients", c.id); });
   $("cBirthday").addEventListener("change", (e) => { const c = clients.get(S.view.id); if (!c) return; c.birthday = e.target.value || ""; scheduleSave("clients", c.id); });
   // phone -> international digits for sms: and wa.me (US numbers without a country code get +1)
@@ -2639,12 +2650,10 @@ import { reportRange, buildReport } from "./report.js";
     for (const x of $("chatSeg").querySelectorAll("button")) x.classList.toggle("on", x === b);
     paintMsg(c);
   });
-  let detailsOpen = false, detailsFor = null;
   $("tabbar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b || b.dataset.tab === S.tab) return; setTab(b.dataset.tab); render(); window.scrollTo(0, 0); });
   const typingIn = (el) => !!el && /^(INPUT|TEXTAREA)$/.test(el.tagName) && !/^(date|month|checkbox|radio|file|range)$/.test(el.type || "");   // a keyboard is coming: a select or a date wheel is not typing
   document.addEventListener("focusin", (e) => { if (typingIn(e.target)) document.body.classList.add("typing"); });
   document.addEventListener("focusout", () => { setTimeout(() => { if (!typingIn(document.activeElement)) document.body.classList.remove("typing"); }, 80); });
-  $("detailsBtn").addEventListener("click", () => { detailsOpen = !detailsOpen; $("detailsBody").hidden = !detailsOpen; $("detailsBtn").classList.toggle("open", detailsOpen); $("detailsBtn").setAttribute("aria-expanded", String(detailsOpen)); });
   $("newTraining").addEventListener("click", () => addTraining(S.view.id, null, today()));
   $("delClient").addEventListener("click", () => { $("delClient").hidden = true; $("delClientConfirm").hidden = false; });
   $("delClientNo").addEventListener("click", () => { $("delClientConfirm").hidden = true; $("delClient").hidden = false; });
@@ -2806,7 +2815,7 @@ import { reportRange, buildReport } from "./report.js";
     try { const v = pageRelease(); if (v) { $("appVersion").textContent = "Version " + v; watchReleases(v); } } catch (_) {}   // the build this phone runs, at the bottom of Settings
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) S.view = saved;
     const page = lsGet("fiala.trainings.page"); if (page && page.open) pendingPage = page;   // read before any screen change clears it
-    const savedTab = lsGet("fiala.trainings.tab"); if (savedTab === "profile" || savedTab === "workouts") S.tab = savedTab;
+    const savedTab = lsGet("fiala.trainings.tab"); if (savedTab === "profile" || savedTab === "workouts" || savedTab === "notes") S.tab = savedTab;
     localBackend.load();                       // instant start from the device copy
     try { const dr = lsGet("fiala.trainings.draft"); if (dr && dr.id && dr.doc && trainings.has(dr.id)) { S.templateDraft = { id: dr.id, snapshot: JSON.stringify(trainings.get(dr.id)), dirty: true, saving: false }; trainings.set(dr.id, dr.doc); } } catch (_) {}   // a template left with unsaved changes: back as it was, still unsaved
     restorePending();                          // and whatever was still waiting to reach the server
