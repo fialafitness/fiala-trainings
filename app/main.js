@@ -846,21 +846,10 @@ import { reportRange, buildReport } from "./report.js";
     finally { wakePending = false; }
   }
   function dropWake() { clearTimeout(wakeTimer); wakeTimer = null; const w = wake; wake = null; if (w) w.release().catch(() => {}); }
-  const fitName = () => {                                            // the name beside its button: wraps at the spaces; a single word too wide steps the size down twice, then breaks
-    const el = $("cName"); if (!el || !el.isConnected) return; el.style.fontSize = ""; el.classList.remove("tight");
-    const words = String(el.textContent || "").split(/\s+/).filter(Boolean); if (!words.length) return;
-    const ruler = document.createElement("span"); ruler.style.cssText = "position:absolute;left:-9999px;top:0;visibility:hidden;white-space:nowrap"; document.body.appendChild(ruler);
-    const widest = () => { const cs = getComputedStyle(el); ruler.style.font = cs.font; ruler.style.letterSpacing = cs.letterSpacing; let w = 0; for (const word of words) { ruler.textContent = word; w = Math.max(w, ruler.getBoundingClientRect().width); } return w; };
-    try {
-      const room = el.clientWidth; if (!room || widest() <= room) return;
-      for (const size of ["1.5rem", "1.375rem"]) { el.style.fontSize = size; if (widest() <= room) return; }
-      el.classList.add("tight");
-    } finally { ruler.remove(); }
-  };
   const fitText = () => {                                            // the phone's Text Size setting (Settings > Accessibility > Display & Text Size), the way a native app follows it: the hidden probe in the system font tells the factor, the root size carries it to every rem
     try { const probe = $("typeProbe"); if (!probe) return; const px = parseFloat(getComputedStyle(probe).fontSize) || 17; const f = Math.min(1.5, Math.max(1, px / 17)); const want = f > 1.001 ? (16 * f).toFixed(2) + "px" : ""; if (document.documentElement.style.fontSize !== want) { document.documentElement.style.fontSize = want; setTimeout(() => regrowNames(), 0); } } catch (_) {}   // the name boxes re-measure once the module is whole
   };
-  fitText(); window.addEventListener("resize", () => { fitText(); fitName(); });
+  fitText(); window.addEventListener("resize", fitText);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { holdWake(false); fitText(); } });
   document.addEventListener("pointerdown", () => { if (S.view.name === "training") holdWake(true); }, { passive: true });
   function go(next, back) {
@@ -1647,7 +1636,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!isTpl) { $("tplList").hidden = true; $("pickNote").hidden = true; $("newTraining").hidden = false; }   // a program page hid it; a client's page always has it
     $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !effPaused(c); $("pausedKicker").textContent = c.paused ? "Access paused" : "Plan ended";
     if (isTpl) { $("notifWrap").hidden = true; $("overview").hidden = true; $("planCard").hidden = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }   // the library has no notifications row: a client's count must not linger here
-    $("cName").textContent = c.name; fitName(); renderPlanCard(c); renderOverview(c);
+    $("cName").textContent = c.name; renderPlanCard(c); renderOverview(c);
     $("meDisc").classList.toggle("needs", !S.clientMode && !c.email);   // no sign-in email yet: the red dot on the card disc
     if (!S.clientMode) renderNotif(c); else $("notifWrap").hidden = true;
     paintMsg(c); paintTrainerMsg(c);
@@ -2686,7 +2675,7 @@ import { reportRange, buildReport } from "./report.js";
     return true;
   }
   function paintMsg(c) {
-    const ok = fillMsg($("msgBtn"), $("msgText"), c); $("msgBtn").hidden = !ok || S.clientMode; $("msgText").textContent = "Message"; $("msgBtn").setAttribute("aria-label", "Message " + (((c && c.name) || "").trim().split(/\s+/)[0] || "client"));   // the word alone beside the name; the name itself is read to VoiceOver
+    const ok = fillMsg($("msgBtn"), $("msgText"), c); $("msgBtn").hidden = !ok || S.clientMode;
   }
   $("cPhone").addEventListener("blur", () => { const c = clients.get(S.view.id); if (c) paintMsg(c); });
   $("accessSeg").addEventListener("click", (e) => {
