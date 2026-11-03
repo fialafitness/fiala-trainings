@@ -240,6 +240,7 @@ import { reportRange, buildReport } from "./report.js";
     settingsOpen = "card"; fromSettings = false; hideAllViews(); $("vClientCard").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
     paintCard();
   }
+  const syncRadios = () => { for (const g of document.querySelectorAll('[role="radiogroup"]')) for (const b of g.querySelectorAll("button")) b.setAttribute("aria-checked", String(b.classList.contains("on"))); };   // the segmented controls: what the eye sees as chosen, a screen reader hears
   function paintCard() {                                            // the card's fields from the record; a field being typed in is left alone
     const c = clients.get(S.view.id); if (!c) return;
     $("cardName").textContent = c.name || "Client";
@@ -250,7 +251,7 @@ import { reportRange, buildReport } from "./report.js";
     for (const b of $("chatSeg").querySelectorAll("button")) b.classList.toggle("on", (c.chat || "sms") === b.dataset.chat);
     for (const b of $("unitSeg").querySelectorAll("button")) b.classList.toggle("on", (c.unit || "lb") === b.dataset.unit);
     for (const b of $("accessSeg").querySelectorAll("button")) b.classList.toggle("on", (c.paused ? "paused" : "active") === b.dataset.access);
-    paintPlanDetails(c);
+    paintPlanDetails(c); syncRadios();
     $("delClientConfirm").hidden = true; $("delClient").hidden = false;
   }
   const openGroups = new Map();                                     // "<client>/<group>" -> opened or folded by hand this session
@@ -845,7 +846,11 @@ import { reportRange, buildReport } from "./report.js";
     finally { wakePending = false; }
   }
   function dropWake() { clearTimeout(wakeTimer); wakeTimer = null; const w = wake; wake = null; if (w) w.release().catch(() => {}); }
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") holdWake(false); });
+  const fitText = () => {                                            // the phone's Text Size setting (Settings > Accessibility > Display & Text Size), the way a native app follows it: the hidden probe in the system font tells the factor, the root size carries it to every rem
+    try { const probe = $("typeProbe"); if (!probe) return; const px = parseFloat(getComputedStyle(probe).fontSize) || 17; const f = Math.min(1.5, Math.max(1, px / 17)); const want = f > 1.001 ? (16 * f).toFixed(2) + "px" : ""; if (document.documentElement.style.fontSize !== want) { document.documentElement.style.fontSize = want; setTimeout(() => regrowNames(), 0); } } catch (_) {}   // the name boxes re-measure once the module is whole
+  };
+  fitText(); window.addEventListener("resize", fitText);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { holdWake(false); fitText(); } });
   document.addEventListener("pointerdown", () => { if (S.view.name === "training") holdWake(true); }, { passive: true });
   function go(next, back) {
     if (S.templateDraft && S.templateDraft.dirty && S.view.name === "training" && S.view.id === S.templateDraft.id) {
@@ -1299,7 +1304,7 @@ import { reportRange, buildReport } from "./report.js";
     $("vClients").hidden = S.view.name !== "clients";
     $("vClient").hidden = S.view.name !== "client";
     const tabs = S.view.name === "client" && !isTemplateClient(S.view.id); $("tabbar").hidden = !tabs; document.body.classList.toggle("tabs", tabs);
-    for (const b of $("tabbar").querySelectorAll("button")) b.classList.toggle("on", b.dataset.tab === S.tab);
+    for (const b of $("tabbar").querySelectorAll("button")) { const on = b.dataset.tab === S.tab; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
     $("vTraining").hidden = S.view.name !== "training";
     $("back").hidden = S.view.name === "clients" || (S.clientMode && S.view.name === "client");
     $("brand").hidden = !(S.view.name === "clients" || (S.clientMode && S.view.name === "client"));
@@ -1309,6 +1314,7 @@ import { reportRange, buildReport } from "./report.js";
     if (S.view.name === "clients") { S.renderedTraining = null; renderClients(); }
     else if (S.view.name === "client") { S.renderedTraining = null; $("backLabel").textContent = isTemplateClient(S.view.id) && S.view.phase ? S.view.program : (isTemplateClient(S.view.id) && S.view.program ? "Templates" : "Clients"); renderClient(); }
     else { const t = trainings.get(S.view.id); $("backLabel").textContent = S.clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
+    syncRadios();
     paintDraftBar();
     if (dp) renderDatePicker();
   }
