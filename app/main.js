@@ -266,13 +266,15 @@ import { reportRange, buildReport } from "./report.js";
     const hist = $("histList"); hist.replaceChildren(); $("histEmpty").hidden = rest.length > 0;
     const t0 = today(), base = new Date(t0 + "T12:00:00"), monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7)); const mondayIso = localIso(monday);
     const word = (n) => n + (n === 1 ? " workout" : " workouts");
-    const rows = (items) => { const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...items.map((t) => workoutRow(t))); return ul; };
+    const rows = (items) => { const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...items.map((t) => workoutRow(t, "past"))); return ul; };
     const group = (key, title, items, open, build) => {              // a folding group: title · count ›; opened or closed by hand, it stays so for the session
-      const wrap = document.createElement("div"); wrap.className = "month";
-      const head = document.createElement("button"); head.type = "button"; head.innerHTML = "<span></span><span class=\"sub\"></span>"; head.firstChild.textContent = title; head.lastChild.textContent = word(items.length) + " \u203a";
+      const wrap = document.createElement("div");
+      const head = document.createElement("button"); head.type = "button"; head.innerHTML = "<span></span><span class=\"sub\"><span></span><svg viewBox=\"0 0 14 14\" aria-hidden=\"true\"><path d=\"M5 3l4 4-4 4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></span>"; head.firstChild.textContent = title; head.lastChild.firstChild.textContent = word(items.length);
       const k = c.id + "/" + key, isOpen = openGroups.has(k) ? openGroups.get(k) : open;
       const inner = build(items); inner.hidden = !isOpen;
-      head.addEventListener("click", () => { inner.hidden = !inner.hidden; openGroups.set(k, !inner.hidden); });
+      wrap.className = "month " + (build === rows ? "flat" : "nest") + (isOpen ? " open" : "");   // flat: the rows join the title's card; nest: a year, its months as cards within
+      head.setAttribute("aria-expanded", String(isOpen));
+      head.addEventListener("click", () => { inner.hidden = !inner.hidden; wrap.classList.toggle("open", !inner.hidden); head.setAttribute("aria-expanded", String(!inner.hidden)); openGroups.set(k, !inner.hidden); });
       wrap.append(head, inner); return wrap;
     };
     const monthsOf = (items, firstOpen) => {                          // the months in a year, newest first
@@ -1597,37 +1599,41 @@ import { reportRange, buildReport } from "./report.js";
     if (n > 1) return n < 14 ? "In " + n + " days" : "In " + Math.round(n / 7) + " weeks";
     return n > -14 ? (-n) + " days ago" : Math.round(-n / 7) + " weeks ago";
   };
-  function workoutRow(t, next) {                                        // one workout as a row: tick or Skipped, the day, the title; a tap opens it
+  const liftGlyph = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2.3" fill="currentColor" stroke="none"/><path d="M9.3 8.2h5.4M12 8.2v4.3M9.3 8.2v6.3M14.7 8.2v6.3M12 12.5 9.3 20M12 12.5l2.7 7.5M3.5 14.5h17M5.5 12.5v4M18.5 12.5v4"/></svg>';   // a lifter at the bar: head, shoulders, arms straight down to it, legs set — in the app's own line
+  function workoutRow(t, mode) {                                        // one workout as Fitness lays a row out: the day in a column, a disc with the lifter, the title over a quiet line, a chevron. mode: "today" | "next" | "past"
     const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
-    if (next) li.className = "next";
-    const cards = new Map();
-    t.rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!cards.has(k)) cards.set(k, true); if (!r.done) cards.set(k, false); });
-    const total = cards.size, done = [...cards.values()].filter(Boolean).length;
-    const d = new Date(effDate(t) + "T12:00:00");
-    const pri = document.createElement("span"); pri.className = "pri";
+    const n = t.rows.length, done = t.rows.filter((r) => r.done).length;      // exercises are rows: a superset counts each of its lifts
     const skipped = !t.completedAt && !!t.skippedAt;
-    pri.textContent = (t.completedAt ? "\u2713 " : skipped ? (t.missed === true ? "Missed \u00b7 " : "Skipped \u00b7 " + (t.skipReason ? t.skipReason + " \u00b7 " : "")) : "") + d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-    if (skipped) pri.style.color = "var(--text-tertiary)";
-    const sec = document.createElement("span"); sec.className = "sec";
-    sec.textContent = [t.title, !t.completedAt && done ? done + " of " + total + " done" : ""].filter(Boolean).join(" \u00b7 ");
-    const left = document.createElement("span"); left.style.minWidth = "0";
-    const overdue = next && !skipped && !t.completedAt && !!effDate(t) && effDate(t) < today();
-    const whenText = next ? (overdue ? "Missed \u00b7 " : "") + relDay(effDate(t)) : "";
-    if (whenText) { const when = document.createElement("span"); when.className = "when" + (overdue ? " missed" : ""); when.textContent = whenText; left.append(when); }
-    let acts = null;
+    const overdue = mode === "next" && !skipped && !t.completedAt && !!effDate(t) && effDate(t) < today();
+    li.className = "w" + (t.completedAt ? " done" : "") + (skipped ? " off" : "");
+    const d = effDate(t) ? new Date(effDate(t) + "T12:00:00") : null;
+    const wd = document.createElement("span"); wd.className = "wd"; wd.innerHTML = '<span class="dow"></span><span class="dn"></span>';
+    const otherMonth = mode === "next" && d && effDate(t).slice(0, 7) !== today().slice(0, 7);   // weeks ahead in another month: the month over the day, not the weekday
+    wd.firstChild.textContent = d ? d.toLocaleDateString(undefined, otherMonth ? { month: "short" } : { weekday: "short" }) : ""; wd.lastChild.textContent = d ? String(d.getDate()) : "";
+    const wi = document.createElement("span"); wi.className = "wi"; wi.innerHTML = liftGlyph;
+    const wt = document.createElement("span"); wt.className = "wt";
+    const pri = document.createElement("span"); pri.className = "pri"; pri.textContent = String(t.title || "").trim() || "Workout";
+    const count = n ? n + (n === 1 ? " exercise" : " exercises") : "Nothing added yet";
+    const sec = document.createElement("span"); sec.className = "sec";                 // the quiet line: when, and how much
+    if (overdue) { const miss = document.createElement("span"); miss.className = "missed"; miss.textContent = "Missed"; sec.append(miss, " \u00b7 " + count); }
+    else if (mode === "next") sec.textContent = [relDay(effDate(t)), count].filter(Boolean).join(" \u00b7 ");
+    else if (mode === "today") sec.textContent = done ? done + " of " + n + " done" : count;
+    else if (skipped) sec.textContent = (t.missed === true ? "Missed" : "Skipped") + (t.skipReason ? " \u00b7 " + t.skipReason : "");
+    else sec.textContent = count;
+    wt.append(pri, sec);
+    const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a"; chev.setAttribute("aria-hidden", "true");
+    b.append(wd, wi, wt, chev);
+    b.addEventListener("click", () => go({ name: "training", id: t.id }));
+    li.appendChild(b);
     if (overdue) {                                                       // the missed workout is the first thing to decide
-      acts = document.createElement("div"); acts.className = "missed-actions";
+      const acts = document.createElement("div"); acts.className = "missed-actions";
       const doToday = document.createElement("button"); doToday.type = "button"; doToday.className = "btn tint"; doToday.textContent = "Do it today";
       doToday.addEventListener("click", () => { t.date = today(); t.missed = false; t.skippedAt = null; touchState(t.id, "date", "missed", "skippedAt"); if (S.clientMode) { pendingMove.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
       const skip = document.createElement("button"); skip.type = "button"; skip.className = "btn tint"; skip.textContent = "Skip";
       skip.addEventListener("click", () => { t.skippedAt = now(); t.missed = false; touchState(t.id, "skippedAt", "missed"); if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
-      acts.append(doToday, skip);
+      acts.append(doToday, skip); li.appendChild(acts);                  // the choices sit under the row
     }
-    left.append(pri); if (sec.textContent) left.append(sec);
-    const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a";
-    b.append(left, chev);
-    b.addEventListener("click", () => go({ name: "training", id: t.id }));
-    li.appendChild(b); if (acts) li.appendChild(acts); return li;       // the choices sit under the row
+    return li;
   }
   function renderClient() {
     const c = clients.get(S.view.id);
@@ -1731,9 +1737,9 @@ import { reportRange, buildReport } from "./report.js";
     nextExtra = Math.max(0, Math.min(nextExtra, next.length - soon.length));
     const shown = next.slice(0, soon.length + nextExtra), left = next.length - shown.length;
     const todays = shown.filter((t) => effDate(t) === iso(base)), later = shown.filter((t) => effDate(t) !== iso(base));   // today's workout on its own card, the days after it under "Up next"
-    $("todayList").hidden = !todays.length; $("todayList").replaceChildren(...todays.map((t) => workoutRow(t, true)));
+    $("todayHead").hidden = !todays.length; $("todayList").hidden = !todays.length; $("todayList").replaceChildren(...todays.map((t) => workoutRow(t, "today")));
     $("nextHead").hidden = !later.length && left === 0; $("nextList").hidden = !later.length && left === 0;
-    $("nextList").replaceChildren(...later.map((t, i) => workoutRow(t, i === 0 && !todays.length)));
+    $("nextList").replaceChildren(...later.map((t) => workoutRow(t, "next")));
     if (left > 0 || nextExtra > 0) {
       const li = document.createElement("li"); li.className = "more"; const bar = document.createElement("div");
       if (left > 0) {
