@@ -535,3 +535,11 @@ test("the + makes today's workout for the client whose page it is, and leaves th
   assert.deepStrictEqual([app.get().view.name, app.get().view.id, app.get().tab], ["training", made[0].id, "workouts"], "on the new workout; the tab is Workouts");
   assert.strictEqual(document.getElementById("addBtn").hidden, true, "the + is not on the workout page");
 });
+
+test("the week strip is titled with its month, as Calendar's, and the title steps aside for the month view", () => {
+  app.reset(); app.set({ signedIn: true, clientMode: true, myClientId: "c1", view: { name: "client", id: "c1" }, tab: "workouts" }); maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" });
+  const head = document.getElementById("weekHead"); head.textContent = ""; fns.render();
+  const base = new Date(); const monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7)); const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  const want = monday.getMonth() === sunday.getMonth() ? monday.toLocaleDateString(undefined, { month: "long" }) : monday.toLocaleDateString(undefined, { month: "short" }) + " \u2013 " + sunday.toLocaleDateString(undefined, { month: "short" });
+  assert.strictEqual(head.textContent, want, "the month the week is in"); assert.strictEqual(head.hidden, false, "shown with the week");
+});
