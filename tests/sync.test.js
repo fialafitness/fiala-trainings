@@ -543,3 +543,15 @@ test("the week strip is titled with its month, as Calendar's, and the title step
   const want = monday.getMonth() === sunday.getMonth() ? monday.toLocaleDateString(undefined, { month: "long" }) : monday.toLocaleDateString(undefined, { month: "short" }) + " \u2013 " + sunday.toLocaleDateString(undefined, { month: "short" });
   assert.strictEqual(head.textContent, want, "the month the week is in"); assert.strictEqual(head.hidden, false, "shown with the week");
 });
+
+test("a day's workouts: planned and finished count, a skipped one does not, a finished one files under the day it was finished; the words and the order follow", () => {
+  app.reset(); app.set({ signedIn: true, clientMode: false }); maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" });
+  maps.trainings.set("a", { id: "a", clientId: "c1", title: "Morning", date: "2026-11-04", createdAt: "2026-11-01T08:00:00.000Z", completedAt: null, skippedAt: null, rows: [] });
+  maps.trainings.set("b", { id: "b", clientId: "c1", title: "Evening", date: "2026-11-04", createdAt: "2026-11-01T09:00:00.000Z", completedAt: null, skippedAt: null, rows: [] });
+  maps.trainings.set("s", { id: "s", clientId: "c1", title: "Skipped", date: "2026-11-04", createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: "2026-11-04T10:00:00.000Z", rows: [] });
+  maps.trainings.set("f", { id: "f", clientId: "c1", title: "Moved", date: "2026-11-03", createdAt: "2026-11-01T07:00:00.000Z", completedAt: "2026-11-04T18:00:00.000Z", skippedAt: null, rows: [] });
+  const ids = (l) => l.sort(fns.byMade).map((t) => t.id);
+  assert.deepStrictEqual(ids(fns.dayList("c1", "2026-11-04")), ["f", "a", "b"], "the finished one under the day it was finished, the skipped one not at all, the morning one before the evening one");
+  assert.deepStrictEqual(fns.dayList("c1", "2026-11-03"), [], "nothing left on the planned day once it was finished elsewhere");
+  assert.strictEqual(fns.dayWords(fns.dayList("c1", "2026-11-04")), ", 3 workouts, 1 finished"); assert.strictEqual(fns.dayWords([maps.trainings.get("a")]), ", 1 workout"); assert.strictEqual(fns.dayWords([maps.trainings.get("f")]), ", 1 workout, finished"); assert.strictEqual(fns.dayWords([]), "");
+});
