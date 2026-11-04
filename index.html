@@ -758,11 +758,11 @@
   body.client .plan-card { cursor: default; }
   .plan-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
   .plan-head #planRight { color: var(--text-tertiary); letter-spacing: 0.04em; }
-  .plan-bar { display: flex; gap: 4px; margin: 12px 0 10px; height: 8px; }
+  .plan-bar { display: flex; gap: 4px; margin: 14px 0 12px; height: 5px; }   /* a hairline, as Apple's linear indicators are: one pill per session */
   .plan-bar[hidden] { display: none; }
-  .plan-bar i { flex: 1 1 0; border-radius: 4px; background: var(--glyph-fill); transition: background 200ms ease; }
+  .plan-bar i { flex: 1 1 0; border-radius: 2.5px; background: var(--glyph-fill); transition: background 200ms ease; }
   .plan-bar i.on { background: var(--brand); }
-  .plan-bar i.next { box-shadow: inset 0 0 0 1.5px var(--brand); }
+  .plan-bar i.next { box-shadow: inset 0 0 0 1px var(--brand); }
   .plan-bar.cont { gap: 0; background: var(--glyph-fill); border-radius: 4px; overflow: hidden; }
   .plan-bar.cont i { flex: none; border-radius: 0; background: var(--brand); }
   .plan-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-top: 2px; }
@@ -1474,7 +1474,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=181";
+  import { boot } from "./app/main.js?v=182";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
