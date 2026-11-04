@@ -320,8 +320,9 @@
   .list li.more button:only-child { margin-right: auto; }
   .list li.more.only > div { min-height: 44px; }                                   /* only the chevron: a shorter row */
   .list li.more button.fold { width: auto; min-width: 44px; min-height: 44px; padding: 0 0 0 12px; margin: 0 -11px 0 auto; justify-content: flex-end; gap: 8px; color: var(--text-tertiary); }   /* the fold, where the rows' chevrons sit: "12 more ›" to open, an up chevron to close */
-  .list li.more button.fold .sub { color: var(--text-tertiary); }
-  .list li.more button.fold svg { width: 14px; height: 14px; flex: none; margin-right: 14px; transform: rotate(-90deg); transition: transform 200ms ease; }
+  .list li.more button.fold.wide { width: calc(100% + 11px); margin-left: 0; padding: 0; justify-content: space-between; color: var(--text-primary); font-size: 1.0625rem; letter-spacing: -0.01em; }   /* folded: the whole row, "12 more" at the left like a row's label */
+  .list li.more button.fold.wide svg { color: var(--text-tertiary); }
+  .list li.more button.fold svg { width: 14px; height: 14px; flex: none; margin-right: 4px; transform: rotate(-90deg); transition: transform 200ms ease; }
   .list li.more button.fold.open svg { transform: rotate(-180deg); }
   .list li.more button.fold:focus-visible { outline: 2px solid var(--brand); outline-offset: -4px; border-radius: 50px; }
   .empty { color: var(--text-tertiary); font-size: 0.8125rem; letter-spacing: 0; padding: 16px 0 4px; }
@@ -1492,7 +1493,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=187";
+  import { boot } from "./app/main.js?v=188";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
