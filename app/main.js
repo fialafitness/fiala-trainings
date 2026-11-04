@@ -1125,27 +1125,44 @@ import { reportRange, buildReport } from "./report.js";
       bg.hidden = false; n.focus({ preventScroll: true });
     });
   }
-  // a list to choose from, in the same sheet language as askFirst; resolves with the chosen id, or null for Cancel / tap outside / Escape
-  function pickOne({ title, items }) {
+  // a list in a sheet, in the same language as askFirst: rows are <li> with a button[data-id]; resolves with the tapped id, or null for Cancel / tap outside / Escape
+  function sheetList({ title, rows }) {
     return new Promise((resolve) => {
       if (askOpen) askOpen(false);
       const bg = $("pickSheet"), ul = $("pickList"), n = $("pickNo"), behind = [...document.body.children].filter((el) => el !== bg);
       $("pickTitle").textContent = title;
-      ul.replaceChildren(...items.map((it) => {
-        const li = document.createElement("li"), b = document.createElement("button"); b.type = "button";
-        b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = it.label; b.lastChild.textContent = it.sub || "";
-        b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>');
-        b.addEventListener("click", () => { if (armed) done(it.id); }); li.appendChild(b); return li;
-      }));
+      ul.replaceChildren(...rows);
       let armed = false;                                                                      // the second tap of a double tap must not pick a row
       const settle = setTimeout(() => { armed = true; }, 350);
-      const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = false; bg.hidden = true; for (const el of behind) el.inert = false; n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); document.removeEventListener("keydown", onKey); resolve(v); };
+      const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = false; bg.hidden = true; for (const el of behind) el.inert = false; n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); ul.removeEventListener("click", onRow); document.removeEventListener("keydown", onKey); resolve(v); };
       const onNo = () => done(null), onBg = (e) => { if (armed && e.target === bg) done(null); }, onKey = (e) => { if (e.key === "Escape") done(null); };
+      const onRow = (e) => { const b = e.target.closest("button[data-id]"); if (b && armed) done(b.dataset.id); };
       askOpen = done; S.asking = true;
-      n.addEventListener("click", onNo); bg.addEventListener("click", onBg); document.addEventListener("keydown", onKey);
+      n.addEventListener("click", onNo); bg.addEventListener("click", onBg); ul.addEventListener("click", onRow); document.addEventListener("keydown", onKey);
       for (const el of behind) el.inert = true;
       bg.hidden = false; ul.scrollTop = 0; n.focus({ preventScroll: true });
     });
+  }
+  function pickOne({ title, items }) {                                                        // a list to choose from: label, a quiet sub, a chevron
+    return sheetList({ title, rows: items.map((it) => {
+      const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; b.dataset.id = it.id;
+      b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = it.label; b.lastChild.textContent = it.sub || "";
+      b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>');
+      li.appendChild(b); return li;
+    }) });
+  }
+  const dayList = (clientId, key) => clientTrainings(clientId).filter((t) => effDate(t) === key && !(t.skippedAt && !t.completedAt));   // a day's workouts: planned or finished, not the skipped ones
+  async function showDay(c, key) {                                                           // a day with more than one workout: the day's rows, each its own workout; the coach can add another
+    const d = new Date(key + "T12:00:00"), list = dayList(c.id, key).sort(byMade);
+    const rows = list.map((t) => {
+      const li = workoutRow(t, t.completedAt || t.skippedAt ? "past" : key === today() ? "today" : "next");
+      const b = li.querySelector("button"), nb = b.cloneNode(true); nb.dataset.id = t.id; b.replaceWith(nb);      // the row's own tap is replaced by the sheet's
+      const acts = li.querySelector(".missed-actions"); if (acts) acts.remove();
+      return li;
+    });
+    if (!S.clientMode) { const li = document.createElement("li"); li.className = "more"; const box = document.createElement("div"); const b = document.createElement("button"); b.type = "button"; b.dataset.id = "+"; b.textContent = "Add a workout"; box.appendChild(b); li.appendChild(box); rows.push(li); }
+    const id = await sheetList({ title: d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }), rows });
+    if (id === "+") addTraining(c.id, null, key); else if (id) go({ name: "training", id });
   }
   function finishEarlyNow() {
     if (!es) return;
@@ -1181,11 +1198,9 @@ import { reportRange, buildReport } from "./report.js";
       const b = document.createElement("button"); b.type = "button";
       if (key === today()) { b.classList.add("today"); b.setAttribute("aria-current", "date"); }
       if (key === dp.selected) b.classList.add("sel");
-      if (dayWorkouts.length) b.classList.add(dayWorkouts.every((t) => t.completedAt) ? "finished" : "planned");
       const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(day);
-      const dot = document.createElement("span"); dot.className = "dot";
-      b.append(dn, dot);
-      b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + (dayWorkouts.length ? ", " + dayWorkouts.length + (dayWorkouts.length === 1 ? " workout" : " workouts") : ""));
+      b.append(dn, dayDots(dayWorkouts));
+      b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + dayWords(dayWorkouts));
       b.addEventListener("click", () => { const pick = dp && dp.onPick; closeDatePicker(); if (pick) pick(key); });
       grid.appendChild(b);
     }
@@ -1592,6 +1607,13 @@ import { reportRange, buildReport } from "./report.js";
     for (const id of ids) if (!seen.includes(id)) { seen.push(id); changed = true; }
     if (changed) { c.seenNotes = seen; scheduleSave("clients", c.id); }
   }
+  const byMade = (x, y) => String(x.createdAt || "").localeCompare(String(y.createdAt || ""));   // same-day workouts: in the order they were made, the morning one first
+  const dayDots = (ws) => {                                                   // under a day: one bar per workout (up to three), fern when finished, a hairline when planned
+    const box = document.createElement("span"); box.className = "dots";
+    for (const t of ws.slice().sort(byMade).slice(0, 3)) { const dot = document.createElement("span"); dot.className = "dot " + (t.completedAt ? "finished" : "planned"); box.appendChild(dot); }
+    return box;
+  };
+  const dayWords = (ws) => { if (!ws.length) return ""; const n = ws.length, done = ws.filter((t) => t.completedAt).length; return ", " + n + (n === 1 ? " workout" : " workouts") + (done === n ? ", finished" : done ? ", " + done + " finished" : ""); };
   const relDay = (iso) => {                                            // "Today", "Tomorrow", "In 4 days", "Yesterday", "3 days ago"
     const n = Math.round((new Date(iso + "T12:00:00") - new Date(today() + "T12:00:00")) / 86400000);
     if (!Number.isFinite(n)) return "";                                  // no date on the record: no caption
@@ -1679,12 +1701,11 @@ import { reportRange, buildReport } from "./report.js";
       if (key === today()) { b.classList.add("today"); b.setAttribute("aria-current", "date"); }
       if (withWeekday) { const wd = document.createElement("span"); wd.className = "wd"; wd.textContent = d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 3); b.appendChild(wd); }
       const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(d.getDate());
-      if (dayWorkouts.length) b.classList.add(dayWorkouts.every((t) => t.completedAt) ? "finished" : "planned");
-      const dot = document.createElement("span"); dot.className = "dot";
-      b.append(dn, dot);
-      b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + (dayWorkouts.length ? (dayWorkouts.every((t) => t.completedAt) ? ", finished" : ", planned") : ""));
+      b.append(dn, dayDots(dayWorkouts));
+      b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + dayWords(dayWorkouts));
       b.addEventListener("click", () => {
-        if (dayWorkouts.length) go({ name: "training", id: dayWorkouts[0].id });
+        if (dayWorkouts.length > 1) showDay(c, key);                                           // two or more: the day's own list
+        else if (dayWorkouts.length) go({ name: "training", id: dayWorkouts[0].id });
         else if (!S.clientMode) addTraining(c.id, null, key);
       });
       return b;
@@ -1731,7 +1752,7 @@ import { reportRange, buildReport } from "./report.js";
       if (t.completedAt || t.skippedAt || t.missed !== undefined || !effDate(t) || effDate(t) >= stale || !nothingLogged(t)) continue;   // missed: true = filed before, false = a person decided
       t.skippedAt = now(); t.missed = true; if (S.clientMode) pendingMiss.add(t.id); scheduleSave("trainings", t.id);
     }
-    const next = list.filter((t) => !t.completedAt && !t.skippedAt).sort((a, b) => effDate(a).localeCompare(effDate(b)));
+    const next = list.filter((t) => !t.completedAt && !t.skippedAt).sort((a, b) => effDate(a).localeCompare(effDate(b)) || byMade(a, b));   // by day, and within a day in the order they were made
     // keep it short: anything due within the next few days (the very next workout always shows);
     // "Show more" adds the next few workouts each tap, "Show less" folds back to the short list
     if (nextFor !== c.id) { nextFor = c.id; nextExtra = 0; }
@@ -1817,6 +1838,9 @@ import { reportRange, buildReport } from "./report.js";
     const src = !asClient && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
     $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = templatePath(src);
     $("tplFill").hidden = asClient || isTpl || (t.rows || []).length > 0 || !!t.completedAt;   // only an empty workout offers a template
+    const others = isTpl || !effDate(t) ? [] : dayList(t.clientId, effDate(t)).filter((x) => x.id !== t.id);   // the day's other workouts: a quiet pill to the day's list
+    $("dayMore").hidden = !others.length;
+    if (others.length) { const d = effDate(t), when = d === today() ? "today" : "on " + whenDay(d); $("dayMoreText").textContent = others.length === 1 ? "Also " + when + ": " + (String(others[0].title || "").trim() || "Workout") : others.length + " more " + when; }   // "Also today: Core", "2 more on Nov 5"
     $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || S.clientMode;
     $("viewSeg").hidden = S.clientMode || isTpl; for (const b of $("viewSeg").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.view === "client") === previewClient); if (!isTpl || S.renderedTraining !== t.id) $("usePick").hidden = true;   // the client list built for another template must not survive onto this one
     $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
@@ -2706,6 +2730,7 @@ import { reportRange, buildReport } from "./report.js";
   document.addEventListener("focusout", () => { setTimeout(() => { if (!typingIn(document.activeElement)) document.body.classList.remove("typing"); }, 80); });
   $("newTraining").addEventListener("click", () => addTraining(S.view.id, null, today()));
   $("addBtn").addEventListener("click", newWorkoutHere);
+  $("dayMore").addEventListener("click", () => { const t = trainings.get(S.view.id); const c = t && clients.get(t.clientId); if (c && effDate(t)) showDay(c, effDate(t)); });
   $("delClient").addEventListener("click", () => { $("delClient").hidden = true; $("delClientConfirm").hidden = false; });
   $("delClientNo").addEventListener("click", () => { $("delClientConfirm").hidden = true; $("delClient").hidden = false; });
   $("delClientYes").addEventListener("click", () => deleteClient(S.view.id));
@@ -2910,7 +2935,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
