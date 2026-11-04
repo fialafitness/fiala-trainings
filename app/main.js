@@ -1764,20 +1764,20 @@ import { reportRange, buildReport } from "./report.js";
     $("todayHead").hidden = !todays.length; $("todayList").hidden = !todays.length; $("todayList").replaceChildren(...todays.map((t) => workoutRow(t, "today")));
     $("nextHead").hidden = !later.length && left === 0; $("nextList").hidden = !later.length && left === 0;
     $("nextList").replaceChildren(...later.map((t) => workoutRow(t, "next")));
-    if (left > 0 || nextExtra > 0) {
-      const li = document.createElement("li"); li.className = "more"; const bar = document.createElement("div");
-      if (left > 0) {
+    if (left > 0 || nextExtra > 0) {                                        // the card's last row: a chevron at the right opens the list (down) and folds it back (up); once open, "Show more · 7 more" on the left while there is still more
+      const li = document.createElement("li"); li.className = "more" + (left > 0 && nextExtra > 0 ? "" : " only"); const bar = document.createElement("div");
+      if (left > 0 && nextExtra > 0) {
         const b = document.createElement("button"); b.type = "button";
         const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = left + " more";
         b.append("Show more", sub); b.addEventListener("click", () => { nextExtra += NEXT_STEP; renderClient(); });
         bar.appendChild(b);
       }
-      if (nextExtra > 0) {
-        const b = document.createElement("button"); b.type = "button"; b.textContent = "Show less";
-        b.addEventListener("click", () => { nextExtra = 0; renderClient(); });
-        bar.appendChild(b);
-      }
-      li.appendChild(bar); $("nextList").appendChild(li);
+      const open = nextExtra > 0;
+      const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold" + (open ? " open" : "");
+      fold.setAttribute("aria-label", open ? "Show less" : "Show more"); fold.setAttribute("aria-expanded", String(open));
+      fold.innerHTML = '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5.5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      fold.addEventListener("click", () => { nextExtra = open ? 0 : nextExtra + NEXT_STEP; renderClient(); });
+      bar.appendChild(fold); li.appendChild(bar); $("nextList").appendChild(li);
     }
 
     const rest = list.filter((t) => t.completedAt || t.skippedAt);           // History: a card under Up next; its page lays the past out by week, month and year
