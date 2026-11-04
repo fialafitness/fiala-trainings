@@ -1775,7 +1775,8 @@ import { reportRange, buildReport } from "./report.js";
       const open = nextExtra > 0;
       const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold" + (open ? " open" : "");
       fold.setAttribute("aria-label", open ? "Show less" : "Show more"); fold.setAttribute("aria-expanded", String(open));
-      fold.innerHTML = '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5.5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      fold.innerHTML = (open ? "" : '<span class="sub"></span>') + '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5.5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      if (!open) fold.firstChild.textContent = left + " more";                    // folded: "12 more ›" at the right, as a row's value and chevron
       fold.addEventListener("click", () => { nextExtra = open ? 0 : nextExtra + NEXT_STEP; renderClient(); });
       bar.appendChild(fold); li.appendChild(bar); $("nextList").appendChild(li);
     }
