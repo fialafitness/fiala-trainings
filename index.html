@@ -318,6 +318,11 @@
   .list li.more > div { min-height: 56px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .list li.more button { width: auto; min-height: 44px; padding: 0; color: var(--brand-text); gap: 10px; }   /* "Show more" / "Show less": tertiary actions inside the group */
   .list li.more button:only-child { margin-right: auto; }
+  .list li.more.only > div { min-height: 44px; }                                   /* only the chevron: a shorter row */
+  .list li.more button.fold { width: 44px; min-height: 44px; padding: 0; margin: 0 -14px 0 auto; justify-content: center; color: var(--text-tertiary); }   /* the fold chevron, where the rows' chevrons sit: down to open, up to close */
+  .list li.more button.fold svg { width: 14px; height: 14px; transition: transform 200ms ease; }
+  .list li.more button.fold.open svg { transform: rotate(180deg); }
+  .list li.more button.fold:focus-visible { outline: 2px solid var(--brand); outline-offset: -4px; border-radius: 50px; }
   .empty { color: var(--text-tertiary); font-size: 0.8125rem; letter-spacing: 0; padding: 16px 0 4px; }
   /* Templates card: the one place the brand purple carries a surface */
   .tplcard {
@@ -1486,7 +1491,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=184";
+  import { boot } from "./app/main.js?v=185";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
