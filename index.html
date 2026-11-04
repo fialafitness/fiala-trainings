@@ -244,12 +244,10 @@
   .btn.tint.accent { color: var(--brand-text); }                                    /* the one accent capsule of a screen, like Apple's green on grey */
   .btn.ink { background: var(--ink); color: var(--ink-on); }                   /* Apple's strong monochrome button: black on light, white on dark */
   .btn.outline { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }   /* its outlined partner, like Pre-order next to Learn more */
-  .start-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }           /* + Workout and Templates, side by side, half each, the same height and type */
+  .start-pair { display: grid; grid-template-columns: 1fr; margin-top: 20px; }           /* the library's + Template; a client's page adds a workout from the + beside the bar */
   .start-pair > * { min-width: 0; display: flex; }
   .start-pair .btn { width: 100%; min-height: 52px; height: 100%; padding: 12px 16px; font-size: 1.0625rem; font-weight: 500; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; }
-  .start-pair .btn.tint { color: var(--text-primary); }
-  .start-pair > div[hidden] { display: none; }
-  #vClient.tpl .start-pair { grid-template-columns: 1fr; }
+  #vClient:not(.tpl) .start-pair { display: none; }
   .btn.wide { width: 100%; min-height: 50px; padding: 0 16px; font-size: 1.0625rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }   /* Finish workout: the page's main act, filled purple and full width; Skip under it stays the quiet grey capsule */
   .btn.tint.wide { width: 100%; min-height: 50px; font-size: 1.0625rem; font-weight: 600; }
   .btn.tint:hover, .btn.tint:active { opacity: 0.8; }
@@ -258,7 +256,7 @@
   .start-row { display: flex; gap: 10px; margin-top: 16px; align-items: stretch; }   /* Apple's pair: one filled, one outlined, edge to edge; alone, the filled one takes the whole width */
   .start-row #addRow, .start-row #tplFill { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 16px; font-size: 1rem; font-weight: 600; margin: 0; white-space: nowrap; }
   .btn:disabled { opacity: 0.5; cursor: default; }
-  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible, .datefield:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible, .datefield:focus-visible, .dock-add:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   .cal button:focus-visible { outline-offset: -2px; }
 
   .stack { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
@@ -734,18 +732,25 @@
   .setlog .chip.stack.editing .valrow input { position: static; flex: 1 1 auto; width: 0; min-width: 3ch; height: auto; font-size: 1.375rem; font-weight: 600; padding: 0; }
   .setlog .chip.stack.editing .valrow .val { display: none; }
   /* the bar: two tabs on a client's page, floating like Apple's, the glass of the date bubble */
-  #tabbar { position: fixed; left: 50%; bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 8px)); transform: translateX(-50%); z-index: 45; display: flex; gap: 4px; padding: 2px; border-radius: 50px; background: var(--tab-fill); -webkit-backdrop-filter: blur(2.5px) saturate(160%); backdrop-filter: blur(2.5px) saturate(160%); box-shadow: var(--tab-shadow); }   /* where Apple's sits: into the home-indicator zone; its glass: a light blur (the page stays readable through it), a thin tint, a lit rim */
+  #dock { position: fixed; left: 0; right: 0; bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 8px)); z-index: 45; display: flex; justify-content: center; align-items: center; gap: 14px; padding: 0 16px; pointer-events: none; }   /* where Apple's sits: into the home-indicator zone; the bar and the coach's + share the row, 14 apart, as Notes' search pill and compose circle */
+  #dock > * { pointer-events: auto; }
+  #tabbar { position: relative; min-width: 0; display: flex; gap: 4px; padding: 2px; border-radius: 50px; background: var(--tab-fill); -webkit-backdrop-filter: blur(2.5px) saturate(160%); backdrop-filter: blur(2.5px) saturate(160%); box-shadow: var(--tab-shadow); }   /* its glass: a light blur (the page stays readable through it), a thin tint, a lit rim */
+  .dock-add { flex: none; width: 60px; height: 60px; border-radius: 50%; border: 0; padding: 0; margin: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: var(--text-primary); background: var(--tab-fill); -webkit-backdrop-filter: blur(2.5px) saturate(160%); backdrop-filter: blur(2.5px) saturate(160%); box-shadow: var(--tab-shadow); transition: transform 300ms ease, opacity 300ms ease; }   /* the same glass as the bar, as tall as the bar: + Workout, as Notes' compose circle */
+  .dock-add svg { width: 26px; height: 26px; }
+  .dock-add:active { transform: scale(0.96); }
+  .dock-add[hidden] { display: none; }
   #tabbar[hidden] { display: none; }
   #tabbar button { position: relative; }
   .tab-badge { position: absolute; top: 5px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 0.6875rem; font-weight: 700; font-style: normal; display: inline-flex; align-items: center; justify-content: center; }   /* unread notes: the count on the tab, as on Mail's */
   .tab-badge[hidden] { display: none; }
   #tabbar button { appearance: none; border: 0; background: none; min-width: 124px; height: 56px; padding: 0 18px; border-radius: 50px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: inherit; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0; color: var(--text); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 160ms ease, color 160ms ease; }
   #tabbar button svg { width: 22px; height: 22px; }
+  #tabbar button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* a squeezed tab (narrow phone, large Text Size) clips its word rather than running into the next */
   #tabbar button.on { background: var(--tab-on); color: var(--brand-text); box-shadow: var(--tab-on-shadow); }
   body.tabs #vClient { padding-bottom: 100px; }                                   /* the last thing on the page clears the bar */
-  body.typing #tabbar { display: none; }                                          /* the keyboard has the bottom */
+  body.typing #dock { display: none; }                                            /* the keyboard has the bottom */
   #vClient:not(.tpl)[data-tab="workouts"] [data-tab]:not([data-tab="workouts"]), #vClient:not(.tpl)[data-tab="profile"] [data-tab]:not([data-tab="profile"]), #vClient:not(.tpl)[data-tab="notes"] [data-tab]:not([data-tab="notes"]) { display: none !important; }   /* each tab shows its own things */
-  body:not(.client) #tabbar button { min-width: 96px; padding: 0 10px; }   /* the coach has three tabs: Workouts, Progress, Notes */
+  body:not(.client) #tabbar button { width: 88px; min-width: 0; flex: 1 1 88px; padding: 0 8px; }   /* three tabs of 88 fit a 393 phone beside the +; on a narrower one the tabs give, the + does not */   /* the coach has three tabs: Workouts, Progress, Notes */
   /* packages: the plan card on the client page, the In person pill on a workout, the Packages page */
   .plan-card { display: block; width: 100%; text-align: left; appearance: none; border: 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; background: var(--card); border-radius: var(--r-card); padding: 14px 16px 12px; margin-top: 4px; }
   .plan-card[hidden] { display: none; }
@@ -1023,7 +1028,7 @@
   .pick-note { margin: 12px 2px 0; font-size: 0.9375rem; color: var(--text-secondary); }
   .pick-note b { font-weight: 500; color: var(--text-primary); }
   #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .msg-disc, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #todayList, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
-  #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #fromWrap, #vClient.tpl #trainingEmpty { display: none; }
+  #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #histCard, #vClient.tpl #trainingEmpty { display: none; }   /* the library is not a client: no history card either */
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
   .tpl-pill { justify-self: stretch; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 36px; border-radius: 50px;
@@ -1349,7 +1354,7 @@
       <div class="cal-wd" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
       <div class="cal-view" id="calView"><div class="cal-track" id="calTrack"></div></div>
     </div>
-    <div data-tab="workouts" class="trainer-only start-pair"><button class="btn" id="newTraining">+ Workout</button><div id="fromWrap"><button class="btn tint" id="fromTemplate" type="button">Templates</button></div></div>
+    <div data-tab="workouts" class="trainer-only start-pair"><button class="btn" id="newTraining" type="button">+ Template</button></div>
     <div data-tab="workouts" class="pick-note trainer-only" id="pickNote" hidden></div>
     <div data-tab="workouts" id="tplList" hidden></div>
     <ul data-tab="workouts" class="list today" id="todayList" hidden></ul>
@@ -1401,11 +1406,14 @@
   </div>
 </div>
 <span id="typeProbe" aria-hidden="true">A</span>
+<div id="dock">
 <nav id="tabbar" aria-label="Sections" hidden>
   <button type="button" data-tab="workouts" class="on"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7.5v9M17.5 7.5v9M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg><span>Workouts</span></button>
   <button type="button" data-tab="profile"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M5 15.5l4.5-5 3.5 3.5 6-6.5"/><path d="M15 7.5h4V11.5"/></svg><span>Progress</span></button>
   <button type="button" data-tab="notes" class="trainer-only"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-6"/><path d="M18.4 2.6a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg><span>Notes</span><i class="tab-badge" id="notesBadge" hidden></i></button>
 </nav>
+<button class="dock-add trainer-only" id="addBtn" type="button" aria-label="New workout" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5.25v13.5M5.25 12h13.5"/></svg></button>
+</div>
 <div id="whenBg" hidden><div id="whenPop" role="dialog" aria-live="polite"></div></div>
 <div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="pickSheet" hidden><div class="sheet ask confirm-sheet pick-sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle"><h3 id="pickTitle"></h3><ul class="list" id="pickList"></ul><div class="ask-actions"><button class="btn quiet" id="pickNo" type="button">Cancel</button></div></div></div>
@@ -1448,7 +1456,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=176";
+  import { boot } from "./app/main.js?v=177";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
