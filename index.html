@@ -897,7 +897,7 @@
   .add { margin-top: 16px; }
   .pill.big { min-height: 44px; padding: 0 22px; font-size: 1rem; }   /* the one pill that starts a workout: a size up */
   #tplFill { display: block; margin-top: 10px; }                     /* on its own line under the pill; gone once the first exercise is in */
-  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 20px; }   /* 20 from the strip to the first card; the cards then sit 12 apart */
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 28px; }   /* 28 from the strip to the first card; the cards then sit 12 apart */
   .week button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: var(--r-chip); padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text-secondary); transition: background-color 150ms ease; }
   .week button:hover { background: var(--field); }
   .week .wd { font-size: 0.6875rem; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
@@ -908,7 +908,7 @@
   .week button.finished .dot { background: var(--done); border-color: var(--done); }   /* finished is always the fern */
   .week[hidden] { display: none; }
   /* month view: the week strip opened out to a whole month */
-  .week-bar { margin: 20px 0 -4px; min-height: 36px; }   /* the caption sits centred in a 36px row with the Month pill: 20 above the row puts its text 32 below the card, and 0 below leaves 12 to the week */
+  .week-bar { margin: 28px 0 0; min-height: 36px; }   /* the calendar breathes: 28 above its title row, the strip right under it, 28 below */
   .week-bar h2 { margin: 0; font-size: 1.0625rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; text-transform: none; color: var(--text-primary); }   /* the month the week is in — "November", or "Nov – Dec" when the week straddles — where Calendar writes it; nothing else needs saying */
   .week-bar h2[hidden] { display: none; }
   .week-bar .cal-disc { margin-left: auto; }
@@ -921,7 +921,7 @@
   .cal-today { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand-text); font-size: 0.9375rem; font-weight: 500; min-height: 36px; padding: 0 10px; border-radius: 50px; transition: opacity 300ms ease; }
   .cal-today:hover { opacity: 0.8; }
   .cal-today[hidden] { display: none; }
-  #calWrap { margin-bottom: 20px; }
+  #calWrap { margin-bottom: 28px; }
   .cal-view { position: relative; overflow: hidden; touch-action: pan-y; transition: height 280ms ease; }
   .cal-track { display: flex; align-items: flex-start; width: 100%; transform: translateX(-100%); will-change: transform; }
   .cal-panel { flex: 0 0 100%; width: 100%; }
@@ -1474,7 +1474,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=180";
+  import { boot } from "./app/main.js?v=181";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
