@@ -256,7 +256,7 @@
   .start-row { display: flex; gap: 10px; margin-top: 16px; align-items: stretch; }   /* Apple's pair: one filled, one outlined, edge to edge; alone, the filled one takes the whole width */
   .start-row #addRow, .start-row #tplFill { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 16px; font-size: 1rem; font-weight: 600; margin: 0; white-space: nowrap; }
   .btn:disabled { opacity: 0.5; cursor: default; }
-  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible, .datefield:focus-visible, .dock-add:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible, .datefield:focus-visible, .dock-add:focus-visible, .month > button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   .cal button:focus-visible { outline-offset: -2px; }
 
   .stack { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
@@ -941,9 +941,13 @@
   .cal button.planned .dot { border: 1px solid var(--text-tertiary); }
   .cal button.finished .dot { background: var(--done); border-color: var(--done); }
   .month { margin-top: 12px; }
-  .month > button { appearance: none; border: 0; background: none; width: 100%; cursor: pointer; display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 0 4px; font-size: 1.0625rem; color: var(--text-primary); }
-  .month > button .sub { color: var(--text-tertiary); font-size: 0.8125rem; }
-  .month .list { margin-top: 8px; }
+  .month > button { appearance: none; border: 1px solid var(--card-edge); background: var(--card); border-radius: var(--r-card); width: 100%; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 56px; padding: 0 16px 0 20px; font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary); }   /* a group's title row is the top of its card */
+  .month > button .sub { display: inline-flex; align-items: center; gap: 6px; flex: none; white-space: nowrap; color: var(--text-tertiary); font-size: 0.8125rem; font-weight: 400; letter-spacing: 0; }
+  .month > button .sub svg { width: 14px; height: 14px; transition: transform 200ms ease; }
+  .month.open > button .sub svg { transform: rotate(90deg); }
+  .month.flat.open > button { border-radius: var(--r-card) var(--r-card) 0 0; border-bottom: 1px solid var(--card-border); }
+  .month.flat > .list { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+  .month.flat > .list[hidden] { display: none; }
   .month .month { margin-left: 16px; }
   /* client notes: a composer, then the saved notes by week, month and year */
   .note-actions { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
@@ -951,7 +955,7 @@
   .list.notes { padding: 2px 0; }
   #noteList .list.notes { margin-top: 12px; }
   #histCard { margin-top: 32px; }   /* its own thing under Up next: a section's worth of air */
-  #vHistory .month:first-child { margin-top: 20px; }
+  #histList > :first-child { margin-top: 20px; }   /* 20 after the title, then 12 between the cards */
   .note-head { margin: 24px 0 0; }   /* "This week", "October", "October 2025": the small caption, when every note is shown */
   .note-more { padding: 4px 20px 0; }
   .note-more button { appearance: none; border: 0; background: none; width: auto; min-height: 44px; padding: 0; font: inherit; font-size: 1.0625rem; color: var(--brand-text); display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }   /* "Show all · 12 more" / "Show less", like Up next */
@@ -1019,7 +1023,7 @@
   .paused-card b { font-weight: 500; font-size: 1.0625rem; letter-spacing: -0.01em; }
   .paused-card span { font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.45; }
   .paused-card[hidden] { display: none; }
-  body.client.paused #weekBar, body.client.paused #calWrap, body.client.paused #week, body.client.paused #todayList, body.client.paused #nextHead, body.client.paused #nextList, body.client.paused #histHead, body.client.paused #histList, body.client.paused #trainingEmpty { display: none; }
+  body.client.paused #weekBar, body.client.paused #calWrap, body.client.paused #week, body.client.paused #todayHead, body.client.paused #todayList, body.client.paused #nextHead, body.client.paused #nextList, body.client.paused #histHead, body.client.paused #histList, body.client.paused #trainingEmpty { display: none; }
   .list.inactive button > span:first-child { color: var(--text-secondary); }
   .list[hidden], .listbar[hidden] { display: none; }
   .seg.stages { display: flex; width: 100%; }
@@ -1027,7 +1031,7 @@
   .tpl-stage { font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 14px 4px 8px; }
   .pick-note { margin: 12px 2px 0; font-size: 0.9375rem; color: var(--text-secondary); }
   .pick-note b { font-weight: 500; color: var(--text-primary); }
-  #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .msg-disc, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #todayList, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
+  #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .msg-disc, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #todayHead, #vClient.tpl #todayList, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
   #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #histCard, #vClient.tpl #trainingEmpty { display: none; }   /* the library is not a client: no history card either */
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
@@ -1048,15 +1052,25 @@
   body.draft main { padding-bottom: 96px; }
   .list .pri { display: block; }
   .list .sec { display: block; font-size: 0.8125rem; color: var(--text-tertiary); letter-spacing: 0; margin-top: 2px; }
-  .list li.next button { padding: 16px 20px; }                                   /* the very next workout stands out: when, then the day, bigger */
-  .list li.next .when { display: block; margin-bottom: 3px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand-text); }
-  .list.today { margin-top: 32px; }                                                                   /* today's card stands where its heading stood */
-  .list.today li.next .when { font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.10em; margin-bottom: 6px; }   /* "TODAY" in the cell, the size of a section heading */
-  .list li.next .when.missed { color: var(--danger); }                       /* a missed session: the one red caption */
-  .list li.next .pri { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
-  .list li.next .sec { font-size: 0.9375rem; color: var(--text-secondary); margin-top: 3px; }
-  .list li.next .missed-actions { display: flex; gap: 10px; padding: 4px 20px 14px; margin-top: -4px; }   /* a missed workout: decide right here */
-  .list li.next .missed-actions button { width: auto; min-height: 38px; padding: 0 14px; font-size: 0.875rem; color: var(--text-primary); }
+  /* a workout row, as Fitness lays its history out: the day in a column, a disc with the lifter, the title over a quiet line, a chevron */
+  .list li.w > button { padding: 14px 16px 14px 20px; gap: 12px; align-items: center; }
+  .list .wd { flex: none; width: 2.5rem; display: flex; flex-direction: column; align-items: center; gap: 2px; }   /* 40px at the normal Text Size, wider with it, so "WED" never spills */
+  .list .wd .dow { font-size: 0.6875rem; line-height: 1; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
+  .list .wd .dn { font-size: 1.0625rem; line-height: 1.2; font-weight: 500; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .list .wi { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--glyph-fill); color: var(--text-primary); display: inline-flex; align-items: center; justify-content: center; }
+  .list .wi svg { width: 22px; height: 22px; }
+  .list li.w.done .wi { background: var(--done-tint); background: color-mix(in srgb, var(--done) 16%, transparent); color: var(--done); }   /* finished: the fern disc, enough fern to read on the dark card */
+  .list li.w.off .wi { color: var(--text-tertiary); }                          /* skipped or missed: a quiet disc, quiet words */
+  .list li.w.off .pri { color: var(--text-secondary); }
+  .list .wt { flex: 1 1 auto; min-width: 0; }
+  .list li.w .pri { font-weight: 600; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .list li.w .sec { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list li.w .sec .missed { color: var(--danger); }                           /* a missed session: the one red word */
+  .list li.w .missed-actions { display: flex; flex-wrap: wrap; gap: 10px; padding: 0 16px 14px calc(2.5rem + 80px); margin-top: -4px; }   /* a missed workout: decide right here, under its words (20 + the day column + 12 + the disc + 12) */
+  .list li.w .missed-actions button { width: auto; min-height: 38px; padding: 0 14px; font-size: 0.875rem; color: var(--text-primary); }
+  .card-head { margin: 32px 0 0; padding: 14px 20px 2px; background: var(--card); border: 1px solid var(--card-edge); border-bottom: 0; border-radius: var(--r-card) var(--r-card) 0 0; font-size: 1.0625rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; text-transform: none; color: var(--text-primary); }   /* Today, Up next: the title inside its card, as Weather's cards carry theirs */
+  .card-head[hidden] { display: none; }
+  .card-head + .list { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
   .finish { margin-top: 32px; }
   .cele { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 24px; padding: 40px 0; }
   .cele h1 { margin: 0; }
@@ -1105,7 +1119,7 @@
   .settings-list .seg button:hover { opacity: 1; }
   .settings-list .seg button.on { background: var(--seg-on); color: var(--text-primary); box-shadow: 0 1px 3px var(--seg-shadow); }
   body.client .settings-list .trainer-only + li { border-top: 0; }
-  @supports (corner-shape: squircle) { .list, .group, .paused-card, .sheet, .btn, .pill, .msg-pill, .seg, input, textarea, .datefield, .numpick, .sugg, .alt-menu { corner-shape: squircle; } }
+  @supports (corner-shape: squircle) { .list, .group, .paused-card, .sheet, .card-head, .month > button, .btn, .pill, .msg-pill, .seg, input, textarea, .datefield, .numpick, .sugg, .alt-menu { corner-shape: squircle; } }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   @media (max-width: 400px) {
@@ -1357,8 +1371,9 @@
     <div data-tab="workouts" class="trainer-only start-pair"><button class="btn" id="newTraining" type="button">+ Template</button></div>
     <div data-tab="workouts" class="pick-note trainer-only" id="pickNote" hidden></div>
     <div data-tab="workouts" id="tplList" hidden></div>
-    <ul data-tab="workouts" class="list today" id="todayList" hidden></ul>
-    <h2 data-tab="workouts" id="nextHead" hidden>Up next</h2>
+    <h2 data-tab="workouts" class="card-head" id="todayHead" hidden>Today</h2>
+    <ul data-tab="workouts" class="list" id="todayList" hidden></ul>
+    <h2 data-tab="workouts" class="card-head" id="nextHead" hidden>Up next</h2>
     <ul data-tab="workouts" class="list" id="nextList" hidden></ul>
     <ul data-tab="workouts" class="list" id="histCard" hidden><li><button type="button" id="histBtn"><span style="min-width:0"><span class="pri">History</span><span class="sec" id="histSub"></span></span><span class="chev">&rsaquo;</span></button></li></ul>
     <div data-tab="workouts" class="empty" id="trainingEmpty" hidden>No workouts yet.</div>
@@ -1456,7 +1471,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=177";
+  import { boot } from "./app/main.js?v=178";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
