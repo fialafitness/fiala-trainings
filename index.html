@@ -897,7 +897,7 @@
   .add { margin-top: 16px; }
   .pill.big { min-height: 44px; padding: 0 22px; font-size: 1rem; }   /* the one pill that starts a workout: a size up */
   #tplFill { display: block; margin-top: 10px; }                     /* on its own line under the pill; gone once the first exercise is in */
-  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 20px; }   /* 20 from the strip to the first card; the cards then sit 12 apart */
   .week button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: var(--r-chip); padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-secondary); transition: background-color 150ms ease; }
   .week button:hover { background: var(--field); }
   .week .wd { font-size: 0.6875rem; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
@@ -919,6 +919,7 @@
   .cal-today { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--brand-text); font-size: 0.9375rem; font-weight: 500; min-height: 36px; padding: 0 10px; border-radius: 50px; transition: opacity 300ms ease; }
   .cal-today:hover { opacity: 0.8; }
   .cal-today[hidden] { display: none; }
+  #calWrap { margin-bottom: 20px; }
   .cal-view { position: relative; overflow: hidden; touch-action: pan-y; transition: height 280ms ease; }
   .cal-track { display: flex; align-items: flex-start; width: 100%; transform: translateX(-100%); will-change: transform; }
   .cal-panel { flex: 0 0 100%; width: 100%; }
@@ -954,7 +955,7 @@
   .note-actions[hidden] { display: none; }
   .list.notes { padding: 2px 0; }
   #noteList .list.notes { margin-top: 12px; }
-  #histCard { margin-top: 32px; }   /* its own thing under Up next: a section's worth of air */
+  #histCard { margin-top: 12px; }   /* one 12px gap between the cards, as between Fitness' */
   #histList > :first-child { margin-top: 20px; }   /* 20 after the title, then 12 between the cards */
   .note-head { margin: 24px 0 0; }   /* "This week", "October", "October 2025": the small caption, when every note is shown */
   .note-more { padding: 4px 20px 0; }
@@ -1068,7 +1069,7 @@
   .list li.w .sec .missed { color: var(--danger); }                           /* a missed session: the one red word */
   .list li.w .missed-actions { display: flex; flex-wrap: wrap; gap: 10px; padding: 0 16px 14px calc(2.5rem + 80px); margin-top: -4px; }   /* a missed workout: decide right here, under its words (20 + the day column + 12 + the disc + 12) */
   .list li.w .missed-actions button { width: auto; min-height: 38px; padding: 0 14px; font-size: 0.875rem; color: var(--text-primary); }
-  .card-head { margin: 32px 0 0; padding: 14px 20px 2px; background: var(--card); border: 1px solid var(--card-edge); border-bottom: 0; border-radius: var(--r-card) var(--r-card) 0 0; font-size: 1.0625rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; text-transform: none; color: var(--text-primary); }   /* Today, Up next: the title inside its card, as Weather's cards carry theirs */
+  .card-head { margin: 12px 0 0; padding: 14px 20px 2px; background: var(--card); border: 1px solid var(--card-edge); border-bottom: 0; border-radius: var(--r-card) var(--r-card) 0 0; font-size: 1.0625rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; text-transform: none; color: var(--text-primary); }   /* Today, Up next: the title inside its card, as Weather's cards carry theirs */
   .card-head[hidden] { display: none; }
   .card-head + .list { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
   .finish { margin-top: 32px; }
@@ -1471,7 +1472,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=178";
+  import { boot } from "./app/main.js?v=179";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
