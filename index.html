@@ -287,7 +287,9 @@
   .list .n2 { font-size: 0.8125rem; line-height: 1.2; font-weight: 500; color: var(--text-secondary); }
   .list .n2[hidden] { display: none; }
   .list button.news .n2 { color: var(--text-primary); }
-  .notif { margin-top: 4px; }                                                     /* under the Message row: what the client finished on their own, until he has looked */
+  .notif { margin-top: 28px; }
+  #notesWrap { margin-top: 28px; }
+  .notif:not([hidden]) ~ .plan-card { margin-top: 12px; }   /* under the New list, the plan card is the next card: 12 */                                                     /* under the Message row: what the client finished on their own, until he has looked */
   .notif h2 { margin: 16px 0 12px; }   /* with the title's own 16 below it: 32 */
   .notif .news-clear { margin-top: 8px; }
   .notif .count-old { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--brand); color: #fff; font-size: 0.75rem; font-weight: 600; letter-spacing: 0; }
@@ -752,7 +754,7 @@
   #vClient:not(.tpl)[data-tab="workouts"] [data-tab]:not([data-tab="workouts"]), #vClient:not(.tpl)[data-tab="profile"] [data-tab]:not([data-tab="profile"]), #vClient:not(.tpl)[data-tab="notes"] [data-tab]:not([data-tab="notes"]) { display: none !important; }   /* each tab shows its own things */
   body:not(.client) #tabbar button { width: 88px; min-width: 0; flex: 1 1 88px; padding: 0 8px; }   /* three tabs of 88 fit a 393 phone beside the +; on a narrower one the tabs give, the + does not */   /* the coach has three tabs: Workouts, Progress, Notes */
   /* packages: the plan card on the client page, the In person pill on a workout, the Packages page */
-  .plan-card { display: block; width: 100%; text-align: left; appearance: none; border: 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; background: var(--card); border-radius: var(--r-card); padding: 14px 16px 12px; margin-top: 4px; }
+  .plan-card { display: block; width: 100%; text-align: left; appearance: none; border: 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; background: var(--card); border-radius: var(--r-card); padding: 14px 16px 12px; margin-top: 28px; }
   .plan-card[hidden] { display: none; }
   .plan-card:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   body.client .plan-card { cursor: default; }
@@ -809,7 +811,7 @@
   .list .pack-row .sub { color: var(--text-secondary); font-size: 0.875rem; }
   .list .pack-row .del { appearance: none; border: 0; background: none; color: var(--danger); font: inherit; font-size: 0.875rem; cursor: pointer; width: auto; flex: none; min-height: 44px; padding: 0; display: inline-flex; align-items: center; }   /* not the full-width list button */
   /* the client page overview: two numbers and an exercise lookup that shows the heaviest set ever */
-  .overview { margin: 4px 0 18px; }                                         /* with the title's own 16 below it: 20 */
+  .overview { margin: 28px 0 18px; }                                        /* the first thing under the name sits 28 below it, on every tab */
   .overview[hidden] { display: none; }
   .ov-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .ov-tile { background: var(--card); border-radius: var(--r-card); padding: 14px 16px 12px; }
@@ -1022,7 +1024,7 @@
   .field-row input[type="date"] { width: auto; font-size: 1rem; padding: 8px 12px; color: var(--text-primary); }
   .kicker { font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 6px 1px; }
   .kicker[hidden] { display: none; }
-  .paused-card { display: flex; flex-direction: column; gap: 6px; margin-top: 24px; padding: 18px 20px; background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r-card); }
+  .paused-card { display: flex; flex-direction: column; gap: 6px; margin-top: 28px; padding: 18px 20px; background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r-card); }
   .paused-card b { font-weight: 500; font-size: 1.0625rem; letter-spacing: -0.01em; }
   .paused-card span { font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.45; }
   .paused-card[hidden] { display: none; }
@@ -1474,7 +1476,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=182";
+  import { boot } from "./app/main.js?v=183";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
