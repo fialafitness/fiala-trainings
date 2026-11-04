@@ -516,3 +516,22 @@ test("a row's number only goes up: the coach's edit of that row and a verbatim r
   maps.fromFile.set("trainings/T", (maps.dirty.get("trainings/T") || 0) + 1); t.rows[0].logSeq = 1; fns.scheduleSave("trainings", "T", 0); await settle(); await tick(30); await settle();   // a restore from a file: verbatim, except the number
   srv = sb.tables.ft_trainings.get("T").data.rows[0]; assert.strictEqual(srv.logSeq, 5, "the restore did not lower it");
 });
+
+test("the coach's round + sits beside the bar on a client's page, on every tab; a client never sees it", () => {
+  app.reset(); app.set({ signedIn: true, clientMode: false, view: { name: "client", id: "c1" }, tab: "workouts" }); maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" });
+  const add = document.getElementById("addBtn"), bar = document.getElementById("tabbar");
+  add.hidden = true; bar.hidden = true; fns.render(); assert.deepStrictEqual([bar.hidden, add.hidden], [false, false], "Workouts: the bar and the +");
+  add.hidden = true; app.set({ tab: "notes" }); fns.render(); assert.strictEqual(add.hidden, false, "Notes: still there");
+  add.hidden = true; app.set({ tab: "profile" }); fns.render(); assert.strictEqual(add.hidden, false, "Progress: still there");
+  app.set({ clientMode: true, myClientId: "c1", tab: "workouts" }); fns.render(); assert.deepStrictEqual([bar.hidden, add.hidden], [false, true], "a client has the bar, not the +");
+  app.set({ clientMode: false, myClientId: null, view: { name: "clients" } }); fns.render(); assert.deepStrictEqual([bar.hidden, add.hidden], [true, true], "the clients page has neither");
+});
+
+test("the + makes today's workout for the client whose page it is, and leaves the page on Workouts so Back shows it", () => {
+  app.reset(); app.set({ signedIn: true, clientMode: false, view: { name: "client", id: "c1" }, tab: "notes" }); maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" });
+  const before = new Set(maps.trainings.keys()); fns.newWorkoutHere();
+  const made = [...maps.trainings.values()].filter((t) => !before.has(t.id));
+  assert.strictEqual(made.length, 1, "one new workout"); assert.deepStrictEqual([made[0].clientId, made[0].date, made[0].rows.length], ["c1", new Date().toISOString().slice(0, 10), 0], "hers, today, empty");
+  assert.deepStrictEqual([app.get().view.name, app.get().view.id, app.get().tab], ["training", made[0].id, "workouts"], "on the new workout; the tab is Workouts");
+  assert.strictEqual(document.getElementById("addBtn").hidden, true, "the + is not on the workout page");
+});
