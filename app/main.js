@@ -1690,6 +1690,9 @@ import { reportRange, buildReport } from "./report.js";
       return b;
     };
     for (let i = 0; i < 7; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); weekEl.appendChild(dayButton(d, true)); }
+    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);   // the strip's title is the month it is in, as Calendar's; the month view carries its own
+    $("weekHead").textContent = monday.getMonth() === sunday.getMonth() ? monday.toLocaleDateString(undefined, { month: "long" }) : monday.toLocaleDateString(undefined, { month: "short" }) + " \u2013 " + sunday.toLocaleDateString(undefined, { month: "short" });
+    $("weekHead").hidden = calOpen;
     // month view: three months on a sliding track (previous, shown, next) so a swipe follows the finger
     $("calToggleText").textContent = calOpen ? "Week" : "Month"; $("calToggle").classList.toggle("open", calOpen); $("calToggle").setAttribute("aria-expanded", String(calOpen));
     weekEl.hidden = calOpen; $("calWrap").hidden = !calOpen;
