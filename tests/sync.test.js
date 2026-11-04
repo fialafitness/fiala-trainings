@@ -555,3 +555,13 @@ test("a day's workouts: planned and finished count, a skipped one does not, a fi
   assert.deepStrictEqual(fns.dayList("c1", "2026-11-03"), [], "nothing left on the planned day once it was finished elsewhere");
   assert.strictEqual(fns.dayWords(fns.dayList("c1", "2026-11-04")), ", 3 workouts, 1 finished"); assert.strictEqual(fns.dayWords([maps.trainings.get("a")]), ", 1 workout"); assert.strictEqual(fns.dayWords([maps.trainings.get("f")]), ", 1 workout, finished"); assert.strictEqual(fns.dayWords([]), "");
 });
+
+test("Up next always shows the next workout after today's, however far off it is", () => {
+  app.reset(); app.set({ signedIn: true, clientMode: false, view: { name: "client", id: "c1" }, tab: "workouts" }); maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" });
+  const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+  maps.trainings.set("t0", { id: "t0", clientId: "c1", title: "Today", date: day(0), createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [{ id: "r", label: "1", name: "Squat", sets: 3, reps: "10", rest: "", tempo: "", weights: [], repsDone: [], setsDone: 0, done: false, note: "", alts: [] }] });
+  maps.trainings.set("t9", { id: "t9", clientId: "c1", title: "Far", date: day(12), createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [{ id: "r2", label: "1", name: "Squat", sets: 3, reps: "10", rest: "", tempo: "", weights: [], repsDone: [], setsDone: 0, done: false, note: "", alts: [] }] });
+  const nextHead = document.getElementById("nextHead"), todayHead = document.getElementById("todayHead"); nextHead.hidden = true; todayHead.hidden = true;
+  fns.render();
+  assert.deepStrictEqual([todayHead.hidden, nextHead.hidden], [false, false], "today's card, and Up next with the one twelve days out");
+});

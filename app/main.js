@@ -1757,7 +1757,8 @@ import { reportRange, buildReport } from "./report.js";
     // "Show more" adds the next few workouts each tap, "Show less" folds back to the short list
     if (nextFor !== c.id) { nextFor = c.id; nextExtra = 0; }
     const edge = new Date(base); edge.setDate(base.getDate() + NEXT_DAYS); const horizon = iso(edge);
-    const soon = next.filter((t, i) => i === 0 || effDate(t) <= horizon);
+    const firstLater = next.find((t) => effDate(t) !== iso(base));             // the next workout after today's always shows, however far off
+    const soon = next.filter((t, i) => i === 0 || t === firstLater || effDate(t) <= horizon);
     nextExtra = Math.max(0, Math.min(nextExtra, next.length - soon.length));
     const shown = next.slice(0, soon.length + nextExtra), left = next.length - shown.length;
     const todays = shown.filter((t) => effDate(t) === iso(base)), later = shown.filter((t) => effDate(t) !== iso(base));   // today's workout on its own card, the days after it under "Up next"
