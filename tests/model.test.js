@@ -1,6 +1,6 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
-import { followFrom, timedPlan, distPlan, measurePlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, convertWeight, stampUnit, toUnit, toTimeUnit, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive } from "../app/model.js";
+import { followFrom, timedPlan, distPlan, measurePlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, convertWeight, stampUnit, toUnit, toTimeUnit, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive, composeName } from "../app/model.js";
 import { monthLater, daysLater } from "../app/util.js";
 const app = await load();
 const { fns, maps } = app;
@@ -264,4 +264,14 @@ test("a planned workout left unfiled does not take a session number from the one
   const old = mk("a", "2026-01-05", false), today = fns.localIso(new Date()), now = mk("b", today, false), list = [mk("z", "2026-01-02", true), old, now];
   assert.strictEqual(sessionNo(plan, list, now).n, 2, "the overdue one does not count ahead of today's");
   assert.deepStrictEqual(timedPlan("1 min 30 sec"), { n: "90", unit: "sec" });
+});
+
+test("composeName: the exercise's name is its two lines together, keeping a comma or dash the name already had", () => {
+  assert.strictEqual(composeName("Close-grip decline bench press", "fat bar with band/chains"), "Close-grip decline bench press (fat bar with band/chains)");
+  assert.strictEqual(composeName("Bench press", ""), "Bench press");
+  assert.strictEqual(composeName("Bench press", "wide grip", "Bench press, wide grip"), "Bench press, wide grip");
+  assert.strictEqual(composeName("Bench pres", "wide grip", "Bench press \u2013 wide grip"), "Bench pres \u2013 wide grip");
+  assert.strictEqual(composeName("Row", "machine", "Row (cable)"), "Row (machine)");
+  const parts = splitName(composeName("Close-grip decline bench press", "fat bar with band/chains"), null);
+  assert.deepStrictEqual([parts.title, parts.sub], ["Close-grip decline bench press", "fat bar with band/chains"], "and the split gives the two lines back");
 });

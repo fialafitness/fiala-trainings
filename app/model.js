@@ -40,6 +40,14 @@ export const planNumber = (reps) => {
 // A long name reads as a title with a subtitle under it (client view). The subtitle is the ending the coach chose for it — "" for none —
 // else the part in brackets, after the first comma, or after a spaced dash: "TRX row (underhand, to chest)" → "TRX row" / "underhand, to chest".
 export const autoSubtitle = (name) => { const s = String(name || "").trim(); const m = /^(.*?\S)\s*(?:\((.+)\)|,\s*(.+)|\s[\u2013-]\s+(.+))$/.exec(s); if (!m) return ""; const sub = (m[2] || m[3] || m[4] || "").trim(); return m[1].trim() && sub ? sub : ""; };
+// The exercise page edits the two lines clients see; the stored name is both together. A name already written with a
+// comma or a dash keeps that form when only its words change; otherwise the subtitle goes in brackets.
+export const composeName = (title, sub, like) => {
+  const t = String(title || "").trim(), s = String(sub || "").trim(); if (!s) return t;
+  const was = String(like || "").trim().toLowerCase(), tail = s.toLowerCase();
+  const sep = was.endsWith(", " + tail) ? ", " : was.endsWith(" \u2013 " + tail) ? " \u2013 " : was.endsWith(" - " + tail) ? " - " : null;
+  return sep ? t + sep + s : t + " (" + s + ")";
+};
 export const splitName = (name, chosen) => {
   const s = String(name || "").trim(), sub = chosen == null ? autoSubtitle(s) : String(chosen).trim();
   if (!sub) return { title: s, sub: "" };

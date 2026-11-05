@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, fromFile, pendingNoteRows, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, fmtDayLong, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, doneCount, timedPlan, measurePlan, convertWeight, stampUnit, toUnit, toTimeUnit, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, doneCount, timedPlan, measurePlan, convertWeight, stampUnit, toUnit, toTimeUnit, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -214,6 +214,7 @@ import { reportRange, buildReport } from "./report.js";
   let fromSettings = false;              // false | "settings" | "catalog": the list page a sub-page (number, password, exercises, packages) was opened from; Back returns there
   let pendingPage = null;                // the settings page that was open when the page was last refreshed: it comes back after sign-in
   let exStale = false;                   // the exercise pages came back before the first sync: painted once more when the custom names, videos and subtitles are in
+  const leaveSettings = () => { settingsOpen = false; fromSettings = false; exCurrent = null; exPainted = null; hideAllViews(); };   // off the settings pages (tests use it; Back does the same with a render)
   const rememberPage = () => lsSet("fiala.trainings.page", settingsOpen ? { open: settingsOpen, from: fromSettings || false, ...(settingsOpen === "exercise" && exCurrent ? { name: exCurrent.name, key: exCurrent.key } : {}) } : null);
   // ---- appearance: auto (follow the phone) | light | dark. Saved on this device only.
   const THEME_KEY = "fiala.theme";
@@ -473,13 +474,13 @@ import { reportRange, buildReport } from "./report.js";
   const mkBtn = (text, cls, fn) => { const x = document.createElement("button"); x.type = "button"; x.className = cls; x.textContent = text; x.addEventListener("click", fn); return x; };
   // ---- one exercise, on its own page: the video on top, a form (Name, Subtitle, Video), Delete below; Done in the bar saves, Back leaves
   let exCurrent = null;                                                       // { name, key } of the exercise the page shows
-  const exDirty = () => { if (!exCurrent || !exPainted) return false; return $("exName").value.trim() !== exPainted.name || $("exSub").value.trim() !== exPainted.sub || $("exVideo").value.trim() !== exPainted.video; };   // changed by him, not by data that arrived after the page was painted
-  const paintExHint = () => { const nm = $("exName").value.trim(), want = $("exSub").value.trim(), { title, sub } = splitName(nm, want); $("exHint").textContent = sub ? "Clients see \u201c" + title + "\u201d with \u201c" + sub + "\u201d under it." : want ? "The subtitle has to be the end of the name." : "Clients see the whole name on one line."; };
+  const exDirty = () => { if (!exCurrent || !exPainted) return false; return $("exName").value.trim() !== exPainted.title || $("exSub").value.trim() !== exPainted.sub || $("exVideo").value.trim() !== exPainted.video; };   // changed by him, not by data that arrived after the page was painted
+  const paintExHint = () => { const title = $("exName").value.trim(), sub = $("exSub").value.trim(); $("exHint").textContent = sub ? "Clients see \u201c" + title + "\u201d with \u201c" + sub + "\u201d under it." : "Clients see the name on one line."; };   // the two fields are the two lines; nothing to get wrong
   function showExercise(name, key) {
     exCurrent = { name, key }; settingsOpen = "exercise"; hideAllViews(); $("vExercise").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Exercises"; $("brand").hidden = true; $("status").textContent = ""; $("navDone").hidden = false;
-    const vid = videoForName(name), chosen = customSubs.has(key) ? customSubs.get(key) : null;
-    $("exName").value = name; $("exSub").value = chosen == null ? autoSubtitle(name) : chosen; $("exVideo").value = vid ? "https://youtu.be/" + vid : "";
-    exPainted = { name, sub: $("exSub").value.trim(), video: $("exVideo").value.trim() };
+    const vid = videoForName(name), chosen = customSubs.has(key) ? customSubs.get(key) : null, parts = splitName(name, chosen);   // the page shows the two lines clients see
+    $("exName").value = parts.title; $("exSub").value = parts.sub; $("exVideo").value = vid ? "https://youtu.be/" + vid : "";
+    exPainted = { title: parts.title, sub: parts.sub, video: $("exVideo").value.trim() };
     const player = $("exPlayer"); player.replaceChildren(); player.hidden = !vid;
     if (vid) { const f = document.createElement("iframe"); f.src = "https://www.youtube-nocookie.com/embed/" + vid + "?playsinline=1&rel=0&modestbranding=1"; f.allow = "accelerometer; encrypted-media; picture-in-picture"; f.allowFullscreen = true; player.appendChild(f); }
     paintExHint(); rememberPage();
@@ -488,11 +489,11 @@ import { reportRange, buildReport } from "./report.js";
   for (const id of ["exName", "exSub", "exVideo"]) $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $(id).blur(); } });
   async function saveExercise() {                                             // Done: everything on the page that changed is written, then back to the list
     if (!exCurrent) return; const { name, key } = exCurrent;
-    const nn = tidyName(properName($("exName").value)), link = $("exVideo").value.trim(), wantSub = $("exSub").value.trim();   // an old spelling means the exercise it names
-    if (!nn || !squash(nn)) { $("status").textContent = "Give it a name"; return; }
+    const title = tidyName(properName($("exName").value)), link = $("exVideo").value.trim(), wantSub = $("exSub").value.trim();   // an old spelling means the exercise it names
+    if (!title || !squash(title)) { $("status").textContent = "Give it a name"; return; }
+    const nn = exDirty() ? composeName(title, wantSub, name) : name;                                 // the name is the two lines together; untouched, it stays as it was written
     if (link && !youtubeId(link)) { $("status").textContent = "That doesn\u2019t look like a YouTube link"; return; }
     if (nn !== name && squash(nn) !== key && knownName(nn)) { $("status").textContent = "There is already an exercise called \u201c" + nn + "\u201d"; return; }
-    if (wantSub && !splitName(nn, wantSub).sub) { $("status").textContent = "The subtitle has to be the end of the name"; return; }
     if (!exDirty()) { showExercises(true); return; }
     $("navDone").disabled = true;
     let cur = name;
@@ -2937,7 +2938,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
