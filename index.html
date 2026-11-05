@@ -729,7 +729,7 @@
   #kbbar .kb-chips::-webkit-scrollbar { display: none; }
   /* client view: one set at a time */
   .tracker { padding: 14px 16px 0; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px; }   /* one row: the track, and for the coach the − / + at its end; when the sets would not fit beside them, the steppers take the next line */
-  .tracker .tr-chips { position: relative; display: flex; flex: 1 1 auto; min-width: 0; gap: 5px; padding: 4px; border-radius: 50px; background: var(--glyph-fill); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; scroll-padding-inline: 4px; transition: max-width 160ms ease; }   /* one track, as the Coach / Client switch: the set you are on raised and worded, the ones ahead numbered, the ones done fern discs; past the width it scrolls */
+  .tracker .tr-chips { position: relative; display: flex; flex: 1 1 auto; min-width: 0; gap: 5px; padding: 4px; border-radius: 50px; background: var(--glyph-fill); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; scroll-padding-inline: 4px; --fr: 0px; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fr)), transparent 100%); mask-image: linear-gradient(to right, #000 calc(100% - var(--fr)), transparent 100%); }   /* one track, as the Coach / Client switch: the set you are on raised and worded, the ones ahead numbered, the ones done fern discs; past the width it scrolls */
   .tracker .tr-chips::-webkit-scrollbar { display: none; }
   .tracker .tr-steps { display: flex; gap: 6px; flex: none; align-self: center; margin-left: auto; }
   .tracker .tr-pos { flex: none; align-self: center; font-size: 0.8125rem; letter-spacing: 0; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap; }   /* "4 of 12": the count the track cannot always show */
@@ -1498,7 +1498,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=200";
+  import { boot } from "./app/main.js?v=201";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
