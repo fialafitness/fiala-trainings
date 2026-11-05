@@ -1902,8 +1902,7 @@ import { reportRange, buildReport } from "./report.js";
         let sel = null;
         if (!isTpl) { sel = setSel.has(selKey) ? setSel.get(selKey) : doneSets; sel = clamp(sel, 0, total - 1); g.sel = sel; }
         const tr = document.createElement("div"); tr.className = "tracker"; tr.setAttribute("aria-label", "Sets");
-        const chips = document.createElement("div"); chips.className = "tr-chips"; tr.appendChild(chips);   // one track: the set you are on says "Set 2 of 12", the ones ahead are numbers, the ones done are fern discs with a check
-        const check = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 8.6 6.1 12.4 13.8 3.9" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>';   // the checkmark as Symbols draws it: a short leg down, a long leg up, round ends
+        const chips = document.createElement("div"); chips.className = "tr-chips"; tr.appendChild(chips);   // one track: the set you are on says "Set 2 of 12", the ones ahead are numbers, the ones done are fern discs with their number
         for (let i = 0; i < total; i++) {
           const b = document.createElement("button"); b.type = "button";
           if (isTpl) { b.textContent = String(i + 1); b.classList.add("static"); b.tabIndex = -1; }
@@ -1911,7 +1910,7 @@ import { reportRange, buildReport } from "./report.js";
             const done = i < doneSets, cur = i === sel;
             if (done) b.classList.add("done");
             if (cur) b.classList.add("cur");
-            if (cur) b.textContent = "Set " + (i + 1) + " of " + total; else if (done) b.innerHTML = check; else b.textContent = String(i + 1);
+            b.textContent = cur ? "Set " + (i + 1) + " of " + total : String(i + 1);
             b.setAttribute("aria-label", "Set " + (i + 1) + " of " + total + (done ? ", done" : cur ? ", current" : ""));
             b.addEventListener("click", () => { setSel.set(selKey, i); S.renderedTraining = null; render(); });
           }
