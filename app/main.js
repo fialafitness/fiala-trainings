@@ -1917,20 +1917,20 @@ import { reportRange, buildReport } from "./report.js";
           }
           chips.appendChild(b);
         }
-        const fades = () => {                                                  // a track that goes on dissolves at its right end from the first segment that does not wholly fit: no disc or number is ever cut
-          const vis = chips.clientWidth, sl = chips.scrollLeft; let fr = 0;
-          for (const b of chips.children) { const l = b.offsetLeft - sl, r = l + b.offsetWidth; if (l < vis && r > vis + 1) { fr = vis - l + 10; break; } }
-          if (!fr && chips.scrollWidth - vis - sl > 2) fr = 12;
-          chips.style.setProperty("--fr", fr + "px");
+        const fit = () => {                                                    // the track ends on a whole segment: as long as the segments that fit from its resting left edge, re-fitted when a scroll settles; nothing is ever cut or faded
+          chips.style.maxWidth = ""; const avail = chips.clientWidth; if (chips.scrollWidth <= avail + 1) return;
+          const sl = chips.scrollLeft; let end = 0;
+          for (const b of chips.children) { const l = b.offsetLeft - 4 - sl, r = l + b.offsetWidth; if (l < -1) continue; if (r <= avail - 8 + 1) end = r; else break; }
+          if (end > 0) chips.style.maxWidth = (end + 8) + "px";                 // max-width, since the track is a flex item that would grow back to the row
         };
-        chips.addEventListener("scroll", fades, { passive: true });
+        let settle = null; chips.addEventListener("scroll", () => { clearTimeout(settle); settle = setTimeout(fit, 120); }, { passive: true });
         requestAnimationFrame(() => {
           if (chips.scrollWidth > chips.clientWidth) {
             const starts = [...chips.children].map((b) => b.offsetLeft - 4), max = chips.scrollWidth - chips.clientWidth;
             const rest = starts.find((x) => x >= max); if (rest != null && rest > max) chips.style.paddingRight = (4 + rest - max) + "px";   // room at the end so that scrolled to the end, the left edge still rests on a whole segment
             if (sel != null) { const from = starts[Math.max(0, sel - 2)]; if (from != null) chips.scrollLeft = from; }                      // open two sets before the one you are on
           }
-          fades();
+          fit();
         });
         if (isTpl) { const pos = document.createElement("span"); pos.className = "tr-pos"; pos.textContent = total + (total === 1 ? " set" : " sets"); tr.appendChild(pos); }   // a template: the numbers, and how many
         if (!asClient) {                                     // the trainer changes the number of sets right here, for every exercise in the card
