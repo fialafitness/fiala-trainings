@@ -35,6 +35,7 @@
     --elevated: #ffffff;                /* anything that floats: menus, keyboard bar, sheet */
     --seg-on: #ffffff;                  /* the chosen segment: a raised white key */
     --seg-shadow: rgba(0,0,0,0.12);
+    --key-fill: #ffffff; --key-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 0 0 0.5px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.12), 0 3px 8px rgba(0,0,0,0.06);   /* the set track's key: lit along the top, lifted off the track */
     --card: #ffffff;
     --card-border: rgba(0,0,0,0.06);    /* hairlines inside cards */
     --card-edge: transparent;           /* around a card: none in light, a faint line in dark */
@@ -77,6 +78,7 @@
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
       --seg-on: rgba(255,255,255,0.16);
       --seg-shadow: transparent;
+      --key-fill: rgba(255,255,255,0.22); --key-shadow: inset 0 1px 0 rgba(255,255,255,0.28), inset 0 0 0 0.5px rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.35), 0 3px 8px rgba(0,0,0,0.22);
       --card: #1c1c1e;                  /* Apple's dark grouped card */
       --card-border: rgba(255,255,255,0.10);
       --card-edge: rgba(255,255,255,0.10);
@@ -119,6 +121,7 @@
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
       --seg-on: rgba(255,255,255,0.16);
       --seg-shadow: transparent;
+      --key-fill: rgba(255,255,255,0.22); --key-shadow: inset 0 1px 0 rgba(255,255,255,0.28), inset 0 0 0 0.5px rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.35), 0 3px 8px rgba(0,0,0,0.22);
     --card: #1c1c1e;                  /* Apple's dark grouped card */
     --card-border: rgba(255,255,255,0.10);
     --card-edge: rgba(255,255,255,0.10);
@@ -727,10 +730,10 @@
   .tracker .tr-steps { display: flex; gap: 6px; flex: none; align-self: center; }
   .tracker .tr-pos { flex: none; align-self: center; font-size: 0.8125rem; letter-spacing: 0; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap; }   /* "4 of 12": the count the track cannot always show */
   .tracker button { appearance: none; cursor: pointer; width: auto; min-width: 44px; height: 40px; padding: 0 12px; border-radius: var(--r-chip); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-secondary); font-size: 0.9375rem; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 2px; transition: opacity 300ms ease; }
-  .tracker .tr-chips button { flex: none; width: 40px; min-width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50px; background: transparent; color: var(--text-secondary); font-size: 1rem; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; scroll-snap-align: start; transition: background-color 150ms ease, color 150ms ease; }   /* a set ahead: its number, in a 36px cell like the discs, so every column lines up */
-  .tracker .tr-chips button.cur { width: auto; min-width: 0; padding: 0 16px; background: var(--seg-on); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 3px var(--seg-shadow); }   /* the set you are on: raised, "Set 2 of 12"; the purple stays on Complete set */
+  .tracker .tr-chips button { flex: none; width: 40px; min-width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50px; background: transparent; color: var(--text-tertiary); font-size: 1rem; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; scroll-snap-align: start; transition: background-color 150ms ease, color 150ms ease; }   /* a set ahead: its number, in a 36px cell like the discs, so every column lines up */
+  .tracker .tr-chips button.cur { width: auto; min-width: 0; padding: 0 16px; background: var(--key-fill); color: var(--text-primary); font-size: 1.0625rem; font-weight: 600; box-shadow: var(--key-shadow); }   /* the set you are on: the lit key, a step up in type, "Set 2 of 12"; the purple stays on Complete set */
   .tracker .tr-chips button.done { width: 40px; min-width: 40px; padding: 0; border-radius: 50%; background: var(--done); color: var(--done-ink); font-weight: 600; }   /* a set done: the fern disc, its number on it */
-  .tracker .tr-chips button.cur.done { width: auto; min-width: 0; padding: 0 16px; border-radius: 50px; background: var(--seg-on); color: var(--done); }   /* back on a set already done: raised, worded, in fern */
+  .tracker .tr-chips button.cur.done { width: auto; min-width: 0; padding: 0 16px; border-radius: 50px; background: var(--key-fill); color: var(--done); }   /* back on a set already done: raised, worded, in fern */
   .tracker button:hover { opacity: 0.85; }
   .tracker .tr-chips button:hover { opacity: 1; }
   .tracker button.static { cursor: default; }                           /* a template just shows the count */
@@ -1497,7 +1500,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=193";
+  import { boot } from "./app/main.js?v=194";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
