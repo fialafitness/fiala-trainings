@@ -2201,21 +2201,28 @@ import { reportRange, buildReport } from "./report.js";
     }));
     openPop(anchor);
   }
-  function showMenu(anchor, items) {                                 // the same frosted bubble with rows to tap: [{ label, onPick }]
+  function showMenu(anchor, items, opts) {                           // the same frosted bubble with rows to tap: [{ label, icon?, onPick }]; opts.align "right" hangs it from the anchor's right edge (a disc at the edge of a card)
     const pop = $("whenPop"); pop.classList.remove("plain"); pop.classList.add("menu");
     let close = null;
     pop.replaceChildren(...items.map((it) => {
-      const b = document.createElement("button"); b.type = "button"; b.className = "wopt"; b.textContent = it.label;
+      const b = document.createElement("button"); b.type = "button"; b.className = "wopt";
+      if (it.icon) b.innerHTML = it.icon;
+      const s = document.createElement("span"); s.textContent = it.label; b.appendChild(s);
       b.addEventListener("click", (e) => { e.stopPropagation(); if (close) close(); it.onPick(); });
       return b;
     }));
-    close = openPop(anchor);
+    close = openPop(anchor, opts);
   }
-  function openPop(anchor) {                                         // places the bubble under (or above) its anchor and wires the ways it closes; returns close
+  const MI = {                                                         // the menu's leading glyphs, 17px, drawn like the discs' own
+    swap: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/></svg>',
+    lines: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 4.5h10M3 8h10M3 11.5h6"/></svg>',
+    video: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="1.75" y="3" width="12.5" height="10" rx="2.6"/><path d="M6.6 5.9v4.2l3.6-2.1z" fill="currentColor" stroke="none"/></svg>',
+  };
+  function openPop(anchor, opts) {                                   // places the bubble under (or above) its anchor and wires the ways it closes; returns close
     const bg = $("whenBg"), pop = $("whenPop");
-    bg.hidden = false; pop.classList.remove("above");
+    bg.hidden = false; pop.classList.remove("above"); pop.classList.toggle("hung", !!(opts && opts.align === "right"));
     const r = anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, pw = pop.offsetWidth, ph = pop.offsetHeight;
-    const left = Math.max(8, Math.min(r.left, vw - pw - 8)); let top = r.bottom + 8;
+    const left = Math.max(8, Math.min(opts && opts.align === "right" ? r.right - pw : r.left, vw - pw - 8)); let top = r.bottom + 8;
     if (top + ph > vh - 8) { top = r.top - 8 - ph; pop.classList.add("above"); }
     pop.style.left = left + "px"; pop.style.top = top + "px"; pop.style.setProperty("--caret", Math.max(12, Math.min(r.left + r.width / 2 - left, pw - 12)) + "px");
     const close = () => { bg.hidden = true; bg.removeEventListener("click", close); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", close, true); };
@@ -2325,7 +2332,7 @@ import { reportRange, buildReport } from "./report.js";
     el.innerHTML = `
       <div class="top">
         <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
-        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg class="i-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg><svg class="i-up" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="alt-btn" type="button" hidden aria-label="Swap exercise" title="Swap exercise"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
+        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg class="i-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg><svg class="i-up" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="alt-btn" type="button" hidden aria-label="Swap exercise" title="Swap exercise"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/></svg></button><button class="more-btn trainer-only" type="button" aria-label="More" title="More"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" fill="currentColor"><circle cx="3.8" cy="10" r="1.75"/><circle cx="10" cy="10" r="1.75"/><circle cx="16.2" cy="10" r="1.75"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
       </div>
       <div class="sum"></div>
       <div class="newname trainer-only" hidden><span>New exercise</span><button class="btn tint addname" type="button">Add to database</button></div>
@@ -2343,13 +2350,13 @@ import { reportRange, buildReport } from "./report.js";
       <div class="lifts" hidden><button type="button" class="lift last"><span class="vh">Last time </span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.6V12l3.1 2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><b></b></button><button type="button" class="lift best"><span class="vh">Personal best </span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.2 17.2 2.5 7.4l4.8 3.3L12 4.6l4.7 6.1 4.8-3.3-1.7 9.8z" fill="currentColor"/><path d="M4.6 18.8h14.8v1.9H4.6z" fill="currentColor"/></svg><b></b></button></div>
       <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Instructions for the client"></textarea></div>`;
     const q = (s) => el.querySelector(s);
-    if (!(S.clientMode || previewClient)) q(".top").appendChild(q(".ex-icons"));   // the coach's card: the three icons are a row of discs under the name (grid row 2), not overlays in the field
+    if (!(S.clientMode || previewClient)) q(".top").appendChild(q(".ex-icons"));   // the coach's card: the discs (play and "…") are a row under the name (grid row 2), not overlays in the field
     let wText = false;                       // a row that already holds BW / 60 sec opens on the full keyboard (the bar above the keyboard switches it)
     const nonNum = (w) => !!w && !/^[\d.,\s]*$/.test(String(w));
     q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; };
     const asClient = S.clientMode || previewClient;        // what to show; what to save still follows clientMode
-    const layoutIcons = () => { const w = (q(".vid-btn").hidden ? 0 : 38) + (q(".alt-btn").hidden ? 0 : (asClient ? 46 : 38)) + (asClient ? 0 : 38); for (const el of q(".exwrap").querySelectorAll(".name")) { const px = (w ? 4 + w + 8 : 16) + "px"; el.style.paddingRight = px; el.style.setProperty("--iconpad", px); } growName(); };   // the name wraps before the icons: their real footprint (the client's swap disc is 36px with a 10px gap, the others 38px, all 4px in from the edge) plus a breath
+    const layoutIcons = () => { const w = asClient ? (q(".vid-btn").hidden ? 0 : 38) + (q(".alt-btn").hidden ? 0 : 46) : 0; /* the coach's name has the whole field: the discs are a row under it, and the stylesheet pins its padding */ for (const el of q(".exwrap").querySelectorAll(".name")) { const px = (w ? 4 + w + 8 : 16) + "px"; el.style.paddingRight = px; el.style.setProperty("--iconpad", px); } growName(); };   // the name wraps before the icons: their real footprint (the client's swap disc is 36px with a 10px gap, the others 38px, all 4px in from the edge) plus a breath
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
     const markNamed = () => { if (S.clientMode) return; if (!trainerNamed.has(t.id)) trainerNamed.set(t.id, new Set()); trainerNamed.get(t.id).add(r.id); };
@@ -2586,6 +2593,15 @@ import { reportRange, buildReport } from "./report.js";
     noteField.addEventListener("input", (e) => { r.note = e.target.value; growNote(); save(); });
     noteField.addEventListener("blur", () => { noteBox.hidden = true; showNote(); });
     showNote();
+    const moreBtn = q(".more-btn");                                  // the coach's "…" disc: the card's other actions, in a menu under it
+    if (moreBtn) moreBtn.addEventListener("click", (e) => {
+      e.stopPropagation(); closeAlt();
+      showMenu(moreBtn, [
+        { label: "Alternate exercise", icon: MI.swap, onPick: () => altBtn.click() },
+        { label: (r.note || "").trim() ? "Edit instructions" : "Add instructions", icon: MI.lines, onPick: () => noteBtn.click() },
+        { label: videoFor(r.name) ? "Change video" : "Add video", icon: MI.video, onPick: () => { const f = q(".vid-form"); if (f.hidden) openVidForm(); else q(".vid-url").focus(); } },   // a menu row opens; it never tucks the box away
+      ], { align: "right" });
+    });
 
     function suggest(v) {
       const ul = q(".sugg"); const s = squash(v);

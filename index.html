@@ -460,9 +460,9 @@
   /* a finished card opened: the name, then the sets in rows; "Resume this exercise" opens the working card */
   .row-sum { display: none; }
   .block.done.open.summary .row-sum { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 8px; }
-  .block.done.open.summary .row > :not(.top):not(.row-sum):not(.player):not(.note):not(.cnote):not(.vidrow):not(.vid-form) { display: none !important; }   /* what the three icons open stays reachable */
+  .block.done.open.summary .row > :not(.top):not(.row-sum):not(.player):not(.note):not(.cnote):not(.vidrow):not(.vid-form) { display: none !important; }   /* what the card's actions (video, instructions, swap) open stays reachable */
   .block.done.open.summary .tracker { display: none; }
-  /* the coach's card, every state: the name has the whole field; video, instructions and alternatives sit in their own row of discs under it */
+  /* the coach's card, every state: the name has the whole field; the play disc and the "…" disc (swap, instructions and video in its menu) sit in their own row under it */
   body:not(.client) .row .top .name { padding-right: 16px !important; }
   body:not(.client) .row .top { grid-template-rows: auto auto; }
   body:not(.client) .row .top .labwrap { grid-row: 1; }
@@ -471,6 +471,8 @@
   body:not(.client) .ex-icons button { width: 36px; height: 36px; border-radius: 50%; background: var(--glyph-fill); color: var(--text-primary); }
   body:not(.client) .ex-icons button[hidden] { display: none; }
   body:not(.client) .ex-icons svg { width: 20px; height: 20px; }
+  body:not(.client) .ex-icons .alt-btn, body:not(.client) .ex-icons .note-btn { display: none; }   /* the coach: swap and instructions live in the "…" menu */
+  .ex-icons .more-btn { color: var(--text-primary); order: 1; }                                      /* the "…" disc, last, after the play disc: the overflow at the end, as Apple puts it */
   .ex-icons .vid-btn .i-play { width: 18px; height: 18px; margin: 0; }   /* one play disc in both views; the triangle is drawn a hair right of the box's middle, which is where a triangle looks centred */
   .ex-icons .vid-btn .i-play path { stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }   /* softly rounded corners, like the TV app's play */
   body:not(.client) .block.done:not(.open) .ex-icons { display: none; }
@@ -605,7 +607,7 @@
   body:not(.client) .ex-icons .vid-btn.has, body.client .ex-icons .vid-btn { background: var(--ink); color: var(--ink-on); }   /* the play disc: white with a black glyph in the dark, black with white in the light, like + Add exercise */
   .ex-icons .vid-btn .i-up, .ex-icons .vid-btn.open .i-play { display: none; }   /* while the video is open the play becomes a chevron up: tap to tuck it away */
   .ex-icons .vid-btn.open .i-up { display: block; }
-  .alt-btn { color: var(--text-tertiary); order: -1; }   /* the swap arrows sit first, left of the play button, in both views */
+  .alt-btn { color: var(--text-tertiary); order: -1; }   /* the swap arrows sit first, left of the play button (the client's view; the coach reaches the swap from the "…" menu) */
   body.client .ex-icons .alt-btn { width: 36px; height: 36px; margin-right: 10px; border-radius: 50%; background: var(--field-in); color: var(--text-primary); opacity: 1; }   /* the same soft disc as the play button */
   body.client .ex-icons .alt-btn svg { width: 16px; height: 16px; }
   body.client .alt-menu { left: 0; }
@@ -868,9 +870,13 @@
   #whenPop .wd { font-size: 0.8125rem; color: var(--text-secondary); }
   #whenPop::before { content: ""; position: absolute; z-index: -1; top: -6px; left: var(--caret, 16px); width: 12px; height: 12px; background: inherit; -webkit-backdrop-filter: inherit; backdrop-filter: inherit; transform: translateX(-50%) rotate(45deg); box-shadow: inset 0.5px 0.5px 0 var(--glass-edge); }
   #whenPop.above::before { top: auto; bottom: -6px; box-shadow: inset -0.5px -0.5px 0 var(--glass-edge); }
-  #whenPop.menu { display: flex; flex-direction: column; gap: 2px; padding: 6px; min-width: 220px; }   /* the same bubble with rows to tap (swap exercise) */
+  #whenPop.menu { display: flex; flex-direction: column; align-items: stretch; gap: 0; padding: 12px; min-width: 243px; border-radius: 28px; }   /* the same bubble with rows to tap, in the proportions of Apple's menus (measured off Reminders): 243 wide, 28 corner, 42 a row, 17 text, 17 glyph, 16 to the words */
+  #whenPop.menu.hung::before { display: none; }   /* hung from a disc's right edge (the coach's "…"): no pointer, as Apple's menus; the client's swap list keeps its pointer at the disc */
+
   #whenPop .wopt { appearance: none; border: 0; background: none; text-align: left; padding: 11px 14px; border-radius: 11px; font: inherit; font-size: 1rem; letter-spacing: -0.01em; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; }
   #whenPop .wopt:active, #whenPop .wopt:hover { background: var(--field); }
+  #whenPop.menu .wopt { display: flex; align-items: center; gap: 16px; min-height: 42px; padding: 0 16px 0 17px; border-radius: 16px; font-size: 1.0625rem; }   /* after the base rule, so these win */
+  #whenPop.menu .wopt .mi { width: 17px; height: 17px; flex: none; }
   @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
   .block.done:not(.open) .row .lifts, body.client .block.ahead .row .lifts { display: none; }
   .setlog .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -1500,7 +1506,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=203";
+  import { boot } from "./app/main.js?v=204";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
