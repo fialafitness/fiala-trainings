@@ -368,6 +368,9 @@
 
   /* Training */
   .ttl { display: grid; grid-template-columns: 1fr; gap: 8px; align-items: start; margin-top: 20px; }
+  .ttl .ttl-row { display: flex; align-items: flex-start; gap: 12px; }                 /* the title, and for the client the Messages disc beside it, as on the Workouts page */
+  .ttl .ttl-row .title { flex: 1 1 auto; min-width: 0; }
+  .ttl .ttl-row .msg-disc { margin-top: -9px; }                                        /* the disc's centre on the title's first line */
   .ttl .datefield { justify-self: start; }
   .ttl .date-row { justify-self: stretch; }
   .ttl .title { font-size: 1.625rem; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; background: transparent; padding: 0; border-radius: var(--r-field); resize: none; overflow: hidden; min-height: 32px; }
@@ -1410,7 +1413,7 @@
 
   <section id="vTraining" hidden>
     <div class="ttl">
-      <textarea id="tTitle" class="title" rows="1" placeholder="Focus, e.g. Bench-press and back" autocapitalize="sentences"></textarea>
+      <div class="ttl-row"><textarea id="tTitle" class="title" rows="1" placeholder="Focus, e.g. Bench-press and back" autocapitalize="sentences"></textarea><a class="msg-disc client-only" id="trainerBtn2" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh">Message Michal</span></a></div>
       <div class="date-row"><button class="datefield" id="tDate" type="button"></button><div class="seg view-seg" id="viewSeg" role="radiogroup" aria-label="See it as" hidden><button type="button" role="radio" data-view="coach" class="on">Coach</button><button type="button" role="radio" data-view="client">Client</button></div></div>
       <div class="session-row" id="sessionRow" hidden><button class="session-pill" id="sessionPill" type="button" hidden></button></div>
       <button class="tpl-pill trainer-only" id="fromTpl" type="button" hidden><span id="fromTplText"></span><span class="chev">&rsaquo;</span></button>
@@ -1495,7 +1498,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=198";
+  import { boot } from "./app/main.js?v=199";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
