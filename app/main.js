@@ -2578,12 +2578,8 @@ import { reportRange, buildReport } from "./report.js";
       q(".lift.best").classList.toggle("new", newBest); q(".lift.best b").textContent = fmt(newBest ? now : h.best); q(".lift.best .vh").textContent = newBest ? "New best " : "Personal best ";   // the read-out word follows the state
       q(".lift.last").hidden = !h.last; if (h.last) q(".lift.last b").textContent = fmt(h.last);   // both halves always, even when the best was the last session (his call)
       box._info = { last: h.last, best: h.best, now, newBest, same, fmt };
-      box.classList.remove("tight", "stack");
-      requestAnimationFrame(() => {                                     // the numbers are never cut: smaller type first, then the two halves stack
-        const cut = () => [...box.querySelectorAll(".lift b")].some((b) => b.scrollWidth > b.clientWidth + 1);
-        if (cut()) box.classList.add("tight");
-        if (cut()) box.classList.add("stack");
-      });
+      box.classList.remove("tight");
+      requestAnimationFrame(() => { if ([...box.querySelectorAll(".lift b")].some((b) => b.scrollWidth > b.clientWidth + 1)) box.classList.add("tight"); });   // a long number: a step smaller, never cut
     };
     const liftRows = (i) => {                                          // the bubble, in words: every line that applies, best first
       const rows = [];
