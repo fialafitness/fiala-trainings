@@ -613,6 +613,7 @@
   .block.done:not(.open) .row .top .name { padding-right: 16px !important; }
   .alt-menu { left: -64px; right: 0; }
   .alt-menu { max-height: none; overflow: hidden; }
+  .alt-menu.add { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--elevated); }   /* while typing an alternative: a solid panel, since iPhone's glass flickers under a caret */
   .alt-menu .cur { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 1rem; letter-spacing: -0.01em; color: var(--text-secondary); }
   .alt-menu .cur .ck { color: var(--brand-text); font-weight: 600; }
   .alt-menu .item { display: flex; align-items: stretch; }
@@ -1494,7 +1495,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=196";
+  import { boot } from "./app/main.js?v=197";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

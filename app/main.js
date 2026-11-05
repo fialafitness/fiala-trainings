@@ -2322,8 +2322,11 @@ import { reportRange, buildReport } from "./report.js";
     let altMode = "list";
     const altList = () => (r.alts || []).filter(Boolean);
     const paintAltBtn = () => { const n = altList().length; const show = !asClient || n > 0; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };   // the client sees the disc whenever the coach gave alternatives, logged sets or not (a swap keeps the sets)
-    const outside = (e) => { if (!exwrap.contains(e.target)) closeAlt(); };
-    const closeAlt = () => { altMenu.hidden = true; altMenu.replaceChildren(); altMode = "list"; document.removeEventListener("pointerdown", outside, true); if (closeOpenAlt === closeAlt) closeOpenAlt = null; };
+    let downAt = null;                                                                                 // a tap outside closes the menu; a scroll that starts outside (a finger dragging the page) does not
+    const outsideDown = (e) => { downAt = exwrap.contains(e.target) ? null : { x: e.clientX, y: e.clientY }; };
+    const outsideUp = (e) => { if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 10) closeAlt(); downAt = null; };
+    const unwatchKb = () => { if (altMenu._kb && window.visualViewport) { window.visualViewport.removeEventListener("resize", altMenu._kb); altMenu._kb = null; } };
+    const closeAlt = () => { altMenu.hidden = true; altMenu.replaceChildren(); altMenu.classList.remove("add"); altMode = "list"; unwatchKb(); document.removeEventListener("pointerdown", outsideDown, true); document.removeEventListener("pointerup", outsideUp, true); if (closeOpenAlt === closeAlt) closeOpenAlt = null; };
     function swapTo(a) {
       const old = r.name; r.name = a; r.alts = altList().map((v) => (v === a ? old : v)).filter(Boolean);
       if (S.clientMode) { if (!pendingSwap.has(t.id)) pendingSwap.set(t.id, new Map()); pendingSwap.get(t.id).set(r.id, a); } else markNamed();
@@ -2342,7 +2345,7 @@ import { reportRange, buildReport } from "./report.js";
       return d;
     };
     function paintAltList() {
-      altMode = "list"; altMenu.replaceChildren();
+      altMode = "list"; altMenu.replaceChildren(); altMenu.classList.remove("add"); unwatchKb();
       const alts = altList().filter((a) => a !== r.name);
       if (String(r.name || "").trim()) { const c = mk("div", "cur"); c.appendChild(mk("span", "ck", "\u2713")); c.appendChild(mk("span", null, r.name)); altMenu.appendChild(c); }
       for (const a of alts) altMenu.appendChild(menuItem(a, "", () => { closeAlt(); swapTo(a); }, asClient ? null : () => removeAlt(a)));
@@ -2356,7 +2359,7 @@ import { reportRange, buildReport } from "./report.js";
       altMenu.hidden = false;
     }
     function paintAltAdd() {
-      altMode = "add"; altMenu.replaceChildren();
+      altMode = "add"; altMenu.replaceChildren(); altMenu.classList.add("add");                      // solid while a field is being typed in: the glass flickers under a caret on iPhone
       const inp = mk("input", "alt-input"); inp.maxLength = 120; inp.placeholder = "Alternative exercise"; inp.autocomplete = "off"; inp.setAttribute("autocapitalize", "sentences"); inp.setAttribute("enterkeyhint", "done");
       const hits = mk("div", "alt-hits"); altMenu.append(inp, hits);
       const foot = mk("div", "alt-foot"); const back = mk("button", "cancel", "Cancel"); back.type = "button"; back.addEventListener("mousedown", (ev) => ev.preventDefault()); back.addEventListener("click", paintAltList); foot.appendChild(back); altMenu.appendChild(foot);   // back to the list without adding
@@ -2370,6 +2373,13 @@ import { reportRange, buildReport } from "./report.js";
       inp.addEventListener("input", paintHits);
       inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); if (inp.value.trim()) addAlt(inp.value); else paintAltList(); } else if (e.key === "Escape") paintAltList(); });
       inp.addEventListener("blur", () => setTimeout(() => { if (altMode === "add" && !altMenu.hidden && !inp.value.trim()) paintAltList(); }, 200));
+      const vv = window.visualViewport;                                                              // the keyboard: the field is brought up under the bar and the hits get the room above the keys, so a pick is never hidden under them
+      const kb = () => {
+        if (!vv || altMode !== "add") return; const r = inp.getBoundingClientRect(), top = vv.offsetTop, want = top + 76;
+        if (vv.height < window.innerHeight - 120 && r.top > want + 8) window.scrollBy({ top: r.top - want, behavior: "smooth" });
+        const room = top + vv.height - Math.min(r.bottom, want + r.height) - 72; hits.style.maxHeight = Math.max(120, Math.min(room, Math.round(window.innerHeight * 0.32))) + "px";
+      };
+      if (vv) { altMenu._kb = kb; vv.addEventListener("resize", kb); }
       inp.focus();
     }
     altBtn.addEventListener("mousedown", (ev) => ev.preventDefault());
@@ -2381,7 +2391,7 @@ import { reportRange, buildReport } from "./report.js";
       }
       if (!altMenu.hidden) { closeAlt(); return; }
       q(".sugg").hidden = true; q(".numpick").hidden = true;
-      paintAltList(); document.addEventListener("pointerdown", outside, true); closeOpenAlt = closeAlt;
+      paintAltList(); document.addEventListener("pointerdown", outsideDown, true); document.addEventListener("pointerup", outsideUp, true); closeOpenAlt = closeAlt;
     });
     paintAltBtn();
     const newName = q(".newname");
