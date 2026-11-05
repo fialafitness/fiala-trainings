@@ -96,3 +96,19 @@ test("a chosen subtitle is stored under the exercise key, read back, moved by a 
   assert.strictEqual(await fns.saveSub("trxrowwide", "wide", "trxrow"), null); assert.ok(!sb.tables.ft_exercise_subtitles.has("trxrow"), "a rename moves it"); assert.strictEqual(maps.customSubs.get("trxrowwide"), "wide");
   assert.strictEqual(await fns.deleteSub(["trxrowwide"]), null); assert.strictEqual(fns.subtitleFor("TRX row wide"), null);
 });
+
+test("the exercise page edits the two lines clients see; saving writes them as one name and renames the exercise everywhere", async () => {
+  const sb = coach(); const name = "Close-grip decline bench press (fat bar) with band/chains";
+  assert.strictEqual(await fns.addCustomName(name), true); const key = fns.allNames().includes(name) ? "closegripdeclinebenchpressfatbarwithbandchains" : null; assert.ok(key, "his exercise is known");
+  const $ = (id) => document.getElementById(id);
+  try {
+    fns.showExercise(name, key);
+    assert.deepStrictEqual([$("exName").value, $("exSub").value], [name, ""], "no bracket at the end, so the whole name is the first line and there is no subtitle yet");
+    $("exName").value = "Close-grip decline bench press"; $("exSub").value = "fat bar with band/chains"; $("exVideo").value = "";
+    await fns.saveExercise();
+    const names = fns.allNames();
+    assert.ok(names.includes("Close-grip decline bench press (fat bar with band/chains)"), "the two lines are one name"); assert.ok(!names.includes(name), "the old spelling is gone");
+    assert.ok(/^(Saved)?$/.test($("status").textContent), "no complaint, got: " + $("status").textContent);
+    assert.deepStrictEqual(ops(sb, "ft_exercise_subtitles"), [], "the brackets carry the subtitle: nothing extra to store");
+  } finally { fns.leaveSettings(); }
+});

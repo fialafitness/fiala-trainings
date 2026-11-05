@@ -37,7 +37,7 @@ const window = globalThis;
 const define = (o) => { for (const [k, v] of Object.entries(o)) Object.defineProperty(globalThis, k, { value: v, configurable: true, writable: true }); };   // Node has read-only getters for some of these
 define({
   window, document, localStorage: storage, Option,
-  addEventListener() {}, removeEventListener() {}, dispatchEvent() {}, getComputedStyle: () => ({ getPropertyValue: () => "", display: "block", color: "" }),
+  addEventListener() {}, removeEventListener() {}, dispatchEvent() {}, getComputedStyle: () => ({ getPropertyValue: () => "", display: "block", color: "" }), CSS: { escape: (s) => String(s) },
   navigator: { onLine: true, vibrate() {}, userAgent: "node", language: "en-US" },
   location: { protocol: "http:", hostname: "localhost", hash: "", pathname: "/", origin: "http://localhost", search: "", href: "http://localhost/" },
   history: { replaceState() {}, pushState() {} },
