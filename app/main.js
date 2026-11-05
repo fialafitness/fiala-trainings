@@ -1902,18 +1902,37 @@ import { reportRange, buildReport } from "./report.js";
         let sel = null;
         if (!isTpl) { sel = setSel.has(selKey) ? setSel.get(selKey) : doneSets; sel = clamp(sel, 0, total - 1); g.sel = sel; }
         const tr = document.createElement("div"); tr.className = "tracker"; tr.setAttribute("aria-label", "Sets");
-        const chips = document.createElement("div"); chips.className = "tr-chips"; tr.appendChild(chips);   // "Set 1 · Set 2 · Set 3": the chips say it all, no count above them
+        const chips = document.createElement("div"); chips.className = "tr-chips"; tr.appendChild(chips);   // one track: the set you are on says "Set 2 of 12", the ones ahead are numbers, the ones done are fern discs with a check
+        const check = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 8.6 6.1 12.4 13.8 3.9" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>';   // the checkmark as Symbols draws it: a short leg down, a long leg up, round ends
         for (let i = 0; i < total; i++) {
-          const b = document.createElement("button"); b.type = "button"; b.textContent = "Set " + (i + 1);
-          if (isTpl) { b.classList.add("static"); b.tabIndex = -1; }
+          const b = document.createElement("button"); b.type = "button";
+          if (isTpl) { b.textContent = String(i + 1); b.classList.add("static"); b.tabIndex = -1; }
           else {
-            if (i < doneSets) b.classList.add("done");
-            if (i === sel) b.classList.add("cur");
-            b.setAttribute("aria-label", "Set " + (i + 1) + (i < doneSets ? ", done" : i === sel ? ", current" : ""));
+            const done = i < doneSets, cur = i === sel;
+            if (done) b.classList.add("done");
+            if (cur) b.classList.add("cur");
+            if (cur) b.textContent = "Set " + (i + 1) + " of " + total; else if (done) b.innerHTML = check; else b.textContent = String(i + 1);
+            b.setAttribute("aria-label", "Set " + (i + 1) + " of " + total + (done ? ", done" : cur ? ", current" : ""));
             b.addEventListener("click", () => { setSel.set(selKey, i); S.renderedTraining = null; render(); });
           }
           chips.appendChild(b);
         }
+        const fades = () => {                                                  // a track that goes on dissolves at its right end from the first segment that does not wholly fit: no disc or number is ever cut
+          const vis = chips.clientWidth, sl = chips.scrollLeft; let fr = 0;
+          for (const b of chips.children) { const l = b.offsetLeft - sl, r = l + b.offsetWidth; if (l < vis && r > vis + 1) { fr = vis - l + 10; break; } }
+          if (!fr && chips.scrollWidth - vis - sl > 2) fr = 12;
+          chips.style.setProperty("--fr", fr + "px");
+        };
+        chips.addEventListener("scroll", fades, { passive: true });
+        requestAnimationFrame(() => {
+          if (chips.scrollWidth > chips.clientWidth) {
+            const starts = [...chips.children].map((b) => b.offsetLeft - 4), max = chips.scrollWidth - chips.clientWidth;
+            const rest = starts.find((x) => x >= max); if (rest != null && rest > max) chips.style.paddingRight = (4 + rest - max) + "px";   // room at the end so that scrolled to the end, the left edge still rests on a whole segment
+            if (sel != null) { const from = starts[Math.max(0, sel - 2)]; if (from != null) chips.scrollLeft = from; }                      // open two sets before the one you are on
+          }
+          fades();
+        });
+        if (isTpl) { const pos = document.createElement("span"); pos.className = "tr-pos"; pos.textContent = total + (total === 1 ? " set" : " sets"); tr.appendChild(pos); }   // a template: the numbers, and how many
         if (!asClient) {                                     // the trainer changes the number of sets right here, for every exercise in the card
           const setCount = async (n) => {
             n = clamp(n, 1, 20); if (n === total) return;
@@ -2422,7 +2441,7 @@ import { reportRange, buildReport } from "./report.js";
       const parts = splitName(r.name, subtitleFor(r.name));
       if (parts.sub) {
         const v = document.createElement("div"); v.className = "name name-view"; v.setAttribute("aria-hidden", "true");
-        v.append(parts.title + " "); const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = parts.sub; v.appendChild(sub);
+        v.append(parts.title); const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = parts.sub; v.appendChild(sub);   // the subtitle on its own line under the name
         q(".name").classList.add("has-sub"); q(".name").insertAdjacentElement("afterend", v); v.style.paddingRight = q(".name").style.paddingRight;   // the box keeps the whole name for the reader; the eye gets the view, with the same room for the discs
       }
     }
