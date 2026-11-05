@@ -662,15 +662,15 @@
   body.client .group-cap .info { width: 18px; height: 18px; font-size: 0.75rem; margin-left: 0; align-self: center; }   /* the little i, scaled to the caption, still a thumb-sized target */
   body.client .block:not(.ahead):not(.done) .row .top { grid-template-columns: 1fr; }
   body.client .block:not(.ahead):not(.done) .row .top .labwrap { display: none; }
-  body.client .block:not(.ahead):not(.done) .row .top .name { font-size: 1.625rem; line-height: 1.875rem; font-weight: 700; padding-left: var(--letw); }
-  body.client .block:not(.ahead):not(.done) .row .top .ex-icons { top: 4px; }   /* the discs sit on the centre line of the name's first line (10 px padding + half of 30 px = 25 px; the 42 px row centres at 21 + 4) */   /* the exercise is the biggest thing on the card */
+  body.client .block:not(.ahead):not(.done) .row .top .name { font-size: 1.375rem; line-height: 1.75rem; font-weight: 600; padding-left: var(--letw); }   /* the open card's exercise: 22 on 28, semibold — Apple's card title, measured off the Store app; a step under the 26px page title */
+  body.client .block:not(.ahead):not(.done) .row .top .ex-icons { top: 3px; }   /* the discs sit on the centre line of the name's first line (10 px padding + half of 30 px = 25 px; the 42 px row centres at 21 + 4) */   /* the exercise is the biggest thing on the card */
   .row .top .name.has-sub { display: none; }                                         /* the client's name box steps aside for the view with the subtitle inside it */
   .row .top .name-view { white-space: pre-wrap; overflow-wrap: anywhere; }            /* the same type, the same wrapping as the box it stands in for */
   .row .top .name-view .sub { color: var(--text-tertiary); font-weight: 500; }        /* the subtitle in the grey of the superset letter, one weight lighter than the name: 500 beside 600 on the folded cards */
   body.client .block:not(.ahead):not(.done) .row .top .name-view .sub { font-weight: 600; }   /* 600 beside the open card's 700 */
   .exlist .subt, #exList .subt { margin-left: 6px; font-weight: 400; color: var(--text-tertiary); }
   .edit-field .hint { display: block; margin-top: 6px; font-size: 0.8125rem; line-height: 1.35; color: var(--text-tertiary); }
-  body.client .block:not(.ahead):not(.done) .row .exwrap::before { content: attr(data-letter); position: absolute; left: 0; top: 10px; font-size: 1.625rem; font-weight: 700; line-height: 1.875rem; color: var(--text-tertiary); }
+  body.client .block:not(.ahead):not(.done) .row .exwrap::before { content: attr(data-letter); position: absolute; left: 0; top: 10px; font-size: 1.375rem; font-weight: 600; line-height: 1.75rem; color: var(--text-tertiary); }
   body.client .block:not(.ahead):not(.done) .row .sum, body.client .block:not(.ahead):not(.done) .row .tempo-wrap { margin-left: var(--letw); }
   body.client .row .top input.label, body.client .group .row .top input.label { background: var(--ss); color: var(--ss-ink); border-color: transparent; box-shadow: none; font-weight: 600; }
   body.client .row .top .name { background: none; border-color: transparent; padding-left: 0; font-size: 1.1875rem; line-height: 1.5rem; font-weight: 600; }
@@ -1493,7 +1493,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=188";
+  import { boot } from "./app/main.js?v=189";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
