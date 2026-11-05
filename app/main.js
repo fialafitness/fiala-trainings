@@ -2203,8 +2203,9 @@ import { reportRange, buildReport } from "./report.js";
       if (el.classList.contains("done")) {
         let n = el.nextElementSibling; while (n && !(n.classList.contains("block") && !n.classList.contains("done"))) n = n.nextElementSibling;
         if (n) el = n;
-        else {                                                        // the last exercise is done: bring Finish workout into view instead of chasing the folded card at the page's end
-          const fin = $("finishBtn"); if (fin && !fin.hidden && fin.offsetParent) { const r = fin.getBoundingClientRect(); return Math.max(0, Math.min(sc.scrollTop + r.bottom - sc.clientHeight + 24, sc.scrollHeight - sc.clientHeight)); }
+        else {                                                        // the last exercise is done: bring the Finish workout area into view, never scrolling back up for it (a short page used to be sent to the top)
+          const fin = $("finishBtn"), wrap = $("finishWrap");
+          if (fin && !fin.hidden && fin.offsetParent) { const r = (wrap && !wrap.hidden ? wrap : fin).getBoundingClientRect(); const want = sc.scrollTop + r.bottom - sc.clientHeight + 24; return Math.max(0, Math.min(Math.max(sc.scrollTop, want), sc.scrollHeight - sc.clientHeight)); }
         }
       }
       const head = document.querySelector("header"); const off = Math.max(0, head ? head.getBoundingClientRect().bottom : 0) + 12;   // never a negative offset: a header that is not on screen must not push the target past the card
