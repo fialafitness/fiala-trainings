@@ -576,3 +576,74 @@ test("the client's Messages disc is wired on the Workouts page and on the workou
   app.set({ clientMode: false, myClientId: null }); fns.paintTrainerMsg(c); assert.deepStrictEqual([a.hidden, b.hidden], [true, true], "never for the coach");
   app.set({ clientMode: true, myClientId: "c1" }); fns.paintTrainerMsg({ ...c, trainerPhone: "" }); assert.deepStrictEqual([a.hidden, b.hidden], [true, true], "nor without a number");
 });
+test("Start this exercise: the card goes ahead of the ones not yet done, they slide down behind it in their order, the numbers run 1, 2, 3 again", () => {
+  app.reset(); app.set({ clientMode: true, myClientId: "c1", backend: fns.localBackend });
+  const r = (id, label, done) => ({ ...row(id, [], [], done ? 3 : 0), label });
+  const t = training("T", { rows: [r("w", "W"), r("a", "1", true), r("b", "2"), r("c", "3a"), r("d", "3b"), r("e", "4")] }); maps.trainings.set("T", t);
+  assert.deepStrictEqual(fns.startExerciseNow(t, "4"), { key: "2", changed: true });
+  assert.deepStrictEqual(t.rows.map((x) => x.id + ":" + x.label), ["w:W", "a:1", "e:2", "b:3", "c:4a", "d:4b"], "the finished one stays first; the started one takes the first open slot; the superset keeps its letters");
+  assert.ok(maps.pendingOrder.has("T") && maps.dirty.has("trainings/T"), "queued for the server");
+  assert.strictEqual(fns.startExerciseNow(t, "2"), null, "already next: nothing to do");
+  assert.strictEqual(fns.startExerciseNow(t, "1"), null, "a finished one is not moved");
+  assert.strictEqual(fns.startExerciseNow(t, "w"), null, "the warmup is not an exercise");
+  const u = training("U", { rows: [r("a", "1"), r("b", "2", true), r("c", "3")] }); maps.trainings.set("U", u);   // a finished exercise between the open slot and the started one
+  assert.deepStrictEqual(fns.startExerciseNow(u, "3"), { key: "1", changed: true });
+  assert.deepStrictEqual(u.rows.map((x) => x.id + ":" + x.label), ["c:1", "b:2", "a:3"], "the finished one keeps its place and its number");
+  for (const id of ["T", "U"]) { clearTimeout(maps.timers.get("trainings/" + id)); maps.timers.delete("trainings/" + id); }
+});
+test("the new order reaches the server as the numbered rows' numbers; without the rule it waits on the phone; moved again while out, it goes again", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend });
+  const t = training("T", { rows: [{ ...row("w"), label: "W" }, { ...row("a"), label: "1" }, { ...row("b"), label: "2" }] }); maps.trainings.set("T", t); maps.pendingOrder.add("T");
+  await fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify(t)));
+  assert.ok(app.get().orderMissing && maps.pendingOrder.has("T"), "rule not installed: kept for a later launch");
+  app.set({ orderMissing: false }); const sent = []; sb.rpcs.client_order_rows = async (a) => { sent.push(a); return null; };
+  await fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify(t)));
+  assert.deepStrictEqual(sent, [{ p_training: "T", p_labels: { a: "1", b: "2" } }], "only the numbered rows; the warmup keeps its W"); assert.ok(!maps.pendingOrder.has("T"));
+  maps.pendingOrder.add("T"); sb.rpcs.client_order_rows = async () => { t.rows[1].label = "2"; t.rows[2].label = "1"; return null; };   // moved again while the request was out
+  await fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify(t)));
+  assert.ok(maps.pendingOrder.has("T"), "still queued: the phone's latest order goes next");
+  sb.rpcs.client_order_rows = async () => { const e = new Error("not allowed"); e.code = "P0001"; throw e; };
+  await fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify(t)));
+  assert.ok(!maps.pendingOrder.has("T"), "refused for good: dropped, the server's copy comes back on the next sync");
+});
+test("while the new order is queued the server's old copy does not undo it, and a relaunch sends it again", () => {
+  app.reset(); app.set({ clientMode: true, myClientId: "c1" });
+  const t = training("T", { rows: [{ ...row("a"), label: "2" }, { ...row("b"), label: "1" }] }); maps.trainings.set("T", t); maps.pendingOrder.add("T");
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: training("T", { rows: [{ ...row("a"), label: "1" }, { ...row("b"), label: "2", reps: "8" }] }), updated_at: "S1" }], true, Date.now());
+  assert.deepStrictEqual(maps.trainings.get("T").rows.map((x) => x.id + ":" + x.label + ":" + x.reps), ["b:1:8", "a:2:5"], "her numbers stand until the server holds them, and the coach's edit still lands");
+  maps.trainings.delete("T"); fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: training("T"), updated_at: "S2" }], true, Date.now());
+  assert.ok(maps.trainings.has("T"), "a workout hidden (paused plan) and shown again comes back while the order is queued");
+  fns.persistPending(); maps.pendingOrder.clear(); maps.dirty.clear(); fns.restorePending();
+  assert.ok(maps.pendingOrder.has("T") && maps.dirty.has("trainings/T"), "restored from the device and queued again");
+});
+test("on a conflict the client's new exercise order stands, except for a row the coach renumbered himself", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const srv = (l1, l2, l3) => training("T", { rows: [{ ...row("r1"), label: l1 }, { ...row("r2"), label: l2 }, { ...row("r3"), label: l3 }] });
+  const stamp = sb.seed("ft_trainings", "T", srv("1", "2", "3"), { client_id: "c1" });
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: srv("1", "2", "3"), updated_at: stamp }], true, Date.now());   // the coach's device read the workout
+  sb.seed("ft_trainings", "T", srv("2", "1", "3"), { client_id: "c1" });                                                       // she started r2 first: it is 1 now, r1 is 2
+  const mine = maps.trainings.get("T"); mine.rows[0].reps = "8"; mine.rows[2].label = "4";                                         // meanwhile the coach changed r1's reps and renumbered r3 himself
+  await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(mine)));
+  const saved = sb.tables.ft_trainings.get("T").data;
+  assert.deepStrictEqual(saved.rows.map((r) => r.id + ":" + r.label), ["r1:2", "r2:1", "r3:4"], "her order lands with his edit; his own renumbering wins for its row"); assert.strictEqual(saved.rows[0].reps, "8");
+  assert.deepStrictEqual(maps.trainings.get("T").rows.map((r) => r.label), ["2", "1", "4"], "the live copy learns her order too");
+});
+test("a coach's save sent after a relaunch still keeps the client's new order: the copy he last read travels with the stamp", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const srv = (l1, l2, l3) => training("T", { rows: [{ ...row("r1"), label: l1 }, { ...row("r2"), label: l2 }, { ...row("r3"), label: l3 }] });
+  const stamp = sb.seed("ft_trainings", "T", srv("1", "2", "3"), { client_id: "c1" });
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: srv("1", "2", "3"), updated_at: stamp }], true, Date.now());
+  const mine = maps.trainings.get("T"); mine.rows[0].reps = "8"; fns.markDirty("trainings", "T"); fns.persistPending();   // the edit is queued when the app is closed
+  maps.seenDoc.delete("trainings/T"); maps.seenAt.delete("trainings/T"); maps.dirty.clear(); fns.restorePending();         // relaunch: only the device copy is left
+  assert.ok(maps.seenDoc.has("trainings/T") && maps.seenAt.has("trainings/T"), "stamp and copy restored");
+  sb.seed("ft_trainings", "T", srv("2", "1", "3"), { client_id: "c1" });                                                       // she started r2 first meanwhile
+  await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(mine)));
+  const saved = sb.tables.ft_trainings.get("T").data;
+  assert.deepStrictEqual(saved.rows.map((r) => r.id + ":" + r.label + ":" + r.reps), ["r1:2:8", "r2:1:5", "r3:3:5"], "her order stands, his edit lands");
+});
+test("a server copy whose rows only differ in array order is the same workout: nothing is replaced, the cards are not rebuilt", () => {
+  app.reset(); app.set({ clientMode: true, myClientId: "c1" });
+  const t = training("T", { rows: [{ ...row("b"), label: "1" }, { ...row("a"), label: "2" }] }); maps.trainings.set("T", t);
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: training("T", { rows: [{ ...row("a"), label: "2" }, { ...row("b"), label: "1" }] }), updated_at: "S1" }], true, Date.now());
+  assert.strictEqual(maps.trainings.get("T"), t, "the same object stays");
+});

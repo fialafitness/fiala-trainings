@@ -119,6 +119,9 @@ export const sessionNo = (plan, list, t) => {                      // "Session 3
 export const planActive = (plan, day) => !plan || plan.kind !== "monthly" || !plan.until || plan.until >= day;   // a monthly plan past its day is over
 export const setsOf = (r) => Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20));   // blank = the default 4; 0 still counts as one
 
+// "W", "Wa", "Wb" … = warm-up: groups like a number and sorts before 1; then the numbers with their letters; anything else last, by its text
+export const labelKey = (l) => { const s = String(l || "").trim(); const m = s.match(/^(\d+)\s*([a-z]*)/i); if (m) return [parseInt(m[1], 10), m[2].toLowerCase()]; const w = s.match(/^w\s*([a-z]?)$/i); return w ? [-1, w[1].toLowerCase()] : [Infinity, s.toLowerCase()]; };
+export const cmpLabel = (a, b) => { const [an, as] = labelKey(a), [bn, bs] = labelKey(b); return an - bn || (as < bs ? -1 : as > bs ? 1 : 0); };
 export function groupKey(label, index) {
   const s = String(label || "").trim().toLowerCase();
   const m = s.match(/^(\d+)/);

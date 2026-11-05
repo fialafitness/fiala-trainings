@@ -1,10 +1,10 @@
 // Fiala Trainings — the app. Loaded by index.html as an ES module; boot() starts it.
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
-import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, fromFile, pendingNoteRows, ui, planTouched } from "./state.js";
+import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, fromFile, pendingNoteRows, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, fmtDayLong, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, validateBackup, doneCount, timedPlan, measurePlan, convertWeight, stampUnit, toUnit, toTimeUnit, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, labelKey, cmpLabel, validateBackup, doneCount, timedPlan, measurePlan, convertWeight, stampUnit, toUnit, toTimeUnit, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
-import { isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
+import { seenDoc, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
 import { reportRange, buildReport } from "./report.js";
 
@@ -12,8 +12,6 @@ import { reportRange, buildReport } from "./report.js";
   const $ = (id) => document.getElementById(id);
   // "W", "Wa", "Wb" … = warm-up: groups like a number and sorts before 1
   const isWarmLabel = (l) => /^w\s*[a-z]?$/i.test(String(l || "").trim());
-  const labelKey = (l) => { const s = String(l || "").trim(); const m = s.match(/^(\d+)\s*([a-z]*)/i); if (m) return [parseInt(m[1], 10), m[2].toLowerCase()]; const w = s.match(/^w\s*([a-z]?)$/i); return w ? [-1, w[1].toLowerCase()] : [Infinity, s.toLowerCase()]; };
-  const cmpLabel = (a, b) => { const [an, as] = labelKey(a), [bn, bs] = labelKey(b); return an - bn || (as < bs ? -1 : as > bs ? 1 : 0); };
   const NAME_KEYS = NAMES.map(squash);
   const customNames = new Map();          // key -> name (his own exercises, table ft_exercises)
   let ALL_NAMES = NAMES, ALL_KEYS = NAME_KEYS;
@@ -611,7 +609,7 @@ import { reportRange, buildReport } from "./report.js";
     S.offlineEntry = null;
     if (quiet && S.clientMode !== (trainer !== true)) { quiet = false; settingsOpen = false; }   // painted as the other role: start the pages over
     if (S.pendingOwner && S.pendingOwner !== S.sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
-      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); fromFile.clear();
+      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); fromFile.clear();
     }
     S.pendingOwner = S.sessionEmail; persistPending();
     S.clientMode = trainer !== true;
@@ -730,7 +728,7 @@ import { reportRange, buildReport } from "./report.js";
     if (dirty.size) { $("status").textContent = "Some weights are not saved yet \u00b7 try again when online"; return; }
     const finish = () => {
       for (const tm of timers.values()) clearTimeout(tm);
-      timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); S.failed = false;
+      timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); S.failed = false;
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
       S.offline = false; S.offlineEntry = null; S.pendingOwner = "";
@@ -1852,7 +1850,7 @@ import { reportRange, buildReport } from "./report.js";
     const rowsEl = $("rows");
     const active = document.activeElement;
     if (S.renderedTraining === t.id && (S.asking || (rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.tagName === "IFRAME")))) return; // never rebuild under a typing finger, a playing video, nor under a confirm sheet
-    const sigOf = () => JSON.stringify([t.rows, t.completedAt, t.skippedAt, t.date, t.inPerson, t.missed, (clients.get(t.clientId) || {}).unit, asClient, [...openBlocks], [...fullBlocks], [...peekBlocks], [...setSel], [...openExNotes], [...openNotes], jumpOf(t.id)]);
+    const sigOf = () => JSON.stringify([t.rows, t.completedAt, t.skippedAt, t.date, t.inPerson, t.missed, (clients.get(t.clientId) || {}).unit, asClient, [...openBlocks], [...fullBlocks], [...peekBlocks], [...setSel], [...openExNotes], [...openNotes]]);
     if (S.renderedTraining === t.id && sigOf() === paintedSig) return;   // a sync that changed nothing here: the cards stay as they are, open video, menus and half-typed notes included
     S.renderedTraining = t.id;
     const sc = document.scrollingElement || document.documentElement, keepScroll = sc.scrollTop;   // the cards are rebuilt in place (every sync does it): the page must not move while it is empty
@@ -1868,9 +1866,7 @@ import { reportRange, buildReport } from "./report.js";
     });
     let numbered = 0;
     const unfinished = groups.filter((g) => !g.rows.every((r) => r.done));
-    const jumpKey = asClient && !isTpl ? jumpOf(t.id) : null, jumped = jumpKey != null ? unfinished.find((g) => String(g.key) === String(jumpKey)) : null;
-    if (jumpKey != null && !jumped) setJump(t.id, null);                                       // the exercise taken out of turn is finished, or gone: the order is its own again
-    const currentKey = asClient && !isTpl ? ((jumped || unfinished[0]) || {}).key : null;      // client: the first card not yet finished is the one open, unless one was started out of turn
+    const currentKey = asClient && !isTpl ? (unfinished[0] || {}).key : null;   // client: the first card not yet finished is the one open
     groups.forEach((g) => {
       const block = document.createElement("div");
       const warm = g.key === "w";
@@ -2104,11 +2100,12 @@ import { reportRange, buildReport } from "./report.js";
         chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (peeking ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4") + '"/></svg>';
         if (peeking) { const cap = block.querySelector(".group-cap"); (cap || card).appendChild(chev); } else card.appendChild(chev);   // opened for a look: the fold chevron moves up onto the "Exercise N" heading, and the card keeps its whole width
         const unpeek = () => { peekBlocks.delete(selKey); S.renderedTraining = null; render(); };
-        if (peeking && waitFoot) {                                     // "Finish Exercise 1 first" when one unfinished card comes before this one, by the name on its card; "the previous exercises" when more do; the one in progress when it was started out of turn
-          const gi = groups.indexOf(g), before = jumped ? [jumped] : groups.filter((x, xi) => xi < gi && !x.rows.every((r) => r.done));
+        if (peeking && waitFoot) {                                     // "Finish Exercise 1 first" when one unfinished card comes before this one, by the name on its card; "the previous exercises" when more do
+          const gi = groups.indexOf(g), before = groups.filter((x, xi) => xi < gi && !x.rows.every((r) => r.done));
           const one = before.length === 1 ? before[0] : null;
+          const canStart = /^\d+$/.test(String(g.key)) && unfinished[0] && unfinished[0].key !== "w";   // an exercise can go ahead of the exercises; the warmup stays a warmup, so with it unfinished there is nothing to offer
           waitFoot(!one ? "the previous exercises" : one.key === "w" ? "the warmup" : /^\d+$/.test(String(one.key)) ? "Exercise " + one.key : "the previous " + groupWord(one),
-            () => { setJump(t.id, g.key); peekBlocks.delete(selKey); S.renderedTraining = null; render(); scrollToCard(g.key); });   // the machine is taken: this exercise now; the one left behind keeps what was logged and comes back when this is done
+            canStart ? () => { const moved = startExerciseNow(t, g.key); if (!moved) return; peekBlocks.delete(t.id + "/" + moved.key); S.renderedTraining = null; render(); scrollToCard(moved.key); } : null);   // the machine is taken: this exercise now, ahead of the ones not yet done; they slide down behind it and keep what was logged
         }
         if (peeking) { block.classList.add("peek"); chev.addEventListener("click", unpeek); for (const top of card.querySelectorAll(".row .top")) top.addEventListener("click", (e) => { if (e.target.closest(".ex-icons")) return; unpeek(); }); }
         else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey); S.renderedTraining = null; render(); }); }
@@ -2148,6 +2145,44 @@ import { reportRange, buildReport } from "./report.js";
     }
     lastEditedId = null;
     return changed;
+  }
+
+  // "Start this exercise" (client, a card still to come): the machine is taken, so this exercise goes ahead of the ones not yet done.
+  // It takes the first open slot; the unfinished exercises before it slide down behind it in their order; the finished ones stay where
+  // they are; the numbers run 1, 2, 3 again (a superset keeps its letters). The change is the workout's own — saved, so the coach sees
+  // the order it was done in — and the per-card state (the set being looked at, cards opened) follows each exercise to its new number.
+  function startExerciseNow(t, key) {
+    const rows = [...(t.rows || [])].sort((a, b) => cmpLabel(a.label, b.label)), groups = [];
+    rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!groups.length || groups[groups.length - 1].key !== k) groups.push({ key: k, rows: [] }); groups[groups.length - 1].rows.push(r); });
+    const nums = groups.filter((g) => /^\d+$/.test(String(g.key)));
+    const gi = nums.findIndex((g) => String(g.key) === String(key)), at = nums.findIndex((g) => !g.rows.every((r) => r.done));
+    if (gi < 0 || at < 0 || at >= gi) return null;                   // not an exercise, or nothing unfinished before it: it is next already
+    const open = (g) => !g.rows.every((r) => r.done), slots = nums.map((g, i) => i).filter((i) => open(nums[i]));   // the open slots, where they are: a finished exercise between them does not move
+    const fill = [nums[gi], ...nums.filter((g, i) => i !== gi && open(g))];                                         // the started one first, then the open ones in their order
+    slots.forEach((i, j) => { nums[i] = fill[j]; });
+    const map = new Map(); let changed = false;
+    nums.forEach((g, j) => {
+      const n = String(j + 1); map.set(String(g.key), n);
+      for (const r of g.rows) { const letter = ((String(r.label || "").trim().match(/^\d+\s*([a-z]*)/i) || [])[1] || "").toLowerCase(); const want = n + letter; if (r.label !== want) { r.label = want; changed = true; } }
+    });
+    if (changed) {
+      t.rows.sort((a, b) => cmpLabel(a.label, b.label));
+      remapCardKeys(t.id, map);
+      if (S.clientMode) pendingOrder.add(t.id);
+      scheduleSave("trainings", t.id);
+    }
+    return { key: String(at + 1), changed };
+  }
+  function remapCardKeys(tid, map) {
+    const re = (k) => { const p = tid + "/"; if (!k.startsWith(p)) return k; const g = k.slice(p.length); return map.has(g) ? p + map.get(g) : k; };
+    for (const s of [openBlocks, fullBlocks, peekBlocks, openExNotes]) { const next = [...s].map(re); s.clear(); for (const k of next) s.add(k); }
+    for (const m of [setSel, cardNoteDraft]) { const next = [...m].map(([k, v]) => [re(k), v]); m.clear(); for (const [k, v] of next) m.set(k, v); }
+  }
+  function relabeled(id, cur, rec) {                                // a sync brought this workout with its exercises renumbered (she started one ahead): the per-card state here follows each exercise to its new number too
+    const keyOf = (rows, rid) => { const i = (rows || []).findIndex((x) => x.id === rid); return i < 0 ? null : String(groupKey(rows[i].label, i)); };
+    const map = new Map();
+    for (const x of rec.rows || []) { const a = keyOf(cur.rows, x.id), b = keyOf(rec.rows, x.id); if (a != null && b != null && a !== b && !map.has(a)) map.set(a, b); }
+    if (map.size) remapCardKeys(id, map);
   }
 
   // what the set before (in this workout) was logged at: the next set starts from it, so nothing is retyped unless something changed
@@ -2202,8 +2237,7 @@ import { reportRange, buildReport } from "./report.js";
       let el = document.querySelector('.block[data-key="' + CSS.escape(String(key)) + '"]'); if (!el) return null;
       const sc = document.scrollingElement || document.documentElement;
       if (el.classList.contains("done")) {
-        const cur = document.querySelector("#rows .block.ahead, #rows .block.peek") ? document.querySelector("#rows .block:not(.done):not(.ahead):not(.peek)") : null;   // the client's open card, wherever it is: finishing one taken out of turn sends the workout back to an earlier one
-        let n = cur && cur !== el ? cur : el.nextElementSibling; while (n && !(n.classList.contains("block") && !n.classList.contains("done"))) n = n.nextElementSibling;
+        let n = el.nextElementSibling; while (n && !(n.classList.contains("block") && !n.classList.contains("done"))) n = n.nextElementSibling;
         if (n) el = n;
         else {                                                        // the last exercise is done: bring the Finish workout area into view, never scrolling back up for it (a short page used to be sent to the top)
           const fin = $("finishBtn"), wrap = $("finishWrap");
@@ -2278,9 +2312,6 @@ import { reportRange, buildReport } from "./report.js";
   const openBlocks = new Set();           // finished cards the user opened with "Show sets"
   const fullBlocks = new Set();           // of those, the ones opened all the way ("Resume this exercise"): the working card instead of the summary
   const peekBlocks = new Set();   // client: exercises still to come that were tapped open to have a look
-  const jumps = () => lsGet("fiala.trainings.jump") || {};            // client: an exercise started out of turn (the machine was taken), per workout, on this phone only
-  const jumpOf = (id) => (jumps()[id] != null ? jumps()[id] : null);
-  const setJump = (id, key) => { const j = jumps(); if (key == null) delete j[id]; else j[id] = key; lsSet("fiala.trainings.jump", j); };
   let paintedSig = "";              // what the cards on screen were built from: a redraw with the same picture is skipped
   const cardNoteDraft = new Map();  // selKey -> a card note being written: it survives a rebuild of the cards (a sync, a set logged elsewhere)
   let completeAt = 0;               // when Complete set last fired: the second tap of a double tap must not log a second set
@@ -2900,7 +2931,7 @@ import { reportRange, buildReport } from "./report.js";
   });
 
   // ---------- boot ----------
-  Object.assign(ui, { $, setStatus, render, showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadCustomSubs, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar, seedTemplates });   // what the sync layer may call on the screens
+  Object.assign(ui, { $, setStatus, render, relabeled, showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadCustomSubs, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar, seedTemplates });   // what the sync layer may call on the screens
   function watchReleases(mine) {               // a page iOS keeps alive for days still gets the next release: on coming back to the app, never mid-tap, mid-sheet or mid-typing
     const sw = navigator.serviceWorker; if (!mine || !sw || !sw.addEventListener) return;
     let newest = 0;
@@ -2968,11 +2999,11 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
-      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
-      reset: () => { resetState(); localStorage.clear(); },
+      reset: () => { resetState(); seenDoc.clear(); localStorage.clear(); },
       wake: () => ({ held: !!wake, timer: !!wakeTimer }),
     };
   }
