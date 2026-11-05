@@ -1852,7 +1852,7 @@ import { reportRange, buildReport } from "./report.js";
     const rowsEl = $("rows");
     const active = document.activeElement;
     if (S.renderedTraining === t.id && (S.asking || (rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.tagName === "IFRAME")))) return; // never rebuild under a typing finger, a playing video, nor under a confirm sheet
-    const sigOf = () => JSON.stringify([t.rows, t.completedAt, t.skippedAt, t.date, t.inPerson, t.missed, (clients.get(t.clientId) || {}).unit, asClient, [...openBlocks], [...fullBlocks], [...peekBlocks], [...setSel], [...openExNotes], [...openNotes]]);
+    const sigOf = () => JSON.stringify([t.rows, t.completedAt, t.skippedAt, t.date, t.inPerson, t.missed, (clients.get(t.clientId) || {}).unit, asClient, [...openBlocks], [...fullBlocks], [...peekBlocks], [...setSel], [...openExNotes], [...openNotes], jumpOf(t.id)]);
     if (S.renderedTraining === t.id && sigOf() === paintedSig) return;   // a sync that changed nothing here: the cards stay as they are, open video, menus and half-typed notes included
     S.renderedTraining = t.id;
     const sc = document.scrollingElement || document.documentElement, keepScroll = sc.scrollTop;   // the cards are rebuilt in place (every sync does it): the page must not move while it is empty
@@ -1867,7 +1867,10 @@ import { reportRange, buildReport } from "./report.js";
       groups[groups.length - 1].rows.push(r);
     });
     let numbered = 0;
-    const currentKey = asClient && !isTpl ? (groups.find((g) => !g.rows.every((r) => r.done)) || {}).key : null;   // client: the first card not yet finished is the one open
+    const unfinished = groups.filter((g) => !g.rows.every((r) => r.done));
+    const jumpKey = asClient && !isTpl ? jumpOf(t.id) : null, jumped = jumpKey != null ? unfinished.find((g) => String(g.key) === String(jumpKey)) : null;
+    if (jumpKey != null && !jumped) setJump(t.id, null);                                       // the exercise taken out of turn is finished, or gone: the order is its own again
+    const currentKey = asClient && !isTpl ? ((jumped || unfinished[0]) || {}).key : null;      // client: the first card not yet finished is the one open, unless one was started out of turn
     groups.forEach((g) => {
       const block = document.createElement("div");
       const warm = g.key === "w";
@@ -1990,9 +1993,10 @@ import { reportRange, buildReport } from "./report.js";
         const skipping = doneSets === 0;                            // nothing completed on this card yet: finishing it is skipping it, and the word says so
         const early = document.createElement("button"); early.type = "button"; early.className = "finish-early"; early.textContent = skipping ? "Skip " + groupWord(g) : "Finish early";
         early.addEventListener("click", () => openFinishEarly(t, g, selKey, skipping));
-        waitFoot = (curName) => {                                   // still to come, opened for a look: the one line that says why there is no button; nothing to tap — it is decided when it is current
+        waitFoot = (curName, onStart) => {                          // still to come, opened for a look: the one line that says why there is no button, and the one way round it — this one now
           const wait = document.createElement("div"); wait.className = "foot-wait"; wait.textContent = "Finish " + curName + " first";
           foot.prepend(wait); early.hidden = true;
+          if (onStart) { const go = document.createElement("button"); go.type = "button"; go.className = "start-now"; go.textContent = "Start this exercise"; go.addEventListener("click", (e) => { e.stopPropagation(); onStart(); }); wait.after(go); }
         };
         resume = document.createElement("button"); resume.type = "button"; resume.className = "resume"; resume.hidden = true; resume.textContent = "Resume this " + groupWord(g);
         resume.addEventListener("click", () => {              // the remaining sets open again; what was logged stays, the reason goes
@@ -2100,10 +2104,11 @@ import { reportRange, buildReport } from "./report.js";
         chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (peeking ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4") + '"/></svg>';
         if (peeking) { const cap = block.querySelector(".group-cap"); (cap || card).appendChild(chev); } else card.appendChild(chev);   // opened for a look: the fold chevron moves up onto the "Exercise N" heading, and the card keeps its whole width
         const unpeek = () => { peekBlocks.delete(selKey); S.renderedTraining = null; render(); };
-        if (peeking && waitFoot) {                                     // "Finish Exercise 1 first" when one unfinished card comes before this one, by the name on its card; "the previous exercises" when more do
-          const gi = groups.indexOf(g), before = groups.filter((x, xi) => xi < gi && !x.rows.every((r) => r.done));
+        if (peeking && waitFoot) {                                     // "Finish Exercise 1 first" when one unfinished card comes before this one, by the name on its card; "the previous exercises" when more do; the one in progress when it was started out of turn
+          const gi = groups.indexOf(g), before = jumped ? [jumped] : groups.filter((x, xi) => xi < gi && !x.rows.every((r) => r.done));
           const one = before.length === 1 ? before[0] : null;
-          waitFoot(!one ? "the previous exercises" : one.key === "w" ? "the warmup" : /^\d+$/.test(String(one.key)) ? "Exercise " + one.key : "the previous " + groupWord(one));
+          waitFoot(!one ? "the previous exercises" : one.key === "w" ? "the warmup" : /^\d+$/.test(String(one.key)) ? "Exercise " + one.key : "the previous " + groupWord(one),
+            () => { setJump(t.id, g.key); peekBlocks.delete(selKey); S.renderedTraining = null; render(); scrollToCard(g.key); });   // the machine is taken: this exercise now; the one left behind keeps what was logged and comes back when this is done
         }
         if (peeking) { block.classList.add("peek"); chev.addEventListener("click", unpeek); for (const top of card.querySelectorAll(".row .top")) top.addEventListener("click", (e) => { if (e.target.closest(".ex-icons")) return; unpeek(); }); }
         else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey); S.renderedTraining = null; render(); }); }
@@ -2197,7 +2202,8 @@ import { reportRange, buildReport } from "./report.js";
       let el = document.querySelector('.block[data-key="' + CSS.escape(String(key)) + '"]'); if (!el) return null;
       const sc = document.scrollingElement || document.documentElement;
       if (el.classList.contains("done")) {
-        let n = el.nextElementSibling; while (n && !(n.classList.contains("block") && !n.classList.contains("done"))) n = n.nextElementSibling;
+        const cur = document.querySelector("#rows .block.ahead, #rows .block.peek") ? document.querySelector("#rows .block:not(.done):not(.ahead):not(.peek)") : null;   // the client's open card, wherever it is: finishing one taken out of turn sends the workout back to an earlier one
+        let n = cur && cur !== el ? cur : el.nextElementSibling; while (n && !(n.classList.contains("block") && !n.classList.contains("done"))) n = n.nextElementSibling;
         if (n) el = n;
         else {                                                        // the last exercise is done: bring the Finish workout area into view, never scrolling back up for it (a short page used to be sent to the top)
           const fin = $("finishBtn"), wrap = $("finishWrap");
@@ -2272,6 +2278,9 @@ import { reportRange, buildReport } from "./report.js";
   const openBlocks = new Set();           // finished cards the user opened with "Show sets"
   const fullBlocks = new Set();           // of those, the ones opened all the way ("Resume this exercise"): the working card instead of the summary
   const peekBlocks = new Set();   // client: exercises still to come that were tapped open to have a look
+  const jumps = () => lsGet("fiala.trainings.jump") || {};            // client: an exercise started out of turn (the machine was taken), per workout, on this phone only
+  const jumpOf = (id) => (jumps()[id] != null ? jumps()[id] : null);
+  const setJump = (id, key) => { const j = jumps(); if (key == null) delete j[id]; else j[id] = key; lsSet("fiala.trainings.jump", j); };
   let paintedSig = "";              // what the cards on screen were built from: a redraw with the same picture is skipped
   const cardNoteDraft = new Map();  // selKey -> a card note being written: it survives a rebuild of the cards (a sync, a set logged elsewhere)
   let completeAt = 0;               // when Complete set last fired: the second tap of a double tap must not log a second set
