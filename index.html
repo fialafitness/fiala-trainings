@@ -256,7 +256,8 @@
   .start-row { display: flex; gap: 10px; margin-top: 16px; align-items: stretch; }   /* Apple's pair: one filled, one outlined, edge to edge; alone, the filled one takes the whole width */
   .start-row #addRow, .start-row #tplFill { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 16px; font-size: 1rem; font-weight: 600; margin: 0; white-space: nowrap; }
   .btn:disabled { opacity: 0.5; cursor: default; }
-  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible, .datefield:focus-visible, .dock-add:focus-visible, .month > button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible, .datefield:focus-visible, .dock-add:focus-visible, .month > button:focus-visible, .tracker .tr-chips button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .tracker .tr-chips button:focus-visible { outline-offset: -2px; }
   .cal button:focus-visible { outline-offset: -2px; }
 
   .stack { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
@@ -666,8 +667,8 @@
   body.client .block:not(.ahead):not(.done) .row .top .ex-icons { top: 3px; }   /* the discs sit on the centre line of the name's first line (10 px padding + half of 30 px = 25 px; the 42 px row centres at 21 + 4) */   /* the exercise is the biggest thing on the card */
   .row .top .name.has-sub { display: none; }                                         /* the client's name box steps aside for the view with the subtitle inside it */
   .row .top .name-view { white-space: pre-wrap; overflow-wrap: anywhere; }            /* the same type, the same wrapping as the box it stands in for */
-  .row .top .name-view .sub { color: var(--text-tertiary); font-weight: 500; }        /* the subtitle in the grey of the superset letter, one weight lighter than the name: 500 beside 600 on the folded cards */
-  body.client .block:not(.ahead):not(.done) .row .top .name-view .sub { font-weight: 600; }   /* 600 beside the open card's 700 */
+  .row .top .name-view .sub { display: block; margin-top: 1px; font-size: 0.8125rem; line-height: 1.125rem; font-weight: 500; letter-spacing: 0; color: var(--text-tertiary); }   /* the subtitle on its own line under the name, smaller and grey, as Apple sets a secondary line */
+  body.client .block:not(.ahead):not(.done) .row .top .name-view .sub { margin-top: 2px; font-size: 0.9375rem; line-height: 1.25rem; }   /* under the open card's 22px name: 15 */
   .exlist .subt, #exList .subt { margin-left: 6px; font-weight: 400; color: var(--text-tertiary); }
   .edit-field .hint { display: block; margin-top: 6px; font-size: 0.8125rem; line-height: 1.35; color: var(--text-tertiary); }
   body.client .block:not(.ahead):not(.done) .row .exwrap::before { content: attr(data-letter); position: absolute; left: 0; top: 10px; font-size: 1.375rem; font-weight: 600; line-height: 1.75rem; color: var(--text-tertiary); }
@@ -721,14 +722,18 @@
   #kbbar .kb-chips::-webkit-scrollbar { display: none; }
   /* client view: one set at a time */
   .tracker { padding: 14px 16px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }   /* one row: the set chips, and for the coach the − / + at its end */
-  .tracker .tr-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  .tracker .tr-chips { position: relative; display: flex; flex: 1 1 auto; min-width: 0; gap: 4px; padding: 4px; border-radius: 50px; background: var(--glyph-fill); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; scroll-padding-inline: 4px; --fr: 0px; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fr)), transparent calc(100% - var(--fr) + 20px)); mask-image: linear-gradient(to right, #000 calc(100% - var(--fr)), transparent calc(100% - var(--fr) + 20px)); }   /* one track, as the Coach / Client switch: the set you are on raised and worded, the ones ahead numbered, the ones done fern discs; past the width it scrolls */
+  .tracker .tr-chips::-webkit-scrollbar { display: none; }
   .tracker .tr-steps { display: flex; gap: 6px; flex: none; align-self: center; }
+  .tracker .tr-pos { flex: none; align-self: center; font-size: 0.8125rem; letter-spacing: 0; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap; }   /* "4 of 12": the count the track cannot always show */
   .tracker button { appearance: none; cursor: pointer; width: auto; min-width: 44px; height: 40px; padding: 0 12px; border-radius: var(--r-chip); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-secondary); font-size: 0.9375rem; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 2px; transition: opacity 300ms ease; }
-  .tracker button.done { border-color: var(--done); color: var(--done); background: var(--done-tint); }   /* a done set is a small "finished": fern outline, fern tick, faint fern wash */
-  .tracker button.done::after { content: "\2713"; font-size: 0.6875rem; margin-left: 4px; }
-  .tracker button.cur { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; font-weight: 600; }   /* the set you are on: the one purple thing on the card */
-  .block.done .tracker button.cur { background: var(--done); border-color: var(--done); color: var(--done-ink); }
+  .tracker .tr-chips button { flex: none; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50px; background: transparent; color: var(--text-secondary); font-size: 0.875rem; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; scroll-snap-align: start; transition: background-color 150ms ease, color 150ms ease; }   /* a set ahead: its number, in a 36px cell like the discs, so every column lines up */
+  .tracker .tr-chips button.cur { width: auto; padding: 0 16px; background: var(--seg-on); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 3px var(--seg-shadow); }   /* the set you are on: raised, "Set 2 of 12"; the purple stays on Complete set */
+  .tracker .tr-chips button.done { width: 36px; padding: 0; border-radius: 50%; background: var(--done); color: var(--done-ink); }   /* a set done: the fern disc with its check */
+  .tracker .tr-chips button.done svg { width: 15px; height: 15px; }
+  .tracker .tr-chips button.cur.done { width: auto; padding: 0 16px; border-radius: 50px; background: var(--seg-on); color: var(--done); }   /* back on a set already done: raised, worded, in fern */
   .tracker button:hover { opacity: 0.85; }
+  .tracker .tr-chips button:hover { opacity: 1; }
   .tracker button.static { cursor: default; }                           /* a template just shows the count */
   .tracker .step { position: relative; width: 36px; height: 30px; background: transparent; color: var(--text-secondary); font-size: 1.125rem; font-weight: 400; }
   .tracker .step:disabled { opacity: 0.35; cursor: default; }
@@ -1493,7 +1498,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=190";
+  import { boot } from "./app/main.js?v=191";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
