@@ -2339,7 +2339,7 @@ import { reportRange, buildReport } from "./report.js";
     el.innerHTML = `
       <div class="top">
         <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
-        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg class="i-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg><svg class="i-up" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="alt-btn" type="button" hidden aria-label="Swap exercise" title="Swap exercise"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/></svg></button><button class="more-btn trainer-only" type="button" aria-label="More" title="More"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" fill="currentColor"><circle cx="3.8" cy="10" r="1.75"/><circle cx="10" cy="10" r="1.75"/><circle cx="16.2" cy="10" r="1.75"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div></div>
+        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg class="i-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg><svg class="i-up" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="alt-btn" type="button" hidden aria-label="Swap exercise" title="Swap exercise"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/></svg></button><button class="more-btn trainer-only" type="button" aria-label="More" title="More"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" fill="currentColor"><circle cx="3.8" cy="10" r="1.75"/><circle cx="10" cy="10" r="1.75"/><circle cx="16.2" cy="10" r="1.75"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div><div class="alt-menu note-pop trainer-only" hidden></div></div>
       </div>
       <div class="sum"></div>
       <div class="newname trainer-only" hidden><span>New exercise</span><button class="btn tint addname" type="button">Add to database</button></div>
@@ -2355,7 +2355,7 @@ import { reportRange, buildReport } from "./report.js";
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
       <div class="setlog"><div class="pair"><div class="chip stack"><span class="lab">Weight</span><span class="valrow"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></span></div><div class="chip stack"><span class="lab">Reps</span><span class="valrow"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></span></div></div></div>
       <div class="lifts" hidden><button type="button" class="lift last"><span class="vh">Last time </span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.6V12l3.1 2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><b></b></button><button type="button" class="lift best"><span class="vh">Personal best </span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.2 17.2 2.5 7.4l4.8 3.3L12 4.6l4.7 6.1 4.8-3.3-1.7 9.8z" fill="currentColor"/><path d="M4.6 18.8h14.8v1.9H4.6z" fill="currentColor"/></svg><b></b></button></div>
-      <div class="note" hidden><textarea class="note-field" rows="1" placeholder="Instructions for the client"></textarea></div>`;
+`;
     const q = (s) => el.querySelector(s);
     if (!(S.clientMode || previewClient)) q(".top").appendChild(q(".ex-icons"));   // the coach's card: the discs (play and "…") are a row under the name (grid row 2), not overlays in the field
     let wText = false;                       // a row that already holds BW / 60 sec opens on the full keyboard (the bar above the keyboard switches it)
@@ -2593,12 +2593,37 @@ import { reportRange, buildReport } from "./report.js";
     };
     cnoteBtn.addEventListener("click", () => { if (openNotes.has(r.id)) openNotes.delete(r.id); else openNotes.add(r.id); paintClientNote(); });
     paintClientNote();
-    const noteBtn = q(".note-btn"), noteBox = q(".note"), noteField = q(".note-field");
-    const growNote = () => { noteField.style.height = "auto"; noteField.style.height = noteField.scrollHeight + "px"; };
+    const noteBtn = q(".note-btn"), notePop = q(".note-pop");       // instructions for the client: the same panel as Add alternative (solid while typing, a field, Clear and Done), under the name
     const showNote = () => { const v = (r.note || "").trim(); noteBtn.classList.toggle("has", !!v); noteBtn.title = v ? "Instructions" : "Add instructions"; noteBtn.setAttribute("aria-label", noteBtn.title); };
-    noteBtn.addEventListener("click", () => { closeAlt(); noteBox.hidden = false; noteField.value = r.note || ""; growNote(); noteField.focus(); });
-    noteField.addEventListener("input", (e) => { r.note = e.target.value; growNote(); save(); });
-    noteField.addEventListener("blur", () => { noteBox.hidden = true; showNote(); });
+    let noteKb = null, noteDownAt = null;
+    function noteDown(e) { noteDownAt = notePop.contains(e.target) ? null : { x: e.clientX, y: e.clientY }; }
+    function noteUp(e) { if (noteDownAt && Math.hypot(e.clientX - noteDownAt.x, e.clientY - noteDownAt.y) < 10) closeNote(); noteDownAt = null; }   // a tap outside closes it; a drag of the page does not
+    function closeNote() {
+      if (notePop.hidden) return;
+      notePop.hidden = true; notePop.replaceChildren();
+      if (noteKb && window.visualViewport) { window.visualViewport.removeEventListener("resize", noteKb); noteKb = null; }
+      document.removeEventListener("pointerdown", noteDown, true); document.removeEventListener("pointerup", noteUp, true);
+      if (closeOpenAlt === closeNote) closeOpenAlt = null;
+      showNote();
+    }
+    function openNote() {
+      closeAlt(); if (closeOpenAlt) closeOpenAlt();
+      notePop.replaceChildren(); notePop.classList.add("add");
+      const ta = mk("textarea", "note-field"); ta.rows = 2; ta.maxLength = 500; ta.placeholder = "Instructions for the client"; ta.value = r.note || ""; ta.setAttribute("autocapitalize", "sentences"); ta.setAttribute("enterkeyhint", "done"); ta.setAttribute("aria-label", "Instructions for the client");
+      const grow = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, Math.round(window.innerHeight * 0.3)) + "px"; };
+      ta.addEventListener("input", () => { r.note = ta.value; grow(); save(); });
+      ta.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); closeNote(); } });
+      const foot = mk("div", "alt-foot");
+      const clear = mk("button", "remove", "Clear"); clear.type = "button"; clear.addEventListener("mousedown", (ev) => ev.preventDefault()); clear.addEventListener("click", () => { ta.value = ""; r.note = ""; save(); grow(); ta.focus(); });
+      const ok = mk("button", "done", "Done"); ok.type = "button"; ok.addEventListener("mousedown", (ev) => ev.preventDefault()); ok.addEventListener("click", closeNote);
+      foot.append(clear, ok); notePop.append(ta, foot); notePop.hidden = false; grow();
+      document.addEventListener("pointerdown", noteDown, true); document.addEventListener("pointerup", noteUp, true); closeOpenAlt = closeNote;
+      const vv = window.visualViewport;                                                                // the keyboard: the field is brought up under the bar, as the alternative's field is
+      noteKb = () => { if (!vv) return; const b = ta.getBoundingClientRect(), top = vv.offsetTop, want = top + 76; if (vv.height < window.innerHeight - 120 && b.top > want + 8) window.scrollBy({ top: b.top - want, behavior: "smooth" }); };
+      if (vv) vv.addEventListener("resize", noteKb);
+      ta.focus();
+    }
+    noteBtn.addEventListener("click", openNote);
     showNote();
     const moreBtn = q(".more-btn");                                  // the coach's "…" disc: the card's other actions, in a menu under it
     if (moreBtn) moreBtn.addEventListener("click", (e) => {
