@@ -2226,12 +2226,19 @@ import { reportRange, buildReport } from "./report.js";
     pop.style.left = left + "px"; pop.style.top = top + "px"; pop.style.setProperty("--caret", Math.max(12, Math.min(r.left + r.width / 2 - left, pw - 12)) + "px");
     const close = () => { bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", close, true); };
     const onKey = (e) => { if (e.key === "Escape") close(); };
-    let down = null;                                                 // a tap outside closes the bubble and goes no further (as a system menu's dismissing tap); a finger that drags the page does not close it
-    const onDown = (e) => { down = pop.contains(e.target) ? null : { x: e.clientX, y: e.clientY }; };
+    let down = null, eat = null;                                     // a tap outside closes the bubble and goes no further (as a system menu's dismissing tap): nothing under it is pressed or given focus; a finger that drags the page does not close it
+    const uneat = () => { if (eat) { document.removeEventListener("mousedown", eat, true); eat = null; } };
+    const onDown = (e) => {
+      if (pop.contains(e.target)) { down = null; return; }
+      e.preventDefault(); down = { x: e.clientX, y: e.clientY };     // no mouse events follow a cancelled pointerdown, so a field under the tap is not focused (focus is mousedown's doing); on the phone that mousedown comes after pointerup, so it is eaten there too
+      uneat(); eat = (ev) => { ev.preventDefault(); uneat(); }; document.addEventListener("mousedown", eat, true); setTimeout(uneat, 400);
+    };
     const onUp = (e) => {
-      if (!down) return; const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y); down = null; if (moved > 10) return;
-      const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); document.removeEventListener("click", swallow, true); };
-      document.addEventListener("click", swallow, true); setTimeout(() => document.removeEventListener("click", swallow, true), 400);   // the click that follows this tap is the dismissal, not a press on what lies under
+      if (!down) return; const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y); down = null; if (moved > 10) { uneat(); return; }
+      if (e.button === 0 && e.isPrimary) {                            // only a primary tap is followed by a click; a right or middle button, or a second finger, is not, and must not leave the swallower waiting for someone else's click
+        const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); disarm(); }, disarm = () => { document.removeEventListener("click", swallow, true); document.removeEventListener("pointerdown", disarm, true); uneat(); };
+        document.addEventListener("click", swallow, true); document.addEventListener("pointerdown", disarm, true); setTimeout(disarm, 400);   // the click that follows this tap is the dismissal, not a press on what lies under
+      }
       close();
     };
     document.addEventListener("pointerdown", onDown, true); document.addEventListener("pointerup", onUp, true); document.addEventListener("keydown", onKey); window.addEventListener("scroll", close, true);
