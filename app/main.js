@@ -2216,7 +2216,6 @@ import { reportRange, buildReport } from "./report.js";
   const MI = {                                                         // the menu's leading glyphs, 17px, drawn like the discs' own
     swap: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/></svg>',
     lines: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 4.5h10M3 8h10M3 11.5h6"/></svg>',
-    video: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="1.75" y="3" width="12.5" height="10" rx="2.6"/><path d="M6.6 5.9v4.2l3.6-2.1z" fill="currentColor" stroke="none"/></svg>',
   };
   function openPop(anchor, opts) {                                   // places the bubble under (or above) its anchor and wires the ways it closes; returns close
     const bg = $("whenBg"), pop = $("whenPop");
@@ -2225,9 +2224,17 @@ import { reportRange, buildReport } from "./report.js";
     const left = Math.max(8, Math.min(opts && opts.align === "right" ? r.right - pw : r.left, vw - pw - 8)); let top = r.bottom + 8;
     if (top + ph > vh - 8) { top = r.top - 8 - ph; pop.classList.add("above"); }
     pop.style.left = left + "px"; pop.style.top = top + "px"; pop.style.setProperty("--caret", Math.max(12, Math.min(r.left + r.width / 2 - left, pw - 12)) + "px");
-    const close = () => { bg.hidden = true; bg.removeEventListener("click", close); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", close, true); };
+    const close = () => { bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", close, true); };
     const onKey = (e) => { if (e.key === "Escape") close(); };
-    bg.addEventListener("click", close); document.addEventListener("keydown", onKey); window.addEventListener("scroll", close, true);
+    let down = null;                                                 // a tap outside closes the bubble and goes no further (as a system menu's dismissing tap); a finger that drags the page does not close it
+    const onDown = (e) => { down = pop.contains(e.target) ? null : { x: e.clientX, y: e.clientY }; };
+    const onUp = (e) => {
+      if (!down) return; const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y); down = null; if (moved > 10) return;
+      const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); document.removeEventListener("click", swallow, true); };
+      document.addEventListener("click", swallow, true); setTimeout(() => document.removeEventListener("click", swallow, true), 400);   // the click that follows this tap is the dismissal, not a press on what lies under
+      close();
+    };
+    document.addEventListener("pointerdown", onDown, true); document.addEventListener("pointerup", onUp, true); document.addEventListener("keydown", onKey); window.addEventListener("scroll", close, true);
     return close;
   }
   function followRow(id, field) {                                   // a card that just moved (a new label): keep it under the finger, and the keyboard on the field he was heading for
@@ -2597,9 +2604,8 @@ import { reportRange, buildReport } from "./report.js";
     if (moreBtn) moreBtn.addEventListener("click", (e) => {
       e.stopPropagation(); closeAlt();
       showMenu(moreBtn, [
-        { label: "Alternate exercise", icon: MI.swap, onPick: () => altBtn.click() },
+        { label: "Alternate exercise", icon: MI.swap, onPick: () => altBtn.click() },   // video is the play disc's own business
         { label: (r.note || "").trim() ? "Edit instructions" : "Add instructions", icon: MI.lines, onPick: () => noteBtn.click() },
-        { label: videoFor(r.name) ? "Change video" : "Add video", icon: MI.video, onPick: () => { const f = q(".vid-form"); if (f.hidden) openVidForm(); else q(".vid-url").focus(); } },   // a menu row opens; it never tucks the box away
       ], { align: "right" });
     });
 
