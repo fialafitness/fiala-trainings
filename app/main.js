@@ -2595,13 +2595,12 @@ import { reportRange, buildReport } from "./report.js";
     paintClientNote();
     const noteBtn = q(".note-btn"), notePop = q(".note-pop");       // instructions for the client: the same panel as Add alternative (solid while typing, a field, Clear and Done), under the name
     const showNote = () => { const v = (r.note || "").trim(); noteBtn.classList.toggle("has", !!v); noteBtn.title = v ? "Instructions" : "Add instructions"; noteBtn.setAttribute("aria-label", noteBtn.title); };
-    let noteKb = null, noteDownAt = null;
+    let noteDownAt = null;
     function noteDown(e) { noteDownAt = notePop.contains(e.target) ? null : { x: e.clientX, y: e.clientY }; }
     function noteUp(e) { if (noteDownAt && Math.hypot(e.clientX - noteDownAt.x, e.clientY - noteDownAt.y) < 10) closeNote(); noteDownAt = null; }   // a tap outside closes it; a drag of the page does not
     function closeNote() {
       if (notePop.hidden) return;
       notePop.hidden = true; notePop.replaceChildren();
-      if (noteKb && window.visualViewport) { window.visualViewport.removeEventListener("resize", noteKb); noteKb = null; }
       document.removeEventListener("pointerdown", noteDown, true); document.removeEventListener("pointerup", noteUp, true);
       if (closeOpenAlt === closeNote) closeOpenAlt = null;
       showNote();
@@ -2618,10 +2617,9 @@ import { reportRange, buildReport } from "./report.js";
       const ok = mk("button", "done", "Done"); ok.type = "button"; ok.addEventListener("mousedown", (ev) => ev.preventDefault()); ok.addEventListener("click", closeNote);
       foot.append(clear, ok); notePop.append(ta, foot); notePop.hidden = false; grow();
       document.addEventListener("pointerdown", noteDown, true); document.addEventListener("pointerup", noteUp, true); closeOpenAlt = closeNote;
-      const vv = window.visualViewport;                                                                // the keyboard: the field is brought up under the bar, as the alternative's field is
-      noteKb = () => { if (!vv) return; const b = ta.getBoundingClientRect(), top = vv.offsetTop, want = top + 76; if (vv.height < window.innerHeight - 120 && b.top > want + 8) window.scrollBy({ top: b.top - want, behavior: "smooth" }); };
-      if (vv) vv.addEventListener("resize", noteKb);
-      ta.focus();
+      const head = document.querySelector("header"), topRow = q(".top") || el;                        // one move, made by us: this exercise's name row glides up under the header, so the panel and its field sit on screen above the keyboard; the phone is given no reason to scroll on its own
+      glide(() => { const sc = document.scrollingElement || document.documentElement, off = Math.max(0, head ? head.getBoundingClientRect().bottom : 0) + 12; return Math.max(0, Math.min(sc.scrollTop + topRow.getBoundingClientRect().top - off, sc.scrollHeight - sc.clientHeight)); });
+      ta.focus({ preventScroll: true }); const n = ta.value.length; try { ta.setSelectionRange(n, n); } catch (_) {}   // ready to type, the cursor at the end of what is there
     }
     noteBtn.addEventListener("click", openNote);
     showNote();
