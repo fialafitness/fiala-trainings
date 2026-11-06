@@ -862,10 +862,9 @@
   .lift b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; }
   .lifts.tight .lift { font-size: 0.875rem; }
   .lift.best .ic, .lift.best b { color: var(--gold); }                       /* the best: gold crown, gold numbers (his call) */
-  #whenBg { position: fixed; inset: 0; z-index: 55; }                       /* catches the closing tap */
+  #whenBg { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 55; }   /* no area of its own: a full-screen layer under a glass bubble made Safari paint the page black behind its bottom bar; the closing tap is caught by the page instead */
   #whenBg[hidden] { display: none; }
-  #whenPop { position: fixed; isolation: isolate; max-width: calc(100vw - 16px); padding: 10px 14px 11px; border-radius: 16px; background: var(--glass-menu); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: 0 8px 24px rgba(0,0,0,0.18); animation: popIn 160ms ease-out; }   /* Apple's menu glass, measured: a 28% neutral tint over a 16px blur, no colour boost — the page shows through */
-  #whenPop::after { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; padding: 0.5px; pointer-events: none; background: linear-gradient(180deg, var(--glass-menu-rim) 0, var(--glass-menu-side) 16%, var(--glass-menu-side) 84%, var(--glass-menu-rim-b) 100%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0), linear-gradient(#000 0 0) calc(var(--caret, 16px) - 8.5px) 0 / 17px 0.5px no-repeat; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0), linear-gradient(#000 0 0) calc(var(--caret, 16px) - 8.5px) 0 / 17px 0.5px no-repeat; -webkit-mask-composite: xor; mask-composite: exclude; }   /* the third mask layer cuts the rim where the pointer joins, so the rim flows around the pointer instead of across its base */   /* the hairline rim (half a pixel, as thin and bright as Apple's): lit along the top edge (measured +56 of 255 at its peak on Apple's), a little less along the bottom (+32), faint down the sides */
+  #whenPop { position: fixed; isolation: isolate; max-width: calc(100vw - 16px); padding: 10px 14px 11px; border-radius: 16px; background: var(--glass-menu); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: 0 8px 24px rgba(0,0,0,0.18), inset 0 0.5px 0 var(--glass-menu-rim), inset 0 -0.5px 0 var(--glass-menu-rim-b); animation: popIn 160ms ease-out; }   /* Apple's menu glass, measured: a 28% neutral tint over a 16px blur, no colour boost — the page shows through; a hairline of light along the top edge (measured +56 of 255 at its peak on Apple's), a little less along the bottom (+32), fading out down the sides as an inset shadow does round a corner */
   #whenPop { display: grid; grid-template-columns: auto auto auto; column-gap: 8px; row-gap: 7px; align-items: baseline; }   /* three aligned columns: the word, the numbers, the day; a long day wraps, the numbers never do */
   #whenPop.plain { grid-template-columns: auto auto; }                        /* no words (the overview tile): the numbers and the day */
   #whenPop .wrow { display: contents; }
@@ -874,8 +873,6 @@
   #whenPop .wd { font-size: 0.8125rem; color: var(--text-secondary); }
   #whenPop::before { content: ""; position: absolute; z-index: -1; top: -6px; left: var(--caret, 16px); width: 12px; height: 12px; background: inherit; -webkit-backdrop-filter: inherit; backdrop-filter: inherit; transform: translateX(-50%) rotate(45deg); box-shadow: inset 0.5px 0.5px 0 var(--glass-menu-rim); }   /* the pointer wears the same rim as the bubble's top edge */
   #whenPop.above::before { top: auto; bottom: -6px; box-shadow: inset -0.5px -0.5px 0 var(--glass-menu-rim-b); }
-  #whenPop.above::after { -webkit-mask-position: 0 0, 0 0, calc(var(--caret, 16px) - 8.5px) 100%; mask-position: 0 0, 0 0, calc(var(--caret, 16px) - 8.5px) 100%; }   /* the pointer below: the cut moves to the bottom edge */
-  #whenPop.menu.hung::after { -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); }   /* no pointer: an unbroken rim */
   #whenPop.menu { display: flex; flex-direction: column; align-items: stretch; gap: 0; padding: 12px; min-width: 243px; border-radius: 28px; }   /* the same bubble with rows to tap, in the proportions of Apple's menus (measured off Reminders): 243 wide, 28 corner, 42 a row, 17 text, 17 glyph, 16 to the words */
   #whenPop.menu.hung::before { display: none; }   /* hung from a disc's right edge (the coach's "…"): no pointer, as Apple's menus; the client's swap list keeps its pointer at the disc */
 
@@ -1512,7 +1509,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=205";
+  import { boot } from "./app/main.js?v=206";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
