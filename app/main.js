@@ -2221,7 +2221,9 @@ import { reportRange, buildReport } from "./report.js";
     const bg = $("whenBg"), pop = $("whenPop");
     bg.hidden = false; pop.classList.remove("above"); pop.classList.toggle("hung", !!(opts && opts.align === "right"));
     const r = anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, pw = pop.offsetWidth, ph = pop.offsetHeight;
-    const left = Math.max(8, Math.min(opts && opts.align === "right" ? r.right - pw : r.left, vw - pw - 8)); let top = r.bottom + 8;
+    const box = anchor.closest(".group, .card, .plan-card, .overview"), bb = box ? box.getBoundingClientRect() : null;   // the bubble stays inside the card it belongs to, as Apple keeps a popover inside its content's margins, never out at the screen's edge
+    let minL = 8, maxL = vw - pw - 8; if (bb && bb.right - bb.left >= pw) { minL = Math.max(minL, bb.left); maxL = Math.min(maxL, bb.right - pw); }
+    const left = Math.max(minL, Math.min(opts && opts.align === "right" ? r.right - pw : r.left, maxL)); let top = r.bottom + 8;
     if (top + ph > vh - 8) { top = r.top - 8 - ph; pop.classList.add("above"); }
     pop.style.left = left + "px"; pop.style.top = top + "px"; pop.style.setProperty("--caret", Math.max(12, Math.min(r.left + r.width / 2 - left, pw - 12)) + "px");
     const close = () => { bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", close, true); };
