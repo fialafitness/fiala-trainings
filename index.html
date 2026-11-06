@@ -46,8 +46,7 @@
     --inset: #f2f2f4; --inset-field: #ffffff;   /* a superset: each exercise on a grey panel inside the white card, its boxes white on it */
     --glyph-fill: rgba(120,120,128,0.14); /* the circle behind a small symbol (secondary system fill) */
     --brand-soft: rgba(111,107,153,0.14); --danger-soft: rgba(166,58,70,0.11);   /* tinted capsules: the colour at a breath of opacity behind text in that colour */
-    --glass: rgba(255,255,255,0.78); --glass-edge: rgba(0,0,0,0.08);   /* a floating bubble: frosted, the page showing through */
-    --glass-bar: rgba(255,255,255,0.5); --glass-bar-rim: rgba(255,255,255,0.9); --glass-bar-edge: rgba(0,0,0,0.07); --glass-bar-on: rgba(0,0,0,0.07);   /* a floating menu: liquid glass, readable over text */
+    --glass-bar-rim: rgba(255,255,255,0.9); --glass-bar-edge: rgba(0,0,0,0.07); --glass-bar-on: rgba(0,0,0,0.07);   /* a panel's pressed row and hairline dividers (the glass itself is --glass-menu below) */
     --glass-menu: rgba(255,255,255,0.5); --glass-menu-filter: blur(14px) saturate(150%); --glass-menu-rim: rgba(255,255,255,0.95); --glass-menu-rim-b: rgba(255,255,255,0.7); --glass-menu-edge: rgba(0,0,0,0.12); --glass-menu-shadow: rgba(0,0,0,0.16);   /* light, read off his light Reminders screenshot: a half-white tint that lets colour through with a little extra saturation, a bright top rim, a hairline dark edge and a soft shadow to stand off a white page */   /* the pop-up menu and bubble: Apple's menu glass (measured off Reminders in the dark: a 28% neutral tint over a 16px blur, a bright rim on the top and bottom edges, next to nothing on the sides); the light values are its daylight twin */
     --tab-fill: rgba(255,255,255,0.33); --tab-on: rgba(255,255,255,0.8); --tab-on-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.9), 0 0 0 0.5px rgba(0,0,0,0.03), 0 1px 4px rgba(0,0,0,0.06); --tab-shadow: inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(255,255,255,0.75), inset 0 0 0 0.5px rgba(255,255,255,0.35), 0 0 0 0.5px rgba(0,0,0,0.05), 0 4px 14px rgba(0,0,0,0.08);   /* the tab bar: Apple's glass, measured off the real thing: a third of white over the page, the chosen tab a white capsule with a lit rim */
     --placeholder: #d2d2d7;
@@ -90,8 +89,7 @@
       --inset: rgba(255,255,255,0.045); --inset-field: rgba(255,255,255,0.10);
       --glyph-fill: rgba(255,255,255,0.12);
       --brand-soft: rgba(111,107,153,0.28); --danger-soft: rgba(224,100,112,0.2);
-      --glass: rgba(44,44,46,0.72); --glass-edge: rgba(255,255,255,0.10);
-      --glass-bar: rgba(70,70,76,0.42); --glass-bar-rim: rgba(255,255,255,0.24); --glass-bar-edge: rgba(255,255,255,0.1); --glass-bar-on: rgba(255,255,255,0.13);
+      --glass-bar-rim: rgba(255,255,255,0.24); --glass-bar-edge: rgba(255,255,255,0.1); --glass-bar-on: rgba(255,255,255,0.13);
       --glass-menu: rgba(106,106,106,0.285); --glass-menu-rim: rgba(255,255,255,0.55); --glass-menu-rim-b: rgba(255,255,255,0.35); --glass-menu-edge: rgba(255,255,255,0); --glass-menu-shadow: rgba(0,0,0,0.18); --glass-menu-filter: blur(16px);
       --tab-fill: rgba(255,255,255,0.15); --tab-on: rgba(0,0,0,0.42); --tab-on-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 2px 3px rgba(255,255,255,0.06), inset 0 0 0 0.5px rgba(255,255,255,0.08); --tab-shadow: inset 0 1px 0 rgba(255,255,255,0.27), inset 0 2px 3px rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.45), 0 0 0 1.5px rgba(255,255,255,0.09), 0 8px 24px rgba(0,0,0,0.25);   /* measured off Apple's dark bar: 15% white over the page, a lit rim, the chosen tab a darker capsule */
       --placeholder: rgba(255,255,255,0.35);
@@ -134,8 +132,7 @@
     --inset: rgba(255,255,255,0.045); --inset-field: rgba(255,255,255,0.10);
     --glyph-fill: rgba(255,255,255,0.12);
     --brand-soft: rgba(111,107,153,0.28); --danger-soft: rgba(224,100,112,0.2);
-    --glass: rgba(44,44,46,0.72); --glass-edge: rgba(255,255,255,0.10);
-    --glass-bar: rgba(70,70,76,0.42); --glass-bar-rim: rgba(255,255,255,0.24); --glass-bar-edge: rgba(255,255,255,0.1); --glass-bar-on: rgba(255,255,255,0.13);
+    --glass-bar-rim: rgba(255,255,255,0.24); --glass-bar-edge: rgba(255,255,255,0.1); --glass-bar-on: rgba(255,255,255,0.13);
     --glass-menu: rgba(106,106,106,0.285); --glass-menu-rim: rgba(255,255,255,0.55); --glass-menu-rim-b: rgba(255,255,255,0.35); --glass-menu-edge: rgba(255,255,255,0); --glass-menu-shadow: rgba(0,0,0,0.18); --glass-menu-filter: blur(16px);
     --tab-fill: rgba(255,255,255,0.15); --tab-on: rgba(0,0,0,0.42); --tab-on-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 2px 3px rgba(255,255,255,0.06), inset 0 0 0 0.5px rgba(255,255,255,0.08); --tab-shadow: inset 0 1px 0 rgba(255,255,255,0.27), inset 0 2px 3px rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.45), 0 0 0 1.5px rgba(255,255,255,0.09), 0 8px 24px rgba(0,0,0,0.25);   /* measured off Apple's dark bar: 15% white over the page, a lit rim, the chosen tab a darker capsule */
     --placeholder: rgba(255,255,255,0.35);
@@ -431,7 +428,7 @@
   .numpick {
     position: absolute; left: 0; top: calc(100% + 4px); z-index: 4;
     display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; width: max-content; max-width: 276px;
-    background: var(--glass-bar); -webkit-backdrop-filter: blur(22px) saturate(170%); backdrop-filter: blur(22px) saturate(170%); border: 0; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.18), inset 0 1px 0 var(--glass-bar-rim), inset 0 0 0 0.5px var(--glass-bar-edge);   /* the number picker: the same glass */
+    background: var(--glass-menu); -webkit-backdrop-filter: var(--glass-menu-filter); backdrop-filter: var(--glass-menu-filter); border: 0; border-radius: 16px; box-shadow: 0 10px 30px var(--glass-menu-shadow), 0 0 0 0.5px var(--glass-menu-edge), inset 0 0.5px 0 var(--glass-menu-rim), inset 0 -0.5px 0 var(--glass-menu-rim-b);   /* the number picker: the same glass */
   }
   .numpick button {
     appearance: none; border: 0; cursor: pointer; width: 44px; height: 44px; border-radius: var(--r-chip);
@@ -589,10 +586,10 @@
     width: 40px; height: 44px; font-size: 1.25rem; line-height: 1; border-radius: var(--r-chip); transition: opacity 300ms ease;
   }
   .row .x:hover { opacity: 0.7; }
-  .sugg, .alt-menu {                                          /* the tab bar's liquid glass, shared with the number picker; the pop-up bubble and menu (#whenPop) wear Apple's menu glass */
+  .sugg, .alt-menu {                                          /* one frosted glass for every floating panel: the measured menu glass of #whenPop, here on the suggestions and the alternatives list (the number picker too); the tab bar keeps Apple's clearer bar glass */
     position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 4;
-    background: var(--glass-bar); -webkit-backdrop-filter: blur(22px) saturate(170%); backdrop-filter: blur(22px) saturate(170%); border: 0; border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.18), inset 0 1px 0 var(--glass-bar-rim), inset 0 0 0 0.5px var(--glass-bar-edge); overflow-x: hidden; overflow-y: auto; max-height: 40vh; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 6px; margin: 0; list-style: none;
+    background: var(--glass-menu); -webkit-backdrop-filter: var(--glass-menu-filter); backdrop-filter: var(--glass-menu-filter); border: 0; border-radius: 16px;
+    box-shadow: 0 10px 30px var(--glass-menu-shadow), 0 0 0 0.5px var(--glass-menu-edge), inset 0 0.5px 0 var(--glass-menu-rim), inset 0 -0.5px 0 var(--glass-menu-rim-b); overflow-x: hidden; overflow-y: auto; max-height: 40vh; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 6px; margin: 0; list-style: none;
   }
   .sugg button, .alt-menu button {
     appearance: none; border: 0; background: none; width: 100%; text-align: left; cursor: pointer;
@@ -1512,7 +1509,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=210";
+  import { boot } from "./app/main.js?v=211";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
