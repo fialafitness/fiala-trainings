@@ -531,7 +531,7 @@ test("the + makes today's workout for the client whose page it is, and leaves th
   app.reset(); app.set({ signedIn: true, clientMode: false, view: { name: "client", id: "c1" }, tab: "notes" }); maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" });
   const before = new Set(maps.trainings.keys()); fns.newWorkoutHere();
   const made = [...maps.trainings.values()].filter((t) => !before.has(t.id));
-  assert.strictEqual(made.length, 1, "one new workout"); assert.deepStrictEqual([made[0].clientId, made[0].date, made[0].rows.length], ["c1", new Date().toISOString().slice(0, 10), 0], "hers, today, empty");
+  assert.strictEqual(made.length, 1, "one new workout"); assert.deepStrictEqual([made[0].clientId, made[0].date, made[0].rows.length], ["c1", fns.today(), 0], "hers, today, empty");   // the app's local day, not UTC's (after 4 pm in Los Angeles those differ)
   assert.deepStrictEqual([app.get().view.name, app.get().view.id, app.get().tab], ["training", made[0].id, "workouts"], "on the new workout; the tab is Workouts");
   assert.strictEqual(document.getElementById("addBtn").hidden, true, "the + is not on the workout page");
 });
