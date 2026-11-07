@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { test, assert } from "./assert.js";
 const src = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "sw.js"), "utf8");
 const ORIGIN = "https://app.test", SW_URL = ORIGIN + "/sw.js", META = "fiala-meta", ASSETS = "fiala-assets", REL = "fiala-rel-";
-const FILES = ["/index.html", "/app/main.js", "/app/catalog.js", "/app/util.js", "/app/model.js", "/app/notes.js", "/app/pdf.js", "/app/report.js", "/app/state.js", "/app/sync.js", "/templates.json", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png", "/favicon.ico", "/fonts/Inter-Regular.ttf", "/fonts/Inter-Bold.ttf"];
+const FILES = ["/index.html", "/app/main.js", "/app/catalog.js", "/app/util.js", "/app/model.js", "/app/notes.js", "/app/pdf.js", "/app/report.js", "/app/state.js", "/app/sync.js", "/app/photos.js", "/templates.json", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png", "/favicon.ico", "/fonts/Inter-Regular.ttf", "/fonts/Inter-Bold.ttf"];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function makeWorker() {
@@ -60,8 +60,8 @@ const PAGE = (n) => "/index.html v" + n + " main.js?v=" + n;
 
 test("install keeps the whole release on the device, and an offline open runs on it", async () => {
   const w = makeWorker(); await w.install(); await w.activate();
-  for (const f of FILES.slice(0, 11)) assert.ok(w.rel(1).has(ORIGIN + f), f + " not stored"); assert.strictEqual(await w.current(), 1);
-  for (const f of FILES.slice(11)) assert.ok(w.stores.get(ASSETS).has(ORIGIN + f), f + " not kept");
+  for (const f of FILES.slice(0, 12)) assert.ok(w.rel(1).has(ORIGIN + f), f + " not stored"); assert.strictEqual(await w.current(), 1);
+  for (const f of FILES.slice(12)) assert.ok(w.stores.get(ASSETS).has(ORIGIN + f), f + " not kept");
   w.server.down = true;
   const page = await w.open(); assert.strictEqual(page.text, PAGE(1)); await page.settle();
   assert.strictEqual((await w.script()).text, "/app/main.js v1");
@@ -113,7 +113,7 @@ test("the same release again: the open writes nothing to the device; a deploy wr
   const w = makeWorker(); await w.install(); w.device.writes = 0;
   assert.strictEqual((await w.open()).text, PAGE(1)); assert.strictEqual(w.device.writes, 0);
   w.server.version = 2;
-  assert.strictEqual((await w.open()).text, PAGE(2)); assert.strictEqual(w.device.writes, 11);
+  assert.strictEqual((await w.open()).text, PAGE(2)); assert.strictEqual(w.device.writes, 12);
 });
 test("the device refuses a file of the new release: the fresh page is served with its scripts from the server, and the release before is still whole for an offline open", async () => {
   const w = makeWorker(); await w.install(); w.server.version = 2; w.device.failPut = "/app/state.js"; w.server.hits.length = 0;

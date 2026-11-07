@@ -397,6 +397,7 @@ async function syncDownNow() {
   }
   S.offline = false;
   ui.render(); ui.setStatus();
+  if (ui.photosSynced) ui.photosSynced();                           // a photo taken without signal goes up now
   for (const k of dirty.keys()) if (!timers.has(k)) { const [kind, id] = k.split("/"); flushOne(kind, id); }
   if (!S.clientMode && ui.seedTemplates) ui.seedTemplates().catch(() => {});   // the built-in templates, once the server's copy is in (a first sync that failed gets its turn later)
   return true;

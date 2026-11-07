@@ -6,6 +6,7 @@ import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, sets
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { seenDoc, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
+import { initials, paintAvatar, photoFor, setPhoto, loadPhoto, squarePhoto, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue } from "./photos.js";
 import { reportRange, buildReport } from "./report.js";
 
   // ---------- helpers ----------
@@ -609,6 +610,7 @@ import { reportRange, buildReport } from "./report.js";
     S.offlineEntry = null;
     if (quiet && S.clientMode !== (trainer !== true)) { quiet = false; settingsOpen = false; }   // painted as the other role: start the pages over
     if (S.pendingOwner && S.pendingOwner !== S.sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
+      resetPhotos();                                                 // the photos queued and kept by the last account go too
       dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); fromFile.clear();
     }
     S.pendingOwner = S.sessionEmail; persistPending();
@@ -732,6 +734,7 @@ import { reportRange, buildReport } from "./report.js";
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
       S.offline = false; S.offlineEntry = null; S.pendingOwner = "";
+      resetPhotos();                                                 // no one else's photos stay on this phone
       S.view = { name: "clients" }; showLogin("");
     };
     const who = S.sessionEmail;
@@ -761,6 +764,7 @@ import { reportRange, buildReport } from "./report.js";
       try { localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
       S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar();
       S.offline = false; S.offlineEntry = null; S.pendingOwner = "";
+      resetPhotos();                                                 // no one else's photos stay on this phone
       S.view = { name: "clients" }; showLogin("");
     };
     const who = S.sessionEmail;
@@ -804,6 +808,7 @@ import { reportRange, buildReport } from "./report.js";
     go({ name: "client", id: t.clientId });
   }
   function deleteClient(id) {
+    forgetPhoto(id);                                                   // her photo goes from the phone and the server too
     for (const t of clientTrainings(id)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
     clients.delete(id); scheduleSave("clients", id, 0);
     go({ name: "clients" });
@@ -1397,28 +1402,31 @@ import { reportRange, buildReport } from "./report.js";
       if (reordering) {
         li.className = "drag-row";
         const row = document.createElement("div"); row.className = "rowline";
-        const name = document.createElement("span"); name.textContent = c.name;
+        const av = document.createElement("span"); av.className = "avatar"; av.setAttribute("aria-hidden", "true");
+        const name = document.createElement("span"); name.className = "pn"; name.textContent = c.name;
         const grip = document.createElement("span"); grip.className = "grip"; grip.textContent = "\u2261"; grip.setAttribute("aria-hidden", "true");
-        row.append(name, grip); li.appendChild(row); dragRow(li, c.id);
+        row.append(av, name, grip); li.appendChild(row); dragRow(li, c.id); li._paint = () => paintAvatar(av, c.id, c.name, true);
       } else {
         const b = document.createElement("button"); b.type = "button";
         const words = packWords(c);                                       // "3 of 10", "20 days left" on the right, where the workout count used to be; the purple dot alone says something new happened
-        b.innerHTML = `<span class="nm"><span></span></span><span class="sub"></span>`;
-        b.firstChild.firstChild.textContent = c.name; b.lastChild.textContent = words;   // no chevron: the row itself is the way in (his call)
+        b.innerHTML = `<span class="avatar" aria-hidden="true"></span><span class="nm"><span></span></span><span class="sub"></span>`;   // the photo (or initials), the name, the package words
+        const av = b.firstChild; av.nextSibling.firstChild.textContent = c.name; b.lastChild.textContent = words;   // no chevron: the row itself is the way in (his call)
+        li._paint = () => paintAvatar(av, c.id, c.name, true);
         b.classList.toggle("news", !!newsWords(clientNews(c)));
         b.addEventListener("click", () => { setTab("workouts"); go({ name: "client", id: c.id }); });
         li.appendChild(b);
       }
-      ul.appendChild(li);
+      ul.appendChild(li); if (li._paint) li._paint();                  // painted once in the list, so a long list fetches only what scrolls into view
     });
     $("clientEmpty").hidden = list.length > 0 || inactive.length > 0;
     $("clientBar").hidden = !list.length && inactive.length > 0; $("clientList").hidden = !list.length;
     $("inactiveBar").hidden = !inactive.length; $("inactiveList").hidden = !inactive.length;
     $("inactiveList").replaceChildren(...inactive.map((c) => {
       const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
-      b.innerHTML = `<span></span><span class="sub">Paused</span>`; b.firstChild.textContent = c.name;
-      b.addEventListener("click", () => { setTab("workouts"); go({ name: "client", id: c.id }); }); li.appendChild(b); return li;
+      b.innerHTML = `<span class="avatar" aria-hidden="true"></span><span class="pn"></span><span class="sub">Paused</span>`; b.firstChild.nextSibling.textContent = c.name;
+      b.addEventListener("click", () => { setTab("workouts"); go({ name: "client", id: c.id }); }); li.appendChild(b); li._paint = () => paintAvatar(b.firstChild, c.id, c.name, true); return li;
     }));
+    for (const li of $("inactiveList").children || []) if (li._paint) li._paint();
   }
   $("tplCard").addEventListener("click", () => go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }));
   $("reorderBtn").addEventListener("click", () => { reordering = !reordering; renderClients(); });
@@ -1664,7 +1672,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!isTpl) { $("tplList").hidden = true; $("pickNote").hidden = true; $("newTraining").hidden = false; }   // a program page hid it; a client's page always has it
     $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !effPaused(c); $("pausedKicker").textContent = c.paused ? "Access paused" : "Plan ended";
     if (isTpl) { $("notifWrap").hidden = true; $("overview").hidden = true; $("planCard").hidden = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }   // the library has no notifications row: a client's count must not linger here
-    $("cName").textContent = c.name; renderPlanCard(c); renderOverview(c);
+    $("cName").textContent = c.name; paintAvatar($("cAvatar").firstElementChild, c.id, c.name); renderPlanCard(c); renderOverview(c);
     $("meDisc").classList.toggle("needs", !S.clientMode && !c.email);   // no sign-in email yet: the red dot on the card disc
     if (!S.clientMode) renderNotif(c); else $("notifWrap").hidden = true;
     paintMsg(c); paintTrainerMsg(c);
@@ -2205,7 +2213,7 @@ import { reportRange, buildReport } from "./report.js";
     const pop = $("whenPop"); pop.classList.remove("plain"); pop.classList.add("menu");
     let close = null;
     pop.replaceChildren(...items.map((it) => {
-      const b = document.createElement("button"); b.type = "button"; b.className = "wopt";
+      const b = document.createElement("button"); b.type = "button"; b.className = "wopt" + (it.danger ? " danger" : "");
       if (it.icon) b.innerHTML = it.icon;
       const s = document.createElement("span"); s.textContent = it.label; b.appendChild(s);
       b.addEventListener("click", (e) => { e.stopPropagation(); if (close) close(); it.onPick(); });
@@ -2216,6 +2224,9 @@ import { reportRange, buildReport } from "./report.js";
   const MI = {                                                         // the menu's leading glyphs, 17px, drawn like the discs' own
     swap: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/></svg>',
     lines: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 4.5h10M3 8h10M3 11.5h6"/></svg>',
+    camera: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.25 5.6c0-.8.65-1.45 1.45-1.45h1.7l1.05-1.4h3.1l1.05 1.4h1.7c.8 0 1.45.65 1.45 1.45v5.95c0 .8-.65 1.45-1.45 1.45H3.7c-.8 0-1.45-.65-1.45-1.45z"/><circle cx="8" cy="8.55" r="2.35"/></svg>',
+    photo: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><rect x="1.9" y="2.9" width="12.2" height="10.2" rx="2.2"/><circle cx="5.7" cy="6.3" r="1.15"/><path d="M2.3 11.7l3.5-3.3 2.4 2.2 1.9-1.7 3.6 3.1"/></svg>',
+    trash: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M2.8 4.4h10.4M6.3 4.4V3.1c0-.35.3-.6.6-.6h2.2c.35 0 .6.25.6.6v1.3M4.2 4.4l.65 8.5c.05.6.55 1.1 1.15 1.1h4c.6 0 1.1-.5 1.15-1.1l.65-8.5"/></svg>',
   };
   function openPop(anchor, opts) {                                   // places the bubble under (or above) its anchor and wires the ways it closes; returns close
     const bg = $("whenBg"), pop = $("whenPop");
@@ -2780,7 +2791,31 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- events ----------
   $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; rememberPreview(); S.renderedTraining = null; render(); });
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
-  $("cNameField").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.name = e.target.value; $("cName").textContent = c.name; $("cardName").textContent = c.name || "Client"; scheduleSave("clients", c.id); });
+  $("cNameField").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.name = e.target.value; $("cName").textContent = c.name; paintAvatar($("cAvatar").firstElementChild, c.id, c.name); $("cardName").textContent = c.name || "Client"; scheduleSave("clients", c.id); });
+  // the photo at the top of a client's page: the coach on any client, the client on her own (on her Profile tab). Last change wins.
+  let photoTarget = null;
+  function pickPhoto(id, camera) {                                  // the phone's own camera, or its photo library; a tap inside the menu row is the gesture that opens it
+    const inp = $("photoInput"); photoTarget = id;
+    if (camera) inp.setAttribute("capture", S.clientMode ? "user" : "environment"); else inp.removeAttribute("capture");   // the client takes a selfie; the coach photographs her
+    inp.value = ""; inp.click();
+  }
+  $("photoInput").addEventListener("change", async () => {
+    const inp = $("photoInput"), f = inp.files && inp.files[0], id = photoTarget; photoTarget = null; inp.value = "";
+    if (!f || !id || !clients.get(id)) return;
+    try { await setPhoto(id, await squarePhoto(f)); }
+    catch (_) { $("status").textContent = "Couldn\u2019t read that photo \u00b7 try another"; return; }
+    render();
+  });
+  $("cAvatar").addEventListener("click", () => {
+    const id = S.view.id, c = clients.get(id);
+    if (!c || isTemplateClient(id) || (S.clientMode && id !== S.myClientId)) return;   // a client changes only her own
+    const items = [
+      { label: "Take photo", icon: MI.camera, onPick: () => pickPhoto(id, true) },
+      { label: "Choose photo", icon: MI.photo, onPick: () => pickPhoto(id, false) },
+    ];
+    if (photoFor(id)) items.push({ label: "Remove photo", icon: MI.trash, danger: true, onPick: async () => { if (!(await askFirst({ title: "Remove this photo?", yes: "Remove" }))) return; await setPhoto(id, null); render(); } });
+    showMenu($("cAvatar"), items);
+  });
   const growNotesBox = () => growBox($("cNotes"));
   $("cNotes").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; if (e.target.value.trim()) noteDraft.set(c.id, e.target.value); else noteDraft.delete(c.id); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
   $("noteSave").addEventListener("click", () => {
@@ -2985,7 +3020,7 @@ import { reportRange, buildReport } from "./report.js";
   });
 
   // ---------- boot ----------
-  Object.assign(ui, { $, setStatus, render, relabeled, showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadCustomSubs, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar, seedTemplates });   // what the sync layer may call on the screens
+  Object.assign(ui, { $, setStatus, render, relabeled, photosSynced: () => flushPhotos(), showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadCustomSubs, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar, seedTemplates });   // what the sync layer may call on the screens
   function watchReleases(mine) {               // a page iOS keeps alive for days still gets the next release: on coming back to the app, never mid-tap, mid-sheet or mid-typing
     const sw = navigator.serviceWorker; if (!mine || !sw || !sw.addEventListener) return;
     let newest = 0;
@@ -3021,7 +3056,7 @@ import { reportRange, buildReport } from "./report.js";
       const fromRecoveryLink = /type=recovery/.test(location.hash);
       S.sb.auth.onAuthStateChange((event) => {
         if (event === "PASSWORD_RECOVERY") { S.recovering = true; showRecovery(); }
-        if (event === "SIGNED_OUT" && S.signedIn) { S.backend = null; S.offline = false; S.offlineEntry = null; S.pendingOwner = ""; S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); }
+        if (event === "SIGNED_OUT" && S.signedIn) { resetPhotos(); S.backend = null; S.offline = false; S.offlineEntry = null; S.pendingOwner = ""; S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); }
       });
       // no signal: the library retries the token refresh for up to 30 s before answering. Don't make anyone wait for that:
       // after 4 s show what the device knows, and switch to live data if the session comes through later.
@@ -3053,7 +3088,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, initials, photoFor, setPhoto, loadPhoto, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },

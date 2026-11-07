@@ -880,6 +880,7 @@
   #whenPop .wopt:active, #whenPop .wopt:hover { background: var(--glass-bar-on); }
   #whenPop.menu .wopt { display: flex; align-items: center; gap: 16px; min-height: 42px; padding: 0 16px 0 17px; border-radius: 16px; font-size: 1.0625rem; }   /* after the base rule, so these win */
   #whenPop.menu .wopt .mi { width: 17px; height: 17px; flex: none; }
+  #whenPop .wopt.danger { color: var(--danger); }                              /* Remove photo: red, as Apple marks a destructive row */
   @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
   .block.done:not(.open) .row .lifts, body.client .block.ahead .row .lifts { display: none; }
   .setlog .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -1012,6 +1013,18 @@
   .notes .entry .when button, .notes .entry .more { min-height: 44px; margin-top: -8px; margin-bottom: -8px; }   /* Delete / Keep / More: thumb-sized targets in the same rows */
   .name-row { display: flex; align-items: center; gap: 12px; }
   .name-row .pagetitle { flex: 1; min-width: 0; }
+  /* a person's circle: the photo, or Apple Contacts' grey monogram with the initials; the photo fades in over the letters when it arrives */
+  .avatar { position: relative; flex: none; width: 36px; height: 36px; border-radius: 50%; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #a7acb9 0%, #868b97 100%); color: #ffffff; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.02em; line-height: 1; -webkit-user-select: none; user-select: none; }
+  .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 200ms ease; pointer-events: none; -webkit-touch-callout: none; }   /* a press is the circle's, never iOS's Copy / Save image menu */
+  .avatar.has img { opacity: 1; }
+  .avatar.lg { width: 52px; height: 52px; font-size: 1.25rem; }
+  .avatar-btn { appearance: none; border: 0; padding: 0; margin: 0; background: none; border-radius: 50%; flex: none; display: inline-flex; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: opacity 150ms ease; }
+  .avatar-btn:active { opacity: 0.6; }
+  #vClient.tpl .avatar-btn { display: none; }                                  /* the template library is not a person */
+  body.client #vClient:not([data-tab="profile"]) .avatar-btn { display: none; }   /* the client sees and changes her own photo on her Profile tab */
+  .list button > .avatar { margin-right: 2px; }
+  .list button > .avatar + .nm, .list button > .avatar + .pn, .list .rowline > .avatar + .pn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .list button:has(> .avatar) { padding-top: 10px; padding-bottom: 10px; }    /* the circle fits the row's 56 points */
   .msg-disc { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--ink); color: var(--ink-on); display: inline-flex; align-items: center; justify-content: center; text-decoration: none; transition: opacity 300ms ease, transform 300ms ease; }   /* Messages' bubble beside the name: black in the light, white in the dark, a size up from the person disc in the bar */
   .msg-disc svg { width: 26px; height: 26px; }
   .msg-disc:active { transform: scale(0.96); }
@@ -1061,7 +1074,7 @@
   .paused-card span { font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.45; }
   .paused-card[hidden] { display: none; }
   body.client.paused #weekBar, body.client.paused #calWrap, body.client.paused #week, body.client.paused #todayHead, body.client.paused #todayList, body.client.paused #nextHead, body.client.paused #nextList, body.client.paused #histHead, body.client.paused #histList, body.client.paused #trainingEmpty { display: none; }
-  .list.inactive button > span:first-child { color: var(--text-secondary); }
+  .list.inactive button > .pn { color: var(--text-secondary); }
   .list[hidden], .listbar[hidden] { display: none; }
   .seg.stages { display: flex; width: 100%; }
   .seg.stages button { flex: 1; padding: 0 8px; }
@@ -1381,6 +1394,7 @@
     <div class="kicker" id="tplKicker" hidden></div>
     <div class="kicker trainer-only" id="pausedKicker" hidden>Access paused</div>
     <div class="name-row">
+      <button class="avatar-btn" id="cAvatar" type="button" aria-label="Photo"><span class="avatar lg" aria-hidden="true"></span></button>
       <h1 id="cName" class="pagetitle"></h1>
       <a class="msg-disc client-only" id="trainerBtn" href="#" data-tab="workouts" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh">Message Michal</span></a>
       <a class="msg-disc trainer-only" id="msgBtn" href="#" data-tab="workouts" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh" id="msgText">Message</span></a>
@@ -1468,6 +1482,7 @@
 <button class="dock-add trainer-only" id="addBtn" type="button" aria-label="New workout" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5.25v13.5M5.25 12h13.5"/></svg></button>
 </div>
 <div id="whenBg" hidden><div id="whenPop" role="dialog" aria-live="polite"></div></div>
+<input type="file" id="photoInput" accept="image/*" hidden>
 <div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="pickSheet" hidden><div class="sheet ask confirm-sheet pick-sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle"><h3 id="pickTitle"></h3><ul class="list" id="pickList"></ul><div class="ask-actions"><button class="btn quiet" id="pickNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="skipSheet" hidden>
@@ -1509,7 +1524,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=212";
+  import { boot } from "./app/main.js?v=213";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
