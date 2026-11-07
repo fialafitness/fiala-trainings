@@ -217,19 +217,43 @@ import { reportRange, buildReport } from "./report.js";
   const rememberPage = () => lsSet("fiala.trainings.page", settingsOpen ? { open: settingsOpen, from: fromSettings || false, ...(settingsOpen === "exercise" && exCurrent ? { name: exCurrent.name, key: exCurrent.key } : {}) } : null);
   // ---- appearance: auto (follow the phone) | light | dark. Saved on this device only.
   const THEME_KEY = "fiala.theme";
-  const themeColours = { light: "#fcfcfd", dark: "#080808" };   // the strip under the clock: the top bar's own colour over an empty page, so bar and strip read as one (index.html carries the same)
-  function applyTheme(v) {
-    v = v === "light" || v === "dark" ? v : "auto";
-    if (v === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", v);
+  // the strip under the clock (Safari's own, theme-color): the page's colour while the page is at its top, the bar's colour over an empty
+  // page once it scrolls under the bar, so strip and bar always read as one (index.html carries the top colours)
+  const themeColours = { light: { top: "#f5f5f7", bar: "#fcfcfd" }, dark: { top: "#000000", bar: "#080808" } };
+  let themeChoice = "auto";
+  // ---- the top bar, as Apple's: none at the top of a page; the frosted bar and its hairline fade in over the first 12 points the page scrolls under it
+  const BAR_FADE = 12;
+  let barLevel = -1, barOn = false;
+  function paintStrip() {
+    const k = barOn ? "bar" : "top";
     for (const m of document.querySelectorAll('meta[name="theme-color"]')) {
       if (m.dataset.media === undefined) m.dataset.media = m.getAttribute("media") || "";
       const isDark = /dark/.test(m.dataset.media);
-      if (v === "auto") { m.setAttribute("media", m.dataset.media); m.content = isDark ? themeColours.dark : themeColours.light; }
-      else { m.removeAttribute("media"); m.content = themeColours[v]; }
+      if (themeChoice === "auto") { m.setAttribute("media", m.dataset.media); m.content = themeColours[isDark ? "dark" : "light"][k]; }
+      else { m.removeAttribute("media"); m.content = themeColours[themeChoice][k]; }
     }
+  }
+  function setBar(v) {                                              // the bar's level on the header; at 0 it also takes the page's colour (see header.at-top)
+    const h = document.querySelector("header"); if (!h || !h.style) return;
+    h.style.setProperty("--bar", String(v)); if (h.classList) h.classList.toggle("at-top", v === 0);
+  }
+  function paintBar() {
+    const y = Number(window.scrollY) || 0;                          // a pull past the top (Safari's bounce) reads below 0: no bar, as Apple's
+    const v = Math.round(Math.min(1, Math.max(0, y / BAR_FADE)) * 100) / 100;
+    if (v !== barLevel) { barLevel = v; setBar(v); }
+    const on = v >= 0.5; if (on !== barOn) { barOn = on; paintStrip(); }
+  }
+  window.addEventListener("scroll", paintBar, { passive: true });
+  window.addEventListener("resize", paintBar);
+  function applyTheme(v) {
+    v = v === "light" || v === "dark" ? v : "auto";
+    themeChoice = v;
+    if (v === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", v);
+    paintStrip();
     for (const b of $("themeSeg").querySelectorAll("button")) { b.classList.toggle("on", b.dataset.theme === v); b.setAttribute("aria-checked", b.dataset.theme === v ? "true" : "false"); }
   }
   applyTheme(lsGet(THEME_KEY));
+  paintBar();
   $("themeSeg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; lsSet(THEME_KEY, b.dataset.theme); applyTheme(b.dataset.theme); });
   function showSettings() {
     settingsOpen = "settings"; fromSettings = false; hideAllViews(); $("vSettings").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
@@ -1008,6 +1032,7 @@ import { reportRange, buildReport } from "./report.js";
     const secs = [...document.querySelectorAll("main > section")].filter((s) => !s.hidden && s.getClientRects().length);
     if (!secs.length) return null;
     const box = document.createElement("div"); box.className = "nav-shot"; box.setAttribute("aria-hidden", "true");
+    box.dataset.bar = String(Math.min(1, Math.max(0, (Number(window.scrollY) || 0) / BAR_FADE)));   // how the top bar looked over this page: the swipe brings it back
     for (const s of secs) {
       const r = s.getBoundingClientRect(), c = s.cloneNode(true), from = s.querySelectorAll("input, textarea, select"), to = c.querySelectorAll("input, textarea, select");
       from.forEach((el, i) => { if (to[i]) to[i].value = el.value; });   // what was typed shows, not just the empty fields
@@ -1044,9 +1069,10 @@ import { reportRange, buildReport } from "./report.js";
     for (const old of document.querySelectorAll(".swipe-under")) old.remove();   // nothing left over from an earlier swipe
     sw.on = true; sw.w = window.innerWidth; sw.main = document.querySelector("main");
     const layer = document.createElement("div"); layer.className = "swipe-under"; layer.setAttribute("aria-hidden", "true");
-    const shot = shotByKey.get(backKey()) || null; if (shot) layer.appendChild(shot);   // the page Back lands on; none known: the plain page colour, never a wrong page
+    const bk = backKey(), shot = shotByKey.get(bk) || null; if (shot) layer.appendChild(shot);   // the page Back lands on; none known: the plain page colour, never a wrong page
     const dim = document.createElement("div"); dim.className = "swipe-dim"; layer.appendChild(dim);
     document.body.appendChild(layer); sw.layer = layer; sw.dim = dim; sw.shot = shot;
+    sw.hdr = document.querySelector("header"); sw.barFrom = Math.max(0, barLevel); sw.barTo = Math.min(1, Math.max(0, shot ? Number(shot.dataset.bar) || 0 : settingsOpen ? sw.barFrom : (scrollMemo.get(String(bk).split("|")[0]) || 0) / BAR_FADE));   // the bar goes from this page's look to the one underneath as the finger moves (no copy of it: where Back will put that page, its top after a relaunch)
     sw.main.classList.add("swiping");
   }
   function paintSwipe(anim) {
@@ -1054,12 +1080,15 @@ import { reportRange, buildReport } from "./report.js";
     sw.main.style.transition = tr; sw.main.style.transform = "translate3d(" + sw.dx + "px,0,0)";
     if (sw.shot) { sw.shot.style.transition = tr; sw.shot.style.transform = "translate3d(" + (-0.3 * sw.w * (1 - p)) + "px,0,0)"; }   // the page underneath comes in from a third to the left
     sw.dim.style.transition = anim ? "opacity 250ms ease" : "none"; sw.dim.style.opacity = String(1 - p);
+    if (sw.hdr && sw.hdr.style) { sw.hdr.classList.toggle("bar-anim", !!anim); setBar(Math.round((sw.barFrom + (sw.barTo - sw.barFrom) * p) * 100) / 100); }
   }
   function clearSwipe() {
     if (!sw) return; const m = sw.main;
     m.classList.remove("swiping"); m.style.transition = ""; m.style.transform = "";
     if (sw.shot) { sw.shot.style.transition = ""; sw.shot.style.transform = ""; if (sw.shot.parentNode) sw.shot.parentNode.removeChild(sw.shot); }   // the copy is kept for a later swipe to the same page
-    if (sw.layer) sw.layer.remove(); sw = null;
+    if (sw.layer) sw.layer.remove();
+    if (sw.hdr) sw.hdr.classList.remove("bar-anim");
+    sw = null; barLevel = -1; paintBar();                            // the bar as the page now under it really is (written even when it matches the old level)
   }
   async function endSwipe(cancelled) {
     sw.busy = true;
