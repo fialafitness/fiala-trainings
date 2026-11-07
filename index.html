@@ -60,6 +60,7 @@
     --danger: #a63a46;                  /* Crimson deep — red text on light */
     --gold: #7f621a;                    /* the best lift: a quiet gold, deep enough to read as small bold text (5:1 on a field) */
     --ink: #1d1d1f;                     /* the badge: black on light, white on dark */
+    --disc-fill: #e5e5ea; --disc-ink: #1d1d1f;   /* Apple's round buttons (back, Message): a grey circle and the glyph in ink; dark measured off his Contacts screenshot, light is Apple's system gray 5 */
     --ink-on: #ffffff;
     --btn-bg: var(--brand-fill);        /* the primary action wears the brand, as Fitness+ wears its green */
     --btn-fg: #ffffff;
@@ -103,6 +104,7 @@
       --danger: #e06470;                /* Crimson */
       --gold: #e0c268;
       --ink: #ffffff;
+      --disc-fill: #333436; --disc-ink: #ffffff;
       --ink-on: #1d1d1f;
       --btn-bg: var(--brand-fill);
       --btn-fg: #ffffff;
@@ -146,6 +148,7 @@
     --danger: #e06470;
     --gold: #e0c268;
     --ink: #ffffff;
+    --disc-fill: #333436; --disc-ink: #ffffff;
     --ink-on: #1d1d1f;
     --btn-bg: var(--brand-fill);
     --btn-fg: #ffffff;
@@ -192,15 +195,14 @@
     border-bottom: 1px solid var(--header-border);
   }
   .bar { max-width: 680px; margin: 0 auto; padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .back {                                                   /* Apple's back capsule, in the app's own grey: a bold chevron and the place you came from; no shadow, no glass */
-    appearance: none; border: 0; padding: 0 16px 0 12px; border-radius: 50px;
-    background: var(--glyph-fill);
-    color: var(--text-primary); font: inherit; font-size: 1.0625rem; font-weight: 400; letter-spacing: -0.01em; cursor: pointer;   /* regular weight, like the other capsules */
-    min-height: 40px; display: inline-flex; align-items: center; gap: 6px;
-    max-width: 70%; white-space: nowrap; transition: opacity 300ms ease, transform 300ms ease;
+  .back {                                                   /* Apple's back button: a 44-point circle with the chevron alone (measured off his Contacts screenshot); the place you came from is read by VoiceOver, not shown */
+    appearance: none; border: 0; padding: 0; border-radius: 50%; position: relative; flex: none;
+    background: var(--disc-fill); color: var(--disc-ink); font: inherit; cursor: pointer;
+    width: 44px; height: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
+    transition: opacity 300ms ease, transform 300ms ease;
   }
-  .back svg { width: 16px; height: 16px; flex: none; }
-  .back span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .back svg { width: 10.9px; height: 18.2px; flex: none; transform: translateX(-1.5px); }   /* chevron.backward: 10.7 x 17.9 pt, a 2.4 pt round stroke, 1.5 pt left of the centre */
+  .back span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
   .back:hover { opacity: 0.85; }
   .back:active { transform: scale(0.97); }
   .brand { display: flex; align-items: center; height: 26px; }   /* the mark alone, small and quiet in the bar */
@@ -1040,7 +1042,7 @@
   .list button > .avatar { margin-right: 2px; }
   .list button > .avatar + .nm, .list button > .avatar + .pn, .list .rowline > .avatar + .pn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .list button:has(> .avatar) { padding-top: 10px; padding-bottom: 10px; }    /* the circle fits the row's 56 points */
-  .msg-disc { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--ink); color: var(--ink-on); display: inline-flex; align-items: center; justify-content: center; text-decoration: none; transition: opacity 300ms ease, transform 300ms ease; }   /* Messages' bubble beside the name: black in the light, white in the dark, a size up from the person disc in the bar */
+  .msg-disc { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--disc-fill); color: var(--disc-ink); display: inline-flex; align-items: center; justify-content: center; text-decoration: none; transition: opacity 300ms ease, transform 300ms ease; }   /* Messages' bubble beside the name: black in the light, white in the dark, a size up from the person disc in the bar */
   .msg-disc svg { width: 26px; height: 26px; }
   .msg-disc:active { transform: scale(0.96); }
   .msg-disc[hidden] { display: none !important; }
@@ -1215,7 +1217,7 @@
 
 <header>
   <div class="bar">
-    <button class="back" id="back" hidden><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg><span id="backLabel"></span></button>
+    <button class="back" id="back" hidden><svg viewBox="0 0 10.7 17.9" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 1.2 1.2 8.95 9.5 16.7"/></svg><span id="backLabel"></span></button>
     <div class="brand" id="brand"><img class="logo-light" src="brand/mark-black.svg" alt="Fiala Fitness"><img class="logo-dark" src="brand/mark-white.svg" alt="Fiala Fitness"></div>
     <div id="status" role="status" aria-live="polite"></div><button class="disc hdr-disc" id="meDisc" type="button" aria-label="Settings" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-3.8 4-5.6 7.5-5.6s6.5 1.8 7.5 5.6"/></svg><span class="avatar" aria-hidden="true"></span></button><button class="nav-action" id="navDone" type="button" hidden>Done</button>
   </div>
@@ -1540,7 +1542,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=215";
+  import { boot } from "./app/main.js?v=216";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
