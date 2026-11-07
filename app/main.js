@@ -234,6 +234,7 @@ import { reportRange, buildReport } from "./report.js";
   function showSettings() {
     settingsOpen = "settings"; fromSettings = false; hideAllViews(); $("vSettings").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
     const p = trainerPhone(); $("setNumberVal").textContent = p || "Not set"; $("setEmail").textContent = S.sessionEmail || "";
+    paintHeroes();
   }
   function showClientCard() {                                       // the coach's card for this client: everything about the person on one page, like a contact's card
     const c = clients.get(S.view.id); if (!c || S.clientMode || isTemplateClient(c.id)) return;
@@ -243,7 +244,7 @@ import { reportRange, buildReport } from "./report.js";
   const syncRadios = () => { for (const g of document.querySelectorAll('[role="radiogroup"]')) for (const b of g.querySelectorAll("button")) b.setAttribute("aria-checked", String(b.classList.contains("on"))); };   // the segmented controls: what the eye sees as chosen, a screen reader hears
   function paintCard() {                                            // the card's fields from the record; a field being typed in is left alone
     const c = clients.get(S.view.id); if (!c) return;
-    $("cardName").textContent = c.name || "Client";
+    $("cardName").textContent = c.name || "Client"; paintHeroes();
     if (document.activeElement !== $("cNameField")) $("cNameField").value = c.name || "";
     if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
     if (document.activeElement !== $("cPhone")) $("cPhone").value = c.phone || "";
@@ -808,10 +809,11 @@ import { reportRange, buildReport } from "./report.js";
     go({ name: "client", id: t.clientId });
   }
   function deleteClient(id) {
+    if (!clients.has(id)) return;                                      // a second tap on Delete finds nobody
     forgetPhoto(id);                                                   // her photo goes from the phone and the server too
     for (const t of clientTrainings(id)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
     clients.delete(id); scheduleSave("clients", id, 0);
-    go({ name: "clients" });
+    leaveSettings(); go({ name: "clients" });                         // off her card first: the card would otherwise stay up with her details
   }
   // Weights from the most recent earlier training of this client with the same exercise.
   function lastWeights(t, row) {
@@ -1312,6 +1314,7 @@ import { reportRange, buildReport } from "./report.js";
       if (p.open === "exercise" && p.name) { fromSettings = from; showExercise(p.name, p.key || squash(p.name)); return; }
       if (open) { fromSettings = from; open(); return; }
     }
+    if (settingsOpen === "settings" || settingsOpen === "card") paintHeroes();   // a photo that went up meanwhile shows on the page that is open
     if (settingsOpen) { if (S.signedIn) { hideAllViews(); $("navDone").hidden = settingsOpen !== "exercise"; $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : settingsOpen === "card" ? "vClientCard" : settingsOpen === "history" ? "vHistory" : settingsOpen === "catalog" ? "vCatalog" : settingsOpen === "data" ? "vData" : "vPassword").hidden = false; if (settingsOpen === "packages") renderPackages(); if (settingsOpen === "card") paintCard(); if (settingsOpen === "history") paintHistory(); if (exStale && S.syncedOnce) { exStale = false; if (settingsOpen === "exercises") renderExercises(); else if (settingsOpen === "exercise" && exCurrent && !exDirty()) showExercise(exCurrent.name, exCurrent.key); } $("back").hidden = false; $("brand").hidden = true; } return; }
     if (S.sb && !S.signedIn) { showLogin($("loginMsg").textContent); return; }
     if (S.clientMode && !S.myClientId) { showWaiting(); return; }
@@ -1332,6 +1335,7 @@ import { reportRange, buildReport } from "./report.js";
     $("brand").hidden = !(S.view.name === "clients" || (S.clientMode && S.view.name === "client"));
     $("meDisc").hidden = !(S.view.name === "client" && !isTemplateClient(S.view.id));   // the person disc: on a client's page, every tab, nowhere else — Settings for the client, the card for the coach
     $("meDisc").setAttribute("aria-label", S.clientMode ? "Settings" : "Client card");
+    paintMeDisc();
     if (S.clientMode && S.tab === "notes") setTab("workouts");   // Notes is the coach's tab
     if (S.view.name === "clients") { S.renderedTraining = null; renderClients(); }
     else if (S.view.name === "client") { S.renderedTraining = null; $("backLabel").textContent = isTemplateClient(S.view.id) && S.view.phase ? S.view.program : (isTemplateClient(S.view.id) && S.view.program ? "Templates" : "Clients"); renderClient(); }
@@ -1672,7 +1676,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!isTpl) { $("tplList").hidden = true; $("pickNote").hidden = true; $("newTraining").hidden = false; }   // a program page hid it; a client's page always has it
     $("tplKicker").hidden = !isTpl; $("pausedKicker").hidden = isTpl || !effPaused(c); $("pausedKicker").textContent = c.paused ? "Access paused" : "Plan ended";
     if (isTpl) { $("notifWrap").hidden = true; $("overview").hidden = true; $("planCard").hidden = true; renderTemplates(c); $("delClientConfirm").hidden = true; return; }   // the library has no notifications row: a client's count must not linger here
-    $("cName").textContent = c.name; paintAvatar($("cAvatar").firstElementChild, c.id, c.name); renderPlanCard(c); renderOverview(c);
+    $("cName").textContent = c.name; renderPlanCard(c); renderOverview(c);
     $("meDisc").classList.toggle("needs", !S.clientMode && !c.email);   // no sign-in email yet: the red dot on the card disc
     if (!S.clientMode) renderNotif(c); else $("notifWrap").hidden = true;
     paintMsg(c); paintTrainerMsg(c);
@@ -2234,7 +2238,8 @@ import { reportRange, buildReport } from "./report.js";
     const r = anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, pw = pop.offsetWidth, ph = pop.offsetHeight;
     const box = anchor.closest(".group, .card, .plan-card, .overview"), bb = box ? box.getBoundingClientRect() : null;   // the bubble stays inside the card it belongs to, as Apple keeps a popover inside its content's margins, never out at the screen's edge
     let minL = 8, maxL = vw - pw - 8; if (bb && bb.right - bb.left >= pw) { minL = Math.max(minL, bb.left); maxL = Math.min(maxL, bb.right - pw); }
-    const left = Math.max(minL, Math.min(opts && opts.align === "right" ? r.right - pw : r.left, maxL)); let top = r.bottom + 8;
+    const want = opts && opts.align === "right" ? r.right - pw : opts && opts.align === "center" ? r.left + r.width / 2 - pw / 2 : r.left;   // hung from the right edge, centred under the anchor, or from its left
+    const left = Math.max(minL, Math.min(want, maxL)); let top = r.bottom + 8;
     if (top + ph > vh - 8) { top = r.top - 8 - ph; pop.classList.add("above"); }
     pop.style.left = left + "px"; pop.style.top = top + "px"; pop.style.setProperty("--caret", Math.max(12, Math.min(r.left + r.width / 2 - left, pw - 12)) + "px");
     const close = () => { bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", close, true); };
@@ -2791,7 +2796,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- events ----------
   $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; rememberPreview(); S.renderedTraining = null; render(); });
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
-  $("cNameField").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.name = e.target.value; $("cName").textContent = c.name; paintAvatar($("cAvatar").firstElementChild, c.id, c.name); $("cardName").textContent = c.name || "Client"; scheduleSave("clients", c.id); });
+  $("cNameField").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.name = e.target.value; $("cName").textContent = c.name; paintHeroes(); paintMeDisc(); $("cardName").textContent = c.name || "Client"; scheduleSave("clients", c.id); });
   // the photo at the top of a client's page: the coach on any client, the client on her own (on her Profile tab). Last change wins.
   let photoTarget = null;
   function pickPhoto(id, camera) {                                  // the phone's own camera, or its photo library; a tap inside the menu row is the gesture that opens it
@@ -2804,18 +2809,34 @@ import { reportRange, buildReport } from "./report.js";
     if (!f || !id || !clients.get(id)) return;
     try { await setPhoto(id, await squarePhoto(f)); }
     catch (_) { $("status").textContent = "Couldn\u2019t read that photo \u00b7 try another"; return; }
-    render();
+    paintHeroes(); paintMeDisc(); render();
   });
-  $("cAvatar").addEventListener("click", () => {
-    const id = S.view.id, c = clients.get(id);
-    if (!c || isTemplateClient(id) || (S.clientMode && id !== S.myClientId)) return;   // a client changes only her own
+  function photoMenu(anchor, id) {                                 // Take photo, Choose photo, and Remove photo once there is one; the coach on any client, the client on her own
+    const c = clients.get(id);
+    if (!c || isTemplateClient(id) || (S.clientMode && id !== S.myClientId)) return;
     const items = [
       { label: "Take photo", icon: MI.camera, onPick: () => pickPhoto(id, true) },
       { label: "Choose photo", icon: MI.photo, onPick: () => pickPhoto(id, false) },
     ];
-    if (photoFor(id)) items.push({ label: "Remove photo", icon: MI.trash, danger: true, onPick: async () => { if (!(await askFirst({ title: "Remove this photo?", yes: "Remove" }))) return; await setPhoto(id, null); render(); } });
-    showMenu($("cAvatar"), items);
-  });
+    if (photoFor(id)) items.push({ label: "Remove photo", icon: MI.trash, danger: true, onPick: async () => { if (!(await askFirst({ title: "Remove this photo?", yes: "Remove" }))) return; await setPhoto(id, null); paintHeroes(); paintMeDisc(); render(); } });
+    showMenu(anchor, items, { align: "center" });
+  }
+  function heroId(which) { return which === "me" ? (S.clientMode ? S.myClientId : null) : (S.clientMode ? null : S.view.id); }   // Settings: the client's own; the card: the client the coach is looking at
+  function paintHeroes() {                                          // the big photo at the top of the client's Settings and of the coach's client card
+    for (const which of ["me", "card"]) {
+      const id = heroId(which), c = id && clients.get(id), hero = $(which === "me" ? "meHero" : "cardHero");
+      if (!c || isTemplateClient(id)) { if (which === "card") hero.hidden = true; continue; }
+      hero.hidden = false;
+      paintAvatar($(which + "PhotoBtn").firstElementChild, id, c.name);
+      $(which + "PhotoEdit").textContent = photoFor(id) ? "Edit" : "Add photo"; $(which + "PhotoEdit").setAttribute("aria-label", photoFor(id) ? "Edit photo" : "Add photo");   // one stop for VoiceOver, saying what it does
+      if (which === "me") $("meHeroName").textContent = c.name || "";
+    }
+  }
+  function paintMeDisc() {                                          // the person in the bar: on a client's page, her photo or her initials
+    const d = $("meDisc"), id = S.view.id, c = clients.get(id), on = !d.hidden && !!c && !isTemplateClient(id);
+    d.classList.toggle("has-av", on); if (on) paintAvatar(d.querySelector(".avatar"), id, c.name);
+  }
+  for (const which of ["me", "card"]) for (const part of ["PhotoBtn", "PhotoEdit"]) $(which + part).addEventListener("click", () => { const id = heroId(which); if (id) photoMenu($(which + "PhotoBtn"), id); });
   const growNotesBox = () => growBox($("cNotes"));
   $("cNotes").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; if (e.target.value.trim()) noteDraft.set(c.id, e.target.value); else noteDraft.delete(c.id); $("noteActions").hidden = !e.target.value.trim(); growNotesBox(); });
   $("noteSave").addEventListener("click", () => {

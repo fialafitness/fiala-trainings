@@ -1017,11 +1017,16 @@
   .avatar { position: relative; flex: none; width: 36px; height: 36px; border-radius: 50%; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #a7acb9 0%, #868b97 100%); color: #ffffff; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.02em; line-height: 1; -webkit-user-select: none; user-select: none; }
   .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 200ms ease; pointer-events: none; -webkit-touch-callout: none; }   /* a press is the circle's, never iOS's Copy / Save image menu */
   .avatar.has img { opacity: 1; }
-  .avatar.lg { width: 52px; height: 52px; font-size: 1.25rem; }
+  .avatar.xl { width: 88px; height: 88px; font-size: 2rem; }
+  .hdr-disc > .avatar { position: absolute; inset: 0; width: 100%; height: 100%; font-size: 0.9375rem; }   /* the person in the bar is the person: her photo, or her initials */
+  .hdr-disc.has-av > svg, .hdr-disc:not(.has-av) > .avatar { display: none; }
+  .photo-hero { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 4px 0 24px; }   /* the account's photo first, as Apple's account page and a contact card start */
+  .photo-hero .hero-name { font-size: 1.625rem; line-height: 2rem; font-weight: 600; letter-spacing: -0.02em; text-align: center; margin-top: 18px; }   /* the name under the photo and its Edit, as on the client card */
+  .photo-hero .hero-edit { appearance: none; border: 0; background: none; padding: 4px 12px; min-height: 44px; margin: -6px 0; font: inherit; font-size: 0.9375rem; font-weight: 500; color: var(--brand-text); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .photo-hero .hero-edit:active { opacity: 0.6; }
+  #vClientCard #cardName { text-align: center; }
   .avatar-btn { appearance: none; border: 0; padding: 0; margin: 0; background: none; border-radius: 50%; flex: none; display: inline-flex; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: opacity 150ms ease; }
   .avatar-btn:active { opacity: 0.6; }
-  #vClient.tpl .avatar-btn { display: none; }                                  /* the template library is not a person */
-  body.client #vClient:not([data-tab="profile"]) .avatar-btn { display: none; }   /* the client sees and changes her own photo on her Profile tab */
   .list button > .avatar { margin-right: 2px; }
   .list button > .avatar + .nm, .list button > .avatar + .pn, .list .rowline > .avatar + .pn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .list button:has(> .avatar) { padding-top: 10px; padding-bottom: 10px; }    /* the circle fits the row's 56 points */
@@ -1202,7 +1207,7 @@
   <div class="bar">
     <button class="back" id="back" hidden><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg><span id="backLabel"></span></button>
     <div class="brand" id="brand"><img class="logo-light" src="brand/mark-black.svg" alt="Fiala Fitness"><img class="logo-dark" src="brand/mark-white.svg" alt="Fiala Fitness"></div>
-    <div id="status" role="status" aria-live="polite"></div><button class="disc hdr-disc" id="meDisc" type="button" aria-label="Settings" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-3.8 4-5.6 7.5-5.6s6.5 1.8 7.5 5.6"/></svg></button><button class="nav-action" id="navDone" type="button" hidden>Done</button>
+    <div id="status" role="status" aria-live="polite"></div><button class="disc hdr-disc" id="meDisc" type="button" aria-label="Settings" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-3.8 4-5.6 7.5-5.6s6.5 1.8 7.5 5.6"/></svg><span class="avatar" aria-hidden="true"></span></button><button class="nav-action" id="navDone" type="button" hidden>Done</button>
   </div>
 </header>
 
@@ -1276,6 +1281,7 @@
 
   <section id="vSettings" hidden>
     <h1>Settings</h1>
+    <div class="photo-hero client-only" id="meHero"><button class="avatar-btn" id="mePhotoBtn" type="button" aria-hidden="true" tabindex="-1"><span class="avatar xl" aria-hidden="true"></span></button><button class="hero-edit" id="mePhotoEdit" type="button">Add photo</button><b class="hero-name" id="meHeroName"></b></div>
     <ul class="list settings-list">
       <li class="trainer-only"><button type="button" id="setNumber"><span>My number</span><span class="sub"><span class="val" id="setNumberVal"></span><span class="chev">&rsaquo;</span></span></button></li>
       <li><div class="srow"><span>Email</span><span class="sub"><span class="val" id="setEmail"></span></span></div></li>
@@ -1286,6 +1292,7 @@
     <p class="muted version" id="appVersion"></p>
   </section>
   <section id="vClientCard" hidden>
+    <div class="photo-hero" id="cardHero"><button class="avatar-btn" id="cardPhotoBtn" type="button" aria-hidden="true" tabindex="-1"><span class="avatar xl" aria-hidden="true"></span></button><button class="hero-edit" id="cardPhotoEdit" type="button">Add photo</button></div>
     <h1 class="pagetitle" id="cardName"></h1>
     <div class="details" id="detailsBody">
         <input id="cNameField" placeholder="Name" autocomplete="off" autocapitalize="words">
@@ -1394,7 +1401,6 @@
     <div class="kicker" id="tplKicker" hidden></div>
     <div class="kicker trainer-only" id="pausedKicker" hidden>Access paused</div>
     <div class="name-row">
-      <button class="avatar-btn" id="cAvatar" type="button" aria-label="Photo"><span class="avatar lg" aria-hidden="true"></span></button>
       <h1 id="cName" class="pagetitle"></h1>
       <a class="msg-disc client-only" id="trainerBtn" href="#" data-tab="workouts" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh">Message Michal</span></a>
       <a class="msg-disc trainer-only" id="msgBtn" href="#" data-tab="workouts" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh" id="msgText">Message</span></a>
@@ -1524,7 +1530,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=213";
+  import { boot } from "./app/main.js?v=214";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
