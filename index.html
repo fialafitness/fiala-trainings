@@ -1414,8 +1414,8 @@
     <div class="kicker trainer-only" id="pausedKicker" hidden>Access paused</div>
     <div class="name-row">
       <h1 id="cName" class="pagetitle"></h1>
-      <a class="msg-disc client-only" id="trainerBtn" href="#" data-tab="workouts" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh">Message Michal</span></a>
-      <a class="msg-disc trainer-only" id="msgBtn" href="#" data-tab="workouts" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh" id="msgText">Message</span></a>
+      <a class="msg-disc client-only" id="trainerBtn" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh">Message Michal</span></a>
+      <a class="msg-disc trainer-only" id="msgBtn" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh" id="msgText">Message</span></a>
     </div>
     <div class="trainer-only notif" id="notifWrap" data-tab="workouts" hidden><ul class="list notif-list" id="notifList" hidden></ul></div>
     <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
@@ -1542,7 +1542,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=216";
+  import { boot } from "./app/main.js?v=217";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
