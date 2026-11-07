@@ -1027,6 +1027,12 @@
   .photo-hero .hero-edit { appearance: none; border: 0; background: none; padding: 4px 12px; min-height: 44px; margin: -6px 0; font: inherit; font-size: 0.9375rem; font-weight: 500; color: var(--brand-text); cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .photo-hero .hero-edit:active { opacity: 0.6; }
   #vClientCard #cardName { text-align: center; }
+  /* the edge swipe (home-screen app): the page follows the finger over a still copy of the page it goes back to */
+  main.swiping { position: relative; z-index: 2; background: var(--surface); min-height: 100vh; box-shadow: -12px 0 32px rgba(0,0,0,0.22); will-change: transform; }
+  .swipe-under { position: fixed; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; background: var(--surface); }
+  .swipe-under .nav-shot { position: absolute; inset: 0; will-change: transform; }
+  .swipe-under .nav-shot #dock, .swipe-under .nav-shot .dock-add { display: none !important; }
+  .swipe-under .swipe-dim { position: absolute; inset: 0; background: rgba(0,0,0,0.12); }
   /* Move and Scale: the photo under a circle on black, as Apple frames a contact's photo; one finger moves it, two zoom it */
   .crop-view { position: fixed; inset: 0; z-index: 120; background: #000000; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; outline: none; overscroll-behavior: none; }
   .crop-view .crop-img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; will-change: transform; pointer-events: none; -webkit-touch-callout: none; }
@@ -1542,7 +1548,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=218";
+  import { boot } from "./app/main.js?v=219";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

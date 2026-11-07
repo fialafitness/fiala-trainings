@@ -184,7 +184,7 @@ import { reportRange, buildReport } from "./report.js";
     } catch { return null; }
   }
 
-  function hideAllViews() { $("meDisc").hidden = true;
+  function hideAllViews() { navWillChange(); $("meDisc").hidden = true;
     rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
     $("tabbar").hidden = true; $("addBtn").hidden = true; document.body.classList.remove("tabs");
     for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vClientCard", "vHistory", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
@@ -494,7 +494,7 @@ import { reportRange, buildReport } from "./report.js";
     const nn = exDirty() ? composeName(title, wantSub, name) : name;                                 // the name is the two lines together; untouched, it stays as it was written
     if (link && !youtubeId(link)) { $("status").textContent = "That doesn\u2019t look like a YouTube link"; return; }
     if (nn !== name && squash(nn) !== key && knownName(nn)) { $("status").textContent = "There is already an exercise called \u201c" + nn + "\u201d"; return; }
-    if (!exDirty()) { showExercises(true); return; }
+    if (!exDirty()) { navWillChange("back"); showExercises(true); return; }
     $("navDone").disabled = true;
     let cur = name;
     if (nn !== name) { const ok = await renameExercise(key, name, nn); if (!ok) { $("navDone").disabled = false; $("status").textContent = missingTable() ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t rename \u00b7 try again online"; return; } cur = nn; }
@@ -508,14 +508,14 @@ import { reportRange, buildReport } from "./report.js";
     $("navDone").disabled = false;
     const problem = subError && /ft_exercise_subtitles/.test(subError.message || "") ? "Run the Supabase script first (it is on your clipboard)" : subError ? "Couldn\u2019t save the subtitle" : videoError && /ft_exercise_videos/.test(videoError.message || "") ? "Run the Supabase script first (it is on your clipboard)" : videoError ? "Couldn\u2019t save the video" : "";
     if (problem) { exCurrent = { name: cur, key: nk2 }; $("status").textContent = problem; return; }   // the rename stood: the page now shows the new name, the complaint stays in the bar
-    exCurrent = { name: cur, key: nk2 }; showExercises(true); setStatus();
+    exCurrent = { name: cur, key: nk2 }; navWillChange("back"); showExercises(true); setStatus();
   }
   $("navDone").addEventListener("click", () => { if (settingsOpen === "exercise") saveExercise(); });
   $("exDelete").addEventListener("click", async () => {
     if (!exCurrent) return; const { name, key } = exCurrent;
     if (!(await askFirst({ title: "Delete \u201c" + name + "\u201d from the database?", text: (videoForName(name) ? "Its video goes with it. " : "") + "Workouts that use it keep the name.", yes: "Delete" }))) return;
     const ok = await deleteExercise(key, name); if (!ok) { $("status").textContent = missingTable() ? "Run the Supabase script first (it is on your clipboard)" : "Couldn\u2019t delete \u00b7 try again online"; return; }
-    setStatus(); showExercises(); window.scrollTo(0, 0);
+    setStatus(); navWillChange("back"); showExercises(); window.scrollTo(0, 0);
   });
   $("exSearch").addEventListener("input", () => { exShown = 80; renderExercises(); });
   $("exMore").addEventListener("click", () => { const hits = exerciseMatches($("exSearch").value); const ul = $("exList"); for (const [name, key] of hits.slice(exShown, exShown + 80)) ul.appendChild(exerciseRow(name, key)); exShown += 80; $("exMore").hidden = hits.length <= exShown; });
@@ -696,7 +696,7 @@ import { reportRange, buildReport } from "./report.js";
     $("pwBtn").disabled = false;
     if (error) { msg.textContent = friendly(error); return; }
     msg.textContent = "Password changed."; $("pwNew").value = ""; $("pwNew2").value = "";
-    pwTimer = setTimeout(() => { if (settingsOpen === "password") { if (fromSettings) showParent(); else { settingsOpen = false; hideAllViews(); render(); } } }, 1200);
+    pwTimer = setTimeout(() => { if (settingsOpen === "password") { navWillChange("back"); if (fromSettings) showParent(); else { settingsOpen = false; hideAllViews(); render(); } } }, 1200);
   });
   $("settingsBtn").addEventListener("click", () => { backScroll = window.scrollY; showSettings(); window.scrollTo(0, 0); });   // the pills sit at the bottom of a long list: each page opens at its top, and Back lands where the list was
   $("catalogBtn").addEventListener("click", () => { backScroll = window.scrollY; showCatalog(); window.scrollTo(0, 0); });
@@ -806,7 +806,7 @@ import { reportRange, buildReport } from "./report.js";
     const t = trainings.get(id); if (!t) return;
     if (S.templateDraft && S.templateDraft.id === id) { S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); }
     trainings.delete(id); scheduleSave("trainings", id, 0);
-    go({ name: "client", id: t.clientId });
+    go({ name: "client", id: t.clientId }, true);                     // up to the client, as Back would: its step goes
   }
   function deleteClient(id) {
     if (!clients.has(id)) return;                                      // a second tap on Delete finds nobody
@@ -866,6 +866,7 @@ import { reportRange, buildReport } from "./report.js";
       S.pendingGo = { next, back }; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
     }
     if (!(next.name === "client" && isTemplateClient(next.id))) { pickFor = null; fillFor = null; }
+    navWillChange(back ? "back" : "");                               // the screen as it was: Safari's (and the edge swipe's) page to come back to
     scrollMemo.set(viewKey(S.view), window.scrollY);                                              // the page being left: Back brings it back here
     if (S.view.name === "training" && !(next.name === "training" && next.id === S.view.id)) for (const k of [...cardNoteDraft.keys()]) if (k.startsWith(S.view.id + "/")) cardNoteDraft.delete(k);   // a card note left half-written goes with the page
     if (!S.clientMode && (!S.sb || S.syncedOnce) && S.view.name === "training" && !(next.name === "training" && next.id === S.view.id) && fillFor !== S.view.id) {   // leaving an empty workout behind discards it, like an empty note (not while it waits for a template, not before the first sync)
@@ -876,7 +877,7 @@ import { reportRange, buildReport } from "./report.js";
     for (const f of document.querySelectorAll("#rows .player iframe, #exPlayer iframe")) f.remove();   // a video left playing does not follow to the next page
     reordering = false; S.view = next; lsSet("fiala.trainings.view", S.view); render(); setStatus(); window.scrollTo(0, back ? (scrollMemo.get(viewKey(next)) || 0) : 0);   // forward: the top; back: where that page was (the header shows this page's save state, not the last page's complaint)
     if (next.name === "training") holdWake(true); else dropWake(); }
-  $("back").addEventListener("click", async () => {
+  async function runBack() {                                       // where Back goes, from every page: the Back circle, Safari's swipe and the edge swipe all come here
     if (settingsOpen === "exercise") { if (exDirty() && !(await askFirst({ title: "Discard the changes?", text: "The exercise stays as it was.", yes: "Discard" }))) return; showExercises(true); return; }
     if (settingsOpen) {
       if (fromSettings) { showParent(); window.scrollTo(0, 0); return; }
@@ -889,8 +890,188 @@ import { reportRange, buildReport } from "./report.js";
     else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.phase) go({ name: "client", id: TEMPLATES_ID, program: S.view.program }, true);
     else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.program) go({ name: "client", id: TEMPLATES_ID }, true);
     else go({ name: "clients" }, true);
-  });
+  }
 
+  // ---------- going back: the Back circle, Safari's own swipe, and the edge swipe in the home-screen app all do the same thing ----------
+  // Each screen the app moves forward to is a step in the browser's history, recorded the moment before the screen changes, so Safari's
+  // swipe from the left edge previews the page it goes back to and lands on it; its popstate runs runBack(), exactly as the Back circle
+  // does. A Back that is refused (an unsaved template, changes to discard and Cancel) keeps its step. With no Back on the screen there are
+  // no steps behind it. Steps the app takes out itself go one at a time, each known by where it lands, so the count never drifts (a drift
+  // would let a later Back leave the app). In the home-screen app iOS gives no swipe, so the app has its own (below).
+  const hasState = () => typeof history !== "undefined" && history && typeof history.pushState === "function";
+  const nav = { depth: 0, backing: false, sig: "", pending: null, travel: null, waits: [], curKey: "" };   // curKey: the screen as last shown (a page's own settings flag changes before it hides the old one)   // waits: steps out of the history still under way, by the depth they land on
+  // Back puts the page where it was itself, so the browser must not move it afterwards; but a reload (the app's own after a release
+  // included) still gets the browser's put-back, so that is switched on only once the page has loaded, and back on as the page goes
+  const scrollMode = (m) => { try { if (hasState() && "scrollRestoration" in history) history.scrollRestoration = m; } catch (_) {} };
+  const armScroll = () => setTimeout(() => scrollMode("manual"));
+  if (typeof document !== "undefined" && document.readyState === "complete") armScroll(); else if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("load", armScroll, { once: true });
+  if (typeof window !== "undefined" && window.addEventListener) {
+    window.addEventListener("pagehide", () => scrollMode("auto"));
+    window.addEventListener("pageshow", (e) => { if (e && e.persisted) scrollMode("manual"); });
+  }
+  let popClose = null;                                              // the frosted bubble or menu that is open, if one is: its own close
+  const stateDepth = () => { try { const st = hasState() && history.state; return st && typeof st.fiala === "number" ? st.fiala : 0; } catch (_) { return 0; } };
+  nav.depth = stateDepth();
+  try { if (hasState() && !(history.state && typeof history.state.fiala === "number")) history.replaceState({ fiala: nav.depth }, ""); } catch (_) {}   // the page's own first step carries its number, so going back to it is never mistaken for anything else
+  const canBack = () => !$("back").hidden;
+  const held = () => { const wb = $("whenBg"); return S.asking || !!(wb && !wb.hidden) || !!document.querySelector(".crop-view") || !!document.querySelector(".sheet-bg:not([hidden])"); };   // a question, a menu or bubble, a date picker or the photo framing is up: Back waits for it (the Back circle's tap only closes a menu, too)
+  const screenKey = () => viewKey(S.view) + "|" + (settingsOpen || "") + "|" + (settingsOpen === "exercise" && exCurrent ? exCurrent.key : "");
+  const navSig = () => [...document.querySelectorAll("main > section")].filter((s) => !s.hidden).map((s) => s.id).join(",") + "|" + screenKey();
+  const histPush = () => {                                          // one step to come back to; after a step back still under way, never before it (the browser would put it in the wrong place)
+    if (!hasState()) return; const d = ++nav.depth, put = () => { try { history.pushState({ fiala: d }, ""); } catch (_) {} };
+    if (nav.travel) nav.travel.then(put); else put();
+  };
+  const histQuiet = (n) => {                                        // n steps out of the browser's history without the app moving; one at a time, done when the browser is there
+    if (!hasState() || typeof history.go !== "function" || n <= 0) return nav.travel || Promise.resolve();
+    const step = () => new Promise((res) => {
+      const w = { target: Math.max(0, stateDepth() - n), res }; nav.waits.push(w);
+      let tries = 0;
+      const look = () => {                                          // the popstate normally answers; this only covers a browser that says nothing
+        if (!nav.waits.includes(w)) return;
+        if (stateDepth() === w.target) { nav.waits.splice(nav.waits.indexOf(w), 1); res(); return; }
+        if (++tries > 12) { res(); setTimeout(() => { const i = nav.waits.indexOf(w); if (i >= 0) nav.waits.splice(i, 1); }, 10000); return; }   // gave up waiting, but a late arrival is still not taken for a swipe
+        setTimeout(look, 250);
+      };
+      setTimeout(look, 250);
+      try { history.go(-n); } catch (_) { const i = nav.waits.indexOf(w); if (i >= 0) nav.waits.splice(i, 1); res(); }
+    });
+    const tr = nav.travel = (nav.travel || Promise.resolve()).then(step);
+    tr.then(() => { if (nav.travel === tr) nav.travel = null; });
+    return tr;
+  };
+  // the picture under the edge swipe: the last look of each screen, found by where Back is going
+  const shotByKey = new Map();
+  function navWillChange(kind) {                                    // a screen is about to change: what it was, and (for the edge swipe) a picture of it; kind: "back" or "land" (no new step)
+    if (nav.pending) { if (kind) nav.pending.kind = nav.pending.kind || kind; return; }
+    if (swipeOn) { const k = nav.curKey || screenKey(), shot = captureScreen(); if (shot) { shotByKey.delete(k); shotByKey.set(k, shot); if (shotByKey.size > 14) shotByKey.delete(shotByKey.keys().next().value); } }   // the first call of a change: the screen is still the old one
+    nav.pending = { sig: navSig(), kind: kind || "" };
+    queueMicrotask(navDidChange);                                   // before the new screen is painted: Safari keeps the old one as the page to go back to
+  }
+  function navDidChange() {
+    const p = nav.pending; nav.pending = null; if (!p) return;
+    const now = navSig();
+    if (now !== p.sig && !nav.backing && p.kind !== "land") {
+      if (p.kind === "back") { if (nav.depth > 0) { nav.depth--; histQuiet(1); } }   // a step back taken some other way (Done on an exercise, a held template draft released): its step goes too
+      else if (canBack()) histPush();                               // forward: one step to come back to
+    }
+    nav.sig = now; nav.curKey = screenKey(); navTrim();
+  }
+  function navTrim() {                                              // no Back on this screen: no steps behind it; a Back with no step (opened straight on a deep page): one
+    if (!canBack() && nav.depth > 0) { const n = nav.depth; nav.depth = 0; histQuiet(n); }
+    else if (canBack() && nav.depth === 0) histPush();
+  }
+  function navLandAt(d) {                                           // the next move replaces the steps above d (a template filled in: back on the workout's own step, not one more)
+    if (nav.depth > d) { const n = nav.depth - d; nav.depth = d; histQuiet(n); }
+    navWillChange("land");
+  }
+  async function backOnce() {                                       // one Back, from whatever asked for it
+    const before = navSig(); nav.backing = true;
+    try { await runBack(); } finally { nav.backing = false; }
+    const after = navSig(); nav.sig = after; nav.curKey = screenKey();
+    if (after === before && canBack()) histPush();                 // refused: the step stays
+    navTrim();
+  }
+  let backChain = Promise.resolve();
+  // the screen moves at once; the browser's step comes out behind it (while the app is still starting the browser can hold a step for
+  // a second or more, and the Back circle must never wait for that). A step it has to put back waits its turn (histPush follows nav.travel)
+  const goBackStep = async () => { if (nav.depth > 0) { nav.depth--; histQuiet(1); } await backOnce(); };
+  const goBackNow = () => (backChain = backChain.then(goBackStep, goBackStep));   // two quick taps: two Backs, one after the other
+  $("back").addEventListener("click", () => { goBackNow(); });
+  window.addEventListener("popstate", (e) => {                      // Safari's swipe (or Android's back): one step back, as the Back circle
+    const st = e.state;
+    if (!(st && typeof st.fiala === "number")) { try { history.replaceState({ fiala: ++nav.depth }, ""); } catch (_) {} navTrim(); return; }   // a step with no number (a link to "#"): a new step forward, given its number
+    const d = st.fiala;
+    const wi = nav.waits.findIndex((w) => w.target === d);
+    if (wi >= 0) { nav.waits.splice(0, wi + 1).forEach((w) => w.res()); return; }   // a step the app took out itself
+    if (d > nav.depth) { histQuiet(d - nav.depth); return; }       // a swipe forward: there is no forward in the app
+    if (held()) { if (popClose) popClose(); const keep = nav.depth; nav.depth = d; while (nav.depth < keep) histPush(); return; }   // the step goes back where it was
+    const steps = nav.depth - d; nav.depth = d;
+    for (let i = 0; i < steps; i++) backChain = backChain.then(backOnce, backOnce);
+  });
+  if (typeof MutationObserver !== "undefined") new MutationObserver(() => queueMicrotask(navTrim)).observe($("back"), { attributes: true, attributeFilter: ["hidden"] });
+  function backKey() {                                              // the screen runBack() would go to, without going (keep in step with runBack)
+    const k = (v, s) => viewKey(v) + "|" + (s || "") + "|";
+    if (settingsOpen === "exercise") return k(S.view, "exercises");
+    if (settingsOpen) return fromSettings ? k(S.view, fromSettings === "catalog" ? "catalog" : "settings") : k(S.view, "");
+    if (S.view.name === "training") { const t = trainings.get(S.view.id); return k(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }, ""); }
+    if (S.view.name === "client" && isTemplateClient(S.view.id) && !S.view.program && pickFor) return k(fillFor ? { name: "training", id: fillFor } : { name: "client", id: pickFor }, "");
+    if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.phase) return k({ name: "client", id: TEMPLATES_ID, program: S.view.program }, "");
+    if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.program) return k({ name: "client", id: TEMPLATES_ID }, "");
+    return k({ name: "clients" }, "");
+  }
+
+  // ---------- the edge swipe in the home-screen app, built to Apple's feel ----------
+  // A finger that starts at the left edge and moves right drags the page; the page Back goes to waits underneath, a little to the left
+  // and dimmed, as on iPhone. Let go past a third of the way, or with a flick, and it is Back; otherwise the page settles back.
+  let swipeOn = (() => { try { return (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || (typeof navigator !== "undefined" && navigator.standalone === true); } catch (_) { return false; } })();
+  function captureScreen() {                                        // a still copy of the page as it is, to sit under the swipe later
+    const secs = [...document.querySelectorAll("main > section")].filter((s) => !s.hidden && s.getClientRects().length);
+    if (!secs.length) return null;
+    const box = document.createElement("div"); box.className = "nav-shot"; box.setAttribute("aria-hidden", "true");
+    for (const s of secs) {
+      const r = s.getBoundingClientRect(), c = s.cloneNode(true), from = s.querySelectorAll("input, textarea, select"), to = c.querySelectorAll("input, textarea, select");
+      from.forEach((el, i) => { if (to[i]) to[i].value = el.value; });   // what was typed shows, not just the empty fields
+      c.style.position = "absolute"; c.style.left = r.left + "px"; c.style.top = r.top + "px"; c.style.width = r.width + "px"; c.style.margin = "0";
+      box.appendChild(c);
+    }
+    return box;
+  }
+  let sw = null;
+  const swipeReady = () => swipeOn && canBack() && !held() && !(document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName));
+  document.addEventListener("touchstart", (e) => {
+    if (sw && sw.busy) return;
+    if (sw && sw.on) { endSwipe(true); return; }                    // a second finger: the page settles back, as on iPhone
+    sw = null; if (e.touches.length !== 1 || !swipeReady()) return;
+    const t = e.touches[0]; if (t.clientX > 24) return;             // Apple's edge: the first few points of the screen
+    if (e.target && e.target.closest && e.target.closest("#calView, #week, #dpGrid, .tr-chips")) return;   // the calendar and the set track keep their own sideways drag
+    sw = { x0: t.clientX, y0: t.clientY, dx: 0, on: false, lastX: t.clientX, lastT: e.timeStamp, v: 0 };
+  }, { passive: true });
+  document.addEventListener("touchmove", (e) => {
+    if (!sw || sw.busy) return;
+    const t = e.touches[0], dx = t.clientX - sw.x0, dy = t.clientY - sw.y0;
+    if (!sw.on) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > dx) { sw = null; return; }   // the page is being scrolled, not swiped
+      if (dx < 8 || dx < Math.abs(dy) * 1.2) return;
+      startSwipe();
+    }
+    e.preventDefault();
+    const dt = Math.max(1, e.timeStamp - sw.lastT); sw.v = (t.clientX - sw.lastX) / dt; sw.lastX = t.clientX; sw.lastT = e.timeStamp;
+    sw.dx = Math.max(0, dx); paintSwipe();
+  }, { passive: false });
+  document.addEventListener("touchend", () => { if (sw && sw.on && !sw.busy) endSwipe(false); else if (sw && !sw.busy) sw = null; });
+  document.addEventListener("touchcancel", () => { if (sw && sw.on && !sw.busy) endSwipe(true); else if (sw && !sw.busy) sw = null; });
+  function startSwipe() {
+    for (const old of document.querySelectorAll(".swipe-under")) old.remove();   // nothing left over from an earlier swipe
+    sw.on = true; sw.w = window.innerWidth; sw.main = document.querySelector("main");
+    const layer = document.createElement("div"); layer.className = "swipe-under"; layer.setAttribute("aria-hidden", "true");
+    const shot = shotByKey.get(backKey()) || null; if (shot) layer.appendChild(shot);   // the page Back lands on; none known: the plain page colour, never a wrong page
+    const dim = document.createElement("div"); dim.className = "swipe-dim"; layer.appendChild(dim);
+    document.body.appendChild(layer); sw.layer = layer; sw.dim = dim; sw.shot = shot;
+    sw.main.classList.add("swiping");
+  }
+  function paintSwipe(anim) {
+    const p = Math.min(1, sw.dx / sw.w), tr = anim ? "transform 250ms cubic-bezier(.2,.8,.2,1)" : "none";
+    sw.main.style.transition = tr; sw.main.style.transform = "translate3d(" + sw.dx + "px,0,0)";
+    if (sw.shot) { sw.shot.style.transition = tr; sw.shot.style.transform = "translate3d(" + (-0.3 * sw.w * (1 - p)) + "px,0,0)"; }   // the page underneath comes in from a third to the left
+    sw.dim.style.transition = anim ? "opacity 250ms ease" : "none"; sw.dim.style.opacity = String(1 - p);
+  }
+  function clearSwipe() {
+    if (!sw) return; const m = sw.main;
+    m.classList.remove("swiping"); m.style.transition = ""; m.style.transform = "";
+    if (sw.shot) { sw.shot.style.transition = ""; sw.shot.style.transform = ""; if (sw.shot.parentNode) sw.shot.parentNode.removeChild(sw.shot); }   // the copy is kept for a later swipe to the same page
+    if (sw.layer) sw.layer.remove(); sw = null;
+  }
+  async function endSwipe(cancelled) {
+    sw.busy = true;
+    const go = !cancelled && (sw.dx > sw.w / 3 || (sw.v > 0.45 && sw.dx > 24));
+    const mine = sw, clear = () => { if (sw === mine) clearSwipe(); };
+    if (!go) { sw.dx = 0; paintSwipe(true); setTimeout(clear, 260); return; }
+    sw.dx = sw.w; paintSwipe(true);
+    await new Promise((r) => setTimeout(r, 260));
+    const before = navSig(); await goBackNow();
+    if (navSig() === before) { sw.dx = 0; paintSwipe(true); setTimeout(clear, 260); return; }   // Back was refused: the page comes back, as the Back circle leaves it
+    requestAnimationFrame(clear); setTimeout(clear, 120);           // the page underneath is now the real one (a frame, or a moment if no frame comes)
+  }
   // ---------- render ----------
   // ---- keyboard bar (above the phone keyboard): 123/ABC switch, quick entries, Next/Done. The number keypad on iPhone has no Return key.
   const kbbar = $("kbbar"), kbMode = kbbar.querySelector(".kb-mode"), kbChips = kbbar.querySelector(".kb-chips"), kbNextBtn = kbbar.querySelector(".kb-next"), kbDone = kbbar.querySelector(".kb-done");
@@ -1222,7 +1403,9 @@ import { reportRange, buildReport } from "./report.js";
     if (!String(target.title || "").trim()) target.title = T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : "");
     target.rows = (T.rows || []).map((r) => freshRow(r));
     target.fromTemplate = T.id;
-    scheduleSave("trainings", target.id, 0); S.renderedTraining = null; go({ name: "training", id });
+    scheduleSave("trainings", target.id, 0); S.renderedTraining = null;
+    if (typeof nav.pickDepth === "number") { navLandAt(nav.pickDepth); nav.pickDepth = null; }   // back on the workout's own step: Back from it goes to the client, not through the templates
+    go({ name: "training", id });
   }
   function backToTemplates(tid) {
     const T = trainings.get(tid);
@@ -1298,7 +1481,7 @@ import { reportRange, buildReport } from "./report.js";
     const stages = [...new Set(pitems.map((t) => templateMeta(t).stage))].sort((x, y) => x - y);
     const cur = stages.includes(S.view.stage) ? S.view.stage : stages[0];
     const seg = document.createElement("div"); seg.className = "seg stages"; seg.setAttribute("role", "tablist");
-    for (const s of stages) { const b = document.createElement("button"); b.type = "button"; b.textContent = "Stage " + s; b.classList.toggle("on", s === cur); b.addEventListener("click", () => { S.view.stage = s; lsSet("fiala.trainings.view", S.view); renderTemplates(c); }); seg.appendChild(b); }
+    for (const s of stages) { const b = document.createElement("button"); b.type = "button"; b.textContent = "Stage " + s; b.classList.toggle("on", s === cur); b.addEventListener("click", () => { S.view.stage = s; lsSet("fiala.trainings.view", S.view); renderTemplates(c); nav.curKey = screenKey(); /* the screen changed in place: its picture is filed under this stage */ }); seg.appendChild(b); }
     wrap.appendChild(seg);
     const ul = document.createElement("ul"); ul.className = "list"; ul.style.marginTop = "16px";
     ul.replaceChildren(...pitems.filter((t) => templateMeta(t).stage === cur).sort((x, y) => templateMeta(x).n - templateMeta(y).n).map((t) => tplRow(t, !!pickFor)));
@@ -1343,6 +1526,7 @@ import { reportRange, buildReport } from "./report.js";
     syncRadios();
     paintDraftBar();
     if (dp) renderDatePicker();
+    nav.curKey = screenKey();                                       // the screen just painted, the first one after launch included
   }
 
   // clients keep the order he sets (c.sort); unsorted ones follow alphabetically
@@ -2242,7 +2426,7 @@ import { reportRange, buildReport } from "./report.js";
     const left = Math.max(minL, Math.min(want, maxL)); let top = r.bottom + 8;
     if (top + ph > vh - 8) { top = r.top - 8 - ph; pop.classList.add("above"); }
     pop.style.left = left + "px"; pop.style.top = top + "px"; pop.style.setProperty("--caret", Math.max(12, Math.min(r.left + r.width / 2 - left, pw - 12)) + "px");
-    const close = () => { bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", close, true); };
+    const close = () => { if (popClose === close) popClose = null; bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", close, true); };
     const onKey = (e) => { if (e.key === "Escape") close(); };
     let down = null, eat = null;                                     // a tap outside closes the bubble and goes no further (as a system menu's dismissing tap): nothing under it is pressed or given focus; a finger that drags the page does not close it
     const uneat = () => { if (eat) { document.removeEventListener("mousedown", eat, true); eat = null; } };
@@ -2260,6 +2444,7 @@ import { reportRange, buildReport } from "./report.js";
       close();
     };
     document.addEventListener("pointerdown", onDown, true); document.addEventListener("pointerup", onUp, true); document.addEventListener("keydown", onKey); window.addEventListener("scroll", close, true);
+    popClose = close;
     return close;
   }
   function followRow(id, field) {                                   // a card that just moved (a new label): keep it under the finger, and the keyboard on the field he was heading for
@@ -2961,7 +3146,7 @@ import { reportRange, buildReport } from "./report.js";
     if (id && clients.has(id)) addTraining(id, t);
   });
   $("saveTemplate").addEventListener("click", () => { const t = trainings.get(S.view.id); if (t) saveAsTemplate(t); });
-  $("tplFill").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t) return; fillFor = t.id; pickFor = t.clientId; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });
+  $("tplFill").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t) return; fillFor = t.id; pickFor = t.clientId; nav.pickDepth = nav.depth; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });
   $("useBtn").addEventListener("click", () => {
     const t = trainings.get(S.view.id); if (!t) return;
     const ul = $("usePick"); if (!ul.hidden) { ul.hidden = true; return; }
@@ -3094,7 +3279,7 @@ import { reportRange, buildReport } from "./report.js";
       }
       const { data, error: sessionError } = first;
       const hp = new URLSearchParams(location.hash.replace(/^#/, "")), linkErr = hp.get("error") || hp.get("error_code") ? (/expired|otp_expired/i.test((hp.get("error_description") || "") + (hp.get("error_code") || "")) ? "That link has expired. Ask for a new one." : "That link did not work. Ask for a new one.") : "";
-      if (location.hash && /access_token|error/.test(location.hash)) history.replaceState(null, "", location.pathname);
+      if (location.hash && /access_token|error/.test(location.hash)) history.replaceState(history.state, "", location.pathname);
       if (fromRecoveryLink && data && data.session) { S.recovering = true; showRecovery(); return; }
       if (data && data.session) { await enterCloud(data.session); }
       else if ((!navigator.onLine || isNetwork(sessionError)) && remembered && remembered.email) enterOffline(remembered);
@@ -3112,7 +3297,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, goBackNow, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
