@@ -121,20 +121,101 @@ export function paintAvatar(el, cid, name, lazy) {   // the circle: initials at 
 }
 
 // ---------- cutting the picture ----------
-export async function squarePhoto(file, size = 256) {   // a square from the middle (a little high on a portrait, where a face is), 256 px, JPEG
+async function renderSquare(img, sx, sy, side, size = 256) {   // the square [sx, sy, side] of the picture (in its own pixels) as a 256 px JPEG: drawn at most four times the size, then halved, so no grain from one big jump
+  let cv = document.createElement("canvas"), cur = Math.max(size, Math.min(Math.round(side), size * 4));
+  cv.width = cv.height = cur; let ctx = cv.getContext("2d"); ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, cur, cur); ctx.imageSmoothingQuality = "high"; ctx.drawImage(img, sx, sy, side, side, 0, 0, cur, cur);
+  while (cur / 2 >= size) { const nx = document.createElement("canvas"); nx.width = nx.height = Math.round(cur / 2); const c2 = nx.getContext("2d"); c2.imageSmoothingQuality = "high"; c2.drawImage(cv, 0, 0, nx.width, nx.height); cv = nx; cur = nx.width; }
+  const out = document.createElement("canvas"); out.width = out.height = size; ctx = out.getContext("2d"); ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, size, size); ctx.imageSmoothingQuality = "high"; ctx.drawImage(cv, 0, 0, size, size);
+  const blob = await new Promise((res) => out.toBlob(res, "image/jpeg", 0.82));
+  if (!blob) throw new Error("unreadable");
+  return blob;
+}
+const loadImage = (url) => new Promise((res, rej) => { const i = new Image(); i.decoding = "async"; i.onload = () => (i.naturalWidth && i.naturalHeight ? res(i) : rej(new Error("unreadable"))); i.onerror = () => rej(new Error("unreadable")); i.src = url; });
+export async function squarePhoto(file, size = 256) {   // without a hand on it: a square from the middle (a little high on a portrait, where a face is)
   const url = URL.createObjectURL(file);
   try {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("unreadable")); i.src = url; });
-    const w = img.naturalWidth, h = img.naturalHeight; if (!w || !h) throw new Error("unreadable");
-    const side = Math.min(w, h), sx = (w - side) / 2, sy = h > w ? (h - side) * 0.3 : 0;
-    let cv = document.createElement("canvas"), cur = Math.min(side, size * 4);   // first a square at most four times the size, then halved: no grain from one big jump
-    cv.width = cv.height = cur; let ctx = cv.getContext("2d"); ctx.imageSmoothingQuality = "high"; ctx.drawImage(img, sx, sy, side, side, 0, 0, cur, cur);
-    while (cur / 2 >= size) { const nx = document.createElement("canvas"); nx.width = nx.height = Math.round(cur / 2); const c2 = nx.getContext("2d"); c2.imageSmoothingQuality = "high"; c2.drawImage(cv, 0, 0, nx.width, nx.height); cv = nx; cur = nx.width; }
-    const out = document.createElement("canvas"); out.width = out.height = size; ctx = out.getContext("2d"); ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, size, size); ctx.imageSmoothingQuality = "high"; ctx.drawImage(cv, 0, 0, size, size);
-    const blob = await new Promise((res) => out.toBlob(res, "image/jpeg", 0.82));
-    if (!blob) throw new Error("unreadable");
-    return blob;
+    const img = await loadImage(url), w = img.naturalWidth, h = img.naturalHeight, side = Math.min(w, h);
+    return await renderSquare(img, (w - side) / 2, h > w ? (h - side) * 0.3 : 0, side, size);
   } finally { URL.revokeObjectURL(url); }
+}
+
+// Move and Scale, as Apple frames a contact's photo: the picture under a circle; one finger moves it, two fingers (or a trackpad,
+// or a double tap) zoom it; the circle is always covered. All in screen points; st = { x, y, s }: the picture's top-left corner
+// and its scale; box = { left, top, d }: the circle's square.
+export const crop = {
+  cover: (w, h, d) => d / Math.min(w, h),                               // the smallest scale at which the picture fills the circle
+  most: (w, h, d) => Math.max(d / Math.min(w, h), d / 200),             // the closest: 200 of the picture's pixels across the circle, still finer than the 256 saved
+  scale: (s, w, h, d) => Math.min(Math.max(s, crop.cover(w, h, d)), crop.most(w, h, d)),
+  clamp(st, w, h, box) {                                                // never a gap in the circle
+    const s = crop.scale(st.s, w, h, box.d);
+    return { s, x: Math.min(box.left, Math.max(box.left + box.d - w * s, st.x)), y: Math.min(box.top, Math.max(box.top + box.d - h * s, st.y)) };
+  },
+  zoomAbout(st, px, py, s2) { const k = s2 / st.s; return { s: s2, x: px - (px - st.x) * k, y: py - (py - st.y) * k }; },   // the point under the fingers stays under them
+  start(w, h, box) {                                                    // filling the circle, centred, a little high on a portrait
+    const s = crop.cover(w, h, box.d);
+    return crop.clamp({ s, x: box.left + (box.d - w * s) / 2, y: box.top + (box.d - h * s) * (h > w ? 0.3 : 0.5) }, w, h, box);
+  },
+  rect: (st, box) => ({ sx: (box.left - st.x) / st.s, sy: (box.top - st.y) / st.s, side: box.d / st.s }),   // the circle's square in the picture's own pixels
+  refit(st, w, h, from, to) {                                           // the circle moved or changed size (the phone turned): the same part of the picture stays framed
+    const cx = (from.left + from.d / 2 - st.x) / st.s, cy = (from.top + from.d / 2 - st.y) / st.s, s = st.s * (to.d / from.d);
+    return crop.clamp({ s, x: to.left + to.d / 2 - cx * s, y: to.top + to.d / 2 - cy * s }, w, h, to);
+  },
+};
+export function cropPhoto(file) {         // the Move and Scale screen; resolves to the framed 256 px JPEG, or null on Cancel
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    loadImage(url).then((img) => {
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const view = document.createElement("div"); view.className = "crop-view"; view.setAttribute("role", "dialog"); view.setAttribute("aria-modal", "true"); view.setAttribute("aria-label", "Move and Scale"); view.tabIndex = -1;
+      view.innerHTML = '<div class="crop-hole" aria-hidden="true"></div><div class="crop-title">Move and Scale</div><div class="crop-bar"><button type="button" class="crop-cancel">Cancel</button><button type="button" class="crop-choose">Choose</button></div>';
+      img.className = "crop-img"; img.alt = ""; img.draggable = false; img.style.width = w + "px"; img.style.height = h + "px";
+      view.prepend(img); document.body.appendChild(view);
+      const hole = view.querySelector(".crop-hole");
+      let box = null, st = null, done = false;
+      const paint = () => { img.style.transform = "translate3d(" + st.x + "px," + st.y + "px,0) scale(" + st.s + ")"; };
+      const layout = () => {
+        const vw = window.innerWidth, vh = window.innerHeight, d = Math.round(Math.min(vw - 32, vh * 0.6, 440)), nb = { d, left: (vw - d) / 2, top: (vh - d) / 2 };
+        st = st && box ? crop.refit(st, w, h, box, nb) : crop.start(w, h, nb); box = nb;   // a turned phone keeps the framing the hand made
+        hole.style.width = hole.style.height = d + "px"; hole.style.left = box.left + "px"; hole.style.top = box.top + "px"; paint();
+      };
+      const ease = () => { img.classList.add("glide"); setTimeout(() => img.classList.remove("glide"), 260); };
+      const zoomTo = (s2, px, py) => { st = crop.clamp(crop.zoomAbout(st, px, py, crop.scale(s2, w, h, box.d)), w, h, box); paint(); };
+      const pts = new Map(); let last = null, downAt = null, tapAt = 0, tapPt = null;
+      const mid = () => { const a = [...pts.values()]; return a.length > 1 ? { x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2, d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) } : { x: a[0].x, y: a[0].y, d: 0 }; };
+      view.addEventListener("pointerdown", (e) => {
+        if (e.target.closest("button")) return;
+        e.preventDefault(); try { view.setPointerCapture(e.pointerId); } catch (_) {}
+        pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); last = mid(); downAt = pts.size === 1 ? { x: e.clientX, y: e.clientY, t: Date.now() } : null;
+      });
+      view.addEventListener("pointermove", (e) => {
+        if (!pts.has(e.pointerId)) return;
+        pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); const m = mid();
+        let n = { s: st.s, x: st.x + (m.x - last.x), y: st.y + (m.y - last.y) };                // the fingers' middle moves the picture
+        if (pts.size > 1 && last.d > 0 && m.d > 0) n = crop.zoomAbout(n, m.x, m.y, crop.scale(n.s * m.d / last.d, w, h, box.d));   // and their spread scales it about that middle
+        st = crop.clamp(n, w, h, box); last = m; paint();
+      });
+      const up = (e) => {
+        if (!pts.has(e.pointerId)) return;
+        pts.delete(e.pointerId); last = pts.size ? mid() : null;
+        if (!pts.size && downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 10 && Date.now() - downAt.t < 300) {   // a tap: two in a row zoom in, or back out
+          const now = Date.now();
+          if (now - tapAt < 320 && tapPt && Math.hypot(e.clientX - tapPt.x, e.clientY - tapPt.y) < 30) { const c = crop.cover(w, h, box.d), hi = Math.min(c * 2.5, crop.most(w, h, box.d)); ease(); zoomTo(st.s < (c + hi) / 2 ? hi : c, e.clientX, e.clientY); tapAt = 0; }   // in to the closest it may go, or back out: a small picture toggles too
+          else { tapAt = now; tapPt = { x: e.clientX, y: e.clientY }; }
+        }
+        downAt = null;
+      };
+      view.addEventListener("pointerup", up); view.addEventListener("pointercancel", up);
+      view.addEventListener("wheel", (e) => { e.preventDefault(); zoomTo(st.s * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.002)), e.clientX, e.clientY); }, { passive: false });   // a trackpad pinch or a mouse wheel
+      const end = () => { done = true; window.removeEventListener("resize", layout); document.removeEventListener("keydown", key, true); view.remove(); URL.revokeObjectURL(url); };   // every way out takes the screen and its listeners away
+      const close = (out) => { if (done) return; end(); resolve(out); };
+      const choose = async () => { if (done) return; const r = crop.rect(st, box); try { const blob = await renderSquare(img, r.sx, r.sy, r.side); close(blob); } catch (err) { if (done) return; end(); reject(err); } };
+      const key = (e) => { if (e.key === "Escape") { e.preventDefault(); close(null); } else if (e.key === "Enter" && !(e.target && e.target.closest && e.target.closest("button"))) { e.preventDefault(); choose(); } };   // Enter on Cancel or Choose is that button's own
+      view.querySelector(".crop-cancel").addEventListener("click", () => close(null));
+      view.querySelector(".crop-choose").addEventListener("click", choose);
+      window.addEventListener("resize", layout); document.addEventListener("keydown", key, true);
+      layout(); view.focus({ preventScroll: true });
+    }).catch((err) => { URL.revokeObjectURL(url); reject(err); });
+  });
 }
 
 // ---------- changing it ----------
