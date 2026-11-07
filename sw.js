@@ -9,11 +9,11 @@
 // are never cached.
 const META = "fiala-meta", ASSETS = "fiala-assets", REL = "fiala-rel-";
 const PAGE = "./index.html";
-const BUNDLE = [PAGE, "./app/main.js", "./app/catalog.js", "./app/util.js", "./app/model.js", "./app/notes.js", "./app/pdf.js", "./app/report.js", "./app/state.js", "./app/sync.js", "./templates.json"];
+const BUNDLE = [PAGE, "./app/main.js", "./app/catalog.js", "./app/util.js", "./app/model.js", "./app/notes.js", "./app/pdf.js", "./app/report.js", "./app/state.js", "./app/sync.js", "./app/photos.js", "./templates.json"];
 const EXTRAS = ["./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./favicon.ico", "./fonts/Inter-Regular.ttf", "./fonts/Inter-Bold.ttf"];
 // keep LIB identical to the <script src> in index.html
 const LIB = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js";
-const FONTS = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap";
+const FONTS = "https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap";   // keep identical to the stylesheet link in index.html
 const WAIT = 3500;                                                // how long an open waits for the whole release before the device copy stands in
 const KEEP = 2;                                                   // releases kept on the device: the newest, the one before it, and any a page still open runs on
 

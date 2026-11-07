@@ -41,6 +41,19 @@ function makeSupabase() {
     setFail(f) { fail = f; },
     rpc: async (name, args) => { log.push({ rpc: name, args: clone(args || {}) }); if (!rpcs[name]) return { data: null, error: { code: "PGRST202", message: "Could not find the function public." + name } }; try { return { data: await rpcs[name](args || {}), error: null }; } catch (e) { return { data: null, error: { code: e.code || "P0001", message: e.message } }; } },
     auth: { getSession: async () => ({ data: { session: { user: { email: "coach@test" } } } }), onAuthStateChange() {} },
+    storage: {                                                          // Supabase Storage: files by "bucket/path"; fail: { op?, times, message, statusCode } to make calls error
+      files: new Map(), fail: null, delayMs: 0,
+      from(bucket) {
+        const st = sb.storage, wait = () => (st.delayMs ? new Promise((r) => setTimeout(r, st.delayMs)) : Promise.resolve());
+        const failing = (op) => { const f = st.fail; if (f && (!f.op || f.op === op) && f.times > 0) { f.times--; return { data: null, error: { message: f.message || "Failed to fetch", statusCode: f.statusCode } }; } return null; };
+        return {
+          upload: async (path, body, opts) => { log.push({ storage: "upload", bucket, path }); await wait(); const f = failing("upload"); if (f) return f; const k = bucket + "/" + path; if (st.files.has(k) && !(opts && opts.upsert)) return { data: null, error: { message: "The resource already exists" } }; st.files.set(k, body); return { data: { path }, error: null }; },
+          download: async (path) => { log.push({ storage: "download", bucket, path }); await wait(); const f = failing("download"); if (f) return f; const b = st.files.get(bucket + "/" + path); return b ? { data: b, error: null } : { data: null, error: { message: "Object not found", statusCode: "404" } }; },
+          list: async (prefix) => { log.push({ storage: "list", bucket, prefix }); await wait(); const f = failing("list"); if (f) return f; const head = bucket + "/" + prefix + "/"; return { data: [...st.files.keys()].filter((k) => k.startsWith(head)).map((k) => ({ name: k.slice(head.length) })), error: null }; },
+          remove: async (paths) => { log.push({ storage: "remove", bucket, paths: [...paths] }); const f = failing("remove"); if (f) return f; for (const x of paths) st.files.delete(bucket + "/" + x); return { data: [], error: null }; },
+        };
+      },
+    },
   };
   return sb;
 }
