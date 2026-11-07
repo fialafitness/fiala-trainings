@@ -89,6 +89,22 @@ test("a photo download that lands after sign-out is not kept", async () => {
   const p = fns.loadPhoto("c1", "far444"); await tick(2); await fns.resetPhotos();
   assert.strictEqual(await p, null, "nothing handed back"); assert.strictEqual(fns.photoFor("c1").src, null, "and nothing remembered");
 });
+test("Move and Scale: the circle is always covered, a pinch keeps the point under the fingers, and the square saved is the one in the circle", () => {
+  const { crop } = fns, box = { left: 16, top: 200, d: 360 }, w = 3024, h = 4032;   // an iPhone portrait
+  const st = crop.start(w, h, box);
+  assert.ok(Math.abs(st.s - 360 / 3024) < 1e-9, "starts filling the circle edge to edge"); assert.strictEqual(st.x, 16, "centred across");
+  const r0 = crop.rect(st, box); assert.ok(Math.abs(r0.side - 3024) < 1e-6 && Math.abs(r0.sy - (4032 - 3024) * 0.3) < 1e-6, "a little high on a portrait, as the automatic square was");
+  const far = crop.clamp({ s: st.s, x: 500, y: 900 }, w, h, box); assert.deepStrictEqual([far.x, far.y], [16, 200], "dragged too far: the circle stays covered");
+  const tiny = crop.clamp({ s: 0.01, x: 16, y: 200 }, w, h, box); assert.ok(Math.abs(tiny.s - crop.cover(w, h, 360)) < 1e-12, "never smaller than the circle");
+  const huge = crop.clamp({ s: 99, x: 0, y: 0 }, w, h, box); assert.ok(Math.abs(huge.s - 360 / 200) < 1e-12, "never closer than 200 picture pixels across");
+  const z = crop.zoomAbout(st, 196, 380, st.s * 3);
+  const before = [(196 - st.x) / st.s, (380 - st.y) / st.s], after = [(196 - z.x) / z.s, (380 - z.y) / z.s];
+  assert.ok(Math.abs(before[0] - after[0]) < 1e-6 && Math.abs(before[1] - after[1]) < 1e-6, "the point under the fingers stays under them");
+  const zc = crop.clamp(z, w, h, box), r = crop.rect(zc, box); assert.ok(Math.abs(r.side - 3024 / 3) < 1e-6, "zoomed three times: a third as wide");
+  assert.ok(r.sx >= 0 && r.sy >= 0 && r.sx + r.side <= w + 1e-6 && r.sy + r.side <= h + 1e-6, "the square lies inside the picture");
+  const land = { d: 236, left: 308, top: 78.5 }, turned = crop.refit(zc, w, h, box, land), r2 = crop.rect(turned, land);   // the phone turns to landscape: a smaller circle elsewhere
+  assert.ok(Math.abs(r2.sx - r.sx) < 1e-6 && Math.abs(r2.sy - r.sy) < 1e-6 && Math.abs(r2.side - r.side) < 1e-6, "the same part of the photo stays framed");
+});
 test("a photo another account queued on this phone is not sent as this one", async () => {
   const sb = makeSupabase(); await coachOn(sb, { sessionEmail: "a@x.com", sb: null });
   await fns.setPhoto("c1", jpeg(7)); assert.strictEqual(fns.photoQueue().size, 1);
