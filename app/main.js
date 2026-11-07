@@ -217,7 +217,7 @@ import { reportRange, buildReport } from "./report.js";
   const rememberPage = () => lsSet("fiala.trainings.page", settingsOpen ? { open: settingsOpen, from: fromSettings || false, ...(settingsOpen === "exercise" && exCurrent ? { name: exCurrent.name, key: exCurrent.key } : {}) } : null);
   // ---- appearance: auto (follow the phone) | light | dark. Saved on this device only.
   const THEME_KEY = "fiala.theme";
-  const themeColours = { light: "#f5f5f7", dark: "#000000" };
+  const themeColours = { light: "#fcfcfd", dark: "#080808" };   // the strip under the clock: the top bar's own colour over an empty page, so bar and strip read as one (index.html carries the same)
   function applyTheme(v) {
     v = v === "light" || v === "dark" ? v : "auto";
     if (v === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", v);
