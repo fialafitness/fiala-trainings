@@ -282,6 +282,28 @@ import { reportRange, buildReport } from "./report.js";
     $("delClientConfirm").hidden = true; $("delClient").hidden = false;
   }
   const openGroups = new Map();                                     // "<client>/<group>" -> opened or folded by hand this session
+  let histMemo = null;                                              // a workout opened from History: { client, id, y: where History was scrolled, under: where the client's page under it was }
+  const fromHistory = (t) => !!t && S.view.name === "training" && S.view.id === t.id && S.view.from === "history" && !isTemplateClient(t.clientId) && clients.has(t.clientId);   // this workout was opened from its client's History (the view says so, a reload included): Back goes there
+  function openFromHistory(id) {                                    // a past workout tapped on History: it opens; Back comes back to History, where it was
+    const t = trainings.get(id); if (!t || settingsOpen !== "history") return;
+    histMemo = { client: S.view.id, id, y: Number(window.scrollY) || 0, under: backScroll };
+    settingsOpen = false; fromSettings = false; hideAllViews();     // off History (its picture is taken first, for the swipe back to it); the device no longer remembers it as the page that is up
+    go({ name: "training", id, from: "history" });
+    if (histMemo.under != null) scrollMemo.set(viewKey({ name: "client", id: histMemo.client }), histMemo.under);   // the client's page was left where History was opened from it
+  }
+  function backToHistory(t) {                                       // Back from a workout opened from History (the Back circle, the swipe, Delete): History again, as it was
+    const m = histMemo && histMemo.client === t.clientId && histMemo.id === t.id ? histMemo : null; histMemo = null;
+    go({ name: "client", id: t.clientId }, true);
+    if (!(S.view.name === "client" && S.view.id === t.clientId)) return;
+    backScroll = m ? m.under : null;                                // its own Back still lands on the client's page where it was
+    const e = effDate(t) || "";                                     // after a reload (iOS reopens an app it closed in the background) no place is known: the workout's own row, its group opened, in the middle
+    if (!m && e) for (const k of e >= weekStart() ? ["week"] : [e.slice(0, 4), e.slice(0, 7)]) openGroups.set(t.clientId + "/" + k, true);
+    showHistory();
+    if (m) { window.scrollTo(0, m.y); return; }
+    const row = $("histList").querySelector('[data-tid="' + String(t.id).replace(/["\\]/g, "") + '"]');
+    if (row && typeof row.getClientRects === "function" && row.getClientRects().length) row.scrollIntoView({ block: "center" }); else window.scrollTo(0, 0);
+  }
+  const weekStart = () => { const base = new Date(today() + "T12:00:00"), monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7)); return localIso(monday); };   // this week's Monday: History's "This week" starts there
   function showHistory() {                                          // the client's past workouts on their own page, by week, month and year, each group folding
     const c = clients.get(S.view.id); if (!c || isTemplateClient(c.id)) return;
     settingsOpen = "history"; fromSettings = false; hideAllViews(); $("vHistory").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
@@ -291,7 +313,7 @@ import { reportRange, buildReport } from "./report.js";
     const c = clients.get(S.view.id); if (!c) return;
     const rest = clientTrainings(c.id).filter((t) => t.completedAt || t.skippedAt).sort((a, b) => effDate(b).localeCompare(effDate(a)));
     const hist = $("histList"); hist.replaceChildren(); $("histEmpty").hidden = rest.length > 0;
-    const t0 = today(), base = new Date(t0 + "T12:00:00"), monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7)); const mondayIso = localIso(monday);
+    const t0 = today(), mondayIso = weekStart();
     const word = (n) => n + (n === 1 ? " workout" : " workouts");
     const rows = (items) => { const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...items.map((t) => workoutRow(t, "past"))); return ul; };
     const group = (key, title, items, open, build) => {              // a folding group: title · count ›; opened or closed by hand, it stays so for the session
@@ -733,7 +755,8 @@ import { reportRange, buildReport } from "./report.js";
   $("myExercises").addEventListener("click", () => { fromSettings = "catalog"; showExercises(); window.scrollTo(0, 0); });
   $("setNumber").addEventListener("click", () => { fromSettings = "settings"; showNumber(); window.scrollTo(0, 0); });
   $("myPhone").addEventListener("change", () => { setTrainerPhone($("myPhone").value); $("myPhoneMsg").textContent = phoneDigits($("myPhone").value) ? "Saved. Clients now see Message Michal." : "Saved. Without a number clients see no button."; });
-  $("histBtn").addEventListener("click", () => { backScroll = window.scrollY; showHistory(); window.scrollTo(0, 0); });
+  const openHistoryPage = () => { backScroll = window.scrollY; showHistory(); window.scrollTo(0, 0); };
+  $("histBtn").addEventListener("click", openHistoryPage);
   $("meDisc").addEventListener("click", () => { backScroll = window.scrollY; if (S.clientMode) showSettings(); else showClientCard(); window.scrollTo(0, 0); });   // the client's person disc in the bar: Settings, where Apple keeps the person
   $("forgotBtn").addEventListener("click", async () => {
     const email = $("loginEmail").value.trim();
@@ -833,8 +856,9 @@ import { reportRange, buildReport } from "./report.js";
   function deleteTraining(id) {
     const t = trainings.get(id); if (!t) return;
     if (S.templateDraft && S.templateDraft.id === id) { S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); }
+    const toHistory = fromHistory(t);
     trainings.delete(id); scheduleSave("trainings", id, 0);
-    go({ name: "client", id: t.clientId }, true);                     // up to the client, as Back would: its step goes
+    if (toHistory) backToHistory(t); else go({ name: "client", id: t.clientId }, true);   // up to where Back goes (the client, or History it was opened from): its step goes
   }
   function deleteClient(id) {
     if (!clients.has(id)) return;                                      // a second tap on Delete finds nobody
@@ -913,7 +937,7 @@ import { reportRange, buildReport } from "./report.js";
       if (backScroll != null) window.scrollTo(0, backScroll); else { const foot = $("localFoot"); if (!S.clientMode && !foot.hidden) foot.scrollIntoView({ block: "end" }); else window.scrollTo(0, 0); }   // back where the page was; after a refresh, at the pills it was opened from
       backScroll = null; return;
     }
-    if (S.view.name === "training") { const t = trainings.get(S.view.id); go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }, true); }
+    if (S.view.name === "training") { const t = trainings.get(S.view.id); if (fromHistory(t)) { backToHistory(t); return; } go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }, true); }
     else if (S.view.name === "client" && isTemplateClient(S.view.id) && !S.view.program && pickFor) go(fillFor ? { name: "training", id: fillFor } : { name: "client", id: pickFor }, true);   // choosing a template for someone: Back is back to them
     else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.phase) go({ name: "client", id: TEMPLATES_ID, program: S.view.program }, true);
     else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.program) go({ name: "client", id: TEMPLATES_ID }, true);
@@ -1033,7 +1057,7 @@ import { reportRange, buildReport } from "./report.js";
     const k = (v, s) => viewKey(v) + "|" + (s || "") + "|";
     if (settingsOpen === "exercise") return k(S.view, "exercises");
     if (settingsOpen) return fromSettings ? k(S.view, fromSettings === "catalog" ? "catalog" : "settings") : k(S.view, "");
-    if (S.view.name === "training") { const t = trainings.get(S.view.id); return k(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }, ""); }
+    if (S.view.name === "training") { const t = trainings.get(S.view.id); if (fromHistory(t)) return k({ name: "client", id: t.clientId }, "history"); return k(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }, ""); }
     if (S.view.name === "client" && isTemplateClient(S.view.id) && !S.view.program && pickFor) return k(fillFor ? { name: "training", id: fillFor } : { name: "client", id: pickFor }, "");
     if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.phase) return k({ name: "client", id: TEMPLATES_ID, program: S.view.program }, "");
     if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.program) return k({ name: "client", id: TEMPLATES_ID }, "");
@@ -1708,7 +1732,7 @@ import { reportRange, buildReport } from "./report.js";
     if (S.clientMode && S.tab === "notes") setTab("workouts");   // Notes is the coach's tab
     if (S.view.name === "clients") { S.renderedTraining = null; renderClients(); }
     else if (S.view.name === "client") { S.renderedTraining = null; $("backLabel").textContent = isTemplateClient(S.view.id) && S.view.phase ? S.view.program : (isTemplateClient(S.view.id) && S.view.program ? "Templates" : "Clients"); renderClient(); }
-    else { const t = trainings.get(S.view.id); $("backLabel").textContent = S.clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
+    else { const t = trainings.get(S.view.id); $("backLabel").textContent = fromHistory(t) ? "History" : S.clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
     syncRadios();
     paintDraftBar();
     if (dp) renderDatePicker();
@@ -2026,8 +2050,8 @@ import { reportRange, buildReport } from "./report.js";
     wt.append(pri, sec);
     const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a"; chev.setAttribute("aria-hidden", "true");
     b.append(wd, wi, wt, chev);
-    b.addEventListener("click", () => go({ name: "training", id: t.id }));
-    li.appendChild(b);
+    b.addEventListener("click", () => { if (settingsOpen === "history") openFromHistory(t.id); else go({ name: "training", id: t.id }); });   // on History the page is a settings page over the client's: it has to come off first
+    li.dataset.tid = t.id; li.appendChild(b);
     if (overdue) {                                                       // the missed workout is the first thing to decide
       const acts = document.createElement("div"); acts.className = "missed-actions";
       const doToday = document.createElement("button"); doToday.type = "button"; doToday.className = "btn tint"; doToday.textContent = "Do it today";
@@ -3483,7 +3507,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
