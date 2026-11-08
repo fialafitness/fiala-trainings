@@ -1075,7 +1075,7 @@
   main.swiping { position: relative; z-index: 2; background: var(--surface); min-height: 100vh; box-shadow: 0 -3px 24px rgba(0,0,0,0.04); will-change: transform; pointer-events: none; }   /* Apple's card shadow (iOS 26 UIKit: black 4%, radius 12, 3 up; a CSS blur is about twice Core Animation's radius), was 22% and far wider; no taps land on the page while it slides */
   main.swiping { margin-top: calc(-1 * (env(safe-area-inset-top, 0px) + 57px)); border-top: calc(env(safe-area-inset-top, 0px) + 57px) solid var(--surface); min-height: 100vh; margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px)); border-bottom: env(safe-area-inset-bottom, 0px) solid var(--surface); }   /* the sliding page reaches up under the bar and the clock (the bar is 56 points and its 1-point line) and down to the screen's bottom edge, as Apple's: no band of the page underneath above or below it, and its edge shadow runs the full height; the page's content does not move */
   header.bar-anim::before { transition: opacity var(--swipe-ms, 250ms) var(--swipe-ease, cubic-bezier(.2,.8,.2,1)); }   /* a swipe let go: the bar settles with the page, on the same spring (main.js sets both) */
-  main.swiping { max-width: none; padding-left: max(16px, calc(50% - 324px)); padding-right: max(16px, calc(50% - 324px)); }   /* on a screen wider than the page's 680 points the whole screen slides, as Apple's, the content where it was */
+  @media (min-width: 681px) { main.swiping { max-width: none; padding-left: max(16px, calc(50% - 324px)); padding-right: max(16px, calc(50% - 324px)); } }   /* on a screen wider than the page's 680 points the whole screen slides, as Apple's, the content where it was; on a phone these equal what main already has, and only asking WebKit to compare them would lay the whole page out again as the swipe starts */
   body.swipe-busy header, body.swipe-busy #dock > * { pointer-events: none; }   /* the bar and the tab bar take no taps while the pages slide (main.js) */
   .bar > .back, .bar > .hdr-disc { z-index: 1; }   /* the bar's buttons above the logo of the page coming in under the swipe (main.js), as on iPhone */
   .swipe-under { position: fixed; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; background: var(--surface); }
@@ -1599,7 +1599,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=238";
+  import { boot } from "./app/main.js?v=239";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

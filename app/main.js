@@ -1078,14 +1078,24 @@ import { reportRange, buildReport } from "./report.js";
   let swipeOn = (() => { try { return (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || (typeof navigator !== "undefined" && navigator.standalone === true); } catch (_) { return false; } })();
   const SWIPE_EDGE = 24, SWIPE_GO = 8, NO_SWIPE = "#calView, #week, #dpGrid, .tr-chips, .kb-chips, .grip, .alt-menu, .sugg, input, textarea, select, [contenteditable]";   // things that drag sideways or scroll themselves keep the touch (Apple's rule for its swipe from anywhere)
   const GLASS_RES = 0.416, GLASS_DAMP = 0.75, GLASS = ["back", "meDisc", "navDone"];   // the bar's buttons, and their change on release
+  const easeMemo = new Map();
   const springEase = (v0, response, damping) => {                   // a spring (from rest at 0 to 1, starting at speed v0 in "whole distances per second") as a CSS easing and its length,
-    const w0 = 2 * Math.PI / response, wd = w0 * Math.sqrt(Math.max(1e-6, 1 - damping * damping));   // ending where it first arrives: past that it only overshoots (0.6% at rest, 1.2% at the fastest start allowed, 2.8% for the buttons) and comes back, which a page underneath shows as a bounce past its place
-    const y = (t) => Math.exp(-damping * w0 * t) * (Math.cos(wd * t) + ((damping * w0 - v0) / wd) * Math.sin(wd * t));
-    let T = 0.02; while (T < 1.5 && y(T) > 0.001) T += 0.004;
-    const pts = []; for (let i = 0; i < 48; i++) pts.push(Math.min(1, 1 - y(T * i / 48)).toFixed(4)); pts.push("1");
-    const css = "linear(" + pts.join(", ") + ")";
-    let ok = false; try { ok = typeof CSS !== "undefined" && CSS.supports && CSS.supports("transition-timing-function", css); } catch (_) {}
-    return { css: ok ? css : "cubic-bezier(.2,.8,.2,1)", ms: Math.round(T * 1000) };
+    const key = v0.toFixed(2) + "|" + response + "|" + damping; if (easeMemo.has(key)) return easeMemo.get(key);   // ending where it first arrives: past that it only overshoots (0.6% at rest, 1.2% at the fastest start allowed, 2.8% for the buttons) and comes back, which a page underneath shows as a bounce past its place
+    const w0 = 2 * Math.PI / response, wd = w0 * Math.sqrt(Math.max(1e-6, 1 - damping * damping)), a = damping * w0, b = (a - v0) / wd;
+    const y = (t) => Math.exp(-a * t) * (Math.cos(wd * t) + b * Math.sin(wd * t)), dy = (t) => Math.exp(-a * t) * ((b * wd - a) * Math.cos(wd * t) - (a * b + wd) * Math.sin(wd * t));
+    let T = 0.02; while (T < 1.5 && y(T) > (damping < 1 ? 0.001 : 0.005)) T += 0.004;   // a spring with no bounce never crosses: it ends with half a percent to go
+    // As a cubic-bezier, never linear(): WebKit hands a cubic-bezier transition to Core Animation, which runs it at the screen's own rate (120 Hz on
+    // ProMotion) whatever the page is doing, while a linear() one runs on the page itself at 60 and stops whenever the page is busy (measured on
+    // iOS 27.2, 8 Nov: a page held busy for 250 ms just after the release froze the linear() settle; the cubic-bezier one carried on). Both ends'
+    // speeds are the spring's own, the two control points are fitted: within 1.3% of the spring from rest, 2.6% at the hardest cancel.
+    const s0 = v0 * T, s1 = -dy(T) * T, f = (u) => 1 - y(u * T);
+    const err = (x1, x2) => { const y1 = s0 * x1, y2 = 1 - s1 * (1 - x2); let m = 0; for (let i = 1; i < 16; i++) { const t = i / 16, mt = 1 - t, X = 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t, Y = 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t; m = Math.max(m, Math.abs(Y - f(X))); } return m; };
+    let best = [0.25, 0.3], be = err(0.25, 0.3);
+    for (let i = 1; i < 10; i++) for (let j = 0; j < 10; j++) { const e = err(i / 10, j / 10); if (e < be) { be = e; best = [i / 10, j / 10]; } }
+    for (const step of [0.025, 0.006]) { const [c1, c2] = best; for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) { const x1 = Math.min(1, Math.max(0.01, c1 + i * step)), x2 = Math.min(0.99, Math.max(0, c2 + j * step)), e = err(x1, x2); if (e < be) { be = e; best = [x1, x2]; } } }
+    const [x1, x2] = best, n = (q) => +q.toFixed(4);
+    const out = { css: "cubic-bezier(" + n(x1) + ", " + n(s0 * x1) + ", " + n(x2) + ", " + n(1 - s1 * (1 - x2)) + ")", ms: Math.round(T * 1000) };
+    if (easeMemo.size > 200) easeMemo.clear(); easeMemo.set(key, out); return out;
   };
   const calmMotion = () => { try { return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (_) { return false; } };
   if (swipeOn && !iosHome && typeof document !== "undefined" && document.body && document.body.classList) document.body.classList.add("clip-x");   // Android's installed app: the sliding page must not widen the page (index.html)
@@ -1212,9 +1222,14 @@ import { reportRange, buildReport } from "./report.js";
       if (nb) {
         sw.barRect = live.getBoundingClientRect();
         const put = (b) => { b.setAttribute("aria-hidden", "true"); b.style.position = "absolute"; b.style.top = "0"; b.style.left = "0"; b.style.pointerEvents = "none"; live.after(b); return b; };
-        const tb = put(nb.cloneNode(true));                         // the page underneath's logo, moving with that page and only where the leaving page has uncovered it
+        // the page underneath's logo, moving with that page and only where the leaving page has uncovered it: a window as wide as the screen whose right
+        // edge rides the leaving page's left edge, the logo inside it moving with the page underneath; both by transform alone, so Core Animation runs
+        // them with the pages on release (a clip-path would stay on the page at 60 and lag the edge)
+        const hr = live.parentElement.getBoundingClientRect(), r = sw.barRect, win = document.createElement("div");
+        win.setAttribute("aria-hidden", "true"); win.style.cssText = "position:absolute;top:" + (r.top - hr.top) + "px;left:" + (-hr.left) + "px;width:" + sw.w + "px;height:" + r.height + "px;overflow:hidden;pointer-events:none;transform:translate3d(" + (-sw.w) + "px,0,0)";
+        const tb = nb.cloneNode(true); tb.setAttribute("aria-hidden", "true"); tb.style.position = "absolute"; tb.style.top = "0"; tb.style.left = r.left + "px"; tb.style.margin = "0"; tb.style.width = r.width + "px"; tb.style.pointerEvents = "none";
         for (const k of tb.children) if (!(k.id === "brand" && !k.hidden && $("brand").hidden)) k.style.visibility = "hidden";
-        sw.textBar = tb;
+        win.appendChild(tb); live.after(win); sw.textWin = win; sw.textBar = tb;
         const gb = put(nb.cloneNode(true));                         // the page underneath's buttons this page does not have: they come when the finger lets go
         for (const k of gb.children) { const g = GLASS.includes(k.id) && !k.hidden && !vis(live, k.id); k.style.visibility = "hidden"; if (g) sw.glassIn.push(k); }
         sw.glassBar = gb;
@@ -1229,7 +1244,7 @@ import { reportRange, buildReport } from "./report.js";
     if (sw.dockSlides && sw.dock) { sw.dock.style.transition = tr("transform"); sw.dock.style.transform = move; }
     if (sw.shot) { sw.shot.style.transition = tr("transform"); sw.shot.style.transform = "translate3d(" + under + "px,0,0)"; }   // the page underneath comes in from 30% to the left
     sw.dim.style.transition = tr("opacity"); sw.dim.style.opacity = String(1 - p);
-    if (sw.textBar && sw.barRect) { const r = sw.barRect, right = Math.max(0, r.width - (sw.dx - r.left - under)); sw.textBar.style.transition = ease ? tr("transform") + ", " + tr("clip-path") : "none"; sw.textBar.style.transform = "translate3d(" + under + "px,0,0)"; sw.textBar.style.clipPath = "inset(0 " + right + "px 0 0)"; }
+    if (sw.textWin && sw.textBar) { const at = sw.dx - sw.w; sw.textWin.style.transition = tr("transform"); sw.textWin.style.transform = "translate3d(" + at + "px,0,0)"; sw.textBar.style.transition = tr("transform"); sw.textBar.style.transform = "translate3d(" + (under - at) + "px,0,0)"; }   // the window's right edge on the leaving page's edge; the logo where the page underneath is
     if (sw.hdr && sw.hdr.style) {
       if (ease) { sw.hdr.style.setProperty("--swipe-ms", ease.ms + "ms"); sw.hdr.style.setProperty("--swipe-ease", ease.css); }
       sw.hdr.classList.toggle("bar-anim", !!ease); setBar(Math.round((sw.barFrom + (sw.barTo - sw.barFrom) * p) * 100) / 100);
@@ -1242,7 +1257,7 @@ import { reportRange, buildReport } from "./report.js";
     if (sw.shot) { sw.shot.style.transition = ""; sw.shot.style.transform = ""; for (const d of sw.shot.querySelectorAll(".shot-dock")) d.style.visibility = ""; if (sw.shot.parentNode) sw.shot.parentNode.removeChild(sw.shot); }   // the copy is kept for a later swipe to the same page
     if (sw.layer) sw.layer.remove();
     for (const a of sw.anims || []) { try { a.cancel(); } catch (_) {} }
-    if (sw.textBar) sw.textBar.remove(); if (sw.glassBar) sw.glassBar.remove();
+    if (sw.textWin) sw.textWin.remove(); if (sw.glassBar) sw.glassBar.remove();
     if (sw.hdr) { sw.hdr.classList.remove("bar-anim"); sw.hdr.style.removeProperty("--swipe-ms"); sw.hdr.style.removeProperty("--swipe-ease"); }
     document.body.classList.remove("swipe-busy");
     if (sw.ac) sw.ac.abort();
@@ -3507,7 +3522,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
