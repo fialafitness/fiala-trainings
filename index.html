@@ -30,7 +30,6 @@
     --r-field: 14px;                    /* inputs, fields, menus */
     --r-chip: 12px;                     /* small chips and day cells */
     --surface: #f5f5f7;                 /* the page: iOS grouped background */
-    --surface-rgb: 245,245,247;
     --sheet: #ffffff;                   /* bottom sheet (the day picker) */
     --sheet-list: #f5f5f7;              /* a grouped list inside a sheet: the page grey on the white sheet */
     --elevated: #ffffff;                /* anything that floats: menus, keyboard bar, sheet */
@@ -40,7 +39,6 @@
     --card: #ffffff;
     --card-border: rgba(0,0,0,0.06);    /* hairlines inside cards */
     --card-edge: transparent;           /* around a card: none in light, a faint line in dark */
-    --header-rgb: 255,255,255; --header-a: 0.74;   /* the same, in parts: the bar's own colour fades with the scroll (see header) */
     --header: rgba(255,255,255,0.74);   /* the top bar, measured off Apple Mail (iOS 26): 74% over what scrolls under it, a 2-point blur, a hairline at its edge */
     --header-border: rgba(0,0,0,0.04);  /* border-on-light-subtle */
     --field: #ffffff;                   /* a field on the grouped page is a white cell */
@@ -76,7 +74,6 @@
       --text-secondary: rgba(255,255,255,0.75);
       --text-tertiary: rgba(255,255,255,0.55);
       --surface: #000000;               /* Apple's dark background: one black, no gradient */               /* surface-black — night mode */
-      --surface-rgb: 0,0,0;
       --sheet: #2c2c2e;
       --sheet-list: rgba(255,255,255,0.08);
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
@@ -87,7 +84,6 @@
       --card-border: rgba(255,255,255,0.10);
       --card-edge: rgba(255,255,255,0.10);
       --header: rgba(11,11,11,0.74);
-      --header-rgb: 11,11,11; --header-a: 0.74;
       --header-border: rgba(255,255,255,0.067);
       --field: rgba(255,255,255,0.08);
       --field-in: rgba(255,255,255,0.08);
@@ -122,7 +118,6 @@
     --text-secondary: rgba(255,255,255,0.75);
     --text-tertiary: rgba(255,255,255,0.55);
     --surface: #000000;               /* Apple's dark background: one black, no gradient */
-    --surface-rgb: 0,0,0;
     --sheet: #2c2c2e;
     --sheet-list: rgba(255,255,255,0.08);
       --elevated: #2c2c2e;              /* floating surfaces sit lighter in the dark */
@@ -133,7 +128,6 @@
     --card-border: rgba(255,255,255,0.10);
     --card-edge: rgba(255,255,255,0.10);
     --header: rgba(11,11,11,0.74);
-    --header-rgb: 11,11,11; --header-a: 0.74;
     --header-border: rgba(255,255,255,0.067);
     --field: rgba(255,255,255,0.08);
     --field-in: rgba(255,255,255,0.08);
@@ -195,23 +189,27 @@
     position: sticky;
     top: env(safe-area-inset-top, 0px);
     z-index: 5;
+    width: 75%; margin: 0 auto;                         /* the pinned box is narrower than the screen; its look (::before) and its buttons (.bar) still run edge to edge. iOS 26 (the home-screen
+                                                           app, and Safari) paints the strip under the clock one solid colour whenever a pinned box at the top spans most of the screen's width
+                                                           (WebKit LocalFrameView::fixedContainerEdges: 90% of the width less 8 points from iOS 26.1 on, 80% on 26.0; a narrower box is
+                                                           passed over): the bar's colour if the box has one (v218 to v221: a white or black band, his screenshots 7 Nov), the page's if it
+                                                           has its own blur (October). With none, the strip is left alone and the page scrolls under the time with iOS's own soft blur, as
+                                                           in Apple's apps. Keep the header without a background or blur of its own, and under 80% wide */
     border-bottom: 1px solid transparent;               /* the hairline's place: the line itself is drawn by the bar below, so the page never moves */
-    background-color: rgba(var(--header-rgb), max(0.01, calc(var(--header-a) * var(--bar, 0))));   /* the bar's tint is the header's own colour, never quite 0: a Safari tab (iOS 26) reads the clock strip's colour from it each time, where a picture of the bar it would keep from the first scroll on */
   }
-  header.at-top { background-color: rgba(var(--surface-rgb), 0.01); }   /* at the very top, the page's own colour (as faint): a Safari tab that takes the bar's colour at full strength (iOS 26.0, 26.1) then shows the page's colour under the clock */
   header::before {                                      /* the bar, as Apple's (measured off his Messages screenshots, iOS 26): at the top of a page there is no bar and no line, page and bar are one
-                                                           screen; as the page scrolls under it the frosted bar and its hairline fade in (main.js sets --bar).
-                                                           Nothing of the bar reaches up under the clock: the home-screen app then leaves the clock's strip see-through and the page scrolls
-                                                           under the time, as in Apple's apps. A bar reaching up there (v220) made iOS cover the strip with one solid colour, the bar's,
-                                                           and hide the page under it (his screenshots, 7 Nov) */
+                                                           screen; as the page scrolls under it the frosted bar and its hairline fade in (main.js sets --bar). Apple Mail's numbers: 74% of the
+                                                           bar's colour over a 2-point blur, a hairline at its edge. It runs the screen's full width (a sixth of the 75% box on each side) and
+                                                           never up under the clock */
     content: ""; position: absolute; z-index: -1; pointer-events: none;
-    left: 0; right: 0; top: 0; bottom: -1px;
+    left: calc(-100% / 6); right: calc(-100% / 6); top: 0; bottom: -1px;   /* exactly to the screen's edges: any overhang would let the page drift sideways */
+    background: var(--header);
     -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
     border-bottom: 1px solid var(--header-border);
     opacity: var(--bar, 0);
   }
-  .bar { max-width: 680px; margin: 0 auto; padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .bar { width: min(680px, 100% * 4 / 3); margin-left: calc(50% - min(340px, 100% * 2 / 3)); padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }   /* as wide as the screen (4/3 of the 75% header), up to 680 points, centred: the buttons stay where they always were */
   .back {                                                   /* Apple's back button: a 44-point circle with the chevron alone (measured off his Contacts screenshot); the place you came from is read by VoiceOver, not shown */
     appearance: none; border: 0; padding: 0; border-radius: 50%; position: relative; flex: none;
     background: var(--disc-fill); color: var(--disc-ink); font: inherit; cursor: pointer;
@@ -1047,7 +1045,7 @@
   /* the edge swipe (home-screen app): the page follows the finger over a still copy of the page it goes back to */
   main.swiping { position: relative; z-index: 2; background: var(--surface); min-height: 100vh; box-shadow: -12px 0 32px rgba(0,0,0,0.22); will-change: transform; }
   main.swiping { margin-top: calc(-1 * (env(safe-area-inset-top, 0px) + 57px)); border-top: calc(env(safe-area-inset-top, 0px) + 57px) solid var(--surface); min-height: calc(100vh + env(safe-area-inset-top, 0px) + 57px); margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px)); border-bottom: env(safe-area-inset-bottom, 0px) solid var(--surface); }   /* the sliding page reaches up under the bar and the clock (the bar is 56 points and its 1-point line) and down to the screen's bottom edge, as Apple's: no band of the page underneath above or below it, and its edge shadow runs the full height; the page's content does not move */
-  header.bar-anim, header.bar-anim::before { transition: background-color 250ms cubic-bezier(.2,.8,.2,1), opacity 250ms cubic-bezier(.2,.8,.2,1); }   /* a swipe let go: the bar settles with the page */
+  header.bar-anim::before { transition: opacity 250ms cubic-bezier(.2,.8,.2,1); }   /* a swipe let go: the bar settles with the page */
   .swipe-under { position: fixed; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; background: var(--surface); }
   .swipe-under .nav-shot { position: absolute; inset: 0; will-change: transform; }
   .swipe-under .nav-shot #dock, .swipe-under .nav-shot .dock-add { display: none !important; }
@@ -1567,7 +1565,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=221";
+  import { boot } from "./app/main.js?v=222";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
