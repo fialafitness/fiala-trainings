@@ -209,6 +209,7 @@
     position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; height: 0; padding: 8px 0; box-sizing: content-box; z-index: 6; pointer-events: none;
     background-color: color-mix(in srgb, var(--surface), var(--bar-solid) var(--bar-pct, 0%)); background-clip: content-box;
   }
+  #topEdge[hidden] { display: none; }                  /* while the page is pulled past its top (main.js): WebKit does not read the strip then and would keep a carrier's old colour for as long as the carrier is on screen; with none at all it lets the strip go to the page's own colour at once */
   #edgeNudge { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }   /* main.js shows or hides it each time the strip's colour changes: a pinned element
                                                            appearing or going makes WebKit read the strip again on the next frame (RenderLayerModelObject add/removeViewportConstrainedObject
                                                            → WebPage::didAddOrRemoveViewportConstrainedObjects). A colour change alone it may not re-read: v227's strip kept the bar's colour after
@@ -225,6 +226,7 @@
     backdrop-filter: blur(2px);
     border-bottom: 1px solid var(--header-border);
     opacity: var(--bar, 0);
+    transition: opacity 100ms linear;                   /* the strip under the clock changes colour over 0.1 s, linear (WebKit WKColorExtensionView: animationDuration 0.1, a plain CABasicAnimation): the bar fades on the same curve, so the two move as one however fast the scroll */
   }
   .bar { width: min(680px, 100vw); margin-left: calc(50% - min(340px, 50vw)); padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }   /* as wide as the screen, up to 680 points, centred on it whether the header is 75% or 100% wide: the buttons stay where they always were */
   .back {                                                   /* Apple's back button: a 44-point circle with the chevron alone (measured off his Contacts screenshot); the place you came from is read by VoiceOver, not shown */
@@ -1584,7 +1586,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=231";
+  import { boot } from "./app/main.js?v=232";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
