@@ -219,7 +219,7 @@ import { reportRange, buildReport } from "./report.js";
   const THEME_KEY = "fiala.theme";
   // theme-color: the page's own colour, always. The strip under the clock is not ours to paint: iOS leaves it see-through (the page scrolls
   // under the time, as in Apple's apps) as long as no pinned box spans the screen's width (index.html, header)
-  const themeColours = { light: "#f5f5f7", dark: "#000000" };
+  const themeColours = { light: "#f5f5f5", dark: "#000000" };
   let themeChoice = "auto";
   // ---- the top bar, as Apple's: none at the top of a page; the frosted bar and its hairline fade in over the first 12 points the page scrolls under it
   const BAR_FADE = 12;

@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Fiala">
-<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,9 +29,10 @@
     --r-card: 26px;                     /* cards, grouped lists, sheets — iOS inset-grouped corner */
     --r-field: 14px;                    /* inputs, fields, menus */
     --r-chip: 12px;                     /* small chips and day cells */
-    --surface: #f5f5f7;                 /* the page: iOS grouped background */
+    --surface: #f5f5f5;                 /* the page: iOS grouped background, as a pure grey (it was #f5f5f7): iOS fills the strip under the clock with a pure grey of its own (it drops a colour's faint tint:
+                                           #f5f5f7 came out 247,247,247, #fcfcfd 253,253,253 in his screenshots, 7 Nov), so only a pure grey page meets it with no line */
     --sheet: #ffffff;                   /* bottom sheet (the day picker) */
-    --sheet-list: #f5f5f7;              /* a grouped list inside a sheet: the page grey on the white sheet */
+    --sheet-list: #f5f5f5;              /* a grouped list inside a sheet: the page grey on the white sheet */
     --elevated: #ffffff;                /* anything that floats: menus, keyboard bar, sheet */
     --seg-on: #ffffff;                  /* the chosen segment: a raised white key */
     --seg-shadow: rgba(0,0,0,0.12);
@@ -40,10 +41,10 @@
     --card-border: rgba(0,0,0,0.06);    /* hairlines inside cards */
     --card-edge: transparent;           /* around a card: none in light, a faint line in dark */
     --header: rgba(255,255,255,0.74);   /* the top bar, measured off Apple Mail (iOS 26): 74% over what scrolls under it, a 2-point blur, a hairline at its edge */
-    --bar-solid: #fcfcfd;               /* the bar over the bare page as one solid colour (74% white over #f5f5f7): what iOS paints under the clock once the page scrolls (see #topEdge) */
+    --bar-solid: #fcfcfc;               /* the bar over the bare page as one solid colour (74% white over #f5f5f5), a pure grey like everything iOS paints under the clock: the strip's colour once the page scrolls (see #topEdge) */
     --header-border: rgba(0,0,0,0.04);  /* border-on-light-subtle */
     --field: #ffffff;                   /* a field on the grouped page is a white cell */
-    --field-in: #f5f5f7;                /* a field inside a white card is grey */
+    --field-in: #f5f5f5;                /* a field inside a white card is grey */
     --inset: #f2f2f4; --inset-field: #ffffff;   /* a superset: each exercise on a grey panel inside the white card, its boxes white on it */
     --glyph-fill: rgba(120,120,128,0.14); /* the circle behind a small symbol (secondary system fill) */
     --brand-soft: rgba(111,107,153,0.14); --danger-soft: rgba(166,58,70,0.11);   /* tinted capsules: the colour at a breath of opacity behind text in that colour */
@@ -211,14 +212,14 @@
   }
   header::before {                                      /* the bar, as Apple's: at the top of a page there is no bar and no line, page and bar are one screen; as the page scrolls under it
                                                            the bar and its hairline fade in (main.js sets --bar). It starts in the strip's solid colour, so the strip runs on into it with no
-                                                           seam, and turns see-through towards the hairline: 74% of the bar's colour there (Apple Mail), over a 4-point blur (Apple Mail,
-                                                           measured 7 Nov: a pink icon's edge spreads over 24-33 pixels under the clock and 16-30 in the bar). The 100 points above the
-                                                           header are for a browser that draws the strip itself (iOS clips them away) */
+                                                           seam, and is see-through below that: 74% of the bar's colour over a 2-point blur (Apple Mail, as since v218; v226's 4-point blur and
+                                                           a fade over the whole bar made it look much darker to him). The 100 points above the header are for a browser that draws the strip
+                                                           itself (iOS clips them away) */
     content: ""; position: absolute; z-index: -1; pointer-events: none;
     left: calc(50% - 50vw); right: calc(50% - 50vw); top: -100px; bottom: -1px;   /* exactly the screen's width: an overhang would let the page drift sideways */
-    background: linear-gradient(to bottom, var(--bar-solid) 0, var(--bar-solid) 100px, var(--header) 100%);
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
+    background: linear-gradient(to bottom, var(--bar-solid) 100px, var(--header) 124px);   /* solid where it meets the strip, Apple Mail's 74% from 24 points down: iOS's own soft edge fades over about 25 points (his v222 screenshot) */
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
     border-bottom: 1px solid var(--header-border);
     opacity: var(--bar, 0);
   }
@@ -1579,7 +1580,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=226";
+  import { boot } from "./app/main.js?v=227";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
