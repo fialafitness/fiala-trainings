@@ -235,22 +235,14 @@ import { reportRange, buildReport } from "./report.js";
   function setBar(v) {                                              // the bar's level on the header (its look fades with it: index.html, header::before); the header itself never changes size or colour
     const h = document.querySelector("header"); if (!h || !h.style) return;
     h.style.setProperty("--bar", String(v));
-    const edge = document.getElementById("topEdge"); if (edge && edge.style) edge.style.setProperty("--bar-pct", (v * 100) + "%");   // the clock's strip: the page's colour at the top, the bar's solid colour once scrolled, blended with the bar (index.html, #topEdge)
-    nudgeEdge();
   }
-  function nudgeEdge() {                                            // a pinned element appearing or going: WebKit reads the strip's colour again on the next frame (index.html, #edgeNudge)
-    const nudge = document.getElementById("edgeNudge"); if (nudge) nudge.hidden = !nudge.hidden;
+  function nudgeEdge() {                                            // a pinned element appearing or going: WebKit reads the strip under the clock again on the next frame (index.html, #edgeNudge); the strip itself
+    const nudge = document.getElementById("edgeNudge"); if (nudge) nudge.hidden = !nudge.hidden;   // is always the page's colour, so this is needed only when that colour changes (the theme)
   }
-  let edgeRest = 0;
   function paintBar() {
     const y = Number(window.scrollY) || 0;                          // a pull past the top (Safari's bounce) reads below 0: no bar, as Apple's
     const v = Math.round(Math.min(1, Math.max(0, y / BAR_FADE)) * 100) / 100;
     if (v !== barLevel) { barLevel = v; setBar(v); }
-    const edge = document.getElementById("topEdge"), pulled = y < 0;   // pulled past the top (a fast flick's bounce): no carrier at all, so the strip drops the bar's colour at once instead of keeping it until the
-    if (edge && edge.hidden !== pulled) edge.hidden = pulled;          // page comes back (WebKit neither reads the strip then nor keeps a colour whose element is gone); back in range it returns in the page's colour
-    clearTimeout(edgeRest); edgeRest = setTimeout(nudgeEdge, 150);   // once more when the page has come to rest: while it is pulled past its top (a fast flick's bounce) WebKit skips the strip and keeps
-                                                                      // its old colour (Page::updateFixedContainerEdges: scrollOffset < minimumScrollOffset), so the read made as the bar reached 0 mid-bounce
-                                                                      // left the bar's 253 over the 246 page (his screenshots, 7 Nov: slow 246/246, fast 253/246)
   }
   window.addEventListener("scroll", paintBar, { passive: true });
   window.addEventListener("resize", paintBar);
@@ -258,11 +250,12 @@ import { reportRange, buildReport } from "./report.js";
     v = v === "light" || v === "dark" ? v : "auto";
     themeChoice = v;
     if (v === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", v);
-    paintStrip();
+    paintStrip(); nudgeEdge();                                      // the strip under the clock takes the new page colour at once
     for (const b of $("themeSeg").querySelectorAll("button")) { b.classList.toggle("on", b.dataset.theme === v); b.setAttribute("aria-checked", b.dataset.theme === v ? "true" : "false"); }
   }
   applyTheme(lsGet(THEME_KEY));
   paintBar();
+  try { const mq = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)"); if (mq && mq.addEventListener) mq.addEventListener("change", nudgeEdge); } catch (_) {}   // the phone switching light/dark: the strip follows at once
   $("themeSeg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; lsSet(THEME_KEY, b.dataset.theme); applyTheme(b.dataset.theme); });
   function showSettings() {
     settingsOpen = "settings"; fromSettings = false; hideAllViews(); $("vSettings").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
