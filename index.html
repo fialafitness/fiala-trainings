@@ -41,7 +41,6 @@
     --card-border: rgba(0,0,0,0.06);    /* hairlines inside cards */
     --card-edge: transparent;           /* around a card: none in light, a faint line in dark */
     --header: rgba(255,255,255,0.74);   /* the top bar, measured off Apple Mail (iOS 26): 74% over what scrolls under it, a 2-point blur, a hairline at its edge */
-    --bar-meet: rgba(255,255,255,0);    /* the bar's top edge: the look iOS's own blur has where it ends, just above (his screenshots, 7 Nov: under the clock the page kept its own 246, no white at all) */
     --header-border: rgba(0,0,0,0.04);  /* border-on-light-subtle */
     --field: #ffffff;                   /* a field on the grouped page is a white cell */
     --field-in: #f5f5f5;                /* a field inside a white card is grey */
@@ -86,7 +85,6 @@
       --card-border: rgba(255,255,255,0.10);
       --card-edge: rgba(255,255,255,0.10);
       --header: rgba(11,11,11,0.74);
-      --bar-meet: rgba(12,12,12,0.52);   /* iOS's blur where it ends, measured: black lifted to 6-7, what scrolls under it at about 48% */
       --header-border: rgba(255,255,255,0.067);
       --field: rgba(255,255,255,0.08);
       --field-in: rgba(255,255,255,0.08);
@@ -131,7 +129,6 @@
     --card-border: rgba(255,255,255,0.10);
     --card-edge: rgba(255,255,255,0.10);
     --header: rgba(11,11,11,0.74);
-    --bar-meet: rgba(12,12,12,0.52);   /* iOS's blur where it ends, measured: black lifted to 6-7, what scrolls under it at about 48% */
     --header-border: rgba(255,255,255,0.067);
     --field: rgba(255,255,255,0.08);
     --field-in: rgba(255,255,255,0.08);
@@ -215,12 +212,16 @@
   }
   #topEdge[hidden] { display: none; }
   header::before {                                      /* the bar, as Apple's: at the top of a page there is no bar and no line, page and bar are one screen; as the page scrolls under it
-                                                           the bar and its hairline fade in (main.js sets --bar). It begins in the look iOS's own blur has where it ends, just above
-                                                           (--bar-meet: measured off his screenshots, 7 Nov), and fades over 24 points (iOS's own soft edge fades over about 25) into
-                                                           Apple Mail's frost: 74% of the bar's colour over a 2-point blur, a hairline at its edge */
+                                                           the bar and its hairline fade in (main.js sets --bar). Apple Mail's frost: 74% of the bar's colour over a 2-point blur, a hairline
+                                                           at its edge. Its frost fades in from nothing over its top 24 points (the mask), because iOS's own blur under the clock runs on
+                                                           about 20 points into the bar (his v228 screenshot, 7 Nov: an edge 12-13 px wide at the bar's top, 18-25 px below it): v228's frost
+                                                           started at full strength on top of it and made a line (the Templates card 53-57 just above, 43-46 just below). Now iOS's blur hands
+                                                           over to the frost gradually, with no edge */
     content: ""; position: absolute; z-index: -1; pointer-events: none;
     left: calc(50% - 50vw); right: calc(50% - 50vw); top: 0; bottom: -1px;   /* exactly the screen's width: an overhang would let the page drift sideways */
-    background: linear-gradient(to bottom, var(--bar-meet) 0, var(--header) 24px);
+    background: var(--header);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
     -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
     border-bottom: 1px solid var(--header-border);
@@ -1583,7 +1584,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=228";
+  import { boot } from "./app/main.js?v=229";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
