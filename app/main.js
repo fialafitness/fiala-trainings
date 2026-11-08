@@ -235,7 +235,7 @@ import { reportRange, buildReport } from "./report.js";
   function setBar(v) {                                              // the bar's level on the header (its look fades with it: index.html, header::before); the header itself never changes size or colour
     const h = document.querySelector("header"); if (!h || !h.style) return;
     h.style.setProperty("--bar", String(v));
-    const edge = document.getElementById("topEdge"); if (edge && edge.style) edge.style.setProperty("--bar-pct", (v * 100) + "%");   // the clock's strip: the page's colour at the top, the bar's once scrolled, blended as the bar fades in (index.html, #topEdge)
+    const edge = document.getElementById("topEdge"); if (edge) edge.hidden = v !== 0;   // only at the very top: the clock's strip in the page's colour, iOS's blur off; scrolled, iOS's blur (index.html, #topEdge)
   }
   function paintBar() {
     const y = Number(window.scrollY) || 0;                          // a pull past the top (Safari's bounce) reads below 0: no bar, as Apple's
