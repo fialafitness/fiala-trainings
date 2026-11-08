@@ -236,12 +236,19 @@ import { reportRange, buildReport } from "./report.js";
     const h = document.querySelector("header"); if (!h || !h.style) return;
     h.style.setProperty("--bar", String(v));
     const edge = document.getElementById("topEdge"); if (edge && edge.style) edge.style.setProperty("--bar-pct", (v * 100) + "%");   // the clock's strip: the page's colour at the top, the bar's solid colour once scrolled, blended with the bar (index.html, #topEdge)
-    const nudge = document.getElementById("edgeNudge"); if (nudge) nudge.hidden = !nudge.hidden;   // a pinned element appearing or going: WebKit reads the strip's colour again on the next frame, however fast the scroll (index.html, #edgeNudge)
+    nudgeEdge();
   }
+  function nudgeEdge() {                                            // a pinned element appearing or going: WebKit reads the strip's colour again on the next frame (index.html, #edgeNudge)
+    const nudge = document.getElementById("edgeNudge"); if (nudge) nudge.hidden = !nudge.hidden;
+  }
+  let edgeRest = 0;
   function paintBar() {
     const y = Number(window.scrollY) || 0;                          // a pull past the top (Safari's bounce) reads below 0: no bar, as Apple's
     const v = Math.round(Math.min(1, Math.max(0, y / BAR_FADE)) * 100) / 100;
     if (v !== barLevel) { barLevel = v; setBar(v); }
+    clearTimeout(edgeRest); edgeRest = setTimeout(nudgeEdge, 150);   // once more when the page has come to rest: while it is pulled past its top (a fast flick's bounce) WebKit skips the strip and keeps
+                                                                      // its old colour (Page::updateFixedContainerEdges: scrollOffset < minimumScrollOffset), so the read made as the bar reached 0 mid-bounce
+                                                                      // left the bar's 253 over the 246 page (his screenshots, 7 Nov: slow 246/246, fast 253/246)
   }
   window.addEventListener("scroll", paintBar, { passive: true });
   window.addEventListener("resize", paintBar);
