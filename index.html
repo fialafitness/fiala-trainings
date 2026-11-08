@@ -212,6 +212,15 @@
     border-bottom: 1px solid var(--header-border);
     opacity: var(--bar, 0);
   }
+  #topEdge {                                            /* the very top of a page only (main.js hides it as soon as the page scrolls): a thin strip in the page's colour (as faint) across the
+                                                           screen, above the header. iOS takes it for the strip under the clock and fills that strip with the page's colour, one screen, and
+                                                           keeps its own soft blur off, which would smear the logo and the photo up into the strip (his screenshots, 7 Nov). Once hidden
+                                                           (display: none, no box at all) iOS drops its colour (WebKit Page::updateFixedContainerEdges keeps a colour only while that
+                                                           element is still on screen), the header (75%) is passed over, and the strip is see-through. Never use the header itself for this */
+    position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; height: 16px; z-index: 6; pointer-events: none;
+    background-color: color-mix(in srgb, var(--surface) 1%, transparent);
+  }
+  #topEdge[hidden] { display: none; }
   .bar { width: min(680px, 100vw); margin-left: calc(50% - min(340px, 50vw)); padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }   /* as wide as the screen, up to 680 points, centred on it whether the header is 75% or 100% wide: the buttons stay where they always were */
   .back {                                                   /* Apple's back button: a 44-point circle with the chevron alone (measured off his Contacts screenshot); the place you came from is read by VoiceOver, not shown */
     appearance: none; border: 0; padding: 0; border-radius: 50%; position: relative; flex: none;
@@ -1248,6 +1257,7 @@
     <div id="status" role="status" aria-live="polite"></div><button class="disc hdr-disc" id="meDisc" type="button" aria-label="Settings" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-3.8 4-5.6 7.5-5.6s6.5 1.8 7.5 5.6"/></svg><span class="avatar" aria-hidden="true"></span></button><button class="nav-action" id="navDone" type="button" hidden>Done</button>
   </div>
 </header>
+<div id="topEdge" aria-hidden="true"></div>
 
 <main>
   <section id="vLogin" hidden>
@@ -1568,7 +1578,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=224";
+  import { boot } from "./app/main.js?v=225";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
