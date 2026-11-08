@@ -4,7 +4,7 @@ import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeight
 import { uid, now, today, localIso, fmtDate, fmtDay, fmtDayLong, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
 import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, labelKey, cmpLabel, validateBackup, doneCount, timedPlan, measurePlan, convertWeight, stampUnit, toUnit, toTimeUnit, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
-import { seenDoc, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
+import { seenDoc, moveOut, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
 import { initials, paintAvatar, photoFor, setPhoto, loadPhoto, squarePhoto, cropPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue } from "./photos.js";
 import { reportRange, buildReport } from "./report.js";
@@ -184,7 +184,7 @@ import { reportRange, buildReport } from "./report.js";
     } catch { return null; }
   }
 
-  function hideAllViews() { navWillChange(); $("meDisc").hidden = true;
+  function hideAllViews() { navWillChange(); $("meDisc").hidden = true; $("tMore").hidden = true; closeMoreMenu();
     rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
     $("tabbar").hidden = true; $("addBtn").hidden = true; document.body.classList.remove("tabs");
     for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vClientCard", "vHistory", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
@@ -968,7 +968,8 @@ import { reportRange, buildReport } from "./report.js";
     window.addEventListener("pagehide", () => scrollMode("auto"));
     window.addEventListener("pageshow", (e) => { if (e && e.persisted) scrollMode("manual"); });
   }
-  let popClose = null;                                              // the frosted bubble or menu that is open, if one is: its own close
+  let popClose = null, popAnchor = null;                            // the frosted bubble or menu that is open, if one is: its own close, and the button it hangs from
+  const closeMoreMenu = () => { if (popClose && popAnchor === $("tMore") && $("tMore").hidden) popClose(); };   // a redraw that takes the workout's "…" away (a sync brought a finish, a skip, a delete) takes its menu with it
   const stateDepth = () => { try { const st = hasState() && history.state; return st && typeof st.fiala === "number" ? st.fiala : 0; } catch (_) { return 0; } };
   nav.depth = stateDepth();
   try { if (hasState() && !(history.state && typeof history.state.fiala === "number")) history.replaceState({ fiala: nav.depth }, ""); } catch (_) {}   // the page's own first step carries its number, so going back to it is never mistaken for anything else
@@ -1077,7 +1078,7 @@ import { reportRange, buildReport } from "./report.js";
   // The move that holds does nothing else, so its answer reaches WebKit at once; should the page scroll anyway, the swipe settles back.
   let swipeOn = (() => { try { return (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || (typeof navigator !== "undefined" && navigator.standalone === true); } catch (_) { return false; } })();
   const SWIPE_EDGE = 24, SWIPE_GO = 8, NO_SWIPE = "#calView, #week, #dpGrid, .tr-chips, .kb-chips, .grip, .alt-menu, .sugg, input, textarea, select, [contenteditable]";   // things that drag sideways or scroll themselves keep the touch (Apple's rule for its swipe from anywhere)
-  const GLASS_RES = 0.416, GLASS_DAMP = 0.75, GLASS = ["back", "meDisc", "navDone"];   // the bar's buttons, and their change on release
+  const GLASS_RES = 0.416, GLASS_DAMP = 0.75, GLASS = ["back", "meDisc", "navDone", "tMore"];   // the bar's buttons, and their change on release
   const easeMemo = new Map();
   const springEase = (v0, response, damping) => {                   // a spring (from rest at 0 to 1, starting at speed v0 in "whole distances per second") as a CSS easing and its length,
     const key = v0.toFixed(2) + "|" + response + "|" + damping; if (easeMemo.has(key)) return easeMemo.get(key);   // ending where it first arrives: past that it only overshoots (0.6% at rest, 1.2% at the fastest start allowed, 2.8% for the buttons) and comes back, which a page underneath shows as a bounce past its place
@@ -1119,7 +1120,7 @@ import { reportRange, buildReport } from "./report.js";
   const lookNow = () => (document.body.classList.contains("client") ? "client" : "coach") + "@" + (Number(window.innerWidth) || 0);
   function barFor(key) {                                            // the bar's buttons on the screen with this key (keep in step with render() and the settings pages)
     const [vk, sub] = String(key).split("|"), [name, id] = vk.split("/"), home = !sub && (name === "clients" || (S.clientMode && name === "client"));
-    return { back: !home, brand: home, meDisc: !sub && name === "client" && !isTemplateClient(id), navDone: sub === "exercise", id };
+    return { back: !home, brand: home, meDisc: !sub && name === "client" && !isTemplateClient(id), navDone: sub === "exercise", tMore: !sub && name === "training" && canReschedule(trainings.get(id)), id };
   }
   function barCopy(key) {                                           // the bar as the screen Back goes to will show it, when there is no copy of that screen
     const live = document.querySelector("header .bar"); if (!live) return null;
@@ -1583,39 +1584,86 @@ import { reportRange, buildReport } from "./report.js";
     openBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id);
     haptic(); S.renderedTraining = null; render(); scrollToCard(g.key);
   }
-  function openDatePicker(opts) {
-    const selected = opts.selected || today();
-    dp = { clientId: opts.clientId, title: opts.title || "Pick a day", selected, month: selected.slice(0, 7), onPick: opts.onPick, back: document.activeElement };
-    renderDatePicker(); $("datePick").hidden = false;
+  function openDatePicker(opts) {                                    // opts: { clientId, title, selected, min ("YYYY-MM-DD", or a function giving it: nothing earlier can be picked), onPick }
+    const selected = opts.selected || today(), min = (typeof opts.min === "function" ? opts.min() : opts.min) || null, tm = today().slice(0, 7), sm = selected.slice(0, 7);
+    const lo = min ? min.slice(0, 7) : [monthAdd(sm, -12), monthAdd(tm, -12)].sort()[0], hi = [monthAdd(sm, 12), monthAdd(tm, 12)].sort()[1];
+    const start = min ? lo : [lo, monthAdd([sm, tm].sort()[1], -60)].sort()[1];   // at most five years of months: the window keeps the later of the day's month and this one, and so both whenever they are within five years
+    const months = []; for (let mk = start; mk <= hi && months.length < 61; mk = monthAdd(mk, 1)) months.push(mk);   // a year either side of the day and of today
+    const month = months.includes(sm) ? sm : months.includes(tm) ? tm : months[0];   // the day's month; one before the first allowed (an overdue workout), or beyond the five years, opens on this month
+    dp = { clientId: opts.clientId, title: opts.title || "Pick a day", selected, min: opts.min || null, months, month, aim: null, onPick: opts.onPick, ok: opts.ok || null, back: document.activeElement };   // ok: asked on every redraw; false closes the days (the workout was finished, skipped or left). min as a function is asked at every redraw: Reschedule's "from today on" moves on at midnight
+    dpIdx = Math.max(0, months.indexOf(month)); dpTouching = false; dpStale = false; dpRestAt = 0; clearTimeout(dpLater); renderDatePicker(); $("datePick").hidden = false;
+    dpShow(dp.month, false);                                         // opens on the day's month, without a slide (now that the sheet has its width)
     for (const el of document.querySelectorAll("main, header")) el.inert = true;
-    setTimeout(() => { const f = $("dpGrid").querySelector("button.sel") || $("dpCancel"); if (f && dp) f.focus({ preventScroll: true }); }, 0);
+    setTimeout(() => { const page = dpTrack() && dpTrack().children[dpIdx], f = (page && page.querySelector("button.sel:not(:disabled)")) || $("dpCancel"); if (f && dp) f.focus({ preventScroll: true }); }, 0);   // the chosen day when it is on the month shown
   }
   function closeDatePicker() {
-    const back = dp && dp.back; $("datePick").hidden = true; dp = null;
+    const back = dp && dp.back; $("datePick").hidden = true; dp = null; clearTimeout(dpLater);
     for (const el of document.querySelectorAll("main, header")) el.inert = false;
     if (back && typeof back.focus === "function" && document.contains(back)) back.focus({ preventScroll: true });
   }
+  // The months sit side by side on a track (index.html .dp-pager): it follows the finger and, let go, settles on a month on UIKit's own spring,
+  // as Apple's calendar does (measured 8 Nov in its picker, iOS 27.2: 1:1 under the finger; let go past half, or flicked, it goes on to the
+  // next month, under half it comes back; it settles in a third of a second, a spring without bounce, response 0.3 s). The settle is a
+  // cubic-bezier transition, so Core Animation runs it at the screen's own rate. (The browser's own scroll snapping followed the finger the
+  // same, but crawled for 0.8 s into place.) The arrows slide a month as Apple's do: a quarter of a second, easing in and out.
+  let dpTouching = false, dpStale = false, dpIdx = 0, dpRestAt = 0, dpLater = null;   // dpTouching: a finger is on the days; dpRestAt: when the months' slide or settle lands
+  const dpTrack = () => $("dpGrid").firstElementChild;
+  const dpW = () => { const g = $("dpGrid"), w = parseFloat(getComputedStyle(g).width); return w > 0 ? w : g.clientWidth || 0; };   // a month's exact width: CSS pixels can be fractional, and a rounded width walks the months off their letters, a little more each month
+  const dpMin = () => (dp && (typeof dp.min === "function" ? dp.min() : dp.min)) || null;   // the first day that can be picked, as of now
   function renderDatePicker() {
     if (!dp) return;
-    const list = clientTrainings(dp.clientId);
-    const [y, m] = dp.month.split("-").map(Number); const first = new Date(y, m - 1, 1, 12);
-    $("dpTitle").textContent = dp.title; $("dpMonth").textContent = monthTitle(dp.month); $("dpToday").hidden = dp.month === today().slice(0, 7);
-    const grid = $("dpGrid"); grid.replaceChildren();
-    const lead = (first.getDay() + 6) % 7;
-    for (let i = 0; i < lead; i++) { const b = document.createElement("button"); b.type = "button"; b.className = "out"; b.tabIndex = -1; b.setAttribute("aria-hidden", "true"); grid.appendChild(b); }
-    const days = new Date(y, m, 0).getDate();
-    for (let day = 1; day <= days; day++) {
-      const d = new Date(y, m - 1, day, 12); const key = localIso(d);
-      const dayWorkouts = list.filter((t) => effDate(t) === key && !(t.skippedAt && !t.completedAt));
-      const b = document.createElement("button"); b.type = "button";
-      if (key === today()) { b.classList.add("today"); b.setAttribute("aria-current", "date"); }
-      if (key === dp.selected) b.classList.add("sel");
-      const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(day);
-      b.append(dn, dayDots(dayWorkouts));
-      b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + dayWords(dayWorkouts));
-      b.addEventListener("click", () => { const pick = dp && dp.onPick; closeDatePicker(); if (pick) pick(key); });
-      grid.appendChild(b);
-    }
+    if (dpTouching) { dpStale = true; return; }                      // a sync's redraw never pulls the days from under a finger: it waits for the finger to lift
+    const wait = dpRestAt - Date.now(); if (wait > 0) { clearTimeout(dpLater); dpLater = setTimeout(renderDatePicker, wait + 20); return; }   // nor cuts a slide or a settle short: it waits for the months to land (as the client page's calendar waits for its slide)
+    if (dp.ok && !dp.ok()) { closeDatePicker(); return; }            // what the days were for is gone (a Reschedule whose workout was finished or skipped meanwhile)
+    const g = $("dpGrid"), list = clientTrainings(dp.clientId), t0 = today(), min = dpMin();
+    const byDay = new Map(); for (const t of list) { if (t.skippedAt && !t.completedAt) continue; const k = effDate(t); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(t); }   // each workout's day worked out once, not once for every day of every month
+    const fmt = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" });
+    $("dpTitle").textContent = dp.title;
+    const track = document.createElement("div"); track.className = "dp-track";
+    track.replaceChildren(...dp.months.map((mk) => {
+      const [y, m] = mk.split("-").map(Number), first = new Date(y, m - 1, 1, 12), page = document.createElement("div"); page.className = "cal"; page.dataset.month = mk;
+      const lead = (first.getDay() + 6) % 7;
+      for (let i = 0; i < lead; i++) { const b = document.createElement("button"); b.type = "button"; b.className = "out"; b.tabIndex = -1; b.setAttribute("aria-hidden", "true"); page.appendChild(b); }
+      const days = new Date(y, m, 0).getDate();
+      for (let day = 1; day <= days; day++) {
+        const d = new Date(y, m - 1, day, 12); const key = localIso(d);
+        const dayWorkouts = byDay.get(key) || [];
+        const b = document.createElement("button"); b.type = "button";
+        if (key === t0) { b.classList.add("today"); b.setAttribute("aria-current", "date"); }
+        if (key === dp.selected) b.classList.add("sel");
+        const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(day);
+        b.append(dn, dayDots(dayWorkouts));
+        b.setAttribute("aria-label", fmt.format(d) + dayWords(dayWorkouts));
+        if (min && key < min) { b.classList.add("off"); b.disabled = true; }   // before the first day allowed: shown, not pickable
+        else b.addEventListener("click", () => {
+          if (!dp) return; const now = dpMin(); if (now && key < now) { renderDatePicker(); return; }   // the days were drawn before midnight: yesterday is not picked, it greys out
+          const pick = dp.onPick; closeDatePicker(); if (pick) pick(key);
+        });
+        page.appendChild(b);
+      }
+      return page;
+    }));
+    g.replaceChildren(track);
+    dpPlace(-dpIdx * dpW(), null); dpSync();
+  }
+  function dpPlace(x, ease) {                                        // the track at x (the months to the left are off screen); on a curve, or at once
+    const t = dpTrack(); if (!t) return;
+    $("dpGrid").scrollLeft = 0;                                      // the pager itself never scrolls: only the track moves (a focus or a find could scroll it, and the months would sit off their letters)
+    t.style.transition = ease ? "transform " + ease.ms + "ms " + ease.css : "none"; t.style.transform = "translate3d(" + x + "px,0,0)";
+    dpRestAt = ease ? Date.now() + ease.ms : 0;
+  }
+  function dpShow(month, slide) {                                    // to a month: slid as Apple's arrows slide it, or put there at once
+    if (!dp) return; const i = dp.months.indexOf(month); if (i < 0) return;
+    dpIdx = i; dp.month = month;
+    dpPlace(-i * dpW(), slide && !calmMotion() ? { ms: 250, css: "cubic-bezier(0.45, 0, 0.55, 1)" } : null);
+    dpSync();
+  }
+  function dpSync() {                                                // the month shown (or being settled on): its name, the arrows, Today
+    if (!dp) return; dp.month = dp.months[dpIdx] || dp.month;
+    $("dpMonth").textContent = monthTitle(dp.month);
+    const tm = today().slice(0, 7); $("dpToday").hidden = dp.month === tm || !dp.months.includes(tm);
+    $("dpPrev").disabled = dpIdx <= 0; $("dpNext").disabled = dpIdx >= dp.months.length - 1;
+    const t = dpTrack(); if (t) [...t.children].forEach((p, i) => { p.inert = i !== dpIdx; });   // only the month shown takes focus, a tap or VoiceOver: Tab never lands on a day off screen
   }
   function applyTemplate(T, clientId, date) {
     lastUse.template = T.id; lastUse.client = clientId; lsSet("fiala.templates.last", lastUse);
@@ -1742,6 +1790,7 @@ import { reportRange, buildReport } from "./report.js";
     $("back").hidden = S.view.name === "clients" || (S.clientMode && S.view.name === "client");
     $("brand").hidden = !(S.view.name === "clients" || (S.clientMode && S.view.name === "client"));
     $("meDisc").hidden = !(S.view.name === "client" && !isTemplateClient(S.view.id));   // the person disc: on a client's page, every tab, nowhere else — Settings for the client, the card for the coach
+    $("tMore").hidden = !(S.view.name === "training" && canReschedule(trainings.get(S.view.id))); closeMoreMenu();   // the workout's "…" (Reschedule): the client's view (and the coach's Client view) of a workout still to do
     $("meDisc").setAttribute("aria-label", S.clientMode ? "Settings" : "Client card");
     paintMeDisc();
     if (S.clientMode && S.tab === "notes") setTab("workouts");   // Notes is the coach's tab
@@ -1864,15 +1913,51 @@ import { reportRange, buildReport } from "./report.js";
     es.reason = on ? b.dataset.reason : "";
   });
   $("datePick").addEventListener("click", (e) => { if (e.target === $("datePick")) closeDatePicker(); });
-  $("dpPrev").addEventListener("click", () => { if (dp) { dp.month = monthAdd(dp.month, -1); renderDatePicker(); } });
-  $("dpNext").addEventListener("click", () => { if (dp) { dp.month = monthAdd(dp.month, 1); renderDatePicker(); } });
-  $("dpToday").addEventListener("click", () => { if (dp) { dp.month = today().slice(0, 7); renderDatePicker(); } });
-  { const g = $("dpGrid"); let sx = null, sy = null, swiped = false;
-    g.addEventListener("pointerdown", (e) => { if (!e.isPrimary) return; sx = e.clientX; sy = e.clientY; swiped = false; });
-    g.addEventListener("pointermove", (e) => { if (sx === null || !e.isPrimary) return; const dx = e.clientX - sx, dy = e.clientY - sy; if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { try { g.setPointerCapture(e.pointerId); } catch {} } });
-    g.addEventListener("pointerup", (e) => { if (sx === null || !dp) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = sy = null; if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) { swiped = true; dp.month = monthAdd(dp.month, dx < 0 ? 1 : -1); renderDatePicker(); setTimeout(() => { swiped = false; }, 0); } });
-    g.addEventListener("pointercancel", () => { sx = sy = null; });
-    g.addEventListener("click", (e) => { if (swiped) { e.stopPropagation(); e.preventDefault(); } }, true);
+  $("dpPrev").addEventListener("click", () => { if (dp && dpIdx > 0) dpShow(dp.months[dpIdx - 1], true); });   // two quick taps: two months (the index is already the first slide's end)
+  $("dpNext").addEventListener("click", () => { if (dp && dpIdx < dp.months.length - 1) dpShow(dp.months[dpIdx + 1], true); });
+  $("dpToday").addEventListener("click", () => { if (dp) dpShow(today().slice(0, 7), true); });
+  { const g = $("dpGrid"); let sx = null, sy = null, base = 0, drag = null, pts = [], swallow = false, gw = 1, pid = null;
+    const at = () => { const t = dpTrack(), m = t && getComputedStyle(t).transform, w = dpW() || 1; if (!m || m === "none") return -dpIdx * w; const v = /matrix(3d)?\(([^)]+)\)/.exec(m); if (!v) return -dpIdx * w; const n = v[2].split(",").map(Number); return v[1] ? n[12] : n[4]; };   // where the track is, mid-settle too
+    g.addEventListener("pointerdown", (e) => {
+      if (!e.isPrimary) return;                                      // a second finger is not a new touch: the first one's slide goes on
+      g.classList.remove("dragged"); swallow = false;                // a new touch: the day under it may show its press again
+      if (!dp) return; pid = e.pointerId; sx = e.clientX; sy = e.clientY; drag = null; pts = [[e.timeStamp, e.clientX]]; gw = dpW() || 1; dpTouching = true;
+      if (Math.abs(at() + dpIdx * gw) > 1) { swallow = true; if (e.pointerType !== "mouse") g.classList.add("dragged"); }   // the months still settling: this touch only catches them, and its tap picks no day (as in UIKit)
+    });
+    g.addEventListener("pointermove", (e) => {
+      if (sx === null || !dp || e.pointerId !== pid) return; const dx = e.clientX - sx, dy = e.clientY - sy;
+      if (drag === null) {
+        if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {      // caught where it is, a settling month too, and moved from there 1:1
+          drag = true; base = at(); sx = e.clientX; try { g.setPointerCapture(e.pointerId); } catch (_) {}
+          const lo = -(dp.months.length - 1) * gw; if (base > 0) base *= 3; else if (base < lo) base = lo + (base - lo) * 3;   // caught bouncing back from past the first or the last month: where it is on screen is already a third of the pull, so the pull is put back and nothing jumps
+        }
+        else if (Math.abs(dy) > 8) drag = false;
+        if (drag !== null && e.pointerType !== "mouse") g.classList.add("dragged");   // not a tap: the day the finger landed on lets go of its grey
+      }
+      if (!drag) return;                                             // not decided yet, or the finger went up or down first: the months stay where they are
+      if (e.timeStamp - pts[pts.length - 1][0] >= 10) { pts.push([e.timeStamp, e.clientX]); if (pts.length > 4) pts.shift(); }
+      const w = gw, lo = -(dp.months.length - 1) * w; let x = base + (e.clientX - sx);
+      if (x > 0) x /= 3; else if (x < lo) x = lo + (x - lo) / 3;     // past the first or the last month it gives a little, as a scroll view does
+      dpPlace(x, null);
+    });
+    const release = (e, cancel) => {
+      if (sx === null || (e && e.pointerId !== pid)) return; const was = drag; sx = sy = null; drag = null; pid = null;   // only the finger that began it ends it
+      if (!was || !dp) { dpTouching = false; if (dpStale) { dpStale = false; setTimeout(renderDatePicker, 400); } return; }   // a tap: a redraw that waited goes once its click has picked the day (iPhone sends the click a moment after the lift)
+      swallow = true;                                                // the click a slide can still bring (iPhone sends it a moment later, not in this task) picks no day; the next touch clears this
+      const w = gw, x = at(), last = pts[pts.length - 1], rested = e && e.timeStamp - last[0] > 60;
+      const recent = pts.filter((p) => last[0] - p[0] <= 100), first = recent[0];   // the speed over the last tenth of a second, as UIKit measures it: a rest before a flick does not water the flick down
+      const v = rested || recent.length < 2 ? 0 : (last[1] - first[1]) / (last[0] - first[0]);   // px per ms; a finger that stopped has none
+      let i = Math.round(-x / w);
+      if (!cancel && Math.abs(v) > 0.3) i = v < 0 ? Math.floor(-x / w) + 1 : Math.ceil(-x / w) - 1;   // a flick goes on a month the way it went
+      i = Math.max(0, Math.min(dp.months.length - 1, i));
+      const to = -i * w, left = to - x, v0 = Math.abs(left) > 1 ? v * 1000 / left : 0;   // the finger's speed toward the month, in whole distances a second
+      dpIdx = i; dpSync(); dpTouching = false;
+      dpPlace(to, calmMotion() ? null : springEase(Math.max(-15, Math.min(15, v0)), 0.3, 1));
+      if (dpStale) { dpStale = false; setTimeout(renderDatePicker, 400); }   // a redraw that waited: once the month has settled
+    };
+    g.addEventListener("pointerup", (e) => release(e, false)); g.addEventListener("pointercancel", (e) => release(e, true));
+    g.addEventListener("click", (e) => { if (swallow && e.detail !== 0) { swallow = false; e.stopPropagation(); e.preventDefault(); } }, true);   // a keyboard's Enter (detail 0) is never a slide's click
+    if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", () => { if (dp) dpShow(dp.month, false); });   // turned: the month stays the one shown
   }
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && dp) closeDatePicker(); if (e.key === "Escape" && es) closeFinishEarly(); });
   $("calToday").addEventListener("click", () => { calMonth = today().slice(0, 7); calAnchor = calMonth; if (S.view.name === "client") renderClient(); });
@@ -1898,11 +1983,11 @@ import { reportRange, buildReport } from "./report.js";
     };
     $("calPrev").addEventListener("click", () => settle(-1));
     $("calNext").addEventListener("click", () => settle(1));
-    view_.addEventListener("pointerdown", (e) => { if (!e.isPrimary) return; if (busy && finishNow) finishNow(); if (busy) return; sx = e.clientX; sy = e.clientY; dragging = null; dx = 0; });
+    view_.addEventListener("pointerdown", (e) => { view_.classList.remove("dragged"); if (!e.isPrimary) return; if (busy && finishNow) finishNow(); if (busy) return; sx = e.clientX; sy = e.clientY; dragging = null; dx = 0; });
     view_.addEventListener("pointermove", (e) => {
       if (sx === null || busy || !e.isPrimary) return;
       dx = e.clientX - sx; const dy = e.clientY - sy;
-      if (dragging === null) { if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { dragging = true; try { view_.setPointerCapture(e.pointerId); } catch {} } else if (Math.abs(dy) > 8) dragging = false; }
+      if (dragging === null) { if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { dragging = true; try { view_.setPointerCapture(e.pointerId); } catch {} } else if (Math.abs(dy) > 8) dragging = false; if (dragging !== null && e.pointerType !== "mouse") view_.classList.add("dragged"); }   // not a tap: the day the finger landed on lets go of its grey
       if (dragging) {
         track.style.transition = "none"; track.style.transform = "translateX(calc(-100% + " + dx + "px))";
         const centre = track.children[1], side = track.children[dx < 0 ? 2 : 0];
@@ -2210,6 +2295,7 @@ import { reportRange, buildReport } from "./report.js";
 
   function paintFinish(t) {
     $("finishWrap").hidden = t.rows.length === 0;
+    if (S.view.name === "training" && S.view.id === t.id) { $("tMore").hidden = !canReschedule(t); closeMoreMenu(); }   // Undo on a finish (which redraws only this) brings the "…" back
     const done = !!t.completedAt, skipped = !done && !!t.skippedAt;
     $("finishBtn").hidden = done || skipped; $("finishedLine").hidden = !done;
     const left = document.body.classList.contains("client") && t.rows.some((r) => !r.done);   // the client's page: with an exercise still open, finishing is finishing early — a quiet pill like Skip workout, not the purple act
@@ -2634,12 +2720,14 @@ import { reportRange, buildReport } from "./report.js";
       const b = document.createElement("button"); b.type = "button"; b.className = "wopt" + (it.danger ? " danger" : "");
       if (it.icon) b.innerHTML = it.icon;
       const s = document.createElement("span"); s.textContent = it.label; b.appendChild(s);
-      b.addEventListener("click", (e) => { e.stopPropagation(); if (close) close(); it.onPick(); });
+      b.addEventListener("click", (e) => { e.stopPropagation(); if (close) close(); it.onPick(); });   // close() first: a keyboard's focus is back on the anchor, so a sheet the row opens returns there
       return b;
     }));
     close = openPop(anchor, opts);
+    if (opts && opts.focus) { const f = pop.querySelector(".wopt"); if (f) f.focus({ preventScroll: true }); }   // opened from the keyboard or VoiceOver: into the menu, as a system menu takes focus (a tap leaves focus where it is)
   }
   const MI = {                                                         // the menu's leading glyphs, 17px, drawn like the discs' own
+    calendar: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.9" width="12" height="11.2" rx="2.2"/><path d="M2 6.5h12M5.2 1.6v2.6M10.8 1.6v2.6"/></svg>',
     swap: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/></svg>',
     lines: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 4.5h10M3 8h10M3 11.5h6"/></svg>',
     camera: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.25 5.6c0-.8.65-1.45 1.45-1.45h1.7l1.05-1.4h3.1l1.05 1.4h1.7c.8 0 1.45.65 1.45 1.45v5.95c0 .8-.65 1.45-1.45 1.45H3.7c-.8 0-1.45-.65-1.45-1.45z"/><circle cx="8" cy="8.55" r="2.35"/></svg>',
@@ -2647,6 +2735,7 @@ import { reportRange, buildReport } from "./report.js";
     trash: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M2.8 4.4h10.4M6.3 4.4V3.1c0-.35.3-.6.6-.6h2.2c.35 0 .6.25.6.6v1.3M4.2 4.4l.65 8.5c.05.6.55 1.1 1.15 1.1h4c.6 0 1.1-.5 1.15-1.1l.65-8.5"/></svg>',
   };
   function openPop(anchor, opts) {                                   // places the bubble under (or above) its anchor and wires the ways it closes; returns close
+    if (popClose) popClose();                                        // one bubble at a time: a second Enter on its button replaces it, and leaves no closer of the first one waiting to eat a tap
     const bg = $("whenBg"), pop = $("whenPop");
     bg.hidden = false; pop.classList.remove("above"); pop.classList.toggle("hung", !!(opts && opts.align === "right"));
     const r = anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, pw = pop.offsetWidth, ph = pop.offsetHeight;
@@ -2656,7 +2745,11 @@ import { reportRange, buildReport } from "./report.js";
     const left = Math.max(minL, Math.min(want, maxL)); let top = r.bottom + 8;
     if (top + ph > vh - 8) { top = r.top - 8 - ph; pop.classList.add("above"); }
     pop.style.left = left + "px"; pop.style.top = top + "px"; pop.style.setProperty("--caret", Math.max(12, Math.min(r.left + r.width / 2 - left, pw - 12)) + "px");
-    const close = () => { if (popClose === close) popClose = null; bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", close, true); };
+    const close = () => {
+      if (popClose === close) { popClose = null; popAnchor = null; } const inPop = pop.contains(document.activeElement);
+      bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", close, true);
+      if (inPop && document.contains(anchor)) anchor.focus({ preventScroll: true });   // focus was in the bubble (a keyboard, VoiceOver): back on the button it hangs from, never lost to the page
+    };
     const onKey = (e) => { if (e.key === "Escape") close(); };
     let down = null, eat = null;                                     // a tap outside closes the bubble and goes no further (as a system menu's dismissing tap): nothing under it is pressed or given focus; a finger that drags the page does not close it
     const uneat = () => { if (eat) { document.removeEventListener("mousedown", eat, true); eat = null; } };
@@ -2674,7 +2767,7 @@ import { reportRange, buildReport } from "./report.js";
       close();
     };
     document.addEventListener("pointerdown", onDown, true); document.addEventListener("pointerup", onUp, true); document.addEventListener("keydown", onKey); window.addEventListener("scroll", close, true);
-    popClose = close;
+    popClose = close; popAnchor = anchor;
     return close;
   }
   function followRow(id, field) {                                   // a card that just moved (a new label): keep it under the finger, and the keyboard on the field he was heading for
@@ -2874,10 +2967,10 @@ import { reportRange, buildReport } from "./report.js";
       inp.focus();
     }
     altBtn.addEventListener("mousedown", (ev) => ev.preventDefault());
-    altBtn.addEventListener("click", () => {
+    altBtn.addEventListener("click", (e) => {
       if (asClient) {                                                                                   // the client picks from the frosted bubble under the disc: consistent with the other pop-ups, and it always fits
         const alts = altList().filter((a) => a !== r.name); if (!alts.length) return;
-        showMenu(altBtn, alts.map((a) => ({ label: a, onPick: () => swapTo(a) })));   // the frosted bubble, like last/best: tap an alternative to swap it in
+        showMenu(altBtn, alts.map((a) => ({ label: a, onPick: () => swapTo(a) })), { focus: e.detail === 0 });   // the frosted bubble, like last/best: tap an alternative to swap it in (from the keyboard: focus into it)
         return;
       }
       if (!altMenu.hidden) { closeAlt(); return; }
@@ -3069,7 +3162,7 @@ import { reportRange, buildReport } from "./report.js";
       showMenu(moreBtn, [
         { label: "Alternate exercise", icon: MI.swap, onPick: () => altBtn.click() },   // video is the play disc's own business
         { label: (r.note || "").trim() ? "Edit instructions" : "Add instructions", icon: MI.lines, onPick: () => noteBtn.click() },
-      ], { align: "right" });
+      ], { align: "right", focus: e.detail === 0 });
     });
 
     function suggest(v) {
@@ -3330,6 +3423,19 @@ import { reportRange, buildReport } from "./report.js";
   $("tTitle").addEventListener("input", (e) => { const t = trainings.get(S.view.id); if (!t) return; t.title = e.target.value.replace(/\n/g, " "); e.target.style.height = "auto"; e.target.style.height = Math.max(32, e.target.scrollHeight) + "px"; scheduleSave("trainings", t.id); });
   $("tTitle").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
   for (const ev of ["focus", "blur"]) $("tTitle").addEventListener(ev, (e) => { const el = e.currentTarget; requestAnimationFrame(() => { el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); });   // the box changes its padding on focus: measured again so the letters are never clipped and no gap is left behind
+  // the client's "…" on the workout page: Reschedule, in the same frosted menu as every other; the day picker then moves the workout
+  // (from today on). A client's move reaches the server by its own rule (client_move_training, as Do it today); the coach's is an ordinary save.
+  function canReschedule(t) { return !!t && !isTemplateClient(t.clientId) && !t.completedAt && !t.skippedAt && (S.clientMode || previewClient); }   // a declaration: render() and the swipe's bar ask before this line has run
+  function applyReschedule(id, date) {
+    const t = trainings.get(id); if (!canReschedule(t) || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date === t.date || date < today()) return false;   // asked again at the pick: a sync may have brought in a finish or a skip while the days were open, or midnight made the day picked yesterday
+    t.date = date; touchState(id, "date"); if (S.clientMode) pendingMove.add(id);
+    scheduleSave("trainings", id); S.renderedTraining = null; render(); return true;
+  }
+  $("tMore").addEventListener("click", (e) => {
+    e.stopPropagation(); const t = trainings.get(S.view.id); if (!canReschedule(t)) return; const id = t.id, cid = t.clientId;
+    const still = () => S.view.name === "training" && S.view.id === id && canReschedule(trainings.get(id));   // the page is still this workout, still to do
+    showMenu($("tMore"), [{ label: "Reschedule", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, title: "Reschedule", selected: cur.date || today(), min: today, ok: still, onPick: (date) => applyReschedule(id, date) }); } }], { align: "right", focus: e.detail === 0 });   // min: today itself, asked at each redraw (days left open past midnight grey yesterday); a keyboard's Enter or VoiceOver's activation (detail 0) goes into the menu
+  });
   $("tDate").addEventListener("click", () => {
     const t = trainings.get(S.view.id); if (!t || S.clientMode || isTemplateClient(t.clientId)) return;
     const id = t.id;
@@ -3527,11 +3633,11 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
-      reset: () => { resetState(); seenDoc.clear(); localStorage.clear(); },
+      reset: () => { resetState(); seenDoc.clear(); moveOut.clear(); localStorage.clear(); },
       wake: () => ({ held: !!wake, timer: !!wakeTimer }),
     };
   }
