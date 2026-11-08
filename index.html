@@ -189,8 +189,10 @@
     position: sticky;
     top: env(safe-area-inset-top, 0px);
     z-index: 5;
-    width: 75%; margin: 0 auto;                         /* the pinned box is narrower than the screen once the page scrolls; its look (::before) and its buttons (.bar) still run
-                                                           edge to edge. iOS 26 (the home-screen app, and Safari) paints the strip under the clock one solid colour whenever a pinned box at
+    width: 75%; margin: 0 auto;                         /* the pinned box is ALWAYS narrower than the screen; its look (::before) and its buttons (.bar) still run edge to edge.
+                                                           Never full width, not even for a moment: once iOS has taken the header for the strip's colour it keeps that colour for as long as the
+                                                           header is on screen (WebKit Page::updateFixedContainerEdges keeps the last element's colour), so v223's full-width header at the top of a
+                                                           page left the strip solid black after scrolling. iOS 26 (the home-screen app, and Safari) paints the strip under the clock one solid colour whenever a pinned box at
                                                            the top spans most of the screen's width (WebKit LocalFrameView::fixedContainerEdges: 90% of the width less 8 points from iOS 26.1
                                                            on, 80% on 26.0; a narrower box is passed over): the bar's colour if the box has one (v218 to v221: a white or black band, his
                                                            screenshots 7 Nov), the page's if it has its own blur (October). With none, the strip is see-through and iOS lays its own soft
@@ -198,9 +200,6 @@
                                                            same shade under the clock and in the bar, 9 and 8 over black, 252 and 253 over white) */
     border-bottom: 1px solid transparent;               /* the hairline's place: the line itself is drawn by the bar below, so the page never moves */
   }
-  header.at-top { width: 100%; background-color: color-mix(in srgb, var(--surface) 1%, transparent); }   /* at the very top of a page: full width with the page's colour (as faint), so iOS
-                                                           fills the strip with the page's colour, one screen, and keeps its soft blur off; that blur would smear the logo and the photo up into
-                                                           the strip, where nothing has scrolled yet (his screenshot, 7 Nov, v222). The engine reads it again whenever the header repaints */
   header::before {                                      /* the bar, as Apple's: at the top of a page there is no bar and no line, page and bar are one screen; as the page scrolls under it
                                                            the frosted bar and its hairline fade in (main.js sets --bar). Apple Mail's numbers: 74% of the bar's colour over a 2-point blur, a
                                                            hairline at its edge. It runs the screen's full width, and up under the clock (100 points: past the tallest status bar, the rest is
@@ -1569,7 +1568,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=223";
+  import { boot } from "./app/main.js?v=224";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
