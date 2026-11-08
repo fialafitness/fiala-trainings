@@ -41,6 +41,7 @@
     --card-border: rgba(0,0,0,0.06);    /* hairlines inside cards */
     --card-edge: transparent;           /* around a card: none in light, a faint line in dark */
     --header: rgba(255,255,255,0.74);   /* the top bar, measured off Apple Mail (iOS 26): 74% over what scrolls under it, a 2-point blur, a hairline at its edge */
+    --bar-solid: #fcfcfc;               /* the bar over the bare page as one solid colour (74% white over #f5f5f5): the strip under the clock once the page scrolls, a pure grey as iOS paints it */
     --header-border: rgba(0,0,0,0.04);  /* border-on-light-subtle */
     --field: #ffffff;                   /* a field on the grouped page is a white cell */
     --field-in: #f5f5f5;                /* a field inside a white card is grey */
@@ -85,6 +86,7 @@
       --card-border: rgba(255,255,255,0.10);
       --card-edge: rgba(255,255,255,0.10);
       --header: rgba(11,11,11,0.74);
+      --bar-solid: #080808;               /* 74% of #0b0b0b over black: Apple Mail measured 8 over black */
       --header-border: rgba(255,255,255,0.067);
       --field: rgba(255,255,255,0.08);
       --field-in: rgba(255,255,255,0.08);
@@ -129,6 +131,7 @@
     --card-border: rgba(255,255,255,0.10);
     --card-edge: rgba(255,255,255,0.10);
     --header: rgba(11,11,11,0.74);
+    --bar-solid: #080808;               /* 74% of #0b0b0b over black: Apple Mail measured 8 over black */
     --header-border: rgba(255,255,255,0.067);
     --field: rgba(255,255,255,0.08);
     --field-in: rgba(255,255,255,0.08);
@@ -197,31 +200,27 @@
   }
   /* THE STRIP UNDER THE CLOCK (iOS 26, the home-screen app; WebKit source, checked 7 Nov). iOS draws that strip itself: nothing pinned in the page can paint
      there (fixed and sticky layers are clipped to the area below it: RenderLayerCompositor::viewportConstrainedSublayers, ClippingAndAnchor). It shows either
-     the page scrolling under it with iOS's own soft blur, or one solid colour taken from a pinned box at least 90% of the screen wide at the top
-     (LocalFrameView::fixedContainerEdges). His choice (7 Nov): see-through, iOS's blur, as Apple's apps. So: the solid page colour only at the very top of a page
-     (#topEdge, so iOS's blur does not smear the logo and the photo into an empty strip), iOS's blur as soon as the page scrolls, and the bar begins where that
-     blur ends, in the same look, and fades into Apple Mail's frost (header::before). */
-  #topEdge {                                            /* the very top of a page only (main.js hides it as soon as the page scrolls): iOS takes it for the strip and fills the strip with the
-                                                           page's colour, its soft blur off. Invisible: 16 points tall (more than WebKit's 10-point "thin" limit) but all padding, its background
-                                                           clipped to the empty content box; WebKit reads its background-color all the same. Shown and hidden by display (no box at all when
-                                                           hidden): adding or removing a pinned element makes WebKit read the strip again at once (WebPage::didAddOrRemoveViewportConstrainedObjects),
-                                                           however fast the page is flung, and a removed one leaves no colour behind (Page::updateFixedContainerEdges). v226/v227 changed its
-                                                           colour instead, which WebKit did not always re-read after a fast scroll back to the top (his report, 7 Nov) */
+     the page scrolling under it with iOS's own blur (which smears it and never matches the bar: v222-v229) or one solid colour taken from a pinned box at least
+     90% of the screen wide at the top (LocalFrameView::fixedContainerEdges), always as a pure grey (it drops any tint: measured 7 Nov). His choice (7 Nov):
+     solid, no smudge. #topEdge carries that colour: the page's at the top of a page, the bar's solid colour once scrolled, blended as the bar fades in; the
+     bar starts in exactly that colour and fades into Apple Mail's frost (header::before), so the strip and the bar are one, with no line. */
+  #topEdge {                                            /* invisible: 16 points tall (more than WebKit's 10-point "thin" limit) but all padding, its background clipped to the empty content box,
+                                                           so nothing is painted; WebKit reads its background-color all the same. --bar-pct comes from main.js (setBar) */
     position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; height: 0; padding: 8px 0; box-sizing: content-box; z-index: 6; pointer-events: none;
-    background-color: var(--surface); background-clip: content-box;
+    background-color: color-mix(in srgb, var(--surface), var(--bar-solid) var(--bar-pct, 0%)); background-clip: content-box;
   }
-  #topEdge[hidden] { display: none; }
-  header::before {                                      /* the bar, as Apple's: at the top of a page there is no bar and no line, page and bar are one screen; as the page scrolls under it
-                                                           the bar and its hairline fade in (main.js sets --bar). Apple Mail's frost: 74% of the bar's colour over a 2-point blur, a hairline
-                                                           at its edge. Its frost fades in from nothing over its top 24 points (the mask), because iOS's own blur under the clock runs on
-                                                           about 20 points into the bar (his v228 screenshot, 7 Nov: an edge 12-13 px wide at the bar's top, 18-25 px below it): v228's frost
-                                                           started at full strength on top of it and made a line (the Templates card 53-57 just above, 43-46 just below). Now iOS's blur hands
-                                                           over to the frost gradually, with no edge */
+  #edgeNudge { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }   /* main.js shows or hides it each time the strip's colour changes: a pinned element
+                                                           appearing or going makes WebKit read the strip again on the next frame (RenderLayerModelObject add/removeViewportConstrainedObject
+                                                           → WebPage::didAddOrRemoveViewportConstrainedObjects). A colour change alone it may not re-read: v227's strip kept the bar's colour after
+                                                           a fast scroll back to the top (his report, 7 Nov) */
+  #edgeNudge[hidden] { display: none; }
+  header::before {                                      /* the bar, as Apple's: at the top of a page there is no bar and no line, page and bar are one screen; as the page scrolls under it the bar
+                                                           and its hairline fade in (main.js sets --bar). It starts in the strip's solid colour (--bar-solid), so the strip runs on into it with no
+                                                           seam, and fades over 24 points (iOS's own soft edge fades over about 25) into Apple Mail's frost: 74% of the bar's colour over a
+                                                           2-point blur, a hairline at its edge */
     content: ""; position: absolute; z-index: -1; pointer-events: none;
     left: calc(50% - 50vw); right: calc(50% - 50vw); top: 0; bottom: -1px;   /* exactly the screen's width: an overhang would let the page drift sideways */
-    background: var(--header);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
-    mask-image: linear-gradient(to bottom, transparent 0, #000 24px);
+    background: linear-gradient(to bottom, var(--bar-solid) 0, var(--header) 24px);
     -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
     border-bottom: 1px solid var(--header-border);
@@ -1264,6 +1263,7 @@
   </div>
 </header>
 <div id="topEdge" aria-hidden="true"></div>
+<div id="edgeNudge" aria-hidden="true"></div>
 
 <main>
   <section id="vLogin" hidden>
@@ -1584,7 +1584,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=229";
+  import { boot } from "./app/main.js?v=230";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
