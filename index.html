@@ -171,6 +171,8 @@
   #typeProbe { position: absolute; left: -9999px; top: 0; font: -apple-system-body; visibility: hidden; }   /* a hidden line in the system font: its size is the Text Size setting */
   body { touch-action: pan-x pan-y; }                /* scroll, never pinch or double-tap zoom: a zoomed page is what drifts side to side in Safari */
   main { overflow-x: clip; }
+  body.clip-x { overflow-x: clip; }                  /* Android's installed app (main.js): the page sliding off under the swipe never widens the page (Chrome grew its layout to fit it, and the tab bar dropped below the screen); clip, unlike hidden, makes no scroller of body. Not on iPhone, which does not widen: the page there stays as it was */
+  main > section:not([hidden]) { display: flow-root; }   /* a section keeps its first child's top margin inside it (nothing on screen moves): its copy under the swipe then lays out exactly like it, at any depth (the home's title margin made the copy 20 points low, measured 7 Nov) */
   body {
     margin: 0;
     padding-top: env(safe-area-inset-top, 0px);
@@ -1069,14 +1071,17 @@
   .photo-hero .hero-edit { appearance: none; border: 0; background: none; padding: 4px 12px; min-height: 44px; margin: -6px 0; font: inherit; font-size: 0.9375rem; font-weight: 500; color: var(--brand-text); cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .photo-hero .hero-edit:active { opacity: 0.6; }
   #vClientCard #cardName { text-align: center; }
-  /* the edge swipe (home-screen app): the page follows the finger over a still copy of the page it goes back to */
-  main.swiping { position: relative; z-index: 2; background: var(--surface); min-height: 100vh; box-shadow: -12px 0 32px rgba(0,0,0,0.22); will-change: transform; }
-  main.swiping { margin-top: calc(-1 * (env(safe-area-inset-top, 0px) + 57px)); border-top: calc(env(safe-area-inset-top, 0px) + 57px) solid var(--surface); min-height: calc(100vh + env(safe-area-inset-top, 0px) + 57px); margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px)); border-bottom: env(safe-area-inset-bottom, 0px) solid var(--surface); }   /* the sliding page reaches up under the bar and the clock (the bar is 56 points and its 1-point line) and down to the screen's bottom edge, as Apple's: no band of the page underneath above or below it, and its edge shadow runs the full height; the page's content does not move */
-  header.bar-anim::before { transition: opacity 250ms cubic-bezier(.2,.8,.2,1); }   /* a swipe let go: the bar settles with the page */
+  /* the swipe back (home-screen app): the page follows the finger over a still copy of the page it goes back to */
+  main.swiping { position: relative; z-index: 2; background: var(--surface); min-height: 100vh; box-shadow: 0 -3px 24px rgba(0,0,0,0.04); will-change: transform; pointer-events: none; }   /* Apple's card shadow (iOS 26 UIKit: black 4%, radius 12, 3 up; a CSS blur is about twice Core Animation's radius), was 22% and far wider; no taps land on the page while it slides */
+  main.swiping { margin-top: calc(-1 * (env(safe-area-inset-top, 0px) + 57px)); border-top: calc(env(safe-area-inset-top, 0px) + 57px) solid var(--surface); min-height: 100vh; margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0px)); border-bottom: env(safe-area-inset-bottom, 0px) solid var(--surface); }   /* the sliding page reaches up under the bar and the clock (the bar is 56 points and its 1-point line) and down to the screen's bottom edge, as Apple's: no band of the page underneath above or below it, and its edge shadow runs the full height; the page's content does not move */
+  header.bar-anim::before { transition: opacity var(--swipe-ms, 250ms) var(--swipe-ease, cubic-bezier(.2,.8,.2,1)); }   /* a swipe let go: the bar settles with the page, on the same spring (main.js sets both) */
+  main.swiping { max-width: none; padding-left: max(16px, calc(50% - 324px)); padding-right: max(16px, calc(50% - 324px)); }   /* on a screen wider than the page's 680 points the whole screen slides, as Apple's, the content where it was */
+  body.swipe-busy header, body.swipe-busy #dock > * { pointer-events: none; }   /* the bar and the tab bar take no taps while the pages slide (main.js) */
+  .bar > .back, .bar > .hdr-disc { z-index: 1; }   /* the bar's buttons above the logo of the page coming in under the swipe (main.js), as on iPhone */
   .swipe-under { position: fixed; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; background: var(--surface); }
+  .swipe-under * { pointer-events: none !important; }   /* a copy is only a picture: not its tab bar either (#dock > * takes taps) */
   .swipe-under .nav-shot { position: absolute; inset: 0; will-change: transform; }
-  .swipe-under .nav-shot #dock, .swipe-under .nav-shot .dock-add { display: none !important; }
-  .swipe-under .swipe-dim { position: absolute; inset: 0; background: rgba(0,0,0,0.12); }
+  .swipe-under .swipe-dim { position: absolute; inset: 0; background: rgba(0,0,0,0.10); }   /* Apple's shade over the page underneath: black 10%, lifting with the swipe (iOS 26 UIKit, measured), was 12% */
   /* Move and Scale: the photo under a circle on black, as Apple frames a contact's photo; one finger moves it, two zoom it */
   .crop-view { position: fixed; inset: 0; z-index: 120; background: #000000; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; outline: none; overscroll-behavior: none; }
   .crop-view .crop-img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; will-change: transform; pointer-events: none; -webkit-touch-callout: none; }
@@ -1594,7 +1599,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=236";
+  import { boot } from "./app/main.js?v=237";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

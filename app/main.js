@@ -458,10 +458,12 @@ import { reportRange, buildReport } from "./report.js";
   function showExercises(keep) {
     settingsOpen = "exercises"; hideAllViews(); $("vExercises").hidden = false; $("back").hidden = false; $("backLabel").textContent = parentLabel(); $("brand").hidden = true; $("status").textContent = "";
     if (!keep) exShown = 80; renderExercises(); $("exPlayer").replaceChildren();   // a video playing on the exercise page stops when the list comes back
-    if (keep && exCurrent) { const li = $("exList").querySelector('li[data-key="' + CSS.escape(exCurrent.key) + '"]'); if (li) li.scrollIntoView({ block: "center" }); }   // back from an exercise: the list as it was, the exercise in view
+    if (keep && exListY != null) window.scrollTo(0, exListY);       // back from an exercise opened from the list: exactly where the list was (as iPhone, and as the swipe's copy shows it)
+    else if (keep && exCurrent) { const li = $("exList").querySelector('li[data-key="' + CSS.escape(exCurrent.key) + '"]'); if (li) li.scrollIntoView({ block: "center" }); }   // opened some other way (or the app reopened on it): the list with the exercise in view
+    exListY = null;
   }
   const videoForName = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = looseKey(ALIASES[s] || s); if (customVideos.has(looseKey(s))) return customVideos.get(looseKey(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
-  let exShown = 80;
+  let exShown = 80, exListY = null;                                 // exListY: where the exercise list was scrolled when a row was opened
   function exerciseMatches(q) {
     const s = squash(q);
     const all = ALL_NAMES.map((n, i) => [n, ALL_KEYS[i]]);
@@ -494,7 +496,7 @@ import { reportRange, buildReport } from "./report.js";
     const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.innerHTML) left.append(sec);
     const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a";
     b.append(left, chev);
-    b.addEventListener("click", () => { showExercise(name, key); window.scrollTo(0, 0); });   // a row opens its own page, the way a list does on iPhone
+    b.addEventListener("click", () => { exListY = window.scrollY; showExercise(name, key); window.scrollTo(0, 0); });   // a row opens its own page, the way a list does on iPhone (Back returns to the list where it was)
     li.append(b); return li;
   }
   const mkBtn = (text, cls, fn) => { const x = document.createElement("button"); x.type = "button"; x.className = cls; x.textContent = text; x.addEventListener("click", fn); return x; };
@@ -918,13 +920,20 @@ import { reportRange, buildReport } from "./report.js";
     else go({ name: "clients" }, true);
   }
 
-  // ---------- going back: the Back circle, Safari's own swipe, and the edge swipe in the home-screen app all do the same thing ----------
-  // Each screen the app moves forward to is a step in the browser's history, recorded the moment before the screen changes, so Safari's
-  // swipe from the left edge previews the page it goes back to and lands on it; its popstate runs runBack(), exactly as the Back circle
-  // does. A Back that is refused (an unsaved template, changes to discard and Cancel) keeps its step. With no Back on the screen there are
-  // no steps behind it. Steps the app takes out itself go one at a time, each known by where it lands, so the count never drifts (a drift
-  // would let a later Back leave the app). In the home-screen app iOS gives no swipe, so the app has its own (below).
-  const hasState = () => typeof history !== "undefined" && history && typeof history.pushState === "function";
+  // ---------- going back: the Back circle, Safari's own swipe, and the app's own swipe in the home-screen app all do the same thing ----------
+  // In a Safari tab (and an Android install, for its back button) each screen the app moves forward to is a step in the browser's history,
+  // recorded the moment before the screen changes, so Safari's swipe from the left edge previews the page it goes back to and lands on it; its
+  // popstate runs runBack(), exactly as the Back circle does. A Back that is refused (an unsaved template, changes to discard and Cancel) keeps its
+  // step. With no Back on the screen there are no steps behind it. Steps the app takes out itself go one at a time, each known by where it lands,
+  // so the count never drifts (a drift would let a later Back leave the app).
+  // The iOS home-screen app keeps NO steps: there iOS has its own back and forward swipes from the screen's edges, live whenever there is a step behind or
+  // ahead, which no page code can stop (WebKit ViewGestureController; research 7 Nov). With steps, every Back left one ahead (a forward swipe that slid a
+  // page in and back) and iOS's back swipe raced the app's own. With none, a forward swipe does nothing and only the app's swipe goes back (below).
+  // Versions before v237 kept steps there too, and the update reloads an open app in place, which keeps them: the app then goes straight back to the
+  // first of them (nothing behind it for iOS's back swipe), and a forward swipe onto an old one is sent back there. Only closing the app clears the
+  // ones ahead (no page code can).
+  const iosHome = (() => { try { return typeof navigator !== "undefined" && navigator.standalone === true; } catch (_) { return false; } })();
+  const hasState = () => !iosHome && typeof history !== "undefined" && history && typeof history.pushState === "function";
   const nav = { depth: 0, backing: false, sig: "", pending: null, travel: null, waits: [], curKey: "" };   // curKey: the screen as last shown (a page's own settings flag changes before it hides the old one)   // waits: steps out of the history still under way, by the depth they land on
   // Back puts the page where it was itself, so the browser must not move it afterwards; but a reload (the app's own after a release
   // included) still gets the browser's put-back, so that is switched on only once the page has loaded, and back on as the page goes
@@ -939,6 +948,8 @@ import { reportRange, buildReport } from "./report.js";
   const stateDepth = () => { try { const st = hasState() && history.state; return st && typeof st.fiala === "number" ? st.fiala : 0; } catch (_) { return 0; } };
   nav.depth = stateDepth();
   try { if (hasState() && !(history.state && typeof history.state.fiala === "number")) history.replaceState({ fiala: nav.depth }, ""); } catch (_) {}   // the page's own first step carries its number, so going back to it is never mistaken for anything else
+  const homeFirst = (st) => { const d = st && typeof st.fiala === "number" ? st.fiala : 0; if (d > 0 && typeof history.go === "function") { try { history.go(-d); } catch (_) {} } };   // the home-screen app on an older version's step: straight back to the first one (above)
+  if (iosHome) { try { homeFirst(history.state); } catch (_) {} }
   const canBack = () => !$("back").hidden;
   const held = () => { const wb = $("whenBg"); return S.asking || !!(wb && !wb.hidden) || !!document.querySelector(".crop-view") || !!document.querySelector(".sheet-bg:not([hidden])"); };   // a question, a menu or bubble, a date picker or the photo framing is up: Back waits for it (the Back circle's tap only closes a menu, too)
   const screenKey = () => viewKey(S.view) + "|" + (settingsOpen || "") + "|" + (settingsOpen === "exercise" && exCurrent ? exCurrent.key : "");
@@ -967,9 +978,11 @@ import { reportRange, buildReport } from "./report.js";
   };
   // the picture under the edge swipe: the last look of each screen, found by where Back is going
   const shotByKey = new Map();
+  let seenTouch = false;                                            // pictures are only taken once the person has touched the app: every change before that is the app opening (it draws an empty Clients page as the script loads, and reopens a settings page over it), never a page they saw
+  if (typeof document !== "undefined" && document.addEventListener) for (const t of ["pointerdown", "touchstart", "keydown"]) document.addEventListener(t, () => { seenTouch = true; }, { capture: true, passive: true });
   function navWillChange(kind) {                                    // a screen is about to change: what it was, and (for the edge swipe) a picture of it; kind: "back" or "land" (no new step)
     if (nav.pending) { if (kind) nav.pending.kind = nav.pending.kind || kind; return; }
-    if (swipeOn) { const k = nav.curKey || screenKey(), shot = captureScreen(); if (shot) { shotByKey.delete(k); shotByKey.set(k, shot); if (shotByKey.size > 14) shotByKey.delete(shotByKey.keys().next().value); } }   // the first call of a change: the screen is still the old one
+    if (swipeOn && seenTouch && !nav.backing && kind !== "back") { const k = nav.curKey || screenKey(), shot = captureScreen(); if (shot) { shotByKey.delete(k); shotByKey.set(k, shot); if (shotByKey.size > 14) shotByKey.delete(shotByKey.keys().next().value); } }   // the first call of a change: the screen is still the old one
     nav.pending = { sig: navSig(), kind: kind || "" };
     queueMicrotask(navDidChange);                                   // before the new screen is painted: Safari keeps the old one as the page to go back to
   }
@@ -1004,6 +1017,7 @@ import { reportRange, buildReport } from "./report.js";
   const goBackNow = () => (backChain = backChain.then(goBackStep, goBackStep));   // two quick taps: two Backs, one after the other
   $("back").addEventListener("click", () => { goBackNow(); });
   window.addEventListener("popstate", (e) => {                      // Safari's swipe (or Android's back): one step back, as the Back circle
+    if (iosHome) { homeFirst(e.state); return; }                    // the home-screen app keeps no steps (above): nothing here is the app's to follow; a forward swipe onto an older version's step goes back to the first
     const st = e.state;
     if (!(st && typeof st.fiala === "number")) { try { history.replaceState({ fiala: ++nav.depth }, ""); } catch (_) {} navTrim(); return; }   // a step with no number (a link to "#"): a new step forward, given its number
     const d = st.fiala;
@@ -1026,102 +1040,221 @@ import { reportRange, buildReport } from "./report.js";
     return k({ name: "clients" }, "");
   }
 
-  // ---------- the edge swipe in the home-screen app, built to Apple's feel ----------
-  // A finger that starts at the left edge and moves right drags the page; the page Back goes to waits underneath, a little to the left
-  // and dimmed, as on iPhone. Let go past a third of the way, or with a flick, and it is Back; otherwise the page settles back.
+  // ---------- the swipe back in the home-screen app, built to Apple's (iOS 26 UIKit, as measured and reverse-engineered; research 7 Nov) ----------
+  // From the left edge, or from anywhere on the page when the finger clearly goes right (iOS 26), the page follows the finger 1:1; the page
+  // Back goes to waits underneath, 30% to the left, under a 10% shade that lifts as it comes. On release UIKit's rule decides: where the page would be
+  // 0.35 s ahead at the finger's speed must pass the smaller of 187.5 points and half the screen. Either way the pages settle on UIKit's spring
+  // (damping 0.85, response 0.3 s) from the finger's own speed. The bar's buttons stay put while the finger moves and change only once it lets go:
+  // one the page underneath does not have grows a little, blurs and fades (response 0.416 s, bounce 0.25); the logo of the page underneath comes in with it.
+  // Nothing is held until the finger has gone 8 points to the right (inside the direction rule): on iPhone a held touchmove also cancels the
+  // tap (WebKit's touch recognizer begins and fails the tap's; review 7 Nov), so a tap that rolls a little must stay the page's. WebKit still
+  // lets that later hold stop the scroll: touch events stay preventable until scrollViewWillStartPanOrPinchGesture, and UIScrollView on a page
+  // that only scrolls up and down starts after 10 points up or down (UIKitCore's _defaultHysteresis), which the rule keeps the finger under.
+  // The move that holds does nothing else, so its answer reaches WebKit at once; should the page scroll anyway, the swipe settles back.
   let swipeOn = (() => { try { return (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || (typeof navigator !== "undefined" && navigator.standalone === true); } catch (_) { return false; } })();
+  const SWIPE_EDGE = 24, SWIPE_GO = 8, NO_SWIPE = "#calView, #week, #dpGrid, .tr-chips, .kb-chips, .grip, .alt-menu, .sugg, input, textarea, select, [contenteditable]";   // things that drag sideways or scroll themselves keep the touch (Apple's rule for its swipe from anywhere)
+  const GLASS_RES = 0.416, GLASS_DAMP = 0.75, GLASS = ["back", "meDisc", "navDone"];   // the bar's buttons, and their change on release
+  const springEase = (v0, response, damping) => {                   // a spring (from rest at 0 to 1, starting at speed v0 in "whole distances per second") as a CSS easing and its length,
+    const w0 = 2 * Math.PI / response, wd = w0 * Math.sqrt(Math.max(1e-6, 1 - damping * damping));   // ending where it first arrives: past that it only overshoots (0.6% at rest, 1.2% at the fastest start allowed, 2.8% for the buttons) and comes back, which a page underneath shows as a bounce past its place
+    const y = (t) => Math.exp(-damping * w0 * t) * (Math.cos(wd * t) + ((damping * w0 - v0) / wd) * Math.sin(wd * t));
+    let T = 0.02; while (T < 1.5 && y(T) > 0.001) T += 0.004;
+    const pts = []; for (let i = 0; i < 48; i++) pts.push(Math.min(1, 1 - y(T * i / 48)).toFixed(4)); pts.push("1");
+    const css = "linear(" + pts.join(", ") + ")";
+    let ok = false; try { ok = typeof CSS !== "undefined" && CSS.supports && CSS.supports("transition-timing-function", css); } catch (_) {}
+    return { css: ok ? css : "cubic-bezier(.2,.8,.2,1)", ms: Math.round(T * 1000) };
+  };
+  const calmMotion = () => { try { return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (_) { return false; } };
+  if (swipeOn && !iosHome && typeof document !== "undefined" && document.body && document.body.classList) document.body.classList.add("clip-x");   // Android's installed app: the sliding page must not widen the page (index.html)
   function captureScreen() {                                        // a still copy of the page as it is, to sit under the swipe later
     const secs = [...document.querySelectorAll("main > section")].filter((s) => !s.hidden && s.getClientRects().length);
     if (!secs.length) return null;
     const box = document.createElement("div"); box.className = "nav-shot"; box.setAttribute("aria-hidden", "true");
     box.dataset.bar = String(Math.min(1, Math.max(0, (Number(window.scrollY) || 0) / BAR_FADE)));   // how the top bar looked over this page: the swipe brings it back
+    box.dataset.look = lookNow();                                   // the coach's look or the client's: a copy is only shown in the look it was taken in, and at the width (the phone turned since: laid out for the other one)
     for (const s of secs) {
       const r = s.getBoundingClientRect(), c = s.cloneNode(true), from = s.querySelectorAll("input, textarea, select"), to = c.querySelectorAll("input, textarea, select");
       from.forEach((el, i) => { if (to[i]) to[i].value = el.value; });   // what was typed shows, not just the empty fields
-      let top = r.top;                                              // the copy's content exactly where the page's was: a copy on its own keeps its first child's top margin inside it, where the page lets it
-      const first = [...s.children].find((k) => k.getClientRects().length && !/^(absolute|fixed)$/.test(getComputedStyle(k).position));   // pass out through the section (the home's title, 20 points: the copy sat 20 points low and the page
-      if (first) { const sc = getComputedStyle(s), fc = getComputedStyle(first); top = first.getBoundingClientRect().top - (parseFloat(sc.paddingTop) || 0) - (parseFloat(sc.borderTopWidth) || 0) - (parseFloat(fc.marginTop) || 0); }   // jumped up at the end of the swipe, measured 7 Nov)
-      c.style.position = "absolute"; c.style.left = r.left + "px"; c.style.top = top + "px"; c.style.width = r.width + "px"; c.style.margin = "0";
+      c.style.position = "absolute"; c.style.left = r.left + "px"; c.style.top = r.top + "px"; c.style.width = r.width + "px"; c.style.margin = "0";   // the copy's content exactly where the page's was (a section is flow-root, index.html, so its first child's margin stays inside it)
       box.appendChild(c);
     }
-    const bar = document.querySelector("header .bar"); if (bar) box._bar = bar.cloneNode(true);   // the bar's buttons as they were over this page: the swipe brings them in as the leaving ones go
+    const dock = $("dock"); box._dock = !!dock && [...dock.children].some((k) => !k.hidden) && !document.body.classList.contains("typing");
+    if (box._dock) { const d = dock.cloneNode(true); d.classList.add("shot-dock"); box.appendChild(d); }   // the page's tab bar too, styled as itself (fixed inside the copy, which holds it in place: will-change): it comes in with the page
+    const bar = document.querySelector("header .bar"); if (bar) box._bar = bar.cloneNode(true);   // the bar's buttons and logo as they were over this page
     return box;
   }
-  let sw = null;
+  const lookNow = () => (document.body.classList.contains("client") ? "client" : "coach") + "@" + (Number(window.innerWidth) || 0);
+  function barFor(key) {                                            // the bar's buttons on the screen with this key (keep in step with render() and the settings pages)
+    const [vk, sub] = String(key).split("|"), [name, id] = vk.split("/"), home = !sub && (name === "clients" || (S.clientMode && name === "client"));
+    return { back: !home, brand: home, meDisc: !sub && name === "client" && !isTemplateClient(id), navDone: sub === "exercise", id };
+  }
+  function barCopy(key) {                                           // the bar as the screen Back goes to will show it, when there is no copy of that screen
+    const live = document.querySelector("header .bar"); if (!live) return null;
+    const f = barFor(key), b = live.cloneNode(true), q = (id) => b.querySelector("#" + id);
+    for (const id of ["back", "brand", ...GLASS.slice(1)]) if (q(id)) q(id).hidden = !f[id];
+    const md = q("meDisc"), c = f.meDisc ? clients.get(f.id) : null;
+    if (md) { md.classList.toggle("has-av", !!c); if (c) paintAvatar(md.querySelector(".avatar"), f.id, c.name); md.classList.toggle("needs", !!c && !S.clientMode && !c.email); }   // that client's photo or initials, and the red dot of no sign-in email, as the client page shows them
+    return b;
+  }
+  function freshHomeShot() {                                        // no copy of the home in this session (the app reopened on a deeper page): one drawn now, where Back will put it
+    if (S.clientMode || typeof renderClients !== "function") return null;
+    const cur = [...document.querySelectorAll("main > section")].find((s) => !s.hidden && s.getClientRects().length); if (!cur) return null;
+    try { renderClients(); } catch (_) { return null; }
+    let y = scrollMemo.get(viewKey({ name: "clients" })) || 0, toFoot = false;   // where Back will put the home (runBack): its own place, or from a settings page where that was opened from, else the pills at the foot
+    if (settingsOpen) { if (backScroll != null) y = backScroll; else if (!$("localFoot").hidden) { y = 0; toFoot = true; } else y = 0; }
+    const cr = cur.getBoundingClientRect(), docTop = cr.top + (Number(window.scrollY) || 0), px = (st, k) => parseFloat(st[k]) || 0, ms = getComputedStyle(cur.parentElement), bs = getComputedStyle(document.body);
+    const below = px(ms, "paddingBottom") + px(ms, "borderBottomWidth") + px(ms, "marginBottom") + px(bs, "paddingBottom");   // what the page has under its section (main's and body's), the same under the home
+    const box = document.createElement("div"); box.className = "nav-shot"; box.setAttribute("aria-hidden", "true"); box.dataset.look = lookNow();
+    const c = $("vClients").cloneNode(true); c.hidden = false; c.style.position = "absolute"; c.style.left = cr.left + "px"; c.style.width = cr.width + "px"; c.style.margin = "0"; box.appendChild(c);
+    const put = (at) => { c.style.top = (docTop - at) + "px"; box.dataset.bar = String(Math.min(1, Math.max(0, at / BAR_FADE))); };
+    put(y);
+    box._land = () => {                                             // once the copy is laid out: where the browser will really put the home (the foot's bottom at the screen's bottom, as scrollIntoView({ block: "end" }) does; never past the page's end)
+      const h = Number(window.innerHeight) || 0, max = Math.max(0, docTop + c.getBoundingClientRect().height + below - h);
+      let at = y; if (toFoot) { const f = c.querySelector("#localFoot"); if (f && f.getClientRects().length) at = f.getBoundingClientRect().bottom - h; }
+      put(Math.max(0, Math.min(at, max)));
+    };
+    box._dock = false;
+    box._bar = barCopy(viewKey({ name: "clients" }) + "||");
+    return box;
+  }
+  let sw = null, renderAfterSwipe = false;
+  const renderUnlessSwiping = () => { if (sw && (sw.on || sw.busy)) { renderAfterSwipe = true; return; } render(); };   // a sync's redraw waits while the pages slide (never the page under the finger rebuilt mid-swipe); clearSwipe draws it
+  const swipeHolds = () => !!sw && !S.asking && (sw.on || sw.busy) && !(sw.busy && Date.now() - sw.busyAt > 3000);   // the pages are sliding: no taps (a question Back asks always takes them; a release that never finished lets go after 3 s)
+  document.addEventListener("click", (e) => { if (swipeHolds()) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);   // nothing is tapped while the pages slide (a second Back, the card, the + would land mid-transition)
   const swipeReady = () => swipeOn && canBack() && !held() && !(document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName));
+  const swipeSpeed = () => { const a = sw.pts[0], b = sw.pts[sw.pts.length - 1]; return b[0] > a[0] ? (b[1] - a[1]) / (b[0] - a[0]) : 0; };   // px per ms, the average over the last three samples
+  const dropSw = () => { if (sw && sw.ac) sw.ac.abort(); sw = null; };   // this touch is not a swipe (its listeners on the touched element go too)
   document.addEventListener("touchstart", (e) => {
-    if (sw && sw.busy) return;
+    if (sw && sw.busy) { if (S.asking || Date.now() - sw.busyAt <= 3000) return; clearSwipe(); }   // a release that never finished is let go, never left holding the page
     if (sw && sw.on) { endSwipe(true); return; }                    // a second finger: the page settles back, as on iPhone
-    sw = null; if (e.touches.length !== 1 || !swipeReady()) return;
-    const t = e.touches[0]; if (t.clientX > 24) return;             // Apple's edge: the first few points of the screen
-    if (e.target && e.target.closest && e.target.closest("#calView, #week, #dpGrid, .tr-chips")) return;   // the calendar and the set track keep their own sideways drag
-    sw = { x0: t.clientX, y0: t.clientY, dx: 0, on: false, lastX: t.clientX, lastT: e.timeStamp, v: 0 };
-  }, { passive: true });
-  document.addEventListener("touchmove", (e) => {
-    if (!sw || sw.busy) return;
-    const t = e.touches[0], dx = t.clientX - sw.x0, dy = t.clientY - sw.y0;
-    if (!sw.on) {
-      if (Math.abs(dy) > 10 && Math.abs(dy) > dx) { sw = null; return; }   // the page is being scrolled, not swiped
-      if (dx < 8 || dx < Math.abs(dy) * 1.2) return;
-      startSwipe();
+    dropSw(); if (e.touches.length !== 1 || !swipeReady()) return;
+    const t = e.touches[0], tgt = e.target; if (tgt && tgt.closest && tgt.closest(NO_SWIPE)) return;
+    sw = { x0: t.clientX, y0: t.clientY, sy: Number(window.scrollY) || 0, dx: 0, on: false, held: false, edge: t.clientX <= SWIPE_EDGE, pts: [[e.timeStamp, t.clientX]], flick: true };
+    if (tgt && tgt.addEventListener && typeof AbortController === "function") {   // a touch's events stay aimed at the element it began on: one the page redraws meanwhile (a sync) is out of the document and they no longer reach it, so they are heard on the element too
+      const ac = sw.ac = new AbortController(), on = (type, fn) => tgt.addEventListener(type, (ev) => { if (!tgt.isConnected) fn(ev); }, { passive: type !== "touchmove", signal: ac.signal });
+      on("touchmove", swipeMove); on("touchend", swipeEnd); on("touchcancel", swipeCancel);
     }
-    e.preventDefault();
-    const dt = Math.max(1, e.timeStamp - sw.lastT); sw.v = (t.clientX - sw.lastX) / dt; sw.lastX = t.clientX; sw.lastT = e.timeStamp;
-    sw.dx = Math.max(0, dx); paintSwipe();
-  }, { passive: false });
-  document.addEventListener("touchend", () => { if (sw && sw.on && !sw.busy) endSwipe(false); else if (sw && !sw.busy) sw = null; });
-  document.addEventListener("touchcancel", () => { if (sw && sw.on && !sw.busy) endSwipe(true); else if (sw && !sw.busy) sw = null; });
+  }, { passive: true });
+  const scrolledSince = () => iosHome && Math.abs((Number(window.scrollY) || 0) - sw.sy) > 1;   // the page itself has scrolled under this touch (iPhone; Android keeps its swipe as it was)
+  const swipeSample = (e, x) => { const last = sw.pts[sw.pts.length - 1]; if (e.timeStamp - last[0] >= 10) { sw.pts.push([e.timeStamp, x]); if (sw.pts.length > 3) sw.pts.shift(); } };
+  function swipeMove(e) {
+    if (!sw || sw.busy) return;
+    const t = e.touches && e.touches[0]; if (!t) return;
+    const dx = t.clientX - sw.x0, dy = t.clientY - sw.y0;
+    if (!sw.held) {                                                 // nothing held yet: a tap that rolls a little and a scroll stay the page's
+      if (scrolledSince() || (Math.abs(dy) > 12 && Math.abs(dy) > dx)) { dropSw(); return; }   // a scroll
+      if (dx < SWIPE_GO) return;
+      if (dx < Math.abs(dy) * (sw.edge ? 1 : 2)) { dropSw(); return; }   // from the edge: anything not more up or down than right; from the page: clearly to the right
+      e.preventDefault(); sw.held = true; sw.hx = t.clientX; swipeSample(e, t.clientX); return;   // held from here; this move only holds, so WebKit has the answer at once (the page moves from the next)
+    }
+    e.preventDefault(); swipeSample(e, t.clientX);
+    if (!sw.on) { if (scrolledSince()) { dropSw(); return; } sw.x0 = t.clientX; startSwipe(); }   // the page moves by the finger's travel from here, no jump (a page the browser scrolled anyway keeps the touch)
+    else if (scrolledSince()) { endSwipe(true); return; }           // it scrolled after all (the hold came too late): the page settles back rather than slide and scroll at once
+    if (sw.pts.length >= 3 && swipeSpeed() * 1000 / sw.w < 1.5) sw.flick = false;   // a flick: never under 1.5 screens per second since it began
+    sw.dx = Math.max(0, t.clientX - sw.x0); paintSwipe(null);
+  }
+  function swipeEnd(e) {
+    if (!sw || sw.busy) return;
+    if (sw.held && !sw.on) {                                        // let go right after it was held (a quick flick): it starts and is judged at once
+      const t = e.changedTouches && e.changedTouches[0]; sw.x0 = sw.hx; startSwipe();
+      sw.dx = Math.max(0, (t ? t.clientX : sw.hx) - sw.x0); paintSwipe(null); void sw.main.offsetWidth;   // its place before the release springs from it
+    }
+    if (sw.on) endSwipe(false, e.timeStamp); else dropSw();
+  }
+  function swipeCancel() { if (!sw || sw.busy) return; if (sw.on) endSwipe(true); else dropSw(); }
+  document.addEventListener("touchmove", swipeMove, { passive: false });
+  document.addEventListener("touchend", swipeEnd);
+  document.addEventListener("touchcancel", swipeCancel);
+  document.addEventListener("pointercancel", (e) => { if (iosHome && e.pointerType === "touch") swipeCancel(); }, { capture: true, passive: true });   // iPhone: WebKit took the touch for its own scroll (it cancels the pointer then): never slide while it scrolls
   function startSwipe() {
     for (const old of document.querySelectorAll(".swipe-under")) old.remove();   // nothing left over from an earlier swipe
     sw.on = true; sw.w = window.innerWidth; sw.main = document.querySelector("main");
     const layer = document.createElement("div"); layer.className = "swipe-under"; layer.setAttribute("aria-hidden", "true");
-    const bk = backKey(), shot = shotByKey.get(bk) || null; if (shot) layer.appendChild(shot);   // the page Back lands on; none known: the plain page colour, never a wrong page
+    const bk = backKey(); let shot = shotByKey.get(bk) || null;
+    if (shot && shot.dataset.look !== lookNow()) shot = null;       // taken in the other look (the coach previewing a workout as the client) or at another width: not the page Back will show
+    if (!shot && bk === viewKey({ name: "clients" }) + "||") shot = freshHomeShot();   // the home has no copy yet (after a relaunch): one drawn now, never the plain page colour
+    if (shot) layer.appendChild(shot);                              // none known: the plain page colour, never a wrong page
     const dim = document.createElement("div"); dim.className = "swipe-dim"; layer.appendChild(dim);
     document.body.appendChild(layer); sw.layer = layer; sw.dim = dim; sw.shot = shot;
-    const live = document.querySelector("header .bar"); sw.fade = [];   // the bar's buttons cross over with the finger, as Apple's: the leaving page's fade out, the page underneath's fade in; a Back circle
-    if (shot && shot._bar && live) {                                // both pages show stays where it is. Before, the leaving page's chevron stayed for the whole swipe and switched to the logo at the end
-      const nb = shot._bar.cloneNode(true); nb.setAttribute("aria-hidden", "true"); nb.style.position = "absolute"; nb.style.top = "0"; nb.style.left = "0"; nb.style.pointerEvents = "none";
-      live.after(nb); sw.nextBar = nb;
-      const nbBack = nb.querySelector("#back"), backBoth = !$("back").hidden && nbBack && !nbBack.hidden;
-      for (const el of live.children) if (!(backBoth && el.id === "back")) sw.fade.push([el, 1, 0]);
-      for (const el of nb.children) { if (backBoth && el.id === "back") el.style.visibility = "hidden"; else sw.fade.push([el, 0, 1]); }
+    if (shot && shot._land) shot._land();                           // a fresh copy placed by its own layout
+    document.body.classList.add("swipe-busy");                      // no taps on the bar or the tab bar until the pages have settled (UIKit takes none during its transition)
+    const dock = $("dock"), dockOn = !!dock && [...dock.children].some((k) => !k.hidden) && !document.body.classList.contains("typing");
+    sw.dock = dock; sw.dockSlides = dockOn && !(shot && shot._dock);   // this page's tab bar goes with this page; one both pages have stays (the copy's then stays hidden)
+    if (shot) for (const d of shot.querySelectorAll(".shot-dock")) d.style.visibility = dockOn ? "hidden" : "";
+    // the bar: its buttons stay as they are while the finger moves; the logo of the page underneath comes in with that page
+    const live = document.querySelector("header .bar"); sw.glassOut = []; sw.glassIn = []; sw.anims = [];
+    if (live) {
+      const nb = (shot && shot._bar) || barCopy(bk), vis = (b, id) => { const el = b && b.querySelector("#" + id); return !!el && !el.hidden; };   // no copy of the page underneath: its bar as render() will show it
+      for (const id of GLASS) if (vis(live, id) && !vis(nb, id)) sw.glassOut.push($(id));   // a button only this page has: it goes when the finger lets go
+      if (nb) {
+        sw.barRect = live.getBoundingClientRect();
+        const put = (b) => { b.setAttribute("aria-hidden", "true"); b.style.position = "absolute"; b.style.top = "0"; b.style.left = "0"; b.style.pointerEvents = "none"; live.after(b); return b; };
+        const tb = put(nb.cloneNode(true));                         // the page underneath's logo, moving with that page and only where the leaving page has uncovered it
+        for (const k of tb.children) if (!(k.id === "brand" && !k.hidden && $("brand").hidden)) k.style.visibility = "hidden";
+        sw.textBar = tb;
+        const gb = put(nb.cloneNode(true));                         // the page underneath's buttons this page does not have: they come when the finger lets go
+        for (const k of gb.children) { const g = GLASS.includes(k.id) && !k.hidden && !vis(live, k.id); k.style.visibility = "hidden"; if (g) sw.glassIn.push(k); }
+        sw.glassBar = gb;
+      }
     }
     sw.hdr = document.querySelector("header"); sw.barFrom = Math.max(0, barLevel); sw.barTo = Math.min(1, Math.max(0, shot ? Number(shot.dataset.bar) || 0 : settingsOpen ? sw.barFrom : (scrollMemo.get(String(bk).split("|")[0]) || 0) / BAR_FADE));   // the bar goes from this page's look to the one underneath as the finger moves (no copy of it: where Back will put that page, its top after a relaunch)
     sw.main.classList.add("swiping");
   }
-  function paintSwipe(anim) {
-    const p = Math.min(1, sw.dx / sw.w), tr = anim ? "transform 250ms cubic-bezier(.2,.8,.2,1)" : "none";
-    sw.main.style.transition = tr; sw.main.style.transform = "translate3d(" + sw.dx + "px,0,0)";
-    if (sw.shot) { sw.shot.style.transition = tr; sw.shot.style.transform = "translate3d(" + (-0.3 * sw.w * (1 - p)) + "px,0,0)"; }   // the page underneath comes in from a third to the left
-    sw.dim.style.transition = anim ? "opacity 250ms ease" : "none"; sw.dim.style.opacity = String(1 - p);
-    if (sw.hdr && sw.hdr.style) { sw.hdr.classList.toggle("bar-anim", !!anim); setBar(Math.round((sw.barFrom + (sw.barTo - sw.barFrom) * p) * 100) / 100); }
-    for (const [el, a, b] of sw.fade) { el.style.transition = anim ? "opacity 250ms cubic-bezier(.2,.8,.2,1)" : "none"; el.style.opacity = String(a + (b - a) * p); }
+  function paintSwipe(ease) {                                       // ease: the release's spring (null while the finger is on the screen)
+    const p = Math.min(1, sw.dx / sw.w), tr = (prop) => ease ? prop + " " + ease.ms + "ms " + ease.css : "none", move = "translate3d(" + sw.dx + "px,0,0)", under = -0.3 * sw.w * (1 - p);
+    sw.main.style.transition = tr("transform"); sw.main.style.transform = move;
+    if (sw.dockSlides && sw.dock) { sw.dock.style.transition = tr("transform"); sw.dock.style.transform = move; }
+    if (sw.shot) { sw.shot.style.transition = tr("transform"); sw.shot.style.transform = "translate3d(" + under + "px,0,0)"; }   // the page underneath comes in from 30% to the left
+    sw.dim.style.transition = tr("opacity"); sw.dim.style.opacity = String(1 - p);
+    if (sw.textBar && sw.barRect) { const r = sw.barRect, right = Math.max(0, r.width - (sw.dx - r.left - under)); sw.textBar.style.transition = ease ? tr("transform") + ", " + tr("clip-path") : "none"; sw.textBar.style.transform = "translate3d(" + under + "px,0,0)"; sw.textBar.style.clipPath = "inset(0 " + right + "px 0 0)"; }
+    if (sw.hdr && sw.hdr.style) {
+      if (ease) { sw.hdr.style.setProperty("--swipe-ms", ease.ms + "ms"); sw.hdr.style.setProperty("--swipe-ease", ease.css); }
+      sw.hdr.classList.toggle("bar-anim", !!ease); setBar(Math.round((sw.barFrom + (sw.barTo - sw.barFrom) * p) * 100) / 100);
+    }
   }
   function clearSwipe() {
     if (!sw) return; const m = sw.main;
     m.classList.remove("swiping"); m.style.transition = ""; m.style.transform = "";
-    if (sw.shot) { sw.shot.style.transition = ""; sw.shot.style.transform = ""; if (sw.shot.parentNode) sw.shot.parentNode.removeChild(sw.shot); }   // the copy is kept for a later swipe to the same page
+    if (sw.dock) { sw.dock.style.transition = ""; sw.dock.style.transform = ""; }
+    if (sw.shot) { sw.shot.style.transition = ""; sw.shot.style.transform = ""; for (const d of sw.shot.querySelectorAll(".shot-dock")) d.style.visibility = ""; if (sw.shot.parentNode) sw.shot.parentNode.removeChild(sw.shot); }   // the copy is kept for a later swipe to the same page
     if (sw.layer) sw.layer.remove();
-    for (const [el] of sw.fade || []) { el.style.transition = ""; el.style.opacity = ""; }
-    if (sw.nextBar) sw.nextBar.remove();
-    if (sw.hdr) sw.hdr.classList.remove("bar-anim");
+    for (const a of sw.anims || []) { try { a.cancel(); } catch (_) {} }
+    if (sw.textBar) sw.textBar.remove(); if (sw.glassBar) sw.glassBar.remove();
+    if (sw.hdr) { sw.hdr.classList.remove("bar-anim"); sw.hdr.style.removeProperty("--swipe-ms"); sw.hdr.style.removeProperty("--swipe-ease"); }
+    document.body.classList.remove("swipe-busy");
+    if (sw.ac) sw.ac.abort();
     sw = null; barLevel = -1; paintBar();                            // the bar as the page now under it really is (written even when it matches the old level)
+    if (renderAfterSwipe) { renderAfterSwipe = false; render(); }   // what a sync brought meanwhile
   }
-  async function endSwipe(cancelled) {
-    sw.busy = true;
-    const go = !cancelled && (sw.dx > sw.w / 3 || (sw.v > 0.45 && sw.dx > 24));
-    const mine = sw, clear = () => { if (sw === mine) clearSwipe(); };
-    if (!go) { sw.dx = 0; paintSwipe(true); setTimeout(clear, 260); return; }
-    sw.dx = sw.w; paintSwipe(true);
-    await new Promise((r) => setTimeout(r, 260));
+  async function endSwipe(cancelled, at) {
+    const mine = sw; mine.busy = true; mine.busyAt = Date.now();
+    try { await settleSwipe(mine, cancelled, at); }
+    catch (_) { if (sw === mine) clearSwipe(); }                    // whatever went wrong, the page is left as the Back circle leaves it, never held
+  }
+  async function settleSwipe(s, cancelled, at) {
+    const clear = () => { if (sw === s) clearSwipe(); }, w = s.w, p = Math.min(1, s.dx / w);
+    const lastT = s.pts[s.pts.length - 1][0], rested = at != null && at - lastT > 60;   // a finger that stopped before it lifted has no speed
+    const v = rested ? 0 : swipeSpeed();                            // px per ms
+    const go = !cancelled && (s.pts.length < 3 ? v > 0 && p > 0 : p + (v * 1000 / w) * 0.35 > Math.min(187.5 / w, 0.5));   // UIKit's rule: 0.35 s ahead past the smaller of 187.5 points and half the screen
+    const left = go ? w - s.dx : s.dx, vTo = go ? v * 1000 * (s.edge && s.flick ? 4.25 : 1) : -v * 1000;   // the finger's speed toward where the pages now go (a flick from the edge flies off faster, as UIKit's)
+    const ease = springEase(left > 1 ? Math.max(-15, Math.min(15, vTo / left)) : 0, 0.3, 0.85);   // held to 15 distances a second: faster only overshoots, and the page underneath would show it
+    if (!go) { s.dx = 0; paintSwipe(ease); setTimeout(clear, ease.ms + 20); return; }
+    s.dx = w; paintSwipe(ease);
+    const glass = springEase(0, GLASS_RES, GLASS_DAMP);             // the bar's buttons change now, while the page settles
+    const out = calmMotion() ? [{ opacity: 1 }, { opacity: 0 }] : [{ transform: "scale(1)", filter: "blur(0px)", opacity: 1 }, { transform: "scale(1.2)", filter: "blur(10px)", opacity: 0 }];   // Reduce Motion: a plain fade
+    for (const el of s.glassOut) if (el && el.animate) s.anims.push(el.animate(out, { duration: glass.ms, easing: glass.css, fill: "forwards" }));
+    for (const el of s.glassIn) if (el && el.animate) { el.style.visibility = ""; s.anims.push(el.animate([...out].reverse(), { duration: glass.ms, easing: glass.css, fill: "forwards" })); }
+    await new Promise((r) => setTimeout(r, Math.max(ease.ms, s.glassOut.length || s.glassIn.length ? glass.ms : 0) + 20));
+    if (sw !== s) return;                                           // let go of meanwhile (the safety release below)
     // the swap, all in one go, nothing in between painted: the copy covers the screen, the page underneath becomes the real one at its own
-    // scroll (with no slide or swipe style left on it, as the Back circle leaves it), then the copy goes. Before, the page was put back while
-    // still slid away and styled for the swipe, and from the bottom of the home list it could land elsewhere than the copy (his report)
-    const m = sw.main; sw.layer.style.zIndex = "3"; m.style.transition = "none"; m.style.transform = ""; m.classList.remove("swiping");
-    const before = navSig(); await goBackNow();
+    // scroll (with no slide or swipe style left on it, as the Back circle leaves it), then the copy goes
+    const m = s.main; s.layer.style.zIndex = "3"; m.style.transition = "none"; m.style.transform = ""; m.classList.remove("swiping");
+    if (s.dock) { s.dock.style.transition = "none"; s.dock.style.transform = ""; }
+    const before = navSig(); await goBackNow();                     // may ask first (changes to an exercise): taps then reach the question (the guard above lets them through)
+    if (sw !== s) return;
     if (navSig() === before) {                                       // Back was refused: the page comes back in, as the Back circle leaves it
-      m.classList.add("swiping"); m.style.transform = "translate3d(" + sw.w + "px,0,0)"; sw.layer.style.zIndex = ""; void m.offsetWidth;
-      sw.dx = 0; paintSwipe(true); setTimeout(clear, 260); return;
+      for (const a of s.anims) { try { a.cancel(); } catch (_) {} } s.anims = [];
+      m.classList.add("swiping"); m.style.transform = "translate3d(" + w + "px,0,0)"; s.layer.style.zIndex = ""; void m.offsetWidth;
+      const back = springEase(0, 0.3, 1); s.dx = 0; paintSwipe(back); setTimeout(clear, back.ms + 20); return;
     }
     clear();                                                        // same moment: the next frame shows the real page where the copy was
   }
@@ -3282,7 +3415,7 @@ import { reportRange, buildReport } from "./report.js";
   });
 
   // ---------- boot ----------
-  Object.assign(ui, { $, setStatus, render, relabeled, photosSynced: () => flushPhotos(), showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadCustomSubs, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar, seedTemplates });   // what the sync layer may call on the screens
+  Object.assign(ui, { $, setStatus, render: renderUnlessSwiping, relabeled, photosSynced: () => flushPhotos(), showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadCustomSubs, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar, seedTemplates });   // what the sync layer may call on the screens
   function watchReleases(mine) {               // a page iOS keeps alive for days still gets the next release: on coming back to the app, never mid-tap, mid-sheet or mid-typing
     const sw = navigator.serviceWorker; if (!mine || !sw || !sw.addEventListener) return;
     let newest = 0;
@@ -3350,7 +3483,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, goBackNow, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
