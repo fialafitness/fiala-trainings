@@ -217,20 +217,19 @@ import { reportRange, buildReport } from "./report.js";
   const rememberPage = () => lsSet("fiala.trainings.page", settingsOpen ? { open: settingsOpen, from: fromSettings || false, ...(settingsOpen === "exercise" && exCurrent ? { name: exCurrent.name, key: exCurrent.key } : {}) } : null);
   // ---- appearance: auto (follow the phone) | light | dark. Saved on this device only.
   const THEME_KEY = "fiala.theme";
-  // the strip under the clock (Safari's own, theme-color): the page's colour while the page is at its top, the bar's colour over an empty
-  // page once it scrolls under the bar, so strip and bar always read as one (index.html carries the top colours)
-  const themeColours = { light: { top: "#f5f5f7", bar: "#fcfcfd" }, dark: { top: "#000000", bar: "#080808" } };
+  // theme-color: the page's own colour, always. The strip under the clock is not ours to paint: the home-screen app leaves it see-through
+  // (the page scrolls under the time, as in Apple's apps) as long as nothing of the bar reaches up into it (index.html, header::before)
+  const themeColours = { light: "#f5f5f7", dark: "#000000" };
   let themeChoice = "auto";
   // ---- the top bar, as Apple's: none at the top of a page; the frosted bar and its hairline fade in over the first 12 points the page scrolls under it
   const BAR_FADE = 12;
-  let barLevel = -1, barOn = false;
+  let barLevel = -1;
   function paintStrip() {
-    const k = barOn ? "bar" : "top";
     for (const m of document.querySelectorAll('meta[name="theme-color"]')) {
       if (m.dataset.media === undefined) m.dataset.media = m.getAttribute("media") || "";
       const isDark = /dark/.test(m.dataset.media);
-      if (themeChoice === "auto") { m.setAttribute("media", m.dataset.media); m.content = themeColours[isDark ? "dark" : "light"][k]; }
-      else { m.removeAttribute("media"); m.content = themeColours[themeChoice][k]; }
+      if (themeChoice === "auto") { m.setAttribute("media", m.dataset.media); m.content = themeColours[isDark ? "dark" : "light"]; }
+      else { m.removeAttribute("media"); m.content = themeColours[themeChoice]; }
     }
   }
   function setBar(v) {                                              // the bar's level on the header; at 0 it also takes the page's colour (see header.at-top)
@@ -241,7 +240,6 @@ import { reportRange, buildReport } from "./report.js";
     const y = Number(window.scrollY) || 0;                          // a pull past the top (Safari's bounce) reads below 0: no bar, as Apple's
     const v = Math.round(Math.min(1, Math.max(0, y / BAR_FADE)) * 100) / 100;
     if (v !== barLevel) { barLevel = v; setBar(v); }
-    const on = v >= 0.5; if (on !== barOn) { barOn = on; paintStrip(); }
   }
   window.addEventListener("scroll", paintBar, { passive: true });
   window.addEventListener("resize", paintBar);
