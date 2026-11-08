@@ -1038,9 +1038,13 @@ import { reportRange, buildReport } from "./report.js";
     for (const s of secs) {
       const r = s.getBoundingClientRect(), c = s.cloneNode(true), from = s.querySelectorAll("input, textarea, select"), to = c.querySelectorAll("input, textarea, select");
       from.forEach((el, i) => { if (to[i]) to[i].value = el.value; });   // what was typed shows, not just the empty fields
-      c.style.position = "absolute"; c.style.left = r.left + "px"; c.style.top = r.top + "px"; c.style.width = r.width + "px"; c.style.margin = "0";
+      let top = r.top;                                              // the copy's content exactly where the page's was: a copy on its own keeps its first child's top margin inside it, where the page lets it
+      const first = [...s.children].find((k) => k.getClientRects().length && !/^(absolute|fixed)$/.test(getComputedStyle(k).position));   // pass out through the section (the home's title, 20 points: the copy sat 20 points low and the page
+      if (first) { const sc = getComputedStyle(s), fc = getComputedStyle(first); top = first.getBoundingClientRect().top - (parseFloat(sc.paddingTop) || 0) - (parseFloat(sc.borderTopWidth) || 0) - (parseFloat(fc.marginTop) || 0); }   // jumped up at the end of the swipe, measured 7 Nov)
+      c.style.position = "absolute"; c.style.left = r.left + "px"; c.style.top = top + "px"; c.style.width = r.width + "px"; c.style.margin = "0";
       box.appendChild(c);
     }
+    const bar = document.querySelector("header .bar"); if (bar) box._bar = bar.cloneNode(true);   // the bar's buttons as they were over this page: the swipe brings them in as the leaving ones go
     return box;
   }
   let sw = null;
@@ -1074,6 +1078,14 @@ import { reportRange, buildReport } from "./report.js";
     const bk = backKey(), shot = shotByKey.get(bk) || null; if (shot) layer.appendChild(shot);   // the page Back lands on; none known: the plain page colour, never a wrong page
     const dim = document.createElement("div"); dim.className = "swipe-dim"; layer.appendChild(dim);
     document.body.appendChild(layer); sw.layer = layer; sw.dim = dim; sw.shot = shot;
+    const live = document.querySelector("header .bar"); sw.fade = [];   // the bar's buttons cross over with the finger, as Apple's: the leaving page's fade out, the page underneath's fade in; a Back circle
+    if (shot && shot._bar && live) {                                // both pages show stays where it is. Before, the leaving page's chevron stayed for the whole swipe and switched to the logo at the end
+      const nb = shot._bar.cloneNode(true); nb.setAttribute("aria-hidden", "true"); nb.style.position = "absolute"; nb.style.top = "0"; nb.style.left = "0"; nb.style.pointerEvents = "none";
+      live.after(nb); sw.nextBar = nb;
+      const nbBack = nb.querySelector("#back"), backBoth = !$("back").hidden && nbBack && !nbBack.hidden;
+      for (const el of live.children) if (!(backBoth && el.id === "back")) sw.fade.push([el, 1, 0]);
+      for (const el of nb.children) { if (backBoth && el.id === "back") el.style.visibility = "hidden"; else sw.fade.push([el, 0, 1]); }
+    }
     sw.hdr = document.querySelector("header"); sw.barFrom = Math.max(0, barLevel); sw.barTo = Math.min(1, Math.max(0, shot ? Number(shot.dataset.bar) || 0 : settingsOpen ? sw.barFrom : (scrollMemo.get(String(bk).split("|")[0]) || 0) / BAR_FADE));   // the bar goes from this page's look to the one underneath as the finger moves (no copy of it: where Back will put that page, its top after a relaunch)
     sw.main.classList.add("swiping");
   }
@@ -1083,12 +1095,15 @@ import { reportRange, buildReport } from "./report.js";
     if (sw.shot) { sw.shot.style.transition = tr; sw.shot.style.transform = "translate3d(" + (-0.3 * sw.w * (1 - p)) + "px,0,0)"; }   // the page underneath comes in from a third to the left
     sw.dim.style.transition = anim ? "opacity 250ms ease" : "none"; sw.dim.style.opacity = String(1 - p);
     if (sw.hdr && sw.hdr.style) { sw.hdr.classList.toggle("bar-anim", !!anim); setBar(Math.round((sw.barFrom + (sw.barTo - sw.barFrom) * p) * 100) / 100); }
+    for (const [el, a, b] of sw.fade) { el.style.transition = anim ? "opacity 250ms cubic-bezier(.2,.8,.2,1)" : "none"; el.style.opacity = String(a + (b - a) * p); }
   }
   function clearSwipe() {
     if (!sw) return; const m = sw.main;
     m.classList.remove("swiping"); m.style.transition = ""; m.style.transform = "";
     if (sw.shot) { sw.shot.style.transition = ""; sw.shot.style.transform = ""; if (sw.shot.parentNode) sw.shot.parentNode.removeChild(sw.shot); }   // the copy is kept for a later swipe to the same page
     if (sw.layer) sw.layer.remove();
+    for (const [el] of sw.fade || []) { el.style.transition = ""; el.style.opacity = ""; }
+    if (sw.nextBar) sw.nextBar.remove();
     if (sw.hdr) sw.hdr.classList.remove("bar-anim");
     sw = null; barLevel = -1; paintBar();                            // the bar as the page now under it really is (written even when it matches the old level)
   }
@@ -1099,9 +1114,16 @@ import { reportRange, buildReport } from "./report.js";
     if (!go) { sw.dx = 0; paintSwipe(true); setTimeout(clear, 260); return; }
     sw.dx = sw.w; paintSwipe(true);
     await new Promise((r) => setTimeout(r, 260));
+    // the swap, all in one go, nothing in between painted: the copy covers the screen, the page underneath becomes the real one at its own
+    // scroll (with no slide or swipe style left on it, as the Back circle leaves it), then the copy goes. Before, the page was put back while
+    // still slid away and styled for the swipe, and from the bottom of the home list it could land elsewhere than the copy (his report)
+    const m = sw.main; sw.layer.style.zIndex = "3"; m.style.transition = "none"; m.style.transform = ""; m.classList.remove("swiping");
     const before = navSig(); await goBackNow();
-    if (navSig() === before) { sw.dx = 0; paintSwipe(true); setTimeout(clear, 260); return; }   // Back was refused: the page comes back, as the Back circle leaves it
-    requestAnimationFrame(clear); setTimeout(clear, 120);           // the page underneath is now the real one (a frame, or a moment if no frame comes)
+    if (navSig() === before) {                                       // Back was refused: the page comes back in, as the Back circle leaves it
+      m.classList.add("swiping"); m.style.transform = "translate3d(" + sw.w + "px,0,0)"; sw.layer.style.zIndex = ""; void m.offsetWidth;
+      sw.dx = 0; paintSwipe(true); setTimeout(clear, 260); return;
+    }
+    clear();                                                        // same moment: the next frame shows the real page where the copy was
   }
   // ---------- render ----------
   // ---- keyboard bar (above the phone keyboard): 123/ABC switch, quick entries, Next/Done. The number keypad on iPhone has no Return key.
