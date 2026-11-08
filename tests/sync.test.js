@@ -482,6 +482,27 @@ test("a set-log that timed out on the phone and lands after a newer one is refus
   maps.trainings.get("T").rows[0].weights = ["35"]; maps.dirty.set("trainings/T", 3); maps.pendingWeightRows.set("T", new Set(["r1"])); fns.flushOne("trainings", "T"); await settle();
   assert.strictEqual(server.seq, 3, "and counts on from there");
 });
+test("a client's move that timed out on the phone and is still out holds the next move back: the server takes the two in the order they were picked", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend, saveWait: 40 });
+  const server = { date: null, calls: [] }; let calls = 0, release = null;
+  sb.rpcs.client_move_training = async (a) => {                        // the rule as client-missed.sql has it: it writes any day it is given
+    calls++; if (calls === 1) await new Promise((r) => { release = r; });
+    server.calls.push(a.p_date); server.date = a.p_date; return null;
+  };
+  const t = training("T", { date: day(3) }); maps.trainings.set("T", t);   // Reschedule: Wednesday
+  maps.dirty.set("trainings/T", 1); maps.pendingMove.add("T"); fns.flushOne("trainings", "T");
+  await tick(90);                                                     // the request is stuck; the phone gave up on it and keeps the move queued
+  assert.ok(maps.pendingMove.has("T"), "still queued after the timeout");
+  t.date = day(5); maps.dirty.set("trainings/T", 2); maps.pendingMove.add("T"); fns.flushOne("trainings", "T"); await settle();   // she changed her mind: Friday
+  assert.deepStrictEqual(server.calls, [], "Friday waits: Wednesday can still land");
+  assert.ok(maps.pendingMove.has("T"), "and stays queued");
+  release(); await tick(30); await settle();                          // Wednesday reaches the server at last
+  assert.deepStrictEqual(server.calls, [day(3), day(5)], "Wednesday first, then Friday"); assert.strictEqual(server.date, day(5), "Friday stands");
+  assert.ok(!maps.pendingMove.has("T"), "then acknowledged");
+  sb.rpcs.client_move_training = async (a) => { server.calls.push(a.p_date); server.date = a.p_date; return null; };
+  t.date = day(6); maps.dirty.set("trainings/T", 3); maps.pendingMove.add("T"); fns.flushOne("trainings", "T"); await settle();
+  assert.strictEqual(server.date, day(6), "with nothing out, a move goes at once");
+});
 test("a server row's number is taken by the coach's copy, and a copied workout starts without one", async () => {
   const sb = makeSupabase(); coach(sb);
   const t = training("T", { rows: [row("r1", ["20"], ["5"], 1)] }); maps.trainings.set("T", t);

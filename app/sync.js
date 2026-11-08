@@ -215,6 +215,7 @@ const cloudBackend = {
   },
 };
 
+const moveOut = new Map();                                          // per workout: the client's move request still out (one the phone gave up on after its deadline can still land)
 const clientBackend = {
   // Every queue is an outbox: an item stays in it until the server holds what the record says NOW. Nothing is cleared before the answer
   // comes back (a persist mid-flight, or the app being killed, loses nothing), and an answer never acknowledges a newer action — a set
@@ -285,10 +286,18 @@ const clientBackend = {
       const now = live(); if (error || (!!now.skippedAt === skipped && String(now.skipReason || "") === reason)) pendingSkip.delete(id);
     }
     if (pendingMove.has(id) && !S.moveMissing) {
-      const date = String(data.date || "").slice(0, 10);
-      const { error } = await rpc("client_move_training", { p_training: id, p_date: date });
-      if (error && (error.code === "PGRST202" || /client_move_training/.test(error.message || ""))) S.moveMissing = true;   // rule not installed yet: stays on the device until it is
-      else { if (error && error.code !== "P0001") throw error; if (error || String(live().date || "").slice(0, 10) === date) pendingMove.delete(id); }
+      const out = moveOut.get(id);
+      if (out) { if (!out.again) { out.again = true; out.back.then(() => scheduleSave("trainings", id, 0)); } }   // the move before this one timed out here but can still reach the server (the rule writes any day it is given): this one goes once that one is back, so the server takes the two in the order they were picked
+      else {
+        const date = String(data.date || "").slice(0, 10);
+        const call = Promise.resolve(S.sb.rpc("client_move_training", { p_training: id, p_date: date }));
+        const entry = { again: false }; let stop = null;
+        entry.back = new Promise((r) => { stop = setTimeout(r, 60000); call.then(r, r); }).then(() => { clearTimeout(stop); if (moveOut.get(id) === entry) moveOut.delete(id); });   // back with an answer or an error, or a minute gone (a request that old is taken as lost)
+        moveOut.set(id, entry);
+        const { error } = await withTimeout(call, saveDeadline());
+        if (error && (error.code === "PGRST202" || /client_move_training/.test(error.message || ""))) S.moveMissing = true;   // rule not installed yet: stays on the device until it is
+        else { if (error && error.code !== "P0001") throw error; if (error || String(live().date || "").slice(0, 10) === date) pendingMove.delete(id); }
+      }
     }
     if (pendingMiss.has(id) && !S.missMissing) {
       const missed = data.missed === true;
@@ -420,4 +429,4 @@ async function fetchAll(table) {                                 // every row, p
   }
 }
 
-export { seenDoc, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll };
+export { seenDoc, moveOut, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll };

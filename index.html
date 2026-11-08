@@ -429,7 +429,6 @@
   .sheet-bg { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; touch-action: none; overscroll-behavior: contain; }
   .sheet-bg[hidden] { display: none; }
   .sheet { width: 100%; max-width: 520px; background: var(--sheet); border-top: 1px solid var(--card-border); border-radius: var(--r-card) var(--r-card) 0 0; padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -8px 30px rgba(0,0,0,0.30); animation: sheetUp 260ms cubic-bezier(0.22, 1, 0.36, 1); max-height: calc(100% - env(safe-area-inset-top, 0px) - 24px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
-  #dpGrid { touch-action: pan-y; }
   @keyframes sheetUp { from { transform: translateY(28px); } to { transform: translateY(0); } }
   @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
   .sheet-head { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin-bottom: 2px; }
@@ -927,6 +926,7 @@
   #whenPop .wopt:active, #whenPop .wopt:hover { background: var(--glass-bar-on); }
   #whenPop.menu .wopt { display: flex; align-items: center; gap: 16px; min-height: 42px; padding: 0 16px 0 17px; border-radius: 16px; font-size: 1.0625rem; }   /* after the base rule, so these win */
   #whenPop.menu .wopt .mi { width: 17px; height: 17px; flex: none; }
+  #whenPop .wopt:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }   /* a keyboard's place in the menu, as on every other button (a tap shows none) */
   #whenPop .wopt.danger { color: var(--danger); }                              /* Remove photo: red, as Apple marks a destructive row */
   @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
   .block.done:not(.open) .row .lifts, body.client .block.ahead .row .lifts { display: none; }
@@ -1012,9 +1012,10 @@
   .mnav:hover { opacity: 0.85; }
   .cal-wd { display: grid; grid-template-columns: repeat(7, 1fr); margin: 6px 0 2px; }
   .cal-wd span { text-align: center; font-size: 0.6875rem; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
-  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }   /* a day is pressed, never selected: a held finger brings no loupe and no handles, as in Apple's calendar */
   .cal button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: var(--r-chip); padding: 6px 0 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
   .cal button:hover { background: var(--field); }
+  .dragged .cal button:hover { background: transparent; }          /* once the finger slides the months, the day it landed on lets go (iOS keeps a touch's hover until the next touch; Apple's day lets go as the slide starts) */
   .cal button.out { visibility: hidden; }
   .cal .dn { font-size: 1.125rem; font-weight: 500; color: var(--text-primary); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .cal button.today .dn { background: var(--ink); color: var(--ink-on); }
@@ -1108,6 +1109,12 @@
   .hdr-disc { width: 44px; height: 44px; margin-left: 10px; }   /* 44 points: Apple Fitness's photo in that corner, measured */   /* the person in the bar, where Apple keeps the account: Settings for the client, the client's card for the coach */
   .hdr-disc svg { width: 22px; height: 22px; }
   .hdr-disc[hidden] { display: none; }
+  .bar-more { background: var(--disc-fill); color: var(--disc-ink); }   /* the workout's "…" in the bar (the client's view): Apple's 44-point grey circle with the ellipsis, three 3.9-point dots 7.9 apart (measured off his Files screenshot, 8 Nov); its menu is the frosted glass of every other menu */
+  .dp-pager { overflow: hidden; touch-action: pan-y; }   /* the day picker's months side by side on a track the finger moves sideways (main.js); up and down still scroll the sheet (a phone on its side), as the client page's month calendar does */
+  .dp-track { display: flex; will-change: transform; }
+  .dp-track > .cal { flex: 0 0 100%; min-width: 0; align-content: start; }   /* one month a page, all as tall as the tallest */
+  .cal button.off { cursor: default; } .cal button.off:hover { background: transparent; } .cal button.off .dn { color: var(--text-tertiary); opacity: 0.6; }   /* a day that cannot be picked (before today, for a reschedule) */
+  .mnav:disabled { opacity: 0.3; cursor: default; }
   .disc.open { transform: rotate(180deg); }
   .disc.needs::after { content: ""; position: absolute; top: -1px; right: -1px; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); border: 2px solid var(--surface); }   /* needs attention: red, like a badge */
   .disc.open::after { display: none; }
@@ -1275,7 +1282,7 @@
   <div class="bar">
     <button class="back" id="back" hidden><svg viewBox="0 0 10.7 17.9" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 1.2 1.2 8.95 9.5 16.7"/></svg><span id="backLabel"></span></button>
     <div class="brand" id="brand"><img class="logo-light" src="brand/mark-black.svg" alt="Fiala Fitness"><img class="logo-dark" src="brand/mark-white.svg" alt="Fiala Fitness"></div>
-    <div id="status" role="status" aria-live="polite"></div><button class="disc hdr-disc" id="meDisc" type="button" aria-label="Settings" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-3.8 4-5.6 7.5-5.6s6.5 1.8 7.5 5.6"/></svg><span class="avatar" aria-hidden="true"></span></button><button class="nav-action" id="navDone" type="button" hidden>Done</button>
+    <div id="status" role="status" aria-live="polite"></div><button class="disc hdr-disc bar-more" id="tMore" type="button" aria-label="More" aria-haspopup="menu" hidden><svg viewBox="0 0 22 22" aria-hidden="true" fill="currentColor"><circle cx="3.13" cy="11" r="1.97"/><circle cx="11" cy="11" r="1.97"/><circle cx="18.87" cy="11" r="1.97"/></svg></button><button class="disc hdr-disc" id="meDisc" type="button" aria-label="Settings" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-3.8 4-5.6 7.5-5.6s6.5 1.8 7.5 5.6"/></svg><span class="avatar" aria-hidden="true"></span></button><button class="nav-action" id="navDone" type="button" hidden>Done</button>
   </div>
 </header>
 <div id="topEdge" aria-hidden="true"></div>
@@ -1545,7 +1552,7 @@
     <div class="sheet-head"><span class="sheet-title" id="dpTitle"></span><button class="btn quiet" id="dpCancel" type="button">Cancel</button></div>
     <div class="cal-head"><button class="mnav" id="dpPrev" type="button" aria-label="Previous month">&lsaquo;</button><span class="cal-title" id="dpMonth"></span><span class="cal-right"><button class="cal-today" id="dpToday" type="button" hidden>Today</button><button class="mnav" id="dpNext" type="button" aria-label="Next month">&rsaquo;</button></span></div>
     <div class="cal-wd" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
-    <div class="cal" id="dpGrid"></div>
+    <div class="dp-pager" id="dpGrid"></div>
   </div>
 </div>
 <span id="typeProbe" aria-hidden="true">A</span>
@@ -1600,7 +1607,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=240";
+  import { boot } from "./app/main.js?v=241";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
