@@ -217,8 +217,8 @@ import { reportRange, buildReport } from "./report.js";
   const rememberPage = () => lsSet("fiala.trainings.page", settingsOpen ? { open: settingsOpen, from: fromSettings || false, ...(settingsOpen === "exercise" && exCurrent ? { name: exCurrent.name, key: exCurrent.key } : {}) } : null);
   // ---- appearance: auto (follow the phone) | light | dark. Saved on this device only.
   const THEME_KEY = "fiala.theme";
-  // theme-color: the page's own colour, always. The strip under the clock is not ours to paint: the home-screen app leaves it see-through
-  // (the page scrolls under the time, as in Apple's apps) as long as nothing of the bar reaches up into it (index.html, header::before)
+  // theme-color: the page's own colour, always. The strip under the clock is not ours to paint: iOS leaves it see-through (the page scrolls
+  // under the time, as in Apple's apps) as long as no pinned box spans the screen's width (index.html, header)
   const themeColours = { light: "#f5f5f7", dark: "#000000" };
   let themeChoice = "auto";
   // ---- the top bar, as Apple's: none at the top of a page; the frosted bar and its hairline fade in over the first 12 points the page scrolls under it
@@ -232,9 +232,9 @@ import { reportRange, buildReport } from "./report.js";
       else { m.removeAttribute("media"); m.content = themeColours[themeChoice]; }
     }
   }
-  function setBar(v) {                                              // the bar's level on the header; at 0 it also takes the page's colour (see header.at-top)
+  function setBar(v) {                                              // the bar's level on the header (its look fades with it: index.html, header::before)
     const h = document.querySelector("header"); if (!h || !h.style) return;
-    h.style.setProperty("--bar", String(v)); if (h.classList) h.classList.toggle("at-top", v === 0);
+    h.style.setProperty("--bar", String(v));
   }
   function paintBar() {
     const y = Number(window.scrollY) || 0;                          // a pull past the top (Safari's bounce) reads below 0: no bar, as Apple's
