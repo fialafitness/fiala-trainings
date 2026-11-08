@@ -189,27 +189,31 @@
     position: sticky;
     top: env(safe-area-inset-top, 0px);
     z-index: 5;
-    width: 75%; margin: 0 auto;                         /* the pinned box is narrower than the screen; its look (::before) and its buttons (.bar) still run edge to edge. iOS 26 (the home-screen
-                                                           app, and Safari) paints the strip under the clock one solid colour whenever a pinned box at the top spans most of the screen's width
-                                                           (WebKit LocalFrameView::fixedContainerEdges: 90% of the width less 8 points from iOS 26.1 on, 80% on 26.0; a narrower box is
-                                                           passed over): the bar's colour if the box has one (v218 to v221: a white or black band, his screenshots 7 Nov), the page's if it
-                                                           has its own blur (October). With none, the strip is left alone and the page scrolls under the time with iOS's own soft blur, as
-                                                           in Apple's apps. Keep the header without a background or blur of its own, and under 80% wide */
+    width: 75%; margin: 0 auto;                         /* the pinned box is narrower than the screen once the page scrolls; its look (::before) and its buttons (.bar) still run
+                                                           edge to edge. iOS 26 (the home-screen app, and Safari) paints the strip under the clock one solid colour whenever a pinned box at
+                                                           the top spans most of the screen's width (WebKit LocalFrameView::fixedContainerEdges: 90% of the width less 8 points from iOS 26.1
+                                                           on, 80% on 26.0; a narrower box is passed over): the bar's colour if the box has one (v218 to v221: a white or black band, his
+                                                           screenshots 7 Nov), the page's if it has its own blur (October). With none, the strip is see-through and iOS lays its own soft
+                                                           blur over it; the bar's layer below reaches up there, so strip and bar are one material, as Apple Mail's (measured 7 Nov: the
+                                                           same shade under the clock and in the bar, 9 and 8 over black, 252 and 253 over white) */
     border-bottom: 1px solid transparent;               /* the hairline's place: the line itself is drawn by the bar below, so the page never moves */
   }
-  header::before {                                      /* the bar, as Apple's (measured off his Messages screenshots, iOS 26): at the top of a page there is no bar and no line, page and bar are one
-                                                           screen; as the page scrolls under it the frosted bar and its hairline fade in (main.js sets --bar). Apple Mail's numbers: 74% of the
-                                                           bar's colour over a 2-point blur, a hairline at its edge. It runs the screen's full width (a sixth of the 75% box on each side) and
-                                                           never up under the clock */
+  header.at-top { width: 100%; background-color: color-mix(in srgb, var(--surface) 1%, transparent); }   /* at the very top of a page: full width with the page's colour (as faint), so iOS
+                                                           fills the strip with the page's colour, one screen, and keeps its soft blur off; that blur would smear the logo and the photo up into
+                                                           the strip, where nothing has scrolled yet (his screenshot, 7 Nov, v222). The engine reads it again whenever the header repaints */
+  header::before {                                      /* the bar, as Apple's: at the top of a page there is no bar and no line, page and bar are one screen; as the page scrolls under it
+                                                           the frosted bar and its hairline fade in (main.js sets --bar). Apple Mail's numbers: 74% of the bar's colour over a 2-point blur, a
+                                                           hairline at its edge. It runs the screen's full width, and up under the clock (100 points: past the tallest status bar, the rest is
+                                                           off the screen), so the strip and the bar are one material, with iOS's own soft blur on top of it */
     content: ""; position: absolute; z-index: -1; pointer-events: none;
-    left: calc(-100% / 6); right: calc(-100% / 6); top: 0; bottom: -1px;   /* exactly to the screen's edges: any overhang would let the page drift sideways */
+    left: calc(50% - 50vw); right: calc(50% - 50vw); top: -100px; bottom: -1px;   /* exactly the screen's width whether the header is 75% or 100% wide: an overhang would let the page drift sideways */
     background: var(--header);
     -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
     border-bottom: 1px solid var(--header-border);
     opacity: var(--bar, 0);
   }
-  .bar { width: min(680px, 100% * 4 / 3); margin-left: calc(50% - min(340px, 100% * 2 / 3)); padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }   /* as wide as the screen (4/3 of the 75% header), up to 680 points, centred: the buttons stay where they always were */
+  .bar { width: min(680px, 100vw); margin-left: calc(50% - min(340px, 50vw)); padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }   /* as wide as the screen, up to 680 points, centred on it whether the header is 75% or 100% wide: the buttons stay where they always were */
   .back {                                                   /* Apple's back button: a 44-point circle with the chevron alone (measured off his Contacts screenshot); the place you came from is read by VoiceOver, not shown */
     appearance: none; border: 0; padding: 0; border-radius: 50%; position: relative; flex: none;
     background: var(--disc-fill); color: var(--disc-ink); font: inherit; cursor: pointer;
@@ -1565,7 +1569,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=222";
+  import { boot } from "./app/main.js?v=223";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

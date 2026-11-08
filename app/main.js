@@ -232,9 +232,9 @@ import { reportRange, buildReport } from "./report.js";
       else { m.removeAttribute("media"); m.content = themeColours[themeChoice]; }
     }
   }
-  function setBar(v) {                                              // the bar's level on the header (its look fades with it: index.html, header::before)
+  function setBar(v) {                                              // the bar's level on the header (its look fades with it: index.html, header::before); at 0 the header is full width in the page's colour (header.at-top)
     const h = document.querySelector("header"); if (!h || !h.style) return;
-    h.style.setProperty("--bar", String(v));
+    h.style.setProperty("--bar", String(v)); if (h.classList) h.classList.toggle("at-top", v === 0);
   }
   function paintBar() {
     const y = Number(window.scrollY) || 0;                          // a pull past the top (Safari's bounce) reads below 0: no bar, as Apple's
