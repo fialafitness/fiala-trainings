@@ -246,6 +246,8 @@ import { reportRange, buildReport } from "./report.js";
     const y = Number(window.scrollY) || 0;                          // a pull past the top (Safari's bounce) reads below 0: no bar, as Apple's
     const v = Math.round(Math.min(1, Math.max(0, y / BAR_FADE)) * 100) / 100;
     if (v !== barLevel) { barLevel = v; setBar(v); }
+    const edge = document.getElementById("topEdge"), pulled = y < 0;   // pulled past the top (a fast flick's bounce): no carrier at all, so the strip drops the bar's colour at once instead of keeping it until the
+    if (edge && edge.hidden !== pulled) edge.hidden = pulled;          // page comes back (WebKit neither reads the strip then nor keeps a colour whose element is gone); back in range it returns in the page's colour
     clearTimeout(edgeRest); edgeRest = setTimeout(nudgeEdge, 150);   // once more when the page has come to rest: while it is pulled past its top (a fast flick's bounce) WebKit skips the strip and keeps
                                                                       // its old colour (Page::updateFixedContainerEdges: scrollOffset < minimumScrollOffset), so the read made as the bar reached 0 mid-bounce
                                                                       // left the bar's 253 over the 246 page (his screenshots, 7 Nov: slow 246/246, fast 253/246)
