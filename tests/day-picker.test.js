@@ -55,6 +55,12 @@ test("a sync's redraw waits for the months to land (a settle, an arrow's slide) 
   assert.deepStrictEqual(r.redrawFinger, { kept: true, lift: true, after: true }, "and a finger on a day keeps its day until its click has come");
 });
 
+test("the second tap of a double tap (on a row's Reschedule, on the \"…\" menu's) lands on the days as they come up: in their first 350 ms it picks no day and closes nothing, as the skip sheet's; a keyboard's Enter always picks; after them a tap picks, the backdrop and Cancel close", () => {
+  assert.deepStrictEqual(r.settle, { day: false, backdrop: true, cancel: true, keyboard: true, dayLater: r.open.month + "-20", backdropLater: false, cancelLater: false,
+    earlyTouch: { picked: false, letGo: true }, earlyMouse: { picked: false, letGo: false } },
+    "340 ms after the days opened a day is not picked and the backdrop and Cancel leave them up; Enter (detail 0) picks at once; 360 ms after, the tap picks its day and the backdrop and Cancel close; a finger's early tap lets go of its day's grey (iOS keeps a tap's hover until the next touch), a mouse's keeps its hover");
+});
+
 test("days left open past midnight: yesterday is not picked, it greys out", () => {
   assert.deepStrictEqual(r.midnight, { before: true, picked: false, open: true, redrawn: true, greyed: true });
 });
