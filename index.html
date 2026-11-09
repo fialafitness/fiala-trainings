@@ -64,7 +64,7 @@
     --done-ink: #ffffff;
     --danger: #a63a46;                  /* Crimson deep — red text on light */
     --gold: #7f621a;                    /* the best lift: a quiet gold, deep enough to read as small bold text (5:1 on a field) */
-    --ink: #1d1d1f;                     /* the badge: black on light, white on dark */
+    --ink: #1d1d1f;                     /* the strong mark: black on light, white on dark */
     --disc-fill: #e5e5ea; --disc-ink: #1d1d1f;   /* Apple's round buttons (back, Message): a grey circle and the glyph in ink; dark measured off his Contacts screenshot, light is Apple's system gray 5 */
     --ink-on: #ffffff;
     --btn-bg: var(--brand-fill);        /* the primary action wears the brand, as Fitness+ wears its green */
@@ -472,7 +472,7 @@
   .card-sum div + div { margin-top: 2px; }
 
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
-  .block { --ss: var(--ink); --ss-ink: var(--ink-on); }   /* badges: black on light, white on dark — no card colour */
+  .block { --ss: var(--ink); --ss-ink: var(--ink-on); }   /* the number picker's ring on the current number: black on light, white on dark — no card colour */
     .group-cap { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; margin: 0 0 8px 2px; font-size: 0.8125rem; letter-spacing: 0; color: var(--text-tertiary); }
   .group-cap b { font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-secondary); }
   .group-cap .info { appearance: none; width: 18px; height: 18px; padding: 0; margin: 0; border: 1.5px solid currentColor; border-radius: 50%; background: none; color: var(--brand-text); font-family: inherit; font-style: normal; font-weight: 600; font-size: 0.6875rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; align-self: center; }   /* Apple's circled i, in Inter like everything else: tap for what a superset is */
@@ -498,9 +498,8 @@
   .block:not(.done):not(.ahead) .group.multi .row + .row { margin-top: 8px; }
   .block:not(.done):not(.ahead) .group.multi .tracker { padding-bottom: 12px; }
   .block:not(.done):not(.ahead) .card-foot { margin: 6px 16px 0; padding: 6px 0 14px; gap: 2px; }   /* the buttons close under the last exercise, the quiet words close under the button */
-  .group .row .top input.label { box-shadow: inset 0 0 0 1.5px var(--ss); }
   .row .top { display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: stretch; }
-  .block.done { --ss: var(--done); --ss-ink: var(--done-ink); }   /* finished: every badge, warm-up included, uses the done ink */
+  .block.done { --ss: var(--done); --ss-ink: var(--done-ink); }   /* finished: the done ink, warm-up included */
   .block.done .group { background: var(--done-tint); }
   .block.done:not(.open) .group { cursor: pointer; }
   .block.done:not(.open) .row { padding: 10px 16px 4px; }
@@ -560,9 +559,6 @@
   body.client .block.ahead .tracker, body.client .block.ahead .row .specs, body.client .block.ahead .row .tempo-wrap, body.client .block.ahead .row .setlog, body.client .block.ahead .row .player, body.client .block.ahead .card-foot, body.client .block.ahead .ex-icons { display: none; }
   body.client .block.ahead .row .top { pointer-events: none; }
   body.client .block.ahead .row .top .name { color: var(--text-secondary); min-height: 36px; }
-  body.client .block.ahead .row { position: relative; }
-  body.client .block.ahead .row .top .labwrap { position: absolute; left: 16px; top: 10px; bottom: 6px; width: calc(var(--numw) - 8px); display: flex; align-items: center; justify-content: center; }   /* folded: the circle centred on the whole exercise, its name and its sets line (the row's content, inside its 10 / 6 padding) */
-  body.client .block.ahead .row .top .exwrap { grid-column: 2; }
   body.client .block.peek .row .top { cursor: pointer; }
   body.client .block.peek .row .top .name, body.client .block.peek .row .top input.label { pointer-events: none; }
   /* the chevron in the corner: down on a folded card, up on one opened for a look */
@@ -633,11 +629,10 @@
   .block.done.skipped { --ss: var(--glyph-fill); --ss-ink: var(--text-secondary); }   /* skipped, nothing logged: no fern anywhere, a quiet grey card */
   .block.done.skipped .group { border-color: var(--card-border); background: var(--card); }
   .block.done.skipped .group-cap b { color: var(--text-secondary); }
-  .row .top input.label { text-align: center; font-weight: 500; font-size: min(1rem, 19px); padding: 0; width: var(--badge); height: var(--badge); min-height: 0; border-radius: 50%; }   /* the number in a circle (his pick, 9 Nov), centred on the exercise: on a folded card its name and sets line, else its name. Its text stops at 19 pt: past that the column caps the circle (56 pt, 52 on narrow phones), and 19 pt keeps "44b" inside it at every Text Size */
-  .row .top .labwrap { align-self: center; justify-self: center; }
-  .group .row .top input.label { background: var(--ss); color: var(--ss-ink); border-color: transparent; box-shadow: none; font-weight: 600; }   /* filled like the client's badges: the coach sees at a glance which card he is in */
-  .group .row .top input.label::placeholder { color: var(--ss-ink); opacity: 0.5; }
-  .group .row .top input.label:focus { box-shadow: 0 0 0 2px var(--brand); border-color: transparent; }
+  .row .top input.label { --name-size: 1rem; --line-at: 11px; text-align: left; font-size: min(var(--name-size), 23px); font-weight: 500; line-height: 1.375rem; height: 1.375rem; min-height: 0; margin-top: calc(var(--line-at) + 0.364 * max(0px, var(--name-size) - 23px)); padding: 0; border: 0; border-radius: 0; background: none; color: var(--text-secondary); }   /* the number as plain grey text (his pick, 9 Nov), as Apple numbers a list: the name's size on the name's first line (its box's 1 px edge + 10 px padding), at the column's left edge. It stops at 23 pt: "44m", the widest label to 99, is 51 pt there, inside the narrow phone's 52 pt column; a name past that size has its baseline lower on the line, so the number drops 0.364 of the difference with it (measured: 2 pt at the largest Text Size, 23 under 28.5) */
+  .row .top input.label::placeholder { color: var(--text-tertiary); }
+  .row .top input.label:not([readonly]):focus { color: var(--brand-text); }   /* his number picker open: the number he is changing in the app's purple (the client's numbers are read-only) */
+  .row .top .labwrap { align-self: start; }
   .row .top .exwrap { position: relative; }
   .row .top .name { font-weight: 500; resize: none; overflow: hidden; min-height: 44px; padding: 10px 16px; line-height: 1.375rem; display: block; }
   .row .x {
@@ -722,9 +717,9 @@
   .chip .suffix[hidden] { display: none; }
   .chip.filled .suffix { color: inherit; font-weight: 500; }        /* once there is a value the whole phrase reads as one: "20 sec rest" */
   body.client .specs .chip { cursor: default; }
-  /* client: the number is a solid badge in the exercise's colour, the name is the headline, the details line up under the name;
+  /* client: the number is plain grey text on the name's first line, the name is the headline, the details line up under the name;
      only the weight and reps boxes they fill in look like boxes */
-  .row { --numw: 64px; --letw: 0px; --badge: min(2.875rem, calc(var(--numw) - 8px)); }   /* the number's circle: 46 pt, so any label to 99 fits (measured, Inter 600: the widest, "44b", 31 pt, about 7 pt either side; even "44m" 36 pt); it grows with Text Size up to the column */                   /* badge column + gap: where the name starts; letter width on an open client card */
+  .row { --numw: 64px; --letw: 0px; }                   /* number column + gap: where the name starts; letter width on an open client card */
   /* client, open card: the number lives in the caption above; the name is the headline; superset rows carry a letter */
   body.client .block.ahead .group-cap, body.client .block.done .group-cap { display: none; }
   body.client .group-cap { align-items: center; gap: 2px 8px; margin: 0 0 8px 2px; min-height: 20px; }   /* the heading, its little i and the fold chevron on one centre line */
@@ -743,7 +738,8 @@
   .edit-field .hint { display: block; margin-top: 6px; font-size: 0.8125rem; line-height: 1.35; color: var(--text-tertiary); }
   body.client .block:not(.ahead):not(.done) .row .exwrap::before { content: attr(data-letter); position: absolute; left: 0; top: 10px; font-size: 1.375rem; font-weight: 600; line-height: 1.75rem; color: var(--text-tertiary); }
   body.client .block:not(.ahead):not(.done) .row .sum, body.client .block:not(.ahead):not(.done) .row .tempo-wrap { margin-left: var(--letw); }
-  body.client .row .top input.label, body.client .group .row .top input.label { background: var(--ss); color: var(--ss-ink); border-color: transparent; box-shadow: none; font-weight: 600; }
+  body.client .row .top input.label { --name-size: 1.1875rem; line-height: 1.5rem; height: 1.5rem; }   /* the client's name is 19 on 24: so is its number */
+  body.client .row .top:has(.name.has-sub) input.label { --line-at: 10px; }   /* a name with a subtitle is shown in a view without the box's 1 px edge: its first line is 1 px higher */
   body.client .row .top .name { background: none; border-color: transparent; padding-left: 0; font-size: 1.1875rem; line-height: 1.5rem; font-weight: 600; }
   body.client .row .specs { display: none; }
   body.client .row .sum { display: flex; margin: 0 0 0 var(--numw); font-size: 0.9375rem; color: var(--text-primary); }   /* reps and rest in the same ink as the name; the tempo line below is lighter */
