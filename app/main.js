@@ -142,7 +142,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!me) return false;
     S.myClientId = me.id; S.offline = true;
     if (!(S.view.name === "training" && trainings.has(S.view.id))) S.view = { name: "client", id: S.myClientId };
-    render(); setStatus(); return true;
+    renderUnlessSwiping(); setStatus(); return true;   // (never the page or row under a finger rebuilt mid-swipe)
   }
   function paintRemembered(remembered, away) {   // what the device knows, on screen at once: the pages of the account that used it last; the server refreshes them in place (away: no signal, with the offline status)
     S.signedIn = true; S.sessionEmail = remembered.email || ""; S.clientMode = remembered.role !== "trainer";
@@ -969,6 +969,7 @@ import { reportRange, buildReport } from "./report.js";
     window.addEventListener("pageshow", (e) => { if (e && e.persisted) scrollMode("manual"); });
   }
   let popClose = null, popAnchor = null;                            // the frosted bubble or menu that is open, if one is: its own close, and the button it hangs from
+  let rs = null, rsT = null, wg = null, rsEat = 0;                  // a workout row swiped to its actions (below the swipe back): the row out or open, the finger or mouse on one, the trackpad's swipe under way, a tap's click to drop
   const closeMoreMenu = () => { if (popClose && popAnchor === $("tMore") && $("tMore").hidden) popClose(); };   // a redraw that takes the workout's "…" away (a sync brought a finish, a skip, a delete) takes its menu with it
   const stateDepth = () => { try { const st = hasState() && history.state; return st && typeof st.fiala === "number" ? st.fiala : 0; } catch (_) { return 0; } };
   nav.depth = stateDepth();
@@ -1006,8 +1007,9 @@ import { reportRange, buildReport } from "./report.js";
   let seenTouch = false;                                            // pictures are only taken once the person has touched the app: every change before that is the app opening (it draws an empty Clients page as the script loads, and reopens a settings page over it), never a page they saw
   if (typeof document !== "undefined" && document.addEventListener) for (const t of ["pointerdown", "touchstart", "keydown"]) document.addEventListener(t, () => { seenTouch = true; }, { capture: true, passive: true });
   function navWillChange(kind) {                                    // a screen is about to change: what it was, and (for the edge swipe) a picture of it; kind: "back" or "land" (no new step)
+    rsForget();                                                     // a row out or closing goes back first: the picture shows it as the page will be
     if (nav.pending) { if (kind) nav.pending.kind = nav.pending.kind || kind; return; }
-    if (swipeOn && seenTouch && !nav.backing && kind !== "back") { const k = nav.curKey || screenKey(), shot = captureScreen(); if (shot) { shotByKey.delete(k); shotByKey.set(k, shot); if (shotByKey.size > 14) shotByKey.delete(shotByKey.keys().next().value); } }   // the first call of a change: the screen is still the old one
+    if ((swipeOn || deskOn) && seenTouch && !nav.backing && kind !== "back") { const k = nav.curKey || screenKey(), shot = captureScreen(); if (shot) { shotByKey.delete(k); shotByKey.set(k, shot); if (shotByKey.size > 14) shotByKey.delete(shotByKey.keys().next().value); } }   // the first call of a change: the screen is still the old one
     nav.pending = { sig: navSig(), kind: kind || "" };
     queueMicrotask(navDidChange);                                   // before the new screen is painted: Safari keeps the old one as the page to go back to
   }
@@ -1077,7 +1079,8 @@ import { reportRange, buildReport } from "./report.js";
   // that only scrolls up and down starts after 10 points up or down (UIKitCore's _defaultHysteresis), which the rule keeps the finger under.
   // The move that holds does nothing else, so its answer reaches WebKit at once; should the page scroll anyway, the swipe settles back.
   let swipeOn = (() => { try { return (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || (typeof navigator !== "undefined" && navigator.standalone === true); } catch (_) { return false; } })();
-  const SWIPE_EDGE = 24, SWIPE_GO = 8, NO_SWIPE = "#calView, #week, #dpGrid, .tr-chips, .kb-chips, .grip, .alt-menu, .sugg, input, textarea, select, [contenteditable]";   // things that drag sideways or scroll themselves keep the touch (Apple's rule for its swipe from anywhere)
+  const deskOn = (() => { try { return typeof matchMedia === "function" && matchMedia("(hover: hover) and (pointer: fine)").matches; } catch (_) { return false; } })();   // a computer (mouse or trackpad): two fingers swipe the page back there too, in a browser tab as in the Dock's web app (the web app's own swipe has no page behind it, and Chrome's is off under overscroll-behavior-x: none)
+  const SWIPE_EDGE = 24, SWIPE_GO = 8, NO_SWIPE = "#calView, #week, #dpGrid, .tr-chips, .kb-chips, .grip, .alt-menu, .sugg, input, textarea, select, [contenteditable], li.swipe-row.swiped";   // things that drag sideways or scroll themselves keep the touch (Apple's rule for its swipe from anywhere)
   const GLASS_RES = 0.416, GLASS_DAMP = 0.75, GLASS = ["back", "meDisc", "navDone", "tMore"];   // the bar's buttons, and their change on release
   const easeMemo = new Map();
   const springEase = (v0, response, damping) => {                   // a spring (from rest at 0 to 1, starting at speed v0 in "whole distances per second") as a CSS easing and its length,
@@ -1099,7 +1102,7 @@ import { reportRange, buildReport } from "./report.js";
     if (easeMemo.size > 200) easeMemo.clear(); easeMemo.set(key, out); return out;
   };
   const calmMotion = () => { try { return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (_) { return false; } };
-  if (swipeOn && !iosHome && typeof document !== "undefined" && document.body && document.body.classList) document.body.classList.add("clip-x");   // Android's installed app: the sliding page must not widen the page (index.html)
+  if ((swipeOn || deskOn) && !iosHome && typeof document !== "undefined" && document.body && document.body.classList) document.body.classList.add("clip-x");   // Android's installed app and a computer: the sliding page must not widen the page (index.html)
   function captureScreen() {                                        // a still copy of the page as it is, to sit under the swipe later
     const secs = [...document.querySelectorAll("main > section")].filter((s) => !s.hidden && s.getClientRects().length);
     if (!secs.length) return null;
@@ -1152,10 +1155,11 @@ import { reportRange, buildReport } from "./report.js";
     return box;
   }
   let sw = null, renderAfterSwipe = false;
-  const renderUnlessSwiping = () => { if (sw && (sw.on || sw.busy)) { renderAfterSwipe = true; return; } render(); };   // a sync's redraw waits while the pages slide (never the page under the finger rebuilt mid-swipe); clearSwipe draws it
+  const renderUnlessSwiping = () => { if ((sw && (sw.on || sw.busy)) || rowHolds()) { renderAfterSwipe = true; return; } render(); };   // a sync's redraw waits while the pages slide or a row moves (never the page or row under the finger rebuilt mid-swipe); clearSwipe and the row's settle draw it
   const swipeHolds = () => !!sw && !S.asking && (sw.on || sw.busy) && !(sw.busy && Date.now() - sw.busyAt > 3000);   // the pages are sliding: no taps (a question Back asks always takes them; a release that never finished lets go after 3 s)
   document.addEventListener("click", (e) => { if (swipeHolds()) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);   // nothing is tapped while the pages slide (a second Back, the card, the + would land mid-transition)
-  const swipeReady = () => swipeOn && canBack() && !held() && !(document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName));
+  const backReady = () => canBack() && !held() && !(document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName));
+  const swipeReady = () => swipeOn && backReady();
   const swipeSpeed = () => { const a = sw.pts[0], b = sw.pts[sw.pts.length - 1]; return b[0] > a[0] ? (b[1] - a[1]) / (b[0] - a[0]) : 0; };   // px per ms, the average over the last three samples
   const dropSw = () => { if (sw && sw.ac) sw.ac.abort(); sw = null; };   // this touch is not a swipe (its listeners on the touched element go too)
   document.addEventListener("touchstart", (e) => {
@@ -1263,7 +1267,7 @@ import { reportRange, buildReport } from "./report.js";
     document.body.classList.remove("swipe-busy");
     if (sw.ac) sw.ac.abort();
     sw = null; barLevel = -1; paintBar();                            // the bar as the page now under it really is (written even when it matches the old level)
-    if (renderAfterSwipe) { renderAfterSwipe = false; render(); }   // what a sync brought meanwhile
+    rsFlush();                                                      // what a sync brought meanwhile (unless a row is still moving: it draws it then)
   }
   async function endSwipe(cancelled, at) {
     const mine = sw; mine.busy = true; mine.busyAt = Date.now();
@@ -1298,6 +1302,312 @@ import { reportRange, buildReport } from "./report.js";
     }
     clear();                                                        // same moment: the next frame shows the real page where the copy was
   }
+  // ---------- a workout's row on Today and Up next: swiped to the left, Skip and Reschedule behind it, as Apple's rows show their actions ----------
+  // Measured on iOS 27.2 (Reminders, 8 Nov: one action, then its two, Details and Delete, frame by frame, portrait and landscape). The row
+  // follows the finger 1:1, held after 8 points sideways (and twice as sideways as up or down, the swipe back's rule). Behind it, on the
+  // page's own colour, two actions wait at the right, each a 61 x 37 capsule with its icon and its title under it (13 points, secondary
+  // grey, measured 138,138,142 / dark 141,141,147): Skip (systemGray3, #c7c7cc / dark #48484a, as Details) and, outermost, Reschedule.
+  // Open, they sit 11.67 points from the row, 10.33 apart and 10.67 from the card's edge. Each grows in (size and opacity together) as the
+  // row uncovers it: from the moment half its capsule is uncovered to the moment its whole slot is, so the outer one comes first. The
+  // swiped row turns systemGray5 (#e5e5ea, dark #2c2c2e), keeps the card's corners where it has them, and the hairlines beside it go. Let go
+  // past half the actions (or flicked that way) and it stays open; else it closes. Past the actions the inner one rides along with the row
+  // and fades (to 66% within 30 points, then 0.19% a point, never under 30%), and the outer one stretches into the room (its right edge
+  // stays). The swipe is armed once the row's edge comes within 81 points of its own start (measured: portrait at 80% of a 402-point row,
+  // landscape at 89% of 748): the outer icon goes to its capsule's leading edge, its title goes, the inner one drops to 30%, and letting go
+  // reschedules. It settles on the app's UIKit spring (response 0.3 s, damping 0.85; Apple's row settles in the same 0.3 s with the same
+  // small overshoot) and the grey fades as it closes. An open row closes on any other touch on the page: that tap does nothing else, as
+  // on iPhone, while the bars above and below act at once (measured: Reminders' Back with a row open goes back on that tap). It also closes
+  // on a scroll, Escape or another page. A mouse drags the row the same way; a click elsewhere closes the open row and still goes through
+  // (a Mac's way). Two fingers on a Mac's trackpad open and close it but stop there (below): the actions are clicked. Skip asks first, with
+  // the workout page's own sheet; the workout page holds both too (its "…" and its Skip workout): Apple, never a gesture only.
+  const RS_GAP = 11.67, RS_BETWEEN = 10.33, RS_END = 10.67, RS_HOLD = 8, RS_ARM_EDGE = 81, RS_FLICK = 0.3;   // RS_FLICK: px per ms; a let-go faster than this goes its own way
+  const SA_CALENDAR = '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M4.2 2.9h7.6c1.2 0 2.2 1 2.2 2.2v7c0 1.2-1 2.2-2.2 2.2H4.2C3 14.3 2 13.3 2 12.1v-7c0-1.2 1-2.2 2.2-2.2zM3.5 6.6v5.5c0 .4.3.7.7.7h7.6c.4 0 .7-.3.7-.7V6.6z"/><path fill="currentColor" d="M5 8h1.6v1.6H5zM7.2 8h1.6v1.6H7.2zM9.4 8H11v1.6H9.4zM5 10.2h1.6v1.6H5zM7.2 10.2h1.6v1.6H7.2z"/><path d="M5.2 1.5v2.2M10.8 1.5v2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';   // the calendar filled, as Apple's swipe actions use the fill variants (HIG, SF Symbols)
+  const SA_SKIP = '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3 3.4v9.2c0 .6.6.9 1.1.6l7-4.6c.4-.3.4-.9 0-1.2l-7-4.6C3.6 2.5 3 2.8 3 3.4z"/><rect x="11.6" y="2.6" width="2" height="10.8" rx="1" fill="currentColor"/></svg>';   // forward.end.fill: skip, as media controls draw it
+  const rowArmed = (x, w, row) => x >= Math.max(row - RS_ARM_EDGE, w);   // the full swipe: the row's edge within 81 points of its own start (never before the actions are open)
+  const rowDecide = (x, v, w, row) => (rowArmed(x, w, row) ? "fire" : Math.abs(v) > RS_FLICK ? (v > 0 ? "open" : "close") : x > w / 2 ? "open" : "close");   // where a let-go row goes; v: px per ms to the left
+  const fingerX = (e) => (e && e.webkitDirectionInvertedFromDevice === false ? e.deltaX : -e.deltaX);   // a trackpad's sideways scroll as the fingers moved, + to the right (macOS scrolls naturally by default: the page's delta is the other way)
+  const rsSample = (g, ts, x) => { const last = g.pts[g.pts.length - 1]; if (!last || ts - last[0] >= 8) { g.pts.push([ts, x]); while (g.pts.length > 2 && ts - g.pts[0][0] > 100) g.pts.shift(); } else last[1] = x; };
+  const rsSpeed = (g, at) => { const a = g.pts[0], b = g.pts[g.pts.length - 1]; if (!a || !b || b[0] <= a[0] || (at != null && at - b[0] > 60)) return 0; return (b[1] - a[1]) / (b[0] - a[0]); };   // px per ms to the left over the last 100 ms; a finger that rested before it lifted has none
+  const rowHolds = () => !!(rsT && (rsT.held || performance.now() - rsT.at < 10000)) || !!(rs && rs.busy) || !!(wg && wg.r && !wg.done);   // a finger or the mouse on a row (a press that never came up holds nothing after 10 s), a row settling, two fingers moving one: a sync's redraw waits (renderUnlessSwiping), never the row under them rebuilt
+  const rsFlush = () => { if (renderAfterSwipe && !(sw && (sw.on || sw.busy)) && !rowHolds()) { renderAfterSwipe = false; render(); } };
+  const rsDrop = () => { rsT = null; rsFlush(); };                   // the finger or mouse is off the rows: what a sync brought meanwhile is drawn
+  const rsFree = () => !!rs && !(rsT && rsT.held) && !(wg && wg.r === rs && !wg.done);   // the row out is in no finger's, mouse's or two fingers' hands (it may still be settling)
+  const rsGrow = (x, a, b) => Math.max(0, Math.min(1, (x - a) / (b - a)));   // an action's growth: from half its capsule uncovered (a) to its whole slot (b)
+  function rsPaint(r, x, ease) {                                    // the row at x points to the left of its place; ease: a settle's spring (none while it follows a finger)
+    r.x = x;
+    const sp = ease ? ease.ms + "ms " + ease.css : "", mv = x ? "translate3d(" + (-x) + "px,0,0)" : "";
+    for (const p of r.parts) { p.style.transition = (ease ? "transform " + sp + ", " : "") + "background-color 200ms ease"; p.style.transform = mv; }
+    const extra = Math.max(0, x - r.w), armed = rowArmed(x, r.w, r.row), look = armed || !!r.fired, oSlot = RS_END + r.ow + (r.inner ? RS_BETWEEN : RS_GAP);   // look: a full swipe let go keeps its armed look while the row closes (its title stays gone, Skip's insides at their share of 30% while Skip itself fades with the row)
+    const tr = (props) => (ease ? props.map((k) => k + " " + sp).join(", ") : "none");
+    const grow = (el, q, fade) => {                                // size and opacity together, as Apple's actions come in
+      el.style.opacity = String(fade != null ? fade : q); el.style.transform = q < 1 ? "scale(" + q.toFixed(3) + ")" : "";
+    };
+    r.outer.style.transition = tr(["opacity", "transform", "width"]); r.cap.style.transition = tr(["width"]);
+    r.outer.style.width = (r.ow + extra) + "px"; r.cap.style.width = (r.capW + extra) + "px";   // past the actions the outer one stretches into the room, its right edge where it was (its title centred under it)
+    grow(r.outer, rsGrow(x, RS_END + r.ow / 2, oSlot));            // (its capsule sits centred in it: half of it is uncovered at half the action, a title wider than the capsule at a larger Text Size included)
+    if (r.inner) {
+      const q = rsGrow(x, oSlot + r.iw / 2, r.w), dim = extra <= 0 ? null : extra < 30 ? 1 - 0.337 * extra / 30 : Math.max(0.3, 0.72 - 0.0019 * extra), own = dim == null ? q : dim;   // measured: 66% at 30 points past, then 0.19% a point
+      if (armed && !r.armed) r.dimArm = own;                        // armed, it holds at 30%: the action keeps the look it had there and its insides take it the rest of the way, easing over 150 ms both ways, while the action itself follows the row
+      r.inner.style.transition = tr(["opacity", "transform"]);
+      grow(r.inner, q, armed ? r.dimArm : own);
+      const k = look ? 0.3 / r.dimArm : 1;
+      for (const c of r.inner.children) { c.style.transition = "opacity 150ms ease"; c.style.opacity = k < 1 ? k.toFixed(4) : ""; }
+    }
+    if (look !== r.armed) { r.armed = look; r.li.classList.toggle("armed", look); }
+  }
+  function rsBegin(li, quiet) {                                     // a row starts to move: it and its actions, measured as they are now (quiet: put back open by a redraw, no grey fading in)
+    const prev = li._rs && li._rs.busy ? li._rs : null;              // a row still closing after a finger moved on to another one: the same row, taken up again as it is (never a second state whose close would take its actions from under the finger)
+    if (prev && rs !== prev) { if (rs) rsSettle(rs, 0, 0); rs = prev; }
+    if (rs && rs.li === li) {                                       // the open or settling row, taken up again where it is on the screen (a settle has already set its x to where it was going)
+      clearTimeout(rs.timer); rs.fired = false;
+      if (rs.busy) { let x = rs.x; try { const m = new DOMMatrixReadOnly(getComputedStyle(rs.parts[0]).transform); x = Math.max(0, Math.min(rs.row, -m.m41)); } catch (_) {} rs.busy = false; rsPaint(rs, x, null); }
+      return rs;
+    }
+    if (rs) rsSettle(rs, 0, 0);                                     // another one was open: it closes as this one moves
+    const layer = [...li.children].find((c) => c.classList && c.classList.contains("swipe-acts")), acts = layer ? [...layer.children].filter((c) => c.classList && c.classList.contains("swipe-act")) : [];
+    const outer = acts[acts.length - 1], inner = acts.length > 1 ? acts[0] : null, cap = outer && outer.firstElementChild;
+    if (!layer || !outer || !cap || li.isConnected === false) return null;   // a row a redraw has already replaced moves nothing
+    const row = li.getBoundingClientRect().width; if (!row) return null;   // nor one with no width (its page hidden)
+    const parts = [...li.children].filter((c) => c !== layer);
+    for (const p of parts) p.style.transition = quiet ? "none" : "background-color 200ms ease";   // the grey comes in (put back by a redraw: it is simply there)
+    li.classList.add("swiped");                                     // its actions laid out from here, to be measured
+    const r = { li, layer, outer, inner, cap, parts, row, x: 0, open: false, busy: false, armed: false, timer: null };
+    r.capW = cap.offsetWidth || 61; r.ow = outer.offsetWidth || r.capW; r.iw = inner ? inner.offsetWidth || r.capW : 0;
+    r.w = RS_GAP + (inner ? r.iw + RS_BETWEEN : 0) + r.ow + RS_END;
+    li._rs = r; rs = r; return r;
+  }
+  function rsSettle(r, to, v) {                                     // to: 0 (closed) or r.w (open), on the spring from the finger's speed (px per ms to the left)
+    clearTimeout(r.timer);
+    const dist = to - r.x, ease = springEase(Math.abs(dist) > 1 ? Math.max(-15, Math.min(15, v * 1000 / dist)) : 0, 0.3, 0.85);
+    r.busy = true; r.open = to > 0; rsPaint(r, to, ease);
+    r.timer = setTimeout(() => { r.busy = false; if (to === 0) rsDone(r); else rsFlush(); }, ease.ms + 20);
+  }
+  function rsDone(r, quiet) {                                       // closed: the row as it was drawn (quiet: at once, for a redraw or another page; else the grey fades)
+    clearTimeout(r.timer); r.busy = false; r.open = false;
+    for (const p of r.parts) { p.style.transition = quiet ? "" : "background-color 200ms ease"; p.style.transform = ""; }
+    for (const el of [r.outer, r.inner, r.cap]) if (el) { el.style.transition = ""; el.style.width = ""; el.style.opacity = ""; el.style.transform = ""; }
+    if (r.inner) for (const c of r.inner.children) { c.style.transition = ""; c.style.opacity = ""; }
+    r.li.classList.remove("swiped", "armed");
+    if (!quiet) setTimeout(() => { if (!r.li.classList.contains("swiped")) for (const p of r.parts) p.style.transition = ""; }, 220);   // no fade left at rest: a light/dark switch changes the row with its card
+    if (rs === r) rs = null;
+    if (!quiet) rsFlush();
+  }
+  function rsForget() { if (rs) rsDone(rs, true); rsT = null; if (typeof document !== "undefined" && document.body && document.body.classList) document.body.classList.remove("rs-drag"); }   // a redraw or another page: the row goes back at once (no flush: the caller is drawing)
+  function rsFire(r) { const id = r.li.dataset.tid; r.fired = !!r.armed; rsSettle(r, 0, 0); if (id) rowReschedule(id); }   // the row closes as the days open (in its armed look, as it was let go)
+  function rowReschedule(id) {                                      // the day picker for this row's workout, as the workout page's "…" opens it
+    const t = trainings.get(id); if (!canReschedule(t)) return false;
+    const cid = t.clientId, still = () => S.view.name === "client" && S.view.id === cid && !settingsOpen && canReschedule(trainings.get(id));   // still the Workouts page, the workout still to do
+    openDatePicker({ clientId: cid, title: "Reschedule", selected: t.date || today(), min: today, ok: still, onPick: (date) => applyReschedule(id, date) });
+    return true;
+  }
+  function rowSkip(id) {                                            // the workout page's own "Skip this workout?" (its reasons, then Skip workout or Keep it), for this row's workout
+    const t = trainings.get(id); if (!canReschedule(t)) return false;
+    openSkip(id); return true;
+  }
+  function rsLetGo(g, at, cancelled, noFire) {                      // the finger, mouse or trackpad let the row go (noFire: never the action itself)
+    const r = rs; if (!r || r.li !== g.li) return;
+    if (cancelled) { rsSettle(r, r.x > r.w / 2 ? r.w : 0, 0); return; }
+    const v = g.v != null ? g.v : rsSpeed(g, at); let d = rowDecide(r.x, v, r.w, r.row);
+    if (d === "fire" && noFire) d = "open";
+    if (d === "fire") rsFire(r); else rsSettle(r, d === "open" ? r.w : 0, v);
+  }
+  // a tap on the page while a row is open only closes it: its touchend is cancelled (WebKit then sends no click), its click, should one come
+  // anyway, goes nowhere in the 400 ms after the touch (a long press clicks on release), and what it touched loses the look of a press that
+  // iOS would leave on it until the next tap (rs-ate: measured, History stayed at 85% with the touchend cancelled). A new touch, a second finger or a cancelled touch ends that; a touch that scrolls or takes a row brings
+  // no click. A tap on a bar (the top bar, the tab bar) closes the row and acts at once, as Apple's do.
+  let rsEatEl = null, rsAte = null;                                  // the control the closing tap is on, and the one it left (iOS keeps a tap's hover on it until the next tap: measured, History stayed at 85%)
+  const rsEatOff = () => { rsEat = 0; rsEatEl = null; };
+  const rsAteOff = () => { if (rsAte) { rsAte.classList.remove("rs-ate"); rsAte = null; } };
+  const rsEatSoon = () => { rsEat = performance.now() + 400; };     // a mouse: its click follows its release at once
+  document.addEventListener("click", (e) => { if (rsEat && performance.now() <= rsEat) { rsEatOff(); e.preventDefault(); e.stopImmediatePropagation(); } else rsEatOff(); }, true);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && rs && !(rsT && rsT.held)) { if (wg && wg.r === rs) wg.done = true; rsSettle(rs, 0, 0); } });
+  window.addEventListener("resize", () => { if (rs && !(rsT && rsT.held)) { if (wg && wg.r === rs) wg.done = true; rsDone(rs); } });   // (two fingers on it let go: the row is laid out anew)
+  // a finger
+  document.addEventListener("touchstart", (e) => {
+    const g = rsT; rsT = null; rsEatOff(); rsAteOff();
+    if (e.touches.length !== 1) { if (g && g.held) rsLetGo(g, e.timeStamp, true); rsFlush(); return; }   // a second finger: a row on the move settles where it is, as the swipe back does
+    const t = e.touches[0], tgt = e.target, li = tgt && tgt.closest ? tgt.closest("li.swipe-row") : null;
+    const onAct = !!(rs && rs.open && li === rs.li && tgt.closest(".swipe-act"));   // the open row's actions: a tap runs them
+    if (rs && rs.open && !onAct) {
+      if (!tgt.closest("header, #dock")) { rsEat = Infinity; rsEatEl = tgt.closest("button, a, label, [role='button']"); }   // on the page the tap only closes the row (on the row itself at the tap's end, unless the finger moves it); a bar's tap acts
+      if (li !== rs.li) rsSettle(rs, 0, 0);
+    }
+    if (li && !li.closest(".swiping")) rsT = { kind: "touch", at: performance.now(), x0: t.clientX, y0: t.clientY, sy: Number(window.scrollY) || 0, li, held: false, act: onAct, pts: [] };
+  }, { passive: true });
+  document.addEventListener("touchmove", (e) => {
+    const g = rsT; if (!g || g.kind !== "touch") return;
+    const t = e.touches && e.touches[0]; if (!t) return;
+    const closeOwn = () => { if (rs && rs.open && rs.li === g.li) rsSettle(rs, 0, 0); };   // the open row this touch began on closes (a scroll)
+    if (Math.abs((Number(window.scrollY) || 0) - g.sy) > 1) { rsT = null; rsEatOff(); if (g.held) rsLetGo(g, e.timeStamp, true); else closeOwn(); rsFlush(); return; }   // the page itself scrolled under this touch (WebKit took it): never slide and scroll at once (settled first, then a waiting redraw)
+    const dx = t.clientX - g.x0, dy = t.clientY - g.y0;
+    if (!g.held) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { rsT = null; rsEatOff(); closeOwn(); rsFlush(); return; }   // a scroll
+      if (Math.abs(dx) < RS_HOLD) return;
+      if (Math.abs(dx) < Math.abs(dy) * 2 || (dx > 0 && !(rs && rs.li === g.li))) { if (g.act) return; rsT = null; closeOwn(); rsFlush(); return; }   // not clearly sideways (the page scrolls), or to the right on a closed row: the page's swipe back has it, where there is one (a tap on an action that rolls a little stays that tap)
+      e.preventDefault(); if (sw && !sw.on && !sw.busy) dropSw();   // held: from here the page neither scrolls nor swipes back
+      const r = rsBegin(g.li); if (!r) { rsDrop(); return; }
+      g.held = true; rsEatOff(); g.x0 = t.clientX; g.sx = r.x; rsSample(g, e.timeStamp, r.x); return;   // it moves from the next move, by the finger's travel from here: no jump
+    }
+    e.preventDefault(); if (!rs || rs.li !== g.li) { rsDrop(); return; }
+    const x = Math.max(0, Math.min(rs.row, g.sx - (t.clientX - g.x0))); rsSample(g, e.timeStamp, x); rsPaint(rs, x, null);
+  }, { passive: false });
+  const rsTouchUp = (e, cancelled) => {
+    if (cancelled) rsEatOff();
+    else if (rsEat === Infinity && !(e.touches && e.touches.length)) { rsEat = performance.now() + 400; if (e.cancelable) e.preventDefault(); if (rsEatEl) { rsAte = rsEatEl; rsAte.classList.add("rs-ate"); } rsEatEl = null; }   // the closing tap: no click, and no look of a press left on what it touched
+    const g = rsT; if (!g || g.kind !== "touch") { setTimeout(rsFlush, 400); return; } rsT = null;   // (a touch off the rows: a sync's redraw that waited is drawn once its click has come)
+    if (!g.held) { if (!g.act && rs && rs.open && rs.li === g.li && !cancelled) rsSettle(rs, 0, 0); setTimeout(rsFlush, 400); return; }   // a tap on the open row: it only closes (a tap elsewhere: a sync's redraw waits for its click)
+    rsLetGo(g, e.timeStamp, cancelled); rsFlush();
+  };
+  document.addEventListener("touchend", (e) => rsTouchUp(e, false), { passive: false });
+  document.addEventListener("touchcancel", (e) => rsTouchUp(e, true));
+  // a mouse
+  document.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "mouse" || e.button !== 0 || e.ctrlKey) return;   // (a Control-click is the Mac's secondary click: its menu takes the release, so it never starts a drag)
+    rsEatOff(); rsAteOff();
+    const tgt = e.target, li = tgt && tgt.closest ? tgt.closest("li.swipe-row") : null;
+    if (rs && rs.open && li !== rs.li) rsSettle(rs, 0, 0);          // a click elsewhere closes the open row, and still goes through (a Mac's way)
+    if (!li || tgt.closest(".swipe-act")) return;
+    rsT = { kind: "mouse", at: performance.now(), id: e.pointerId, x0: e.clientX, y0: e.clientY, li, held: false, pts: [] };
+  }, true);
+  document.addEventListener("pointermove", (e) => {
+    const g = rsT; if (!g || g.kind !== "mouse" || e.pointerId !== g.id) return;
+    if (e.buttons === 0) {                                          // no button down: no drag ever follows a bare pointer. Safari reads the button as it is at that moment, so a drag's last move can come after it is up:
+      if (g.held) { if (!g.upT) g.upT = setTimeout(() => { if (rsT === g) { rsEatSoon(); rsMouseUp(e, true); } }, 100); return; }   // the drag stops where the button left it and its pointerup decides; none within 100 ms: the release was lost (a menu took it), so the drag is cancelled where it is, as a touch the system took
+      rsMouseUp(e, false); return;                                  // a press not yet a drag: that move is its release (on the open row: it only closes)
+    }
+    if (g.upT) { clearTimeout(g.upT); g.upT = 0; }
+    const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+    if (!g.held) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      if (Math.abs(dx) < Math.abs(dy) * 2 || (dx > 0 && !(rs && rs.li === g.li))) { if (rs && rs.open && rs.li === g.li) return; rsDrop(); return; }   // (a press on the open row stays the click that only closes it, however it wobbles; a clearly sideways move still takes the row)
+      const r = rsBegin(g.li); if (!r) { rsDrop(); return; }
+      g.held = true; g.x0 = e.clientX; g.sx = r.x; rsSample(g, e.timeStamp, r.x);
+      try { g.li.setPointerCapture(e.pointerId); } catch (_) {}
+      document.body.classList.add("rs-drag"); return;
+    }
+    if (!rs || rs.li !== g.li) { rsDrop(); return; }
+    const x = Math.max(0, Math.min(rs.row, g.sx - (e.clientX - g.x0))); rsSample(g, e.timeStamp, x); rsPaint(rs, x, null);
+  }, true);
+  const rsMouseUp = (e, cancelled) => {
+    const g = rsT; if (!g || g.kind !== "mouse" || e.pointerId !== g.id) return; rsT = null;
+    document.body.classList.remove("rs-drag");
+    if (!g.held) { if (rs && rs.open && rs.li === g.li && !cancelled) { rsEatSoon(); rsSettle(rs, 0, 0); } setTimeout(rsFlush, 400); return; }   // a click on the open row: it closes, nothing opens
+    if (!cancelled) rsEatSoon(); rsLetGo(g, e.timeStamp, cancelled); rsFlush();   // the click that ends a drag opens nothing
+  };
+  document.addEventListener("pointerup", (e) => rsMouseUp(e, false), true);
+  document.addEventListener("pointercancel", (e) => {
+    if (e.pointerType === "mouse") { rsMouseUp(e, true); return; }
+    if (e.pointerType === "touch" && rsT && rsT.kind === "touch") { const g = rsT; rsT = null; rsEatOff(); if (g.held) rsLetGo(g, e.timeStamp, true); else if (rs && rs.open && rs.li === g.li) rsSettle(rs, 0, 0); rsFlush(); }   // WebKit took the touch for its own scroll (it cancels the pointer then): an open row closes, one on the move settles
+  }, true);
+  // two fingers on a Mac's trackpad: the page's sideways wheel. A gesture is the run of events with no gap of 120 ms; its way is decided over
+  // its first 8 px, sideways only when twice as sideways as up or down (the finger's rule). The page is never told when the fingers lift:
+  // Safari carries the scroll on after them (WebKit's MomentumEventDispatcher, read 8 Nov, with this Mac's own trackpad curve: about a tenth
+  // of a second at the lifting speed, then slowing much as fingers slow), and nothing in the events tells the two apart. So nothing that
+  // must not follow that coasting does: a row moves between closed and its open width and stops there, open (or closed), and the rest of
+  // the gesture moves nothing (the full swipe that reschedules is a finger's or a mouse drag's; here the actions are clicked). The page
+  // swiped back follows the coasting as it follows the fingers (a flick carries it on, as far as Safari's coasting goes): let go once past
+  // its point of no return and slowed to 70% of its top speed, else when the events stop for 90 ms, by UIKit's rule from where it is (a
+  // slowing flick and slowing fingers look alike, so nothing is judged by a speed that might be the coasting's). It starts over a field or
+  // with one focused, as Safari's own does (the field is let go first, as a click elsewhere lets it go). Once let go, the rest of the gesture
+  // goes nowhere until a new one begins: a gap of 120 ms, a turn up or down or back the other way, or a speed that grows again (fingers back
+  // on the trackpad: coasting only slows and never turns), each judged by the travel of the latest events, never one event's size. Anything
+  // that scrolls sideways itself keeps the fingers, and so does the browser where nothing of the app's is.
+  const WG_GAP = 120, WG_END = 90;
+  const NO_WHEEL_BACK = "#calView, #dpGrid, .kb-chips, .alt-menu, .sugg, li.swipe-row.swiped";   // the swipe back's own list, less what only a finger drags (a set track, the week strip: where one really scrolls, its scroll keeps the fingers) and the fields (two fingers select nothing)
+  let wgNatural = true;                                             // natural scrolling (the Mac's default: the page moves with the fingers), from the latest wheel event
+  const canScrollX = (n, ax) => ((wgNatural ? ax < 0 : ax > 0) ? n.scrollLeft + n.clientWidth < n.scrollWidth - 1 : n.scrollLeft > 0);   // fingers this way (ax) scroll n toward its end, or toward its start: can it still go?
+  const sideScroller = (el, ax) => { for (let n = el; n && n !== document.body && n.nodeType === 1; n = n.parentElement) { const cs = getComputedStyle(n); if (/(auto|scroll)/.test(cs.overflowX) && n.scrollWidth > n.clientWidth + 1 && canScrollX(n, ax)) return true; } return false; };
+  const wheelBack = (el, ax) => (wgNatural ? ax > 0 : ax < 0) && (swipeOn || deskOn) && canBack() && !held() && !el.closest(NO_WHEEL_BACK) && !sideScroller(el, ax) && !(document.activeElement && el.closest("input, textarea") === document.activeElement && canScrollX(document.activeElement, ax));   // (the field being typed in keeps the fingers while its text can still scroll that way, as Safari's own swipe leaves it)
+  const wgMine = (el, ax) => !!rs || !!(el && el.closest && (el.closest("li.swipe-row") || wheelBack(el, ax)));   // a sideways start the app may take: kept from the browser while undecided
+  function wheelKind(el, ax) {                                      // what this sideways swipe moves: "row", "back" or nothing of the app's
+    if (!el || !el.closest || held() || sideScroller(el, ax)) return null;
+    const li = el.closest("li.swipe-row");
+    if (rs && li === rs.li) return "row";
+    if (rs) rsSettle(rs, 0, 0);                                     // an open row elsewhere closes
+    if (li && ax < 0) return "row";
+    if (wheelBack(el, ax)) return "back";
+    return null;
+  }
+  const wgSpeed = (g) => { const a = g.ev, n = a.length; if (n < 3) return null; const span = a[n - 1][0] - a[0][0]; let s = 0; for (let i = 1; i < n; i++) s += a[i][1]; return span > 0 ? s / span : null; };   // px per ms over the last events (up to four intervals: one event's speed jumps with Safari's whole pixels and its frames)
+  function wgFresh(g, now, fx, ax, ay) {                            // within the gap: is this new fingers, a gesture of its own?
+    const run = (ok) => { let s = 0; for (let i = g.ev.length - 1; i >= 0 && ok(g.ev[i]); i--) s += g.ev[i][1]; return s; };   // the sideways travel of the latest events that all pass ok
+    if (g.axis === "y") { const k = Math.max(2, 2 * g.sx / g.sy); let n = 0; for (let i = g.ev.length - 1; i >= 0 && g.ev[i][1] > k * g.ev[i][2]; i--) n++; return n >= 3 && run((v) => v[1] > k * v[2]) >= 2; }   // new fingers on a scroll: three events in a row, each twice as sideways as the scroll began (never under 2:1). WebKit speeds up each axis of the coasting on its own (MomentumEventDispatcher), so a slanted scroll's own events lean further sideways: they stay that scroll
+    if (g.axis === "none") return (ay > ax && ay >= 2) || (fx * g.dir < 0 && run((v) => v[3] * g.dir < 0) >= 2);   // up or down, or back the other way
+    if (!g.done) return false;                                      // fingers still on the app's swipe: whichever way they go, it follows
+    if (ay > ax && ay >= 2) return true;                            // up or down: a scroll
+    if (fx * g.dir < 0 && run((v) => v[3] * g.dir < 0) >= 2) return true;   // the other way: coasting never turns
+    const s = wgSpeed(g); if (s == null) return false;
+    if (g.spent != null && !g.slowed) { g.spent = Math.max(g.spent, s); if (s < g.spent * 0.7) g.slowed = true; else return false; }   // spent while its own fingers were still speeding up: judged once it has slowed, as a let-go one always has (fingers that speed up are its own until then, never new ones)
+    if (now - g.doneAt > 30 && run(() => true) >= 3 && s > g.minS * 1.6) return true;   // speeding up again
+    g.minS = Math.min(g.minS, s); return false;
+  }
+  function wheelLetGo(g, how) {                                     // how: "rest" (the events stopped), "coast" (the page slowed past its point), "edge" (all the way over, or the row at its stop)
+    if (g.done) return; g.done = true; g.doneAt = g.last; clearTimeout(g.timer);
+    if (g.kind === "row") { if (how === "rest" && g.r && rs === g.r) rsLetGo(g, g.last + WG_END, false, true); }   // by where it is (it rested): open past half the actions, else closed
+    else if (g.kind === "back" && sw && sw.wheel && sw.on && !sw.busy) endSwipe(false, how === "rest" ? g.last + WG_END : g.last);
+    if (how === "rest" && wg === g) wg = null;                      // movement after a rest is a new gesture
+    rsFlush();
+  }
+  function wheelStep(g, now, step) {                                // the fingers' (or the coasting's) travel since the last event, + to the right
+    if (step) g.dir = Math.sign(step);
+    if (g.kind === "row") {
+      const r = g.r; if (!r || rs !== r) { g.done = true; return; }
+      const x = Math.max(0, Math.min(r.w, r.x - step)); rsSample(g, now, x);
+      if (x >= r.w || (x <= 0 && step > 0)) {                       // at its open width (or closed): it stays there, and nothing more moves it
+        const v = rsSpeed(g, now);
+        if (x <= 0 || !(r.x === x && !r.busy && r.open)) rsSettle(r, x > 0 ? r.w : 0, v);   // (a row brought to closed always settles: its grey goes)
+        wheelLetGo(g, "edge"); return;
+      }
+      rsPaint(r, x, null);
+    } else {
+      if (!sw || !sw.wheel || !sw.on || sw.busy) { g.done = true; return; }
+      const ps = wgNatural ? step : -step;                           // the page's own way: Safari's back follows the page, natural scrolling or not (fingers to the left with it off)
+      sw.dx = Math.max(0, sw.dx + ps); sw.pts.push([now, sw.dx]); if (sw.pts.length > 3) sw.pts.shift(); paintSwipe(null);
+      if (sw.dx >= sw.w) { wheelLetGo(g, "edge"); return; }        // all the way over: no need to wait
+      const s = ps > 0 ? wgSpeed(g) : null;
+      if (s != null) {
+        if (s > g.peak) { g.peak = s; g.peakAt = now; }
+        else if (now - g.peakAt >= 50 && s < g.peak * 0.7 && sw.dx > Math.min(187.5, sw.w / 2)) { wheelLetGo(g, "coast"); return; }   // past its point of no return and slowing: it goes
+      }
+    }
+    clearTimeout(g.timer); g.timer = setTimeout(() => wheelLetGo(g, "rest"), WG_END);
+  }
+  document.addEventListener("wheel", (e) => {
+    if (e.ctrlKey) return;                                           // a pinch
+    if (e.deltaMode !== 0 || (e.shiftKey && !e.deltaY)) { if (rsFree() && rs.open) rsSettle(rs, 0, 0); return; }   // a mouse wheel: never a swipe (Safari's own swipe never takes one); it scrolls, so an open row closes. Safari sends a wheel in pixels too (lines x 40), sideways with Shift
+    const now = e.timeStamp, fx = fingerX(e), ax = Math.abs(e.deltaX), ay = Math.abs(e.deltaY); wgNatural = e.webkitDirectionInvertedFromDevice !== false;
+    let g = wg;
+    if (g && g.axis && now - g.last <= WG_GAP) {
+      g.ev.push([now, ax, ay, fx]); if (g.ev.length > 5) g.ev.shift();
+      if (!wgFresh(g, now, fx, ax, ay)) {                            // the same gesture
+        g.last = now;
+        if (g.axis !== "x") { if ((g.axis === "y" ? ax > Math.max(2, 2 * g.sx / g.sy) * ay : fx * g.dir < 0) && wgMine(e.target, fx)) e.preventDefault(); return; }   // up or down, or sideways but not the app's: the browser's. A move that may be new fingers the app would take is kept from Safari meanwhile: Safari starts its own swipe only on a gesture's first event, and lets the page cancel none of the rest once that one went through
+        e.preventDefault();
+        if (!g.done) wheelStep(g, now, fx);                         // once let go, the rest of it (its coasting) is spent, never the next page's
+        return;
+      }
+    }
+    if (g && !g.done && g.axis === "x") wheelLetGo(g, "rest");
+    if (!g || g.axis || now - g.last > WG_GAP) g = wg = { last: now, sx: 0, sy: 0, ax: 0, axis: null, kind: null, dir: 0, done: false, doneAt: 0, timer: null, r: null, li: null, pts: [], ev: [], peak: 0, peakAt: now, minS: Infinity };
+    g.last = now; g.ev.push([now, ax, ay, fx]); if (g.ev.length > 5) g.ev.shift();
+    g.sx += ax; g.sy += ay; g.ax += fx;
+    if (g.sx + g.sy < RS_HOLD) { if (g.sx > g.sy && wgMine(e.target, g.ax)) e.preventDefault(); else if (ay >= 4 && ay > 2 * ax && rsFree() && rs.open) rsSettle(rs, 0, 0); return; }   // not decided yet: a sideways start the app may take is kept from the browser meanwhile (a clear step up or down, a mouse wheel's notch, closes an open row at once)
+    g.axis = g.sx > g.sy * 2 ? "x" : "y";
+    if (g.axis === "y") { if (rsFree() && rs.open) rsSettle(rs, 0, 0); return; }   // a scroll: the page's (an open row closes, settled or still settling)
+    const el = e.target; g.dir = Math.sign(g.ax); g.kind = wheelKind(el, g.ax); if (!g.kind) { g.axis = "none"; return; }
+    if (g.kind === "row") {
+      const li = (rs && rs.li.contains(el)) ? rs.li : el.closest("li.swipe-row"), r = li && rsBegin(li);   // the row under the event that decided (one a redraw replaced since the first is gone)
+      if (!r) { g.axis = "none"; return; }
+      g.r = r; g.li = li; rsSample(g, now, r.x);
+    } else {
+      if (sw && (sw.on || sw.busy)) { g.axis = "x"; g.done = true; g.doneAt = now; g.spent = 0; e.preventDefault(); return; }   // the page still settling from the last one: this swipe back is spent (as UIKit takes none mid-transition), its rest kept from Safari, and the next one is new fingers by the let-go rules
+      { const a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.blur) { a.blur(); document.body.classList.remove("typing"); } }   // the field typed in is let go first, its value kept, as a click elsewhere does (and the typing look with it: this page's tab bar slides with the page)
+      sw = { x0: 0, y0: 0, sy: Number(window.scrollY) || 0, dx: 0, on: false, held: true, edge: false, pts: [[now, 0]], flick: false, wheel: true };
+      startSwipe();
+    }
+    e.preventDefault();
+    wheelStep(g, now, g.ax);                                         // the event that decided carries all the travel so far
+  }, { passive: false });
   // ---------- render ----------
   // ---- keyboard bar (above the phone keyboard): 123/ABC switch, quick entries, Next/Done. The number keypad on iPhone has no Return key.
   const kbbar = $("kbbar"), kbMode = kbbar.querySelector(".kb-mode"), kbChips = kbbar.querySelector(".kb-chips"), kbNextBtn = kbbar.querySelector(".kb-next"), kbDone = kbbar.querySelector(".kb-done");
@@ -1590,12 +1900,13 @@ import { reportRange, buildReport } from "./report.js";
     const start = min ? lo : [lo, monthAdd([sm, tm].sort()[1], -60)].sort()[1];   // at most five years of months: the window keeps the later of the day's month and this one, and so both whenever they are within five years
     const months = []; for (let mk = start; mk <= hi && months.length < 61; mk = monthAdd(mk, 1)) months.push(mk);   // a year either side of the day and of today
     const month = months.includes(sm) ? sm : months.includes(tm) ? tm : months[0];   // the day's month; one before the first allowed (an overdue workout), or beyond the five years, opens on this month
-    dp = { clientId: opts.clientId, title: opts.title || "Pick a day", selected, min: opts.min || null, months, month, aim: null, onPick: opts.onPick, ok: opts.ok || null, back: document.activeElement };   // ok: asked on every redraw; false closes the days (the workout was finished, skipped or left). min as a function is asked at every redraw: Reschedule's "from today on" moves on at midnight
+    dp = { clientId: opts.clientId, title: opts.title || "Pick a day", selected, min: opts.min || null, months, month, aim: null, onPick: opts.onPick, ok: opts.ok || null, back: document.activeElement, at: performance.now() };   // ok: asked on every redraw; false closes the days (the workout was finished, skipped or left). min as a function is asked at every redraw: Reschedule's "from today on" moves on at midnight
     dpIdx = Math.max(0, months.indexOf(month)); dpTouching = false; dpStale = false; dpRestAt = 0; clearTimeout(dpLater); renderDatePicker(); $("datePick").hidden = false;
     dpShow(dp.month, false);                                         // opens on the day's month, without a slide (now that the sheet has its width)
     for (const el of document.querySelectorAll("main, header")) el.inert = true;
     setTimeout(() => { const page = dpTrack() && dpTrack().children[dpIdx], f = (page && page.querySelector("button.sel:not(:disabled)")) || $("dpCancel"); if (f && dp) f.focus({ preventScroll: true }); }, 0);   // the chosen day when it is on the month shown
   }
+  const dpSettled = (e) => !!dp && (performance.now() - dp.at >= 350 || (!!e && e.detail === 0));   // the second tap of a double tap (on a row's Reschedule, on the "…" menu's) lands on the days as they come up: in their first 350 ms it picks no day and closes nothing, as the skip sheet's skSettled; a keyboard's Enter or VoiceOver (detail 0) always goes through
   function closeDatePicker() {
     const back = dp && dp.back; $("datePick").hidden = true; dp = null; clearTimeout(dpLater);
     for (const el of document.querySelectorAll("main, header")) el.inert = false;
@@ -1635,8 +1946,8 @@ import { reportRange, buildReport } from "./report.js";
         b.append(dn, dayDots(dayWorkouts));
         b.setAttribute("aria-label", fmt.format(d) + dayWords(dayWorkouts));
         if (min && key < min) { b.classList.add("off"); b.disabled = true; }   // before the first day allowed: shown, not pickable
-        else b.addEventListener("click", () => {
-          if (!dp) return; const now = dpMin(); if (now && key < now) { renderDatePicker(); return; }   // the days were drawn before midnight: yesterday is not picked, it greys out
+        else b.addEventListener("click", (e) => {
+          if (!dp || !dpSettled(e)) return; const now = dpMin(); if (now && key < now) { renderDatePicker(); return; }   // the days were drawn before midnight: yesterday is not picked, it greys out
           const pick = dp.onPick; closeDatePicker(); if (pick) pick(key);
         });
         page.appendChild(b);
@@ -1902,7 +2213,7 @@ import { reportRange, buildReport } from "./report.js";
     calOpen = !calOpen; lsSet("fiala.cal.open", calOpen); if (calOpen) { calMonth = today().slice(0, 7); calAnchor = calMonth; }
     if (S.view.name === "client") renderClient();
   });
-  $("dpCancel").addEventListener("click", closeDatePicker);
+  $("dpCancel").addEventListener("click", (e) => { if (dpSettled(e)) closeDatePicker(); });
   $("esKeep").addEventListener("click", closeFinishEarly);
   $("esGo").addEventListener("click", finishEarlyNow);
   $("earlySheet").addEventListener("click", (e) => { if (e.target === $("earlySheet")) closeFinishEarly(); });
@@ -1912,16 +2223,16 @@ import { reportRange, buildReport } from "./report.js";
     for (const x of $("esReasons").querySelectorAll("button")) { x.classList.toggle("on", on && x === b); x.setAttribute("aria-pressed", String(on && x === b)); }
     es.reason = on ? b.dataset.reason : "";
   });
-  $("datePick").addEventListener("click", (e) => { if (e.target === $("datePick")) closeDatePicker(); });
+  $("datePick").addEventListener("click", (e) => { if (e.target === $("datePick") && dpSettled(e)) closeDatePicker(); });
   $("dpPrev").addEventListener("click", () => { if (dp && dpIdx > 0) dpShow(dp.months[dpIdx - 1], true); });   // two quick taps: two months (the index is already the first slide's end)
   $("dpNext").addEventListener("click", () => { if (dp && dpIdx < dp.months.length - 1) dpShow(dp.months[dpIdx + 1], true); });
   $("dpToday").addEventListener("click", () => { if (dp) dpShow(today().slice(0, 7), true); });
-  { const g = $("dpGrid"); let sx = null, sy = null, base = 0, drag = null, pts = [], swallow = false, gw = 1, pid = null;
+  { const g = $("dpGrid"); let sx = null, sy = null, base = 0, drag = null, pts = [], swallow = false, gw = 1, pid = null, ptype = "";
     const at = () => { const t = dpTrack(), m = t && getComputedStyle(t).transform, w = dpW() || 1; if (!m || m === "none") return -dpIdx * w; const v = /matrix(3d)?\(([^)]+)\)/.exec(m); if (!v) return -dpIdx * w; const n = v[2].split(",").map(Number); return v[1] ? n[12] : n[4]; };   // where the track is, mid-settle too
     g.addEventListener("pointerdown", (e) => {
       if (!e.isPrimary) return;                                      // a second finger is not a new touch: the first one's slide goes on
       g.classList.remove("dragged"); swallow = false;                // a new touch: the day under it may show its press again
-      if (!dp) return; pid = e.pointerId; sx = e.clientX; sy = e.clientY; drag = null; pts = [[e.timeStamp, e.clientX]]; gw = dpW() || 1; dpTouching = true;
+      if (!dp) return; pid = e.pointerId; ptype = e.pointerType || ""; sx = e.clientX; sy = e.clientY; drag = null; pts = [[e.timeStamp, e.clientX]]; gw = dpW() || 1; dpTouching = true;
       if (Math.abs(at() + dpIdx * gw) > 1) { swallow = true; if (e.pointerType !== "mouse") g.classList.add("dragged"); }   // the months still settling: this touch only catches them, and its tap picks no day (as in UIKit)
     });
     g.addEventListener("pointermove", (e) => {
@@ -1956,7 +2267,7 @@ import { reportRange, buildReport } from "./report.js";
       if (dpStale) { dpStale = false; setTimeout(renderDatePicker, 400); }   // a redraw that waited: once the month has settled
     };
     g.addEventListener("pointerup", (e) => release(e, false)); g.addEventListener("pointercancel", (e) => release(e, true));
-    g.addEventListener("click", (e) => { if (swallow && e.detail !== 0) { swallow = false; e.stopPropagation(); e.preventDefault(); } }, true);   // a keyboard's Enter (detail 0) is never a slide's click
+    g.addEventListener("click", (e) => { if (swallow && e.detail !== 0) { swallow = false; e.stopPropagation(); e.preventDefault(); } else if (!dpSettled(e) && ptype !== "mouse") g.classList.add("dragged"); }, true);   // a keyboard's Enter (detail 0) is never a slide's click; a tap the days take no notice of yet (their first 350 ms) lets go of its day's grey, as a catch does
     if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", () => { if (dp) dpShow(dp.month, false); });   // turned: the month stays the one shown
   }
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && dp) closeDatePicker(); if (e.key === "Escape" && es) closeFinishEarly(); });
@@ -2127,7 +2438,7 @@ import { reportRange, buildReport } from "./report.js";
     return n > -14 ? (-n) + " days ago" : Math.round(-n / 7) + " weeks ago";
   };
   const liftGlyph = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round"><circle cx="12" cy="2.65" r="1.95" stroke="none"/><path stroke-width=".25" d="M10.1 5.5Q12 5.1 13.9 5.5L15 6.6 15.5 7.4 15.8 8.3 16.3 9.1 16.7 9.97 17.1 10.8 17.5 11.7 18 12.5 18.7 14.1Q18.6 15 17.8 15 17 15 16.9 14.2L16 12.5 15.6 11.7 15.2 10.8 14.8 9.97 14.2 9.6 14 9.6 14 11.4 10 11.4 10 9.6 9.8 9.6 9.2 9.97 8.8 10.8 8.4 11.7 8 12.5 7.1 14.2Q7 15 6.2 15 5.4 15 5.3 14.1L6 12.5 6.5 11.7 6.9 10.8 7.3 9.97 7.7 9.1 8.2 8.3 8.5 7.4 9 6.6Z"/><path stroke-width=".25" d="M9.5 14.9h5l1.6 7.3q.2 1-.8 1.1-.8.1-1-.7L12 15.1l-2.3 7.5q-.2.8-1 .7-1-.1-.8-1.1z"/><rect x="1.3" y="12.95" width="21.4" height=".95" rx=".45" stroke="none"/><rect x="2.1" y="9.6" width="1.9" height="6.5" rx=".9" stroke="none"/><rect x="20" y="9.6" width="1.9" height="6.5" rx=".9" stroke="none"/></svg>';   // the lifter at the bar, traced from the proportions of Apple's: head, rounded shoulders, arms down to the bar, legs set
-  function workoutRow(t, mode) {                                        // one workout as Fitness lays a row out: the day in a column, a disc with the lifter, the title over a quiet line, a chevron. mode: "today" | "next" | "past"
+  function workoutRow(t, mode, swipe) {                                 // one workout as Fitness lays a row out: the day in a column, a disc with the lifter, the title over a quiet line, a chevron. mode: "today" | "next" | "past"; swipe: Today and Up next, where a workout still to do swipes to its Reschedule
     const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
     const n = t.rows.length, done = t.rows.filter((r) => r.done).length;      // exercises are rows: a superset counts each of its lifts
     const skipped = !t.completedAt && !!t.skippedAt;
@@ -2159,6 +2470,14 @@ import { reportRange, buildReport } from "./report.js";
       const skip = document.createElement("button"); skip.type = "button"; skip.className = "btn tint"; skip.textContent = "Skip";
       skip.addEventListener("click", () => { t.skippedAt = now(); t.missed = false; touchState(t.id, "skippedAt", "missed"); if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
       acts.append(doToday, skip); li.appendChild(acts);                  // the choices sit under the row
+    }
+    if (swipe && (mode === "today" || mode === "next") && canReschedule(t)) {   // swiped to the left: Skip and Reschedule, behind the row (the workout page holds both: its Skip workout and its "…")
+      li.classList.add("swipe-row");
+      const layer = document.createElement("div"); layer.className = "swipe-acts"; layer.setAttribute("aria-hidden", "true");
+      const act = (cls, icon, label, run) => { const b = document.createElement("button"); b.type = "button"; b.className = "swipe-act " + cls; b.tabIndex = -1; b.innerHTML = '<span class="sa-cap">' + icon + '</span><span class="sa-lbl">' + label + '</span>'; b.addEventListener("click", (e) => { e.stopPropagation(); run(); }); return b; };
+      layer.append(act("sa-skip", SA_SKIP, "Skip", () => { if (rs && rs.li === li) rsSettle(rs, 0, 0); rowSkip(t.id); }),   // asks first, as the workout page does
+        act("sa-resched", SA_CALENDAR, "Reschedule", () => { if (rs && rs.li === li) rsFire(rs); else rowReschedule(t.id); }));   // outermost: the full swipe's
+      li.appendChild(layer);                                             // last, under the row's own parts: they slide off it
     }
     return li;
   }
@@ -2267,9 +2586,10 @@ import { reportRange, buildReport } from "./report.js";
     nextExtra = Math.max(0, Math.min(nextExtra, next.length - soon.length));
     const shown = next.slice(0, soon.length + nextExtra), left = next.length - shown.length;
     const todays = shown.filter((t) => effDate(t) === iso(base)), later = shown.filter((t) => effDate(t) !== iso(base));   // today's workout on its own card, the days after it under "Up next"
-    $("todayHead").hidden = !todays.length; $("todayList").hidden = !todays.length; $("todayList").replaceChildren(...todays.map((t) => workoutRow(t, "today")));
+    const keepOpen = rs && rs.open && !rs.busy && !(rsT && rsT.held) && rs.li.dataset ? rs.li.dataset.tid : ""; rsForget();   // a row left open stays open across the redraw (the rows are new)
+    $("todayHead").hidden = !todays.length; $("todayList").hidden = !todays.length; $("todayList").replaceChildren(...todays.map((t) => workoutRow(t, "today", true)));
     $("nextHead").hidden = !later.length && left === 0; $("nextList").hidden = !later.length && left === 0;
-    $("nextList").replaceChildren(...later.map((t) => workoutRow(t, "next")));
+    $("nextList").replaceChildren(...later.map((t) => workoutRow(t, "next", true)));
     if (left > 0 || nextExtra > 0) {                                        // the card's last row: a chevron at the right opens the list (down) and folds it back (up); once open, "Show more · 7 more" on the left while there is still more
       const li = document.createElement("li"); li.className = "more" + (left > 0 && nextExtra > 0 ? "" : " only"); const bar = document.createElement("div");
       if (left > 0 && nextExtra > 0) {
@@ -2287,6 +2607,7 @@ import { reportRange, buildReport } from "./report.js";
       bar.appendChild(fold); li.appendChild(bar); $("nextList").appendChild(li);
     }
 
+    if (keepOpen) { const li = [...$("todayList").children, ...$("nextList").children].find((x) => x.dataset && x.dataset.tid === keepOpen && x.classList.contains("swipe-row")), r = li && rsBegin(li, true); if (r) { rsPaint(r, r.w, null); r.open = true; } }
     const rest = list.filter((t) => t.completedAt || t.skippedAt);           // History: a card under Up next; its page lays the past out by week, month and year
     $("histCard").hidden = !rest.length; $("histSub").textContent = rest.length + (rest.length === 1 ? " workout" : " workouts");
     $("trainingEmpty").hidden = list.length > 0;
@@ -2294,10 +2615,10 @@ import { reportRange, buildReport } from "./report.js";
   }
 
   function paintFinish(t) {
-    $("finishWrap").hidden = t.rows.length === 0;
+    $("finishWrap").hidden = t.rows.length === 0 && !t.skippedAt && !t.completedAt && !canReschedule(t);   // nothing added yet: nothing to finish, yet a workout its row can skip offers Skip workout here too, and a skipped or finished one shows its line with Undo
     if (S.view.name === "training" && S.view.id === t.id) { $("tMore").hidden = !canReschedule(t); closeMoreMenu(); }   // Undo on a finish (which redraws only this) brings the "…" back
     const done = !!t.completedAt, skipped = !done && !!t.skippedAt;
-    $("finishBtn").hidden = done || skipped; $("finishedLine").hidden = !done;
+    $("finishBtn").hidden = done || skipped || t.rows.length === 0; $("finishedLine").hidden = !done;
     const left = document.body.classList.contains("client") && t.rows.some((r) => !r.done);   // the client's page: with an exercise still open, finishing is finishing early — a quiet pill like Skip workout, not the purple act
     const fb = $("finishBtn"); fb.textContent = left ? "Finish early" : "Finish workout"; fb.classList.toggle("tint", left); fb.classList.toggle("soft", left);
     $("skipLine").hidden = done || skipped; $("skippedLine").hidden = !skipped;
@@ -3447,30 +3768,32 @@ import { reportRange, buildReport } from "./report.js";
     S.renderedTraining = null; render();
     const el = document.querySelector('.row[data-id="' + r.id + '"]'); if (el) el.querySelector(".name").focus();
   });
-  function setSkipped(skipped, reason) {                               // asked first (the sheet); the workout stays on screen, marked Skipped, with Undo
-    const t = trainings.get(S.view.id); if (!t) return;
+  function setSkipped(skipped, reason, id = S.view.id) {              // asked first (the sheet); the workout stays on screen, marked Skipped, with Undo (from a row on Workouts: it goes to History, Undo on its page)
+    const t = trainings.get(id); if (!t) return;
     t.skippedAt = skipped ? now() : null; t.missed = false; touchState(t.id, "skippedAt", "missed", "skipReason");   // a person decided: never filed by itself again
     if (skipped && reason) t.skipReason = reason; else delete t.skipReason;
     if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); }
-    scheduleSave("trainings", t.id); paintFinish(t); S.renderedTraining = null; render();
+    scheduleSave("trainings", t.id); if (S.view.name === "training" && S.view.id === t.id) paintFinish(t); S.renderedTraining = null; render();
   }
   let sk = null;                                                       // the skip sheet: { t, reason }
-  function openSkip() {
-    const t = trainings.get(S.view.id); if (!t) return; sk = { t, reason: "" }; S.asking = true;
+  function openSkip(id) {                                              // the workout page's, or a row's on Workouts (id)
+    const t = trainings.get(id || S.view.id); if (!t) return; sk = { t, reason: "", at: performance.now() }; S.asking = true;
     for (const b of $("skReasons").querySelectorAll("button")) { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); }
     $("skipSheet").hidden = false; setTimeout(() => { if (sk) $("skGo").focus({ preventScroll: true }); }, 0);
   }
   function closeSkip() { $("skipSheet").hidden = true; sk = null; S.asking = false; }
-  $("skGo").addEventListener("click", () => { if (!sk) return; const reason = sk.reason; closeSkip(); setSkipped(true, reason); });
-  $("skKeep").addEventListener("click", closeSkip);
-  $("skipSheet").addEventListener("click", (e) => { if (e.target === $("skipSheet")) closeSkip(); });
+  const skSettled = (e) => !!sk && (performance.now() - sk.at >= 350 || (!!e && e.detail === 0));   // the second tap of a double tap (on Skip, on a row low on the screen) must not land on Skip workout, as askFirst's red button, nor pick a reason or close the question (a keyboard's Enter or VoiceOver, detail 0, acts at once on those)
+  $("skGo").addEventListener("click", () => { if (!skSettled()) return; const reason = sk.reason, id = sk.t.id; closeSkip(); setSkipped(true, reason, id); });
+  $("skKeep").addEventListener("click", (e) => { if (skSettled(e)) closeSkip(); });
+  $("skipSheet").addEventListener("click", (e) => { if (e.target === $("skipSheet") && skSettled()) closeSkip(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && sk) closeSkip(); });   // Escape is Keep it, as the other sheets take it
   $("skReasons").addEventListener("click", (e) => {
-    const b = e.target.closest("button"); if (!b || !sk) return;
+    const b = e.target.closest("button"); if (!b || !sk || !skSettled(e)) return;
     const on = !b.classList.contains("on");                          // tap again to clear
     for (const x of $("skReasons").querySelectorAll("button")) { x.classList.toggle("on", on && x === b); x.setAttribute("aria-pressed", String(on && x === b)); }
     sk.reason = on ? b.dataset.reason : "";
   });
-  $("skipBtn").addEventListener("click", openSkip);
+  $("skipBtn").addEventListener("click", () => openSkip());
   $("unskipBtn").addEventListener("click", () => setSkipped(false));
   $("finishBtn").addEventListener("click", () => setFinished(true));
   $("unfinishBtn").addEventListener("click", () => setFinished(false));
@@ -3633,7 +3956,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },

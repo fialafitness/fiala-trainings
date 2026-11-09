@@ -18,7 +18,7 @@ const listens = (e) => {                                                 // and 
 };
 const recorder = (id, extra = {}) => { const e = listens(kids(el("div"))); Object.assign(e, extra); byId.set(id, e); return e; };
 const g = recorder("dpGrid", { clientWidth: W, setPointerCapture() {} });
-recorder("dpPrev"); const next = recorder("dpNext"); recorder("dpToday");
+recorder("dpPrev"); const next = recorder("dpNext"); recorder("dpToday"); const pickBg = recorder("datePick"), pickCancel = recorder("dpCancel");
 const pop = recorder("whenPop"); pop.querySelector = (sel) => (sel === ".wopt" ? pop.children.find((c) => /\bwopt\b/.test(c.className)) || null : null); pop.contains = (x) => !!x && pop.children.includes(x);
 const bg = recorder("whenBg"); const more = recorder("tMore");
 const make = document.createElement; document.createElement = (t) => listens(kids(make(t)));
@@ -86,16 +86,16 @@ g.fire("pointerup", ev(280, 300, 400, "mouse"));
 setup(); g.scrollLeft = 255; next.fire("click", {}); out.scrollLeft = g.scrollLeft; out.afterNext = state();
 
 // the click a slide leaves behind (iPhone sends it a moment later) picks no day; the next plain tap does; a keyboard's Enter always does
-setup(); slide(0); await wait(30);
+setup(); await wait(360); slide(0); await wait(30);
 out.lateClickAfterSlide = click();
 g.fire("pointerdown", ev(200, 300, 1000)); g.fire("pointerup", ev(200, 300, 1050)); out.tapClick = click(); out.tapPicked = picked[0] || null;
 setup(); slide(2000); out.keyboardAfterSlide = click(0);
 // a slide that brought no click at all (a long slide brings none): the next tap still picks its day
-setup(); slide(3000); g.fire("pointerdown", ev(200, 300, 4000)); g.fire("pointerup", ev(200, 300, 4050)); out.tapAfterSlideNoClick = click();
+setup(); await wait(360); slide(3000); g.fire("pointerdown", ev(200, 300, 4000)); g.fire("pointerup", ev(200, 300, 4050)); out.tapAfterSlideNoClick = click();
 
 // a touch on months still settling only catches them: its tap picks no day
 setup(); track().style.transform = "translate3d(" + (-12 * W - 100) + "px,0,0)";   // mid-settle, 100 px short of the month
-g.fire("pointerdown", ev(200, 300, 0)); out.catchPress = g.classes.has("dragged"); g.fire("pointerup", ev(200, 300, 60)); out.catchClick = click();
+await wait(360); g.fire("pointerdown", ev(200, 300, 0)); out.catchPress = g.classes.has("dragged"); g.fire("pointerup", ev(200, 300, 60)); out.catchClick = click();
 
 // caught while bouncing back from past the first month (Reschedule opens on its first) or the last: nothing jumps, and it gives a third of the finger
 setup({ min: fns.today() }); track().style.transform = "translate3d(30px,0,0)";   // 30 px past the first month on screen: a 90 px pull let go a moment ago
@@ -126,11 +126,22 @@ g.fire("pointerup", ev(200, 300, 50)); out.redrawFinger.lift = track() === held;
 let minNow = fns.today();
 setup({ title: "Reschedule", min: () => minNow }); const todayN = new Date().getDate(), todayPage = fns.datePicker().months.indexOf(fns.today().slice(0, 7));
 out.midnight = { before: !dayBtn(todayN, todayPage).disabled };
-minNow = day(1); held = track(); const stale = dayBtn(todayN, todayPage), n0 = picked.length;
+await wait(360); minNow = day(1); held = track(); const stale = dayBtn(todayN, todayPage), n0 = picked.length;
 stale.fire("click", { detail: 1 }); out.midnight.picked = picked.length > n0; out.midnight.open = !!fns.datePicker(); out.midnight.redrawn = track() !== held;
 const fresh = dayBtn(todayN, todayPage); out.midnight.greyed = fresh.disabled === true && fresh.classes.has("off");
 fns.closeDatePicker();
 
+// the second tap of a double tap (on a row's Reschedule, on the "…" menu's) lands on the days as they come up: 340 ms after they opened a day,
+// the backdrop and Cancel take no tap (a keyboard's Enter, detail 0, always does); 360 ms after, a tap picks its day, the backdrop and Cancel
+// close (the clock is moved on by hand: the 350 ms are measured on performance.now)
+{ const realNow = performance.now.bind(performance), base = realNow(); let later = 0; performance.now = () => base + later;   // a clock moved only by hand: the 10 ms between 340 and 350 never hang on how fast this machine draws the months
+  const bgTap = () => { pickBg.fire("click", { target: pickBg, detail: 1 }); return !!fns.datePicker(); }, cancelTap = () => { pickCancel.fire("click", { target: pickCancel, detail: 1 }); return !!fns.datePicker(); };
+  const when = (ms, fn) => { setup(); later = ms; try { return fn(); } finally { later = 0; } };
+  out.settle = { day: when(340, () => click(1, 20)), backdrop: when(340, bgTap), cancel: when(340, cancelTap), keyboard: when(0, () => click(0, 20)),
+    dayLater: when(360, () => click(1, 20) && picked[0]), backdropLater: when(360, bgTap), cancelLater: when(360, cancelTap) };
+  const early = (type) => when(150, () => { g.fire("pointerdown", ev(200, 300, 0, type)); g.fire("pointerup", ev(200, 300, 60, type)); return { picked: click(2, 20), letGo: g.classes.has("dragged") }; });   // the day that tap landed on lets go of the grey iOS leaves on it, as a catch's does (a mouse is really there: its hover stays)
+  out.settle.earlyTouch = early("touch"); out.settle.earlyMouse = early("mouse");
+  performance.now = realNow; }
 // the "…" from the keyboard (or VoiceOver): focus goes into its menu, and comes back to the "…" when the menu or the days close; a tap leaves focus alone
 workout(true); document.activeElement = more;
 more.fire("click", { detail: 0, stopPropagation() {} });
