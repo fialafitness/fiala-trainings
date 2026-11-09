@@ -446,8 +446,8 @@ toWorkout(); { const dock = $("dock"), kids = dock.children; dock.children = [{ 
 fns.forceSwipe(false);
 
 // 30. a workout with nothing added yet: the client's page offers Skip workout (as its row does) and no Finish; skipped through the sheet from
-//     its row, its page (opened from History) shows the Skipped line with Undo, and Undo brings it back; the coach's own page of an empty
-//     workout still to do has no finish area, and of one the client skipped shows its Undo
+//     its row, its page (opened from History) shows the Skipped line with Undo, and Undo brings it back; the trainer's own page of an empty
+//     workout still to do offers Skip workout too (his row skips it), and of one the client skipped shows its Undo
 const finishArea = () => ({ area: !$("finishWrap").hidden, finishBtn: !$("finishBtn").hidden, skipBtn: !$("skipLine").hidden, skippedLine: !$("skippedLine").hidden, more: !$("tMore").hidden });   // what the page shows
 { const wasHidden = sheet.hidden; out.empty = {};
   setup(); sheet.hidden = true; app.set({ view: { name: "training", id: "w1" } }); fns.render(); const before = finishArea();
@@ -583,6 +583,21 @@ const coachWorkout = () => { app.reset(); app.set({ signedIn: true, clientMode: 
   await play([...FINGERS, ...COAST.slice(0, 22)].map((d) => [d, 0]), pageDiv, -1); await advance(20);   // let go; the slow swipe's first 8 px come while the page still settles
   let slid = false; for (const d of SLOW) { wheel(-d, 0, pageDiv); const s = fns.swipeState(); if (s && s.on && !s.busy) slid = true; await advance(8.33); }
   await advance(1500); out.slowWhileSettling = { slid, view: app.get().view.name }; fns.forceSwipe(false); }
+
+// 41. the trainer's view of a client's page (his pick, 9 Nov): the row the app draws swipes there too. Two fingers to the left open it and
+//     stop, as in the client's view; its Reschedule opens the days for any day (no first day), as his date on the workout page; two fingers
+//     to the right over a closed row go back to Clients
+const coachClient = () => { app.reset(); app.set({ signedIn: true, clientMode: false, tab: "workouts" }); maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" });
+  maps.trainings.set("w1", { id: "w1", clientId: "c1", title: "Legs", date: day(1), createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [] });
+  app.set({ view: { name: "client", id: "c1" } }); fns.render(); };
+try { coachClient(); const r = drawnRow(); const p = await play([...FINGERS, ...COAST].map((d) => [d, 0]), r.pri); await advance(800);
+  const opened = { open: !!row() && row().open, x: row() && Math.round(row().x * 100) / 100, kept: p.prevented };
+  const t = await tap(r.resched.children[0], 330, 100, r.resched.on.click); const dp = fns.datePicker();
+  out.coachRow = { hasActions: r.li.classList.contains("swipe-row"), opened, tap: t, days: dp && { title: dp.title, min: dp.min } };
+  if (fns.datePicker()) fns.closeDatePicker(); await advance(600); r.drop();
+  coachClient(); fns.forceSwipe(true); const r2 = drawnRow(); const p2 = await play([...FINGERS, ...COAST].map((d) => [d, 0]), r2.pri, -1); await advance(1500);
+  out.coachRow.rightOverRow = { view: app.get().view.name, kept: p2.prevented, row: row() }; fns.forceSwipe(false); r2.drop();
+} catch (e) { out.coachRow = { error: String(e && e.message || e) }; fns.forceSwipe(false); if (fns.datePicker()) fns.closeDatePicker(); }   // (a row drawn with nothing behind it, or a throw: a failed check, not a lost run)
 
 console.log(JSON.stringify(out));
 process.exit(0);

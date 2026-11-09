@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
+import { TEMPLATES_ID } from "../app/model.js";
 const app = await load();
 const { fns, maps } = app;
 const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return fns.localIso(d); };   // the app's local day (never UTC: after 4 pm in Los Angeles that is tomorrow)
@@ -21,8 +22,9 @@ const setup = (clientMode, extra = {}) => {
   return maps.trainings.get("w1");
 };
 const swipes = (li) => li.classList.contains("swipe-row");
+const TEMPLATES = TEMPLATES_ID;   // the templates' own client
 
-test("only a workout still to do, on Today or Up next in the client's view, swipes to its Skip and Reschedule", () => {
+test("only a workout still to do, on Today or Up next, swipes to its Skip and Reschedule: in the client's view and in the trainer's", () => {
   let t = setup(true);
   assert.strictEqual(swipes(fns.workoutRow(t, "next", true)), true, "Up next: it swipes");
   assert.strictEqual(swipes(fns.workoutRow(t, "today", true)), true, "Today: it swipes");
@@ -33,7 +35,11 @@ test("only a workout still to do, on Today or Up next in the client's view, swip
   t = setup(true, { skippedAt: "2026-11-02T18:00:00.000Z" });
   assert.strictEqual(swipes(fns.workoutRow(t, "next", true)), false, "skipped: nothing to move");
   t = setup(false);
-  assert.strictEqual(swipes(fns.workoutRow(t, "next", true)), false, "the coach's own view: he moves it with the date chip");
+  assert.strictEqual(swipes(fns.workoutRow(t, "next", true)), true, "the trainer's view of a client's page: it swipes too (his pick)");
+  assert.strictEqual(swipes(fns.workoutRow(t, "today", true)), true);
+  t = setup(false, { completedAt: "2026-11-02T18:00:00.000Z" });
+  assert.strictEqual(swipes(fns.workoutRow(t, "next", true)), false, "the trainer's view, finished: nothing to move");
+  for (const coach of [true, false]) { t = setup(!coach, { clientId: TEMPLATES }); assert.strictEqual(swipes(fns.workoutRow(t, "next", true)), false, "a template's workout never swipes (" + (coach ? "trainer" : "client") + ")"); }
 });
 
 // elements that keep what is put in them and the listeners they are given (the shared stand-in drops both), for as long as fn runs
@@ -367,13 +373,13 @@ test("a swipe back on a Mac started while typing: the typing look goes with the 
   assert.deepStrictEqual({ started: !!f, typing: f && f.typing, slides: !!m && Number(m[1]) > 0, view: g.typingBack.view }, { started: true, typing: false, slides: true, view: "client" }, "from the page's first frame the typing look is off and the tab bar moves with it (" + (f && f.dock) + "); back");
 });
 
-test("a workout with nothing added yet: the client's page offers Skip workout as its row does (no Finish); skipped through the sheet, its page shows Skipped with Undo; the coach's own page shows only what there is", () => {
+test("a workout with nothing added yet: the client's page offers Skip workout as its row does (no Finish); skipped through the sheet, its page shows Skipped with Undo; the trainer's own page offers Skip workout too, as his row does", () => {
   const c = g.empty.client, k = g.empty.coach, skippedPage = { area: true, finishBtn: false, skipBtn: false, skippedLine: true, more: false };
   assert.deepStrictEqual(c.before, { area: true, finishBtn: false, skipBtn: true, skippedLine: false, more: true }, "the client's page: Skip workout and its \"…\", no Finish (nothing to finish)");
   assert.deepStrictEqual(c.skipped.w1, { skipped: true, reason: "Sick", pending: true }, "skipped from its row, through the sheet");
   assert.deepStrictEqual({ page: c.skipped.page, text: c.skipped.text }, { page: skippedPage, text: "Skipped · Sick" }, "its page (from History): the Skipped line with its reason and Undo, as the sheet promised");
   assert.deepStrictEqual(c.undone, { page: c.before, w1: { skipped: false, reason: null, pending: true } }, "Undo brings it back, to the page it had");
-  assert.strictEqual(k.toDo.area, false, "the coach's own page of an empty workout still to do: no finish area (nothing to finish)");
+  assert.deepStrictEqual(k.toDo, { area: true, finishBtn: false, skipBtn: true, skippedLine: false, more: false }, "the trainer's own page of an empty workout still to do: Skip workout, as its row in his view now skips it (no Finish: nothing to finish; his date chip moves it, no \"…\")");
   assert.deepStrictEqual(k.skipped, { page: skippedPage, text: "Skipped · Sick" }, "one the client skipped: its Skipped line with Undo");
 });
 
@@ -433,4 +439,29 @@ test("three quick swipes back (a workout to Clients): the second, landing while 
 
 test("one slow swipe begun while the page still settles goes nowhere from its start to its end, as on iPhone: no slide starts part-way through it once the page has landed", () => {
   assert.deepStrictEqual(g.slowWhileSettling, { slid: false, view: "client" });
+});
+
+test("the trainer's view of a client's page (his pick): Reschedule from a row opens the days for any day, past days too, as his date on the workout page; the day picked is his own save; Skip asks first", () => {
+  setup(false);
+  assert.strictEqual(fns.rowReschedule("w1"), true);
+  const dp = fns.datePicker();
+  assert.ok(dp, "the days are open"); assert.strictEqual(dp.title, "Reschedule"); assert.strictEqual(dp.min, null, "any day: no first day allowed");
+  assert.strictEqual(dp.ok(), true, "still the client's page, the workout still to do");
+  dp.onPick(day(-3));
+  assert.strictEqual(maps.trainings.get("w1").date, day(-3), "moved to a past day (a session that happened, entered afterwards)");
+  assert.strictEqual(maps.pendingMove.has("w1"), false, "the trainer's own save, not the client's server rule");
+  fns.closeDatePicker();
+  assert.strictEqual(fns.moveWorkout("w1", day(-3)), false, "the same day again: nothing to save");
+  setup(false);
+  assert.strictEqual(fns.rowSkip("w1"), true); assert.deepStrictEqual(fns.skipSheet(), { id: "w1", reason: "" }, "Skip asks first, the same sheet");
+  fns.closeSkip(); fns.setSkipped(true, "Sick", "w1");
+  assert.ok(maps.trainings.get("w1").skippedAt); assert.strictEqual(maps.pendingSkip.has("w1"), false, "the trainer's own save");
+  setup(false, { completedAt: "2026-11-02T18:00:00.000Z" });
+  assert.strictEqual(fns.rowReschedule("w1"), false, "finished meanwhile: no days open"); assert.strictEqual(fns.moveWorkout("w1", day(2)), false, "nor does a pick move it");
+  setup(true);
+  assert.strictEqual(fns.rowReschedule("w1"), true); assert.strictEqual(fns.datePicker().min(), fns.today(), "the client's still from today on"); fns.closeDatePicker();
+});
+
+test("the trainer on a Mac: on a client's page two fingers open the row the app draws and stop, its Reschedule opens the days for any day; two fingers to the right over a closed row go back to Clients", () => {
+  assert.deepStrictEqual(g.coachRow, { hasActions: true, opened: { open: true, x: 154.67, kept: 54 }, tap: { cancelled: false, clicked: true }, days: { title: "Reschedule", min: null }, rightOverRow: { view: "clients", kept: 54, row: null } });
 });

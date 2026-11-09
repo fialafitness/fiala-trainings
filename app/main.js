@@ -1319,7 +1319,8 @@ import { reportRange, buildReport } from "./report.js";
   // on iPhone, while the bars above and below act at once (measured: Reminders' Back with a row open goes back on that tap). It also closes
   // on a scroll, Escape or another page. A mouse drags the row the same way; a click elsewhere closes the open row and still goes through
   // (a Mac's way). Two fingers on a Mac's trackpad open and close it but stop there (below): the actions are clicked. Skip asks first, with
-  // the workout page's own sheet; the workout page holds both too (its "…" and its Skip workout): Apple, never a gesture only.
+  // the workout page's own sheet; the workout page holds both too (its "…" and its Skip workout): Apple, never a gesture only. The trainer's
+  // view of a client's page swipes the same (his pick, 9 Nov): his Reschedule takes any day, as his date on the workout page ("Move to") does.
   const RS_GAP = 11.67, RS_BETWEEN = 10.33, RS_END = 10.67, RS_HOLD = 8, RS_ARM_EDGE = 81, RS_FLICK = 0.3;   // RS_FLICK: px per ms; a let-go faster than this goes its own way
   const SA_CALENDAR = '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M4.2 2.9h7.6c1.2 0 2.2 1 2.2 2.2v7c0 1.2-1 2.2-2.2 2.2H4.2C3 14.3 2 13.3 2 12.1v-7c0-1.2 1-2.2 2.2-2.2zM3.5 6.6v5.5c0 .4.3.7.7.7h7.6c.4 0 .7-.3.7-.7V6.6z"/><path fill="currentColor" d="M5 8h1.6v1.6H5zM7.2 8h1.6v1.6H7.2zM9.4 8H11v1.6H9.4zM5 10.2h1.6v1.6H5zM7.2 10.2h1.6v1.6H7.2z"/><path d="M5.2 1.5v2.2M10.8 1.5v2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';   // the calendar filled, as Apple's swipe actions use the fill variants (HIG, SF Symbols)
   const SA_SKIP = '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3 3.4v9.2c0 .6.6.9 1.1.6l7-4.6c.4-.3.4-.9 0-1.2l-7-4.6C3.6 2.5 3 2.8 3 3.4z"/><rect x="11.6" y="2.6" width="2" height="10.8" rx="1" fill="currentColor"/></svg>';   // forward.end.fill: skip, as media controls draw it
@@ -1394,14 +1395,14 @@ import { reportRange, buildReport } from "./report.js";
   }
   function rsForget() { if (rs) rsDone(rs, true); rsT = null; if (typeof document !== "undefined" && document.body && document.body.classList) document.body.classList.remove("rs-drag"); }   // a redraw or another page: the row goes back at once (no flush: the caller is drawing)
   function rsFire(r) { const id = r.li.dataset.tid; r.fired = !!r.armed; rsSettle(r, 0, 0); if (id) rowReschedule(id); }   // the row closes as the days open (in its armed look, as it was let go)
-  function rowReschedule(id) {                                      // the day picker for this row's workout, as the workout page's "…" opens it
-    const t = trainings.get(id); if (!canReschedule(t)) return false;
-    const cid = t.clientId, still = () => S.view.name === "client" && S.view.id === cid && !settingsOpen && canReschedule(trainings.get(id));   // still the Workouts page, the workout still to do
-    openDatePicker({ clientId: cid, title: "Reschedule", selected: t.date || today(), min: today, ok: still, onPick: (date) => applyReschedule(id, date) });
+  function rowReschedule(id) {                                      // the day picker for this row's workout: the client's from today on, as the workout page's "…" opens it; the trainer's any day, as his date on the workout page
+    const t = trainings.get(id); if (!canSwipeRow(t)) return false;
+    const cid = t.clientId, asClient = canReschedule(t), still = () => S.view.name === "client" && S.view.id === cid && !settingsOpen && canSwipeRow(trainings.get(id));   // still the Workouts page, the workout still to do
+    openDatePicker({ clientId: cid, title: "Reschedule", selected: t.date || today(), min: asClient ? today : null, ok: still, onPick: (date) => (asClient ? applyReschedule(id, date) : moveWorkout(id, date)) });
     return true;
   }
   function rowSkip(id) {                                            // the workout page's own "Skip this workout?" (its reasons, then Skip workout or Keep it), for this row's workout
-    const t = trainings.get(id); if (!canReschedule(t)) return false;
+    const t = trainings.get(id); if (!canSwipeRow(t)) return false;
     openSkip(id); return true;
   }
   function rsLetGo(g, at, cancelled, noFire) {                      // the finger, mouse or trackpad let the row go (noFire: never the action itself)
@@ -2471,7 +2472,7 @@ import { reportRange, buildReport } from "./report.js";
       skip.addEventListener("click", () => { t.skippedAt = now(); t.missed = false; touchState(t.id, "skippedAt", "missed"); if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
       acts.append(doToday, skip); li.appendChild(acts);                  // the choices sit under the row
     }
-    if (swipe && (mode === "today" || mode === "next") && canReschedule(t)) {   // swiped to the left: Skip and Reschedule, behind the row (the workout page holds both: its Skip workout and its "…")
+    if (swipe && (mode === "today" || mode === "next") && canSwipeRow(t)) {   // swiped to the left: Skip and Reschedule, behind the row (the workout page holds both: its Skip workout and its "…")
       li.classList.add("swipe-row");
       const layer = document.createElement("div"); layer.className = "swipe-acts"; layer.setAttribute("aria-hidden", "true");
       const act = (cls, icon, label, run) => { const b = document.createElement("button"); b.type = "button"; b.className = "swipe-act " + cls; b.tabIndex = -1; b.innerHTML = '<span class="sa-cap">' + icon + '</span><span class="sa-lbl">' + label + '</span>'; b.addEventListener("click", (e) => { e.stopPropagation(); run(); }); return b; };
@@ -2615,7 +2616,7 @@ import { reportRange, buildReport } from "./report.js";
   }
 
   function paintFinish(t) {
-    $("finishWrap").hidden = t.rows.length === 0 && !t.skippedAt && !t.completedAt && !canReschedule(t);   // nothing added yet: nothing to finish, yet a workout its row can skip offers Skip workout here too, and a skipped or finished one shows its line with Undo
+    $("finishWrap").hidden = t.rows.length === 0 && !t.skippedAt && !t.completedAt && !canSwipeRow(t);   // nothing added yet: nothing to finish, yet a workout its row can skip offers Skip workout here too, and a skipped or finished one shows its line with Undo
     if (S.view.name === "training" && S.view.id === t.id) { $("tMore").hidden = !canReschedule(t); closeMoreMenu(); }   // Undo on a finish (which redraws only this) brings the "…" back
     const done = !!t.completedAt, skipped = !done && !!t.skippedAt;
     $("finishBtn").hidden = done || skipped || t.rows.length === 0; $("finishedLine").hidden = !done;
@@ -3747,6 +3748,11 @@ import { reportRange, buildReport } from "./report.js";
   // the client's "…" on the workout page: Reschedule, in the same frosted menu as every other; the day picker then moves the workout
   // (from today on). A client's move reaches the server by its own rule (client_move_training, as Do it today); the coach's is an ordinary save.
   function canReschedule(t) { return !!t && !isTemplateClient(t.clientId) && !t.completedAt && !t.skippedAt && (S.clientMode || previewClient); }   // a declaration: render() and the swipe's bar ask before this line has run
+  function canSwipeRow(t) { return !!t && !isTemplateClient(t.clientId) && !t.completedAt && !t.skippedAt; }   // a workout still to do swipes to Skip and Reschedule on Today and Up next, in the client's view and in the trainer's (his pick); its page offers both too
+  function moveWorkout(id, date) {                                  // the trainer's Reschedule from a row: any day, an ordinary save, as his date on the workout page ("Move to") moves it
+    const t = trainings.get(id); if (!canSwipeRow(t) || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date === t.date) return false;   // asked again at the pick: a sync may have brought in a finish or a skip while the days were open
+    touchState(id, "date"); t.date = date; scheduleSave("trainings", id); S.renderedTraining = null; render(); return true;
+  }
   function applyReschedule(id, date) {
     const t = trainings.get(id); if (!canReschedule(t) || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date === t.date || date < today()) return false;   // asked again at the pick: a sync may have brought in a finish or a skip while the days were open, or midnight made the day picked yesterday
     t.date = date; touchState(id, "date"); if (S.clientMode) pendingMove.add(id);
@@ -3956,7 +3962,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
