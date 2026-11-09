@@ -507,7 +507,6 @@
   .block.done:not(.open) .row .specs, .block.done:not(.open) .row .weights, .block.done:not(.open) .row .note, .block.done:not(.open) .row .x { display: none; }
   .block.done:not(.open) .row .top { pointer-events: none; }
   .block.done:not(.open) .row .top .name { color: var(--text-secondary); min-height: 36px; }
-  .block.done:not(.open) .row .top input.label { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
   .block.done:not(.open) .card-foot { padding: 6px 16px 10px; }
   .block.done:not(.open) .done-btn { display: none; }   /* collapsed: only Show weights, centred; both return when opened */
   .card-sum { display: none; padding: 0 16px 12px; font-size: 0.8125rem; color: var(--text-tertiary); }   /* "Finished · 3 of 3 sets" */
@@ -561,7 +560,9 @@
   body.client .block.ahead .tracker, body.client .block.ahead .row .specs, body.client .block.ahead .row .tempo-wrap, body.client .block.ahead .row .setlog, body.client .block.ahead .row .player, body.client .block.ahead .card-foot, body.client .block.ahead .ex-icons { display: none; }
   body.client .block.ahead .row .top { pointer-events: none; }
   body.client .block.ahead .row .top .name { color: var(--text-secondary); min-height: 36px; }
-  body.client .block.ahead .row .top input.label { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
+  body.client .block.ahead .row { position: relative; }
+  body.client .block.ahead .row .top .labwrap { position: absolute; left: 16px; top: 10px; bottom: 6px; width: calc(var(--numw) - 8px); display: flex; align-items: center; justify-content: center; }   /* folded: the circle centred on the whole exercise, its name and its sets line (the row's content, inside its 10 / 6 padding) */
+  body.client .block.ahead .row .top .exwrap { grid-column: 2; }
   body.client .block.peek .row .top { cursor: pointer; }
   body.client .block.peek .row .top .name, body.client .block.peek .row .top input.label { pointer-events: none; }
   /* the chevron in the corner: down on a folded card, up on one opened for a look */
@@ -632,7 +633,8 @@
   .block.done.skipped { --ss: var(--glyph-fill); --ss-ink: var(--text-secondary); }   /* skipped, nothing logged: no fern anywhere, a quiet grey card */
   .block.done.skipped .group { border-color: var(--card-border); background: var(--card); }
   .block.done.skipped .group-cap b { color: var(--text-secondary); }
-  .row .top input.label { text-align: center; font-weight: 500; padding: 0 8px; height: 100%; min-height: 44px; }
+  .row .top input.label { text-align: center; font-weight: 500; padding: 0; width: var(--badge); height: var(--badge); min-height: 0; border-radius: 50%; }   /* the number in a circle (his pick, 9 Nov), centred on the exercise: on a folded card its name and sets line, else its name */
+  .row .top .labwrap { align-self: center; justify-self: center; }
   .group .row .top input.label { background: var(--ss); color: var(--ss-ink); border-color: transparent; box-shadow: none; font-weight: 600; }   /* filled like the client's badges: the coach sees at a glance which card he is in */
   .group .row .top input.label::placeholder { color: var(--ss-ink); opacity: 0.5; }
   .group .row .top input.label:focus { box-shadow: 0 0 0 2px var(--brand); border-color: transparent; }
@@ -722,7 +724,7 @@
   body.client .specs .chip { cursor: default; }
   /* client: the number is a solid badge in the exercise's colour, the name is the headline, the details line up under the name;
      only the weight and reps boxes they fill in look like boxes */
-  .row { --numw: 64px; --letw: 0px; }                   /* badge column + gap: where the name starts; letter width on an open client card */
+  .row { --numw: 64px; --letw: 0px; --badge: min(2.5rem, calc(var(--numw) - 8px)); }   /* the number's circle: 40 pt, room for "13c" (26 pt wide, measured) with about 6 pt either side; it grows with Text Size up to the column */                   /* badge column + gap: where the name starts; letter width on an open client card */
   /* client, open card: the number lives in the caption above; the name is the headline; superset rows carry a letter */
   body.client .block.ahead .group-cap, body.client .block.done .group-cap { display: none; }
   body.client .group-cap { align-items: center; gap: 2px 8px; margin: 0 0 8px 2px; min-height: 20px; }   /* the heading, its little i and the fold chevron on one centre line */
