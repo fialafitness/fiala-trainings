@@ -189,6 +189,7 @@ import { reportRange, buildReport } from "./report.js";
     navWillChange(); $("meDisc").hidden = true; $("tMore").hidden = true; closeMoreMenu();
     rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
     $("tabbar").hidden = true; $("addBtn").hidden = true; document.body.classList.remove("tabs");
+    $("viewSeg").hidden = true; $("addExBtn").hidden = true; document.body.classList.remove("wsdock"); $("dock").classList.remove("ws");   // the workout page's bar too: Coach | Client and its +
     for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vClientCard", "vHistory", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
     $("navDone").hidden = true;
   }
@@ -1107,6 +1108,9 @@ import { reportRange, buildReport } from "./report.js";
   };
   const calmMotion = () => { try { return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (_) { return false; } };
   if ((swipeOn || deskOn) && !iosHome && typeof document !== "undefined" && document.body && document.body.classList) document.body.classList.add("clip-x");   // Android's installed app and a computer: the sliding page must not widen the page (index.html)
+  const dockSig = (dock) => [...dock.children].filter((k) => !k.hidden).map((k) => k.id).join(",");   // which bar the page shows at its foot: a client page's tabs and +, a workout's Coach | Client and +
+  const dockShows = (dock) => !!dock && [...dock.children].some((k) => !k.hidden) && !document.body.classList.contains("typing") && !document.body.classList.contains("kb");   // the bar at the foot is on screen (the keyboard, or its bar of keys, has the bottom: index.html)
+  const dockGoes = (dockOn, shot, dock) => !!dockOn && !(shot && shot._dock && shot._dockSig === dockSig(dock));   // the swipe back: this page's bar goes with this page; the same bar on both pages stays (the copy's then stays hidden); a different one (the workout's Coach | Client and +, the client page's tabs and +) goes with its page while the other comes in with its own
   function captureScreen() {                                        // a still copy of the page as it is, to sit under the swipe later
     const secs = [...document.querySelectorAll("main > section")].filter((s) => !s.hidden && s.getClientRects().length);
     if (!secs.length) return null;
@@ -1119,7 +1123,7 @@ import { reportRange, buildReport } from "./report.js";
       c.style.position = "absolute"; c.style.left = r.left + "px"; c.style.top = r.top + "px"; c.style.width = r.width + "px"; c.style.margin = "0";   // the copy's content exactly where the page's was (a section is flow-root, index.html, so its first child's margin stays inside it)
       box.appendChild(c);
     }
-    const dock = $("dock"); box._dock = !!dock && [...dock.children].some((k) => !k.hidden) && !document.body.classList.contains("typing");
+    const dock = $("dock"); box._dock = dockShows(dock); box._dockSig = box._dock ? dockSig(dock) : "";
     if (box._dock) { const d = dock.cloneNode(true); d.classList.add("shot-dock"); box.appendChild(d); }   // the page's tab bar too, styled as itself (fixed inside the copy, which holds it in place: will-change): it comes in with the page
     const bar = document.querySelector("header .bar"); if (bar) box._bar = bar.cloneNode(true);   // the bar's buttons and logo as they were over this page
     return box;
@@ -1220,9 +1224,9 @@ import { reportRange, buildReport } from "./report.js";
     document.body.appendChild(layer); sw.layer = layer; sw.dim = dim; sw.shot = shot;
     if (shot && shot._land) shot._land();                           // a fresh copy placed by its own layout
     document.body.classList.add("swipe-busy");                      // no taps on the bar or the tab bar until the pages have settled (UIKit takes none during its transition)
-    const dock = $("dock"), dockOn = !!dock && [...dock.children].some((k) => !k.hidden) && !document.body.classList.contains("typing");
-    sw.dock = dock; sw.dockSlides = dockOn && !(shot && shot._dock);   // this page's tab bar goes with this page; one both pages have stays (the copy's then stays hidden)
-    if (shot) for (const d of shot.querySelectorAll(".shot-dock")) d.style.visibility = dockOn ? "hidden" : "";
+    const dock = $("dock"), dockOn = dockShows(dock);
+    sw.dock = dock; sw.dockSlides = dockGoes(dockOn, shot, dock);
+    if (shot) for (const d of shot.querySelectorAll(".shot-dock")) d.style.visibility = dockOn && !sw.dockSlides ? "hidden" : "";
     // the bar: its buttons stay as they are while the finger moves; the logo of the page underneath comes in with that page
     const live = document.querySelector("header .bar"); sw.glassOut = []; sw.glassIn = []; sw.anims = [];
     if (live) {
@@ -1301,7 +1305,9 @@ import { reportRange, buildReport } from "./report.js";
     if (sw !== s) return;
     if (navSig() === before) {                                       // Back was refused: the page comes back in, as the Back circle leaves it
       for (const a of s.anims) { try { a.cancel(); } catch (_) {} } s.anims = [];
-      m.classList.add("swiping"); m.style.transform = "translate3d(" + w + "px,0,0)"; s.layer.style.zIndex = ""; void m.offsetWidth;
+      m.classList.add("swiping"); m.style.transform = "translate3d(" + w + "px,0,0)"; s.layer.style.zIndex = "";
+      if (s.dockSlides && s.dock) { s.dock.style.transition = "none"; s.dock.style.transform = "translate3d(" + w + "px,0,0)"; }   // its bar went with it and comes back in with it (a template's +, its Unsaved changes asked about)
+      void m.offsetWidth;
       const back = springEase(0, 0.3, 1); s.dx = 0; paintSwipe(back); setTimeout(clear, back.ms + 20); return;
     }
     clear();                                                        // same moment: the next frame shows the real page where the copy was
@@ -1622,7 +1628,7 @@ import { reportRange, buildReport } from "./report.js";
       g.m = m;
     } else {
       if (sw && (sw.on || sw.busy)) { g.axis = "x"; g.done = true; g.doneAt = now; g.spent = 0; e.preventDefault(); return; }   // the page still settling from the last one: this swipe back is spent (as UIKit takes none mid-transition), its rest kept from Safari, and the next one is new fingers by the let-go rules
-      { const a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.blur) { a.blur(); document.body.classList.remove("typing"); } }   // the field typed in is let go first, its value kept, as a click elsewhere does (and the typing look with it: this page's tab bar slides with the page)
+      { const a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.blur) { a.blur(); document.body.classList.remove("typing"); if (kbTarget) hideKb(); } }   // the field typed in is let go first, its value kept, as a click elsewhere does (and the typing look with it, and the keyboard's bar of keys: this page's tab bar slides with the page)
       sw = { x0: 0, y0: 0, sy: Number(window.scrollY) || 0, dx: 0, on: false, held: true, edge: false, pts: [[now, 0]], flick: false, wheel: true };
       startSwipe();
     }
@@ -1673,11 +1679,11 @@ import { reportRange, buildReport } from "./report.js";
     kbNextBtn.hidden = !kbSibling(t);                                                      // Next only while another box of this exercise, superset or giant set is left; the check is always there
   }
   function showKb(el) {
-    kbTarget = el; paintKb(); kbbar.hidden = false; placeKb(); $("draftBar").classList.add("kb");
+    kbTarget = el; paintKb(); kbbar.hidden = false; placeKb(); $("draftBar").classList.add("kb"); document.body.classList.add("kb");   // (the bar at the foot gives it the bottom, on a computer too: index.html)
     if (window.visualViewport) { window.visualViewport.addEventListener("resize", placeKb); window.visualViewport.addEventListener("scroll", placeKb); }
   }
   function hideKb() {
-    kbTarget = null; kbbar.hidden = true; $("draftBar").classList.remove("kb");
+    kbTarget = null; kbbar.hidden = true; $("draftBar").classList.remove("kb"); document.body.classList.remove("kb");
     if (window.visualViewport) { window.visualViewport.removeEventListener("resize", placeKb); window.visualViewport.removeEventListener("scroll", placeKb); }
   }
   kbbar.addEventListener("pointerdown", (e) => e.preventDefault()); // taps on the bar must not take focus (and the keyboard) away from the box
@@ -2117,6 +2123,8 @@ import { reportRange, buildReport } from "./report.js";
     $("vClients").hidden = S.view.name !== "clients";
     $("vClient").hidden = S.view.name !== "client";
     const tabs = S.view.name === "client" && !isTemplateClient(S.view.id); $("tabbar").hidden = !tabs; $("addBtn").hidden = !tabs || S.clientMode; document.body.classList.toggle("tabs", tabs);   // the coach's +: beside the bar on a client's page, on every tab
+    const wsDock = S.view.name === "training" && !S.clientMode;     // the coach's workout page: Coach | Client and the + in the bar at the foot, as Photos' (his pick, 10 Nov); the + is not in the client's look
+    $("addExBtn").hidden = !wsDock || previewing(); if (!wsDock) $("viewSeg").hidden = true; document.body.classList.toggle("wsdock", wsDock); $("dock").classList.toggle("ws", wsDock);   // its layout marked on the bar itself: a picture's copy of the bar keeps it
     for (const b of $("tabbar").querySelectorAll("button")) { const on = b.dataset.tab === S.tab; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
     $("vTraining").hidden = S.view.name !== "training";
     $("back").hidden = S.view.name === "clients" || (S.clientMode && S.view.name === "client");
@@ -2741,11 +2749,12 @@ import { reportRange, buildReport } from "./report.js";
     const src = !asClient && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
     $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = templatePath(src);
     $("tplFill").hidden = asClient || isTpl || (t.rows || []).length > 0 || !!t.completedAt;   // only an empty workout offers a template
+    $("startRow").hidden = $("tplFill").hidden;                       // and then From template has the row to itself (his pick, 10 Nov: exercises come from the +)
     const others = isTpl || !effDate(t) ? [] : dayList(t.clientId, effDate(t)).filter((x) => x.id !== t.id);   // the day's other workouts: a quiet pill to the day's list
     $("dayMore").hidden = !others.length;
     if (others.length) { const d = effDate(t), when = d === today() ? "today" : "on " + whenDay(d); $("dayMoreText").textContent = others.length === 1 ? "Also " + when + ": " + (String(others[0].title || "").trim() || "Workout") : others.length + " more " + when; }   // "Also today: Core", "2 more on Nov 5"
     $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || S.clientMode;
-    $("viewSeg").hidden = S.clientMode || isTpl; for (const b of $("viewSeg").querySelectorAll("button")) b.classList.toggle("on", (b.dataset.view === "client") === previewClient); if (!isTpl || S.renderedTraining !== t.id) $("usePick").hidden = true;   // the client list built for another template must not survive onto this one
+    $("viewSeg").hidden = S.clientMode || isTpl; for (const b of $("viewSeg").querySelectorAll("button")) { const on = (b.dataset.view === "client") === previewClient; b.classList.toggle("on", on); b.setAttribute("aria-checked", String(on)); } if (!isTpl || S.renderedTraining !== t.id) $("usePick").hidden = true;   // the client list built for another template must not survive onto this one
     $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
     paintFinish(t);
     const rowsEl = $("rows");
@@ -3368,13 +3377,15 @@ import { reportRange, buildReport } from "./report.js";
   window.addEventListener("scroll", () => { if (lp && !lp.open) lpDrop(); }, { capture: true, passive: true });   // the page moved under the finger: a scroll, never a hold
   { const dim = $("ctxDim"); if (dim && dim.addEventListener) dim.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); if (liftClick) liftClick(e); }); }   // the dimmed page takes the closing tap itself (see openPop)
   const followEl = (row, card) => (card && row.closest && row.closest(".block")) || row;   // the exercise itself (3c, not the top of its card at 3a); the whole card only when asked
-  function followRow(id, field, card) {                             // an exercise that just moved (a new number): the page goes to that exercise, not to the top of its card (his ask, 9 Nov: "if I just added 3c it jumps to 3c and not 3a"), and the keyboard on the field he was heading for
+  function followRow(id, field, card, now) {                             // an exercise that just moved (a new number): the page goes to that exercise, not to the top of its card (his ask, 9 Nov: "if I just added 3c it jumps to 3c and not 3a"), and the keyboard on the field he was heading for
     const row = $("rows").querySelector('.row[data-id="' + id + '"]'); if (!row) return;
-    const inp = field && row.querySelector("." + field); if (inp) inp.focus({ preventScroll: true });
-    glide(() => {
+    const to = () => {
       const el = followEl(row, card), head = document.querySelector("header"), hb = head ? head.getBoundingClientRect() : null, off = (hb ? Math.max(hb.bottom, hb.height) : 0) + 12, sc = document.scrollingElement || document.documentElement;   // room for the header even while the keyboard has slid it off the top (measured on the iPhone: 147-208 pt above the screen, 57 tall): when the keyboard goes, the header comes back over the top 57 pt and must not cover the exercise
       return Math.max(0, Math.min(sc.scrollTop + el.getBoundingClientRect().top - off, sc.scrollHeight - sc.clientHeight));
-    });
+    };
+    if (now) (document.scrollingElement || document.documentElement).scrollTop = to();   // a field far down the page and no keyboard yet: the page is there at once, so the phone finds the field on screen and has no reason to slide the whole page (header and all) when its keyboard comes (measured: focused 3000 below, iOS slid it 396 up)
+    const inp = field && row.querySelector("." + field); if (inp) inp.focus({ preventScroll: true });
+    glide(to);
   }
   function scrollToCard(key) {
     if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();   // the keyboard leaves first; the glide follows the page as it settles
@@ -4016,7 +4027,7 @@ import { reportRange, buildReport } from "./report.js";
   });
   $("tabbar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b || b.dataset.tab === S.tab) return; setTab(b.dataset.tab); render(); window.scrollTo(0, 0); });
   const typingIn = (el) => !!el && /^(INPUT|TEXTAREA)$/.test(el.tagName) && !/^(date|month|checkbox|radio|file|range)$/.test(el.type || "");   // a keyboard is coming: a select or a date wheel is not typing
-  document.addEventListener("focusin", (e) => { if (typingIn(e.target)) document.body.classList.add("typing"); });
+  document.addEventListener("focusin", (e) => { if (typingIn(e.target) && !deskOn) document.body.classList.add("typing"); });   // a phone's keyboard comes up over the bottom (the bar at the foot gives way: index.html); a computer's is on the desk, so its bar stays (the + under the pointer for the next exercise)
   const typingOff = () => { setTimeout(() => { if (!typingIn(document.activeElement)) document.body.classList.remove("typing"); }, 80); };
   document.addEventListener("focusout", typingOff);
   document.addEventListener("blur", typingOff, true);                // a field whose own blur redraws the page (an exercise's new number) is off the page before its focusout, which then never reaches here: the tab bar stayed hidden after it. Its blur is heard on the way down, while it is still on the page
@@ -4053,12 +4064,14 @@ import { reportRange, buildReport } from "./report.js";
     const id = t.id;
     openDatePicker({ clientId: t.clientId, title: "Move to", selected: t.date || today(), onPick: (date) => { const cur = trainings.get(id); if (!cur) return; touchState(id, "date"); cur.date = date; scheduleSave("trainings", id); S.renderedTraining = null; render(); } });
   });
-  $("addRow").addEventListener("click", () => {
-    const t = trainings.get(S.view.id); if (!t) return;
+  function addExercise(e) {                                            // the round + in the bar at the foot (his pick, 10 Nov; as Reminders' +): a new exercise at the end, the page glides to it once and the keyboard is on its name
+    if (e && e.detail > 1) return;                                     // a double click is one exercise (on a computer the + stays under the pointer while he types)
+    const t = S.view.name === "training" && !S.clientMode ? trainings.get(S.view.id) : null; if (!t) return;
     const r = newRow(nextLabel(t)); t.rows.push(r); scheduleSave("trainings", t.id);
     S.renderedTraining = null; render();
-    const el = document.querySelector('.row[data-id="' + r.id + '"]'); if (el) el.querySelector(".name").focus();
-  });
+    followRow(r.id, "name", false, !deskOn);                         // a phone: the page under the header at once, then the focus (in the tap, so the phone gives the keyboard; the glide only keeps it there while the keyboard comes); a computer has no keyboard to come: the page glides there, as every other follow
+  }
+  $("addExBtn").addEventListener("click", addExercise);
   function setSkipped(skipped, reason, id = S.view.id) {              // asked first (the sheet); the workout stays on screen, marked Skipped, with Undo (from a row on Workouts: it goes to History, Undo on its page)
     const t = trainings.get(id); if (!t) return;
     t.skippedAt = skipped ? now() : null; t.missed = false; touchState(t.id, "skippedAt", "missed", "skipReason");   // a person decided: never filed by itself again
@@ -4247,7 +4260,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
