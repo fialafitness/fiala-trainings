@@ -52,6 +52,7 @@
     --glyph-fill: rgba(120,120,128,0.14); /* the circle behind a small symbol (secondary system fill) */
     --brand-soft: rgba(111,107,153,0.14); --danger-soft: rgba(166,58,70,0.11);   /* tinted capsules: the colour at a breath of opacity behind text in that colour */
     --glass-bar-rim: rgba(255,255,255,0.9); --glass-bar-edge: rgba(0,0,0,0.07); --glass-bar-on: rgba(0,0,0,0.07);   /* a panel's pressed row and hairline dividers (the glass itself is --glass-menu below) */
+    --ctx-dim: rgba(0,0,0,0.2);   /* touch and hold: the page under a lifted item and its menu, 20% darker (measured on iOS 27.2: white 255 to 204) */
     --glass-menu: rgba(255,255,255,0.5); --glass-menu-filter: blur(14px) saturate(150%); --glass-menu-rim: rgba(255,255,255,0.95); --glass-menu-rim-b: rgba(255,255,255,0.7); --glass-menu-edge: rgba(0,0,0,0.12); --glass-menu-shadow: rgba(0,0,0,0.16);   /* light, read off his light Reminders screenshot: a half-white tint that lets colour through with a little extra saturation, a bright top rim, a hairline dark edge and a soft shadow to stand off a white page */   /* the pop-up menu and bubble: Apple's menu glass (measured off Reminders in the dark: a 28% neutral tint over a 16px blur, a bright rim on the top and bottom edges, next to nothing on the sides); the light values are its daylight twin */
     --tab-fill: rgba(255,255,255,0.33); --tab-on: rgba(255,255,255,0.8); --tab-on-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.9), 0 0 0 0.5px rgba(0,0,0,0.03), 0 1px 4px rgba(0,0,0,0.06); --tab-shadow: inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(255,255,255,0.75), inset 0 0 0 0.5px rgba(255,255,255,0.35), 0 0 0 0.5px rgba(0,0,0,0.05), 0 4px 14px rgba(0,0,0,0.08);   /* the tab bar: Apple's glass, measured off the real thing: a third of white over the page, the chosen tab a white capsule with a lit rim */
     --placeholder: #d2d2d7;
@@ -100,6 +101,7 @@
       --glyph-fill: rgba(255,255,255,0.12);
       --brand-soft: rgba(111,107,153,0.28); --danger-soft: rgba(224,100,112,0.2);
       --glass-bar-rim: rgba(255,255,255,0.24); --glass-bar-edge: rgba(255,255,255,0.1); --glass-bar-on: rgba(255,255,255,0.13);
+      --ctx-dim: rgba(0,0,0,0.48);   /* in the dark, 48% (measured: every colour to 0.52 of itself) */
       --glass-menu: rgba(106,106,106,0.285); --glass-menu-rim: rgba(255,255,255,0.55); --glass-menu-rim-b: rgba(255,255,255,0.35); --glass-menu-edge: rgba(255,255,255,0); --glass-menu-shadow: rgba(0,0,0,0.18); --glass-menu-filter: blur(16px);
       --tab-fill: rgba(255,255,255,0.15); --tab-on: rgba(0,0,0,0.42); --tab-on-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 2px 3px rgba(255,255,255,0.06), inset 0 0 0 0.5px rgba(255,255,255,0.08); --tab-shadow: inset 0 1px 0 rgba(255,255,255,0.27), inset 0 2px 3px rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.45), 0 0 0 1.5px rgba(255,255,255,0.09), 0 8px 24px rgba(0,0,0,0.25);   /* measured off Apple's dark bar: 15% white over the page, a lit rim, the chosen tab a darker capsule */
       --placeholder: rgba(255,255,255,0.35);
@@ -148,7 +150,8 @@
     --glyph-fill: rgba(255,255,255,0.12);
     --brand-soft: rgba(111,107,153,0.28); --danger-soft: rgba(224,100,112,0.2);
     --glass-bar-rim: rgba(255,255,255,0.24); --glass-bar-edge: rgba(255,255,255,0.1); --glass-bar-on: rgba(255,255,255,0.13);
-    --glass-menu: rgba(106,106,106,0.285); --glass-menu-rim: rgba(255,255,255,0.55); --glass-menu-rim-b: rgba(255,255,255,0.35); --glass-menu-edge: rgba(255,255,255,0); --glass-menu-shadow: rgba(0,0,0,0.18); --glass-menu-filter: blur(16px);
+    --ctx-dim: rgba(0,0,0,0.48);   /* in the dark, 48% (measured: every colour to 0.52 of itself) */
+      --glass-menu: rgba(106,106,106,0.285); --glass-menu-rim: rgba(255,255,255,0.55); --glass-menu-rim-b: rgba(255,255,255,0.35); --glass-menu-edge: rgba(255,255,255,0); --glass-menu-shadow: rgba(0,0,0,0.18); --glass-menu-filter: blur(16px);
     --tab-fill: rgba(255,255,255,0.15); --tab-on: rgba(0,0,0,0.42); --tab-on-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 2px 3px rgba(255,255,255,0.06), inset 0 0 0 0.5px rgba(255,255,255,0.08); --tab-shadow: inset 0 1px 0 rgba(255,255,255,0.27), inset 0 2px 3px rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(255,255,255,0.08), 0 0 0 1px rgba(0,0,0,0.45), 0 0 0 1.5px rgba(255,255,255,0.09), 0 8px 24px rgba(0,0,0,0.25);   /* measured off Apple's dark bar: 15% white over the page, a lit rim, the chosen tab a darker capsule */
     --placeholder: rgba(255,255,255,0.35);
     --brand: #6f6b99;                 /* app-purple — the brand, exact in both modes */
@@ -937,11 +940,33 @@
   #whenPop.menu.hung::before { display: none; }   /* hung from a disc's right edge (the coach's "…"): no pointer, as Apple's menus; the client's swap list keeps its pointer at the disc */
 
   #whenPop .wopt { appearance: none; border: 0; background: none; text-align: left; padding: 11px 14px; border-radius: 11px; font: inherit; font-size: 1rem; letter-spacing: -0.01em; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  #whenPop .wopt:active, #whenPop .wopt:hover { background: var(--glass-bar-on); }
+  #whenPop .wopt:active { background: var(--glass-bar-on); }
+  @media (hover: hover) { #whenPop .wopt:hover { background: var(--glass-bar-on); } }   /* the pointer's row, on a Mac; a finger's hover is where it last was, and a held menu that opens under a still finger must not look picked (measured on iOS 27.2: it lit the row under it) */
   #whenPop.menu .wopt { display: flex; align-items: center; gap: 16px; min-height: 42px; padding: 0 16px 0 17px; border-radius: 16px; font-size: 1.0625rem; }   /* after the base rule, so these win */
   #whenPop.menu .wopt .mi { width: 1.25em; height: 1.25em; flex: none; }   /* Apple's menu glyphs are as tall as the text is big (measured on his iPhone, 9 Nov: the trash 1.01 em, info 0.92 em; ours were 0.53-0.73 em at his Text Size): a box of 1.25 em, the glyph 80% of it */
   #whenPop .wopt:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }   /* a keyboard's place in the menu, as on every other button (a tap shows none) */
   #whenPop .wopt.danger { color: var(--danger); }                              /* Remove photo: red, as Apple marks a destructive row */
+  /* touch and hold (the phone's right-click), as iOS 27.2 does it (measured on Contacts and the Home Screen): the item lifts where it is, growing a
+     little with a shadow while the finger stays; at 0.4 s the page dims, the item stays lifted over it and its menu opens 16 under it */
+  #ctxDim { position: fixed; inset: 0; z-index: 55; padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); box-sizing: border-box; background: var(--ctx-dim); opacity: 0; transition: opacity 200ms cubic-bezier(0.25, 0.1, 0.25, 1); touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }   /* the whole screen, bars and all (the padding only tells the code the safe areas) */
+  #ctxDim.on { opacity: 1; }
+  #ctxDim:not(.on) { pointer-events: none; }                       /* fading out once its menu went: no touch is its (a tap, a scroll or a hold right after goes to the page) */
+  #ctxLift { position: fixed; z-index: 55; overflow: hidden; margin: 0; border-radius: var(--r-card); background: var(--card); box-shadow: 0 0 36px rgba(0,0,0,0); transform-origin: 50% 50%; transition: transform 450ms cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 450ms cubic-bezier(0.25, 0.1, 0.25, 1); touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }   /* its shadow, measured: no offset, 14% darker at the edge, gone 33 points out */
+  #ctxLift.up { box-shadow: 0 0 36px rgba(0,0,0,0.28); }
+  #ctxLift.lp-back { transition-duration: 250ms; }                  /* let go: back into its place (a class of its own: .back is the header's Back button) */
+  #ctxLift * { pointer-events: none; }
+  #ctxLift :disabled { opacity: 1; -webkit-text-fill-color: currentColor; }   /* the copy's fields are switched off, not greyed: they look as the item's own */
+  #ctxLift .lp-wrap { display: block; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; border-radius: 0; overflow: visible; }   /* its card and list, there only for the styles the item takes from them */
+  #whenPop.menu.lift { animation: liftIn 240ms cubic-bezier(0.2, 0.9, 0.3, 1.04) both, liftRise 450ms cubic-bezier(0.25, 0.1, 0.25, 1) both; transform-origin: 0 0; }   /* grows from its corner under the item (measured: 0.2 s from first sight to full size), rising with the item where the two move up (the item's own 450 ms and curve, #ctxLift) */
+  @keyframes liftIn { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+  @keyframes liftRise { from { translate: 0 var(--lift-off, 0px); } to { translate: 0 0; } }
+  #whenPop.lift { touch-action: none; }                             /* a finger on a held item's menu never moves the page under it (which would close it) */
+  #whenPop .wopt.lp-over { background: var(--glass-bar-on); }        /* the row under a finger that slid onto the menu: lifting there picks it */
+  #whenPop.menu { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }   /* a menu's words are never selected (a bubble of numbers keeps Copy) */
+  @media (any-pointer: coarse) {                                    /* a touch screen only: on the Mac its words stay selectable, as ever */
+    body:not(.client) .row { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }   /* the coach's exercise is held for its menu: its words are never selected under the finger, as an Apple list's rows (iOS decides when the finger lands, so this cannot wait for the hold: measured, its magnifier came up) */
+    body:not(.client) .row input, body:not(.client) .row textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }   /* its fields stay fields */
+  }
   @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
   .block.done:not(.open) .row .lifts, body.client .block.ahead .row .lifts { display: none; }
   .setlog .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -1291,7 +1316,7 @@
   .settings-list .seg button:hover { opacity: 1; }
   .settings-list .seg button.on { background: var(--seg-on); color: var(--text-primary); box-shadow: 0 1px 3px var(--seg-shadow); }
   body.client .settings-list .trainer-only + li { border-top: 0; }
-  @supports (corner-shape: squircle) { .list, .list li.swipe-row > :not(.swipe-acts), .list li.swipe-row.ctx-on::after, .group, .paused-card, .sheet, .card-head, .month > button, .btn, .pill, .msg-pill, .seg, input, textarea, .datefield, .numpick, .sugg, .alt-menu { corner-shape: squircle; } }
+  @supports (corner-shape: squircle) { #ctxLift, .list, .list li.swipe-row > :not(.swipe-acts), .list li.swipe-row.ctx-on::after, .group, .paused-card, .sheet, .card-head, .month > button, .btn, .pill, .msg-pill, .seg, input, textarea, .datefield, .numpick, .sugg, .alt-menu { corner-shape: squircle; } }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   @media (max-width: 400px) {
@@ -1606,7 +1631,7 @@
 </nav>
 <button class="dock-add trainer-only" id="addBtn" type="button" aria-label="New workout" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5.25v13.5M5.25 12h13.5"/></svg></button>
 </div>
-<div id="whenBg" hidden><div id="whenPop" role="dialog" aria-live="polite"></div></div>
+<div id="ctxDim" hidden></div><div id="ctxLift" hidden aria-hidden="true" inert></div><div id="whenBg" hidden><div id="whenPop" role="dialog" aria-live="polite"></div></div>
 <input type="file" id="photoInput" accept="image/*" hidden>
 <div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="pickSheet" hidden><div class="sheet ask confirm-sheet pick-sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle"><h3 id="pickTitle"></h3><ul class="list" id="pickList"></ul><div class="ask-actions"><button class="btn quiet" id="pickNo" type="button">Cancel</button></div></div></div>
@@ -1625,7 +1650,7 @@
       <button type="button" data-reason="Other" aria-pressed="false">Other</button>
     </div>
     <button class="btn" id="skGo" type="button">Skip workout</button>
-    <button class="btn quiet" id="skKeep" type="button">Keep it</button>
+    <button class="btn quiet" id="skKeep" type="button">Cancel</button>
   </div>
 </div>
 <div class="sheet-bg" id="earlySheet" hidden>
@@ -1649,7 +1674,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=248";
+  import { boot } from "./app/main.js?v=249";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

@@ -13,11 +13,11 @@ const { fns } = await load();
 const probe = path.join(path.dirname(fileURLToPath(import.meta.url)), "month-menu-probe.mjs");
 const r = JSON.parse(execFileSync(process.execPath, [probe], { encoding: "utf8", timeout: 60000 }).trim().split("\n").pop());
 
-test("a missed workout's Skip asks first (the sheet, nothing skipped yet); Skip workout files it as skipped, Keep it leaves it", () => {
+test("a missed workout's Skip asks first (the sheet, nothing skipped yet); Skip workout files it as skipped, Cancel leaves it", () => {
   assert.deepStrictEqual({ asked: r.missed.asked, asking: r.missed.asking }, { asked: true, asking: true }, "the same question as the row's swipe and the workout page");
   assert.strictEqual(r.missed.skippedAtOnce, false, "not skipped by the tap itself");
   assert.deepStrictEqual(r.missed.after, { skipped: true, missed: false, pending: true, closed: true }, "Skip workout: skipped, no longer missed, on its way to the server");
-  assert.deepStrictEqual(r.missed.keep, { skipped: false, closed: true }, "Keep it: still missed");
+  assert.deepStrictEqual(r.missed.keep, { skipped: false, closed: true }, "Cancel: still missed");
 });
 
 test("two fingers over the client page's month: it follows them and, past 48 px, goes on a month; less comes back", () => {

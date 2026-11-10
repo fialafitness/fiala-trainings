@@ -251,15 +251,15 @@ test("the page draws the actions as measured: Skip's capsule grey, armed only Re
   assert.match(rule(".list li.w > button:focus-visible"), /outline-offset: -2px;/, "the keyboard's ring inside the row: the card clips what is outside it");
 });
 
-test("Skip asks first, through the sheet's own buttons: Skip workout skips the row's workout with its reason; Keep it, the backdrop and Escape skip nothing; a double tap's second tap does nothing", () => {
+test("Skip asks first, through the sheet's own buttons: Skip workout skips the row's workout with its reason; Cancel, the backdrop and Escape skip nothing; a double tap's second tap does nothing", () => {
   const s = g.sheet, none = { shown: false, sheet: null, asking: false, skipped: false, reason: null, pending: false };
   assert.deepStrictEqual(s.go.ask, { shown: true, sheet: { id: "w1", reason: "" }, asking: true, skipped: false, reason: null, pending: false }, "the row's Skip: the sheet is up, for that workout, nothing skipped before the answer");
   assert.deepStrictEqual({ skipped: s.go.early.skipped, shown: s.go.early.shown }, { skipped: false, shown: true }, "Skip workout 340 ms after the sheet opened (the second tap of a double tap on Skip, up to 350 ms): nothing, the sheet stays");
   assert.deepStrictEqual(s.go.after, { shown: false, sheet: null, asking: false, skipped: true, reason: "Sick", pending: true, view: "client" }, "a reason, then Skip workout: that row's workout skipped with it (by the server's own rule), the sheet gone, the Workouts page where it was");
   assert.strictEqual(s.backdrop.early.shown, true, "the backdrop in the first 350 ms: nothing");
-  assert.deepStrictEqual(s.backdrop.after, none, "after them the backdrop is Keep it");
-  assert.deepStrictEqual(s.keep, none, "Keep it skips nothing");
-  assert.deepStrictEqual(s.escape, none, "Escape is Keep it, as the other sheets take it");
+  assert.deepStrictEqual(s.backdrop.after, none, "after them the backdrop is Cancel");
+  assert.deepStrictEqual(s.keep, none, "Cancel skips nothing");
+  assert.deepStrictEqual(s.escape, none, "Escape is Cancel, as the other sheets take it");
   assert.deepStrictEqual(s.page.ask, { shown: true, sheet: { id: "w1", reason: "" }, asking: true }, "the workout page's own Skip workout asks, for its workout");
   assert.deepStrictEqual({ skipped: s.page.after.skipped, view: s.page.after.view }, { skipped: true, view: "training" }, "Skip workout then skips it, the page staying on it");
 });
@@ -292,9 +292,9 @@ test("a double tap on an open row's Reschedule: its second tap, on the days as t
   }
 });
 
-test("a double tap on an open row's Skip: its second tap, on a reason or on Keep it as the question comes up, picks no reason and closes nothing in its first 350 ms, as Skip workout, the backdrop and the days; after them the reason is picked and Keep it closes; a keyboard's Enter (detail 0) picks at once", () => {
+test("a double tap on an open row's Skip: its second tap, on a reason or on Cancel as the question comes up, picks no reason and closes nothing in its first 350 ms, as Skip workout, the backdrop and the days; after them the reason is picked and Cancel closes; a keyboard's Enter (detail 0) picks at once", () => {
   for (const gap of [120, 340]) assert.deepStrictEqual(g.dblSkip[gap], { reason: "", keepItLeavesItUp: true }, gap + " ms after the first tap's click: no reason picked, the question still up");
-  assert.deepStrictEqual(g.dblSkip[360], { reason: "Injury", keepItLeavesItUp: false }, "360 ms after: the reason is picked, Keep it closes the question");
+  assert.deepStrictEqual(g.dblSkip[360], { reason: "Injury", keepItLeavesItUp: false }, "360 ms after: the reason is picked, Cancel closes the question");
   assert.strictEqual(g.dblSkip.keyboard, "Sick", "a keyboard's Enter or VoiceOver (detail 0) picks a reason at once");
 });
 

@@ -266,7 +266,7 @@ setup(); { const r = makeRow("w1", 648, { ow: 72 }); await dragOpen(r); out.widt
 
 // 19. Skip asks first, through the sheet's own buttons (the page starts it hidden): the row's Skip shows it and skips nothing yet; Skip
 //     workout and the backdrop take no click in its first 350 ms (a double tap's second tap); a reason, then Skip workout, skips that row's
-//     workout with it; Keep it, the backdrop and Escape skip nothing; the workout page's own Skip workout asks for its workout
+//     workout with it; Cancel, the backdrop and Escape skip nothing; the workout page's own Skip workout asks for its workout
 { const wasHidden = sheet.hidden; out.sheet = {};
   setup(); sheet.hidden = true; fns.rowSkip("w1"); const ask = { ...asked(), ...w1() };
   await advance(340); press("skGo"); const early = { ...asked(), ...w1() };   // (just inside the 350 ms; just after them, below)
@@ -304,7 +304,7 @@ setup(); { const r = makeRow("w1", 648, { ow: 72 }); await dragOpen(r); out.widt
     if (fns.datePicker()) fns.closeDatePicker(); await advance(600); r.drop(); } }
 
 // 20c. a double tap on an open row's Skip (the row the app draws, opened by a finger): its second tap lands in the question as it comes up,
-//      under the Skip capsule: on a reason of the right column (Injury, Travelling, Other) or, just above the tab bar, on Keep it. In the
+//      under the Skip capsule: on a reason of the right column (Injury, Travelling, Other) or, just above the tab bar, on Cancel. In the
 //      question's first 350 ms it picks no reason and closes nothing (as Skip workout, the backdrop and the days); after them it does; a
 //      keyboard's Enter or VoiceOver (detail 0) picks a reason at once
 { const wasHidden = sheet.hidden; out.dblSkip = {};
