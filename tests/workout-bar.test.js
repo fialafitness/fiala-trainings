@@ -1,0 +1,193 @@
+// His pick, 10 Nov ("Build b", after his Photos screenshot): on the coach's workout page the Coach | Client switch and a round + share the
+// bar at the foot, as Photos' Library | Collections and its round button do. The + puts a new exercise at the end with the keyboard on its
+// name; the black "+ Add exercise" button is gone, from an empty workout too ("Remove it, template full width"), where From template has the
+// row to itself. The switch stays while he previews the client's look (the + goes); a template has the + alone; the client's own view has
+// neither. On the swipe back a page's bar goes with its page, unless the page underneath has the same bar.
+// (This stand-in page draws no exercise cards, so the workouts drawn here are empty; the + is checked up to its draw, and its page move through followRow.
+// Typing, a double click and the swipe back's pictures run in their own processes, as a phone and as a computer: workout-bar-probe.mjs.)
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { test, assert } from "./assert.js";
+import { load } from "./load.js";
+import { byId } from "./env.js";
+import { TEMPLATES_ID } from "../app/model.js";
+const app = await load();
+const { fns, maps } = app;
+const $ = (id) => document.getElementById(id);
+const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const here = path.dirname(fileURLToPath(import.meta.url));
+const probe = (mode) => JSON.parse(execFileSync(process.execPath, [path.join(here, "workout-bar-probe.mjs"), mode], { encoding: "utf8", timeout: 60000 }).trim().split("\n").pop());
+const phone = probe("phone"), desk = probe("desk"), swipe = probe("swipe");
+const src = fs.readFileSync(new URL("../app/main.js", import.meta.url), "utf8");
+const workout = (id, extra = {}) => ({ id, clientId: "c1", title: "Legs", date: fns.today(), createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [], ...extra });
+const BAR = ["viewSeg", "addExBtn", "tabbar", "addBtn"];
+const page = (view, extra = {}) => {
+  app.reset(); fns.setPreview(false);
+  app.set({ signedIn: true, clientMode: false, myClientId: null, tab: "workouts", ...extra });
+  maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" }); maps.clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates" });
+  maps.trainings.set("w1", workout("w1")); maps.trainings.set("tp", workout("tp", { clientId: TEMPLATES_ID }));
+  for (const id of BAR) $(id).hidden = false;                          // whatever the last page left: the draw decides
+  document.body.classList.add("wsdock"); $("dock").classList.add("ws");
+  app.set({ view, renderedTraining: null }); fns.render();
+};
+const redraw = () => { app.set({ renderedTraining: null }); fns.render(); };
+const bar = () => ({ wsdock: document.body.classList.contains("wsdock") && $("dock").classList.contains("ws"), seg: !$("viewSeg").hidden, plus: !$("addExBtn").hidden, tabs: !$("tabbar").hidden, newWorkout: !$("addBtn").hidden });
+const NONE = { wsdock: false, seg: false, plus: false, tabs: false, newWorkout: false }, COACH = { wsdock: true, seg: true, plus: true, tabs: false, newWorkout: false };
+
+test("the coach's workout page: Coach | Client at the foot with the round +; a client's page keeps its tabs and its +; the Clients page has neither", () => {
+  page({ name: "training", id: "w1" }); assert.deepStrictEqual(bar(), COACH);
+  page({ name: "client", id: "c1" }); assert.deepStrictEqual(bar(), { wsdock: false, seg: false, plus: false, tabs: true, newWorkout: true });
+  page({ name: "clients" }); assert.deepStrictEqual(bar(), NONE);
+});
+
+test("previewing the client's look: the switch stays (to switch back), the + goes; back on Coach the + is there again", () => {
+  page({ name: "training", id: "w1" }); fns.setPreview(true); redraw();
+  assert.deepStrictEqual({ ...bar(), look: document.body.classList.contains("client") }, { ...COACH, plus: false, look: true });
+  fns.setPreview(false); redraw(); assert.deepStrictEqual(bar(), COACH);
+});
+
+test("a template: the + alone (no client's look to preview); the client's own view of a workout: neither", () => {
+  page({ name: "training", id: "tp" }); assert.deepStrictEqual(bar(), { ...COACH, seg: false });
+  page({ name: "training", id: "w1" }, { clientMode: true, myClientId: "c1" }); assert.deepStrictEqual(bar(), NONE);
+});
+
+test("a settings page opened over the workout takes the bar away; Back brings it again, even onto the workout drawn as it was", () => {
+  page({ name: "training", id: "w1" }); fns.leaveSettings(); assert.deepStrictEqual(bar(), NONE);
+  fns.render(); assert.deepStrictEqual(bar(), COACH, "Back onto the same workout, nothing in it changed (its cards are not drawn again)");
+  page({ name: "client", id: "c1" }); app.set({ view: { name: "training", id: "w1" } }); fns.render(); assert.deepStrictEqual(bar(), COACH, "from the client's page, whose tabs had the bar");
+  page({ name: "client", id: "c1" }, { clientMode: true, myClientId: "c1" }); assert.deepStrictEqual(bar(), { ...NONE, tabs: true }, "the client's own page: their tabs, no + and no switch");
+});
+
+test("an empty workout: From template alone, across the row; finished, or in the client's look, the row is gone; once it has exercises too", () => {
+  page({ name: "training", id: "w1" }); assert.deepStrictEqual([$("startRow").hidden, $("tplFill").hidden], [false, false], "empty: From template");
+  maps.trainings.get("w1").completedAt = "2026-11-10T18:00:00.000Z"; redraw(); assert.strictEqual($("startRow").hidden, true, "finished: no row");
+  page({ name: "training", id: "w1" }); fns.setPreview(true); redraw(); assert.strictEqual($("startRow").hidden, true, "the client's look: no row"); fns.setPreview(false);
+  page({ name: "training", id: "w1" }); maps.trainings.get("w1").rows = [{ id: "r1", label: "1", name: "Squat", sets: 3, reps: "8", tempo: "", rest: "", weights: [], repsDone: [], setsDone: 0, note: "" }];
+  try { redraw(); } catch (_) {}                                         // (this stand-in page cannot draw the exercise's card: the row is decided before it)
+  assert.deepStrictEqual([$("startRow").hidden, $("tplFill").hidden], [true, true], "with exercises: no template offered, so the row goes too (exercises come from the +)");
+});
+
+test("the + on the coach's workout: a new exercise at the end, numbered next, saved; on a template too", () => {
+  for (const id of ["w1", "tp"]) {
+    page({ name: "training", id }); app.set({ renderedTraining: "stale" });
+    try { fns.addExercise(); } catch (_) {}                              // (this stand-in page cannot draw an exercise card: the exercise is added and saved before the draw)
+    assert.strictEqual(app.get().renderedTraining, id, id + ": the page drawn again, so the new card is there for the keyboard");
+    for (const t of maps.timers.values()) clearTimeout(t); maps.timers.clear();   // its save never runs into a later test
+    assert.deepStrictEqual(maps.trainings.get(id).rows.map((r) => [r.label, r.name]), [["1", ""]], id + ": one new exercise, number 1, its name to type");
+    assert.ok(id === "tp" ? app.get().templateDraft && app.get().templateDraft.dirty : maps.dirty.size > 0, id + ": saved (a template: an unsaved change of its draft)");
+  }
+});
+
+test("the + adds nothing anywhere else: a client's page, or the client's own view of a workout", () => {
+  page({ name: "client", id: "c1" }); fns.addExercise(); assert.strictEqual(maps.trainings.get("w1").rows.length, 0);
+  page({ name: "training", id: "w1" }, { clientMode: true, myClientId: "c1" }); fns.addExercise(); assert.strictEqual(maps.trainings.get("w1").rows.length, 0);
+});
+
+test("the + puts its new exercise under the header at once, before asking for the keyboard (a field far down: iOS would slide the whole page, header and all); other follows still glide after", () => {
+  page({ name: "training", id: "w1" });
+  const de = document.documentElement, was = { st: de.scrollTop, sh: de.scrollHeight, ch: de.clientHeight }, mm = globalThis.matchMedia, rows = byId.get("rows");
+  globalThis.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {} });   // (reduced motion: the glide lands at once, no timers left over)
+  const seen = [];
+  const name = { focus: (o) => seen.push({ at: de.scrollTop, preventScroll: !!(o && o.preventScroll) }) };
+  const row = { querySelector: (s) => (s === ".name" ? name : null), getBoundingClientRect: () => ({ top: 900 - de.scrollTop, bottom: 1000 - de.scrollTop }), closest: () => null };   // 900 down a page the length of a real workout
+  byId.set("rows", new Proxy(rows, { get: (t, k) => (k === "querySelector" ? (s) => (/^\.row\[data-id=/.test(s) ? row : t.querySelector(s)) : t[k]) }));
+  try {
+    de.scrollTop = 0; de.scrollHeight = 5000; de.clientHeight = 800;
+    fns.followRow("n1", "name", false, true);
+    assert.deepStrictEqual(seen.shift(), { at: 888, preventScroll: true }, "the +: the page is already there (900 less the header's 12) when the keyboard is asked for");
+    assert.strictEqual(de.scrollTop, 888, "and it stays");
+    de.scrollTop = 0; fns.followRow("n1", "name");
+    assert.deepStrictEqual(seen.shift(), { at: 0, preventScroll: true }, "a follow without it (a renumbered exercise, the keyboard already up): the focus first");
+    assert.strictEqual(de.scrollTop, 888, "then the glide");
+  } finally { byId.set("rows", rows); globalThis.matchMedia = mm; de.scrollTop = was.st; de.scrollHeight = was.sh; de.clientHeight = was.ch; }
+  assert.ok(src.includes('$("addExBtn").addEventListener("click", addExercise);') && src.includes('followRow(r.id, "name", false, !deskOn);'), "the + asks for exactly that, on the new exercise's name, on a phone; a computer (no keyboard to come) glides there");
+  assert.ok(src.includes("const r = newRow(nextLabel(t)); t.rows.push(r); scheduleSave(\"trainings\", t.id);"), "the new exercise: the next number, at the end, saved");
+});
+
+test("the page: no black + Add exercise; From template alone in its row; the bar's switch in the tab bar's glass and its + with its name", () => {
+  assert.ok(!html.includes('id="addRow"'), "the + Add exercise button is gone");
+  assert.ok(html.includes('<div class="start-row" id="startRow" hidden><button class="btn outline trainer-only" id="tplFill" type="button" hidden>From template</button></div>'), "From template alone in the row");
+  assert.match(html, /\.start-row #tplFill \{ flex: 1 1 0;/, "across the row");
+  const seg = (html.match(/<div id="dock">\s*(<div class="view-seg" id="viewSeg"[\s\S]*?<\/button><\/div>)/) || [])[1] || "";
+  assert.strictEqual(seg.replace(/<svg[\s\S]*?<\/svg>/g, "<svg/>"), '<div class="view-seg" id="viewSeg" role="radiogroup" aria-label="See it as" hidden><button type="button" role="radio" data-view="coach" class="on" aria-checked="true"><svg/><span>Coach</span></button><button type="button" role="radio" data-view="client" aria-checked="false"><svg/><span>Client</span></button></div>', "Coach | Client lives in the bar at the foot, first, each a symbol over its word");
+  const [coachIcon, clientIcon] = [...seg.matchAll(/<svg[\s\S]*?<\/svg>/g)].map((m) => m[0]);
+  assert.ok(/^<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="[^"]+"\/><path fill-rule="evenodd" d="[^"]+"\/><\/svg>$/.test(coachIcon || ""), "Coach: a clipboard, filled as Apple's list.clipboard.fill (his picks: a clipboard, to Apple's standard): the board with its three lines cut out, and the clip with its hole");
+  assert.ok(/^<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><ellipse cx="12" cy="7\.5" rx="3\.9" ry="4\.3"\/><path d="M3\.8 19\.8A8\.2 6\.3 0 0 1 20\.2 19\.8A1 1 0 0 1 19\.2 20\.8H4\.8A1 1 0 0 1 3\.8 19\.8Z"\/><\/svg>$/.test(clientIcon || ""), "Client: a person, filled as Apple's person.fill: an upright oval head over a half-oval body (traced to its measures)");
+  assert.match(html, /#dock \.view-seg button \{[^}]*display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;[^}]*font-size: 0\.6875rem;/, "the symbol over its word, in the tabs' small letters");
+  assert.ok(html.includes("#dock .view-seg button svg { width: 22px; height: 22px; }"), "the tabs' symbol size");
+  assert.ok(!/class="date-row">[^\n]*viewSeg/.test(html), "and no longer beside the date");
+  assert.ok(html.includes('<button class="dock-add dock-pill trainer-only" id="addExBtn" type="button" aria-label="Add exercise" title="Add exercise" hidden>'), "the + says Add exercise to VoiceOver and to a Mac's pointer; never in the client's look (trainer-only)");
+  assert.match(html, /id="addExBtn"[^>]*><svg viewBox="0 0 24 24"[^>]*><path d="M12 3\.1V20\.9M3\.1 12H20\.9" fill="none" stroke="currentColor" stroke-width="1\.9" stroke-linecap="round"\/><\/svg><span>Exercise<\/span><\/button>/, "a big plus over the word Exercise (his ask: as Photos' pills), with Apple's plus's round-ended arms at its thickness to length (0.107)");
+  assert.ok(html.includes(".dock-add.dock-pill { width: auto; min-width: 96px; border-radius: 50px; padding: 0 18px 2px; flex-direction: column; gap: 3px; font: inherit; font-size: 0.6875rem; font-weight: 600;"), "a pill as the tabs: the plus on top, the word under it in the tabs' small letters");
+  assert.ok(html.includes(".dock-add.dock-pill svg { width: 24px; height: 24px; }"), "the plus big");
+  assert.match(html, /#dock \.view-seg \{[^}]*background: var\(--tab-fill\);[^}]*box-shadow: var\(--tab-shadow\);/, "the switch in the tab bar's glass");
+  assert.match(html, /#dock \.view-seg button\.on \{ background: var\(--tab-on\); color: var\(--brand-text\); box-shadow: var\(--tab-on-shadow\); \}/, "the chosen side lit as the tab bar's");
+  assert.ok(src.includes('b.classList.toggle("on", on); b.setAttribute("aria-checked", String(on));'), "VoiceOver hears which side is chosen");
+});
+
+test("the bar's place, as Photos': the switch at the leading edge, the + at the trailing one, 21 in, kept to the page's column; above a template's Unsaved changes bar; side by side on the narrowest screens", () => {
+  assert.ok(html.includes("#dock.ws { justify-content: space-between; padding: 0 21px; max-width: 680px; margin: 0 auto; }"), "marked on the bar itself, so a picture's copy of it keeps the layout");
+  assert.ok(!/body\.[\w-]+ #(dock|addExBtn)[^{]*\{[^}]*(justify-content|padding|max-width|margin)/.test(html), "no page class lays the bar out: during a swipe that class is the other page's");
+  assert.ok(html.includes("#dock.ws #addExBtn { margin-left: auto; }"), "the + stays at the trailing edge alone (a template)");
+  assert.ok(html.includes("body.wsdock #vTraining { padding-bottom: 100px; }"), "the last thing on the page clears the bar");
+  assert.ok(html.includes("body.draft #dock { bottom: calc(79px + env(safe-area-inset-bottom, 0px)); }"), "14 above the Unsaved changes bar");
+  assert.ok(html.includes("#dock .view-seg button { appearance: none; border: 0; background: none; width: 100px; min-width: 0; flex: 1 1 100px; height: 56px; padding: 0 8px;"), "100 each, as Photos' (208 with the glass); on a screen too narrow (320) they give way, to 80 each, as the tabs do");
+  assert.match(html, /\.dock-add \{ flex: none;/, "the + never gives way, so the switch never runs under it");
+});
+
+test("typing on a phone: the bar gives the keyboard the bottom, from the + on; it is back once the field is let go", () => {
+  assert.deepStrictEqual(phone.drawn, { typing: false, keys: false, focus: "nothing", plus: true });
+  assert.deepStrictEqual(phone.plus, { typing: true, keys: false, focus: "name", added: 1 }, "the +: a new exercise, the keyboard on its name, the bar away");
+  assert.deepStrictEqual(phone.reps, { typing: true, keys: true, focus: "reps" }, "a number box: the keyboard and its bar of keys");
+  assert.deepStrictEqual(phone.backToName, { typing: true, keys: false, focus: "name" });
+  assert.deepStrictEqual(phone.letGo, { typing: false, keys: false, focus: "nothing" }, "let go: the bar is back");
+  assert.ok(html.includes("body.typing #dock, body.kb #dock { display: none; }"), "either look takes the bar away");
+});
+
+test("typing on a computer (his Mac): the bar stays, so the + is under the pointer for the next exercise; only the keyboard's bar of keys, at the window's foot, takes the bottom", () => {
+  assert.deepStrictEqual(desk.plus, { typing: false, keys: false, focus: "name", added: 1 }, "the +: the cursor in the new name, the bar still there");
+  assert.deepStrictEqual(desk.plusLater, { typing: false, keys: false, focus: "name" });
+  assert.deepStrictEqual(desk.reps, { typing: false, keys: true, focus: "reps" }, "a number box: its bar of keys has the bottom, so the bar gives way");
+  assert.deepStrictEqual(desk.backToName, { typing: false, keys: false, focus: "name" }, "back to a name: the bar is back at once");
+  assert.deepStrictEqual(desk.letGo, { typing: false, keys: false, focus: "nothing" });
+  assert.ok(src.includes('box._dock = dockShows(dock);') && src.includes("dockOn = dockShows(dock);") && src.includes('&& !document.body.classList.contains("typing") && !document.body.classList.contains("kb");'), "a picture and a swipe count the bar only when it is on screen");
+  assert.ok(src.includes('a.blur(); document.body.classList.remove("typing"); if (kbTarget) hideKb(); }'), "two fingers on a computer let the field go, and its bar of keys at once: the page's bar slides with the page");
+});
+
+test("a double click on the + is one exercise (on a computer the + stays under the pointer)", () => {
+  assert.strictEqual(phone.doubleClick.added, 2, "the one before, and one for the double click");
+  assert.strictEqual(desk.doubleClick.added, 2);
+});
+
+test("the swipe back: each picture keeps its own page's bar, laid out as that page lays it out", () => {
+  assert.deepStrictEqual(swipe.workout, { view: "training", wsdock: true, ws: true, bar: "viewSeg,addExBtn" }, "a new, empty workout from the client page's +");
+  assert.deepStrictEqual(swipe.templatesToWorkout.live, { view: "client", wsdock: false, ws: false, bar: "" }, "From template: the Templates page, no bar");
+  assert.deepStrictEqual(swipe.templatesToWorkout.picture, { classes: "shot-dock ws", shows: "viewSeg,addExBtn" }, "the workout comes back in with its bar at its edges, as it lands");
+  assert.deepStrictEqual(swipe.templatesToWorkout.landed, { view: "training", wsdock: true, ws: true, bar: "viewSeg,addExBtn" });
+  assert.deepStrictEqual(swipe.workoutToClient.picture, { classes: "shot-dock", shows: "tabbar,addBtn" }, "the client page comes in with its tabs and + centred as it has them, not at the workout's edges");
+  assert.deepStrictEqual(swipe.workoutToClient.landed, { view: "client", wsdock: false, ws: false, bar: "tabbar,addBtn" });
+});
+
+test("Back refused (a template's Unsaved changes): the + that went with the page comes back in with it", () => {
+  assert.deepStrictEqual(swipe.template, { view: "training", wsdock: true, ws: true, bar: "addExBtn", dirty: true });
+  const m = swipe.refused.moves;
+  assert.deepStrictEqual(m.slice(m.indexOf("")), ["", "translate3d(390px,0,0)", "translate3d(0px,0,0)", ""], "off with the page; when Back is refused, put back beside the page, then home with it (not home at once, the page still off the screen)");
+  assert.deepStrictEqual(swipe.refused.landed, { view: "training", wsdock: true, ws: true, bar: "addExBtn" }, "still the template, its changes kept");
+});
+
+test("the swipe back: a page's bar goes with it, unless the page underneath has the same bar", () => {
+  const dock = { children: [{ id: "viewSeg", hidden: false }, { id: "tabbar", hidden: true }, { id: "addBtn", hidden: true }, { id: "addExBtn", hidden: false }] };
+  const clientShot = { _dock: true, _dockSig: "tabbar,addBtn" }, workoutShot = { _dock: true, _dockSig: "viewSeg,addExBtn" }, noBar = { _dock: false, _dockSig: "" };
+  assert.strictEqual(fns.dockGoes(true, clientShot, dock), true, "a workout back to its client's page: Coach | Client goes with the workout, the tabs come with the client's page");
+  assert.strictEqual(fns.dockGoes(true, workoutShot, dock), false, "the same bar on both pages (the day's other workout): it stays");
+  assert.strictEqual(fns.dockGoes(true, noBar, dock), true, "a page underneath with no bar (History): it goes");
+  assert.strictEqual(fns.dockGoes(true, null, dock), true, "no picture of the page underneath: it goes");
+  assert.strictEqual(fns.dockGoes(false, clientShot, dock), false, "no bar on this page: nothing moves");
+  assert.ok(src.includes("sw.dockSlides = dockGoes(dockOn, shot, dock);"), "the swipe asks it");
+  assert.ok(src.includes('d.style.visibility = dockOn && !sw.dockSlides ? "hidden" : ""'), "the page underneath shows its own bar unless the same one stays");
+  assert.ok(src.includes('box._dockSig = box._dock ? dockSig(dock) : "";'), "each picture remembers which bar it had");
+  assert.ok(src.includes('$("dock").classList.toggle("ws", wsDock);') && src.includes('$("dock").classList.remove("ws");'), "the copy (a clone of the bar) carries its page's layout: the workout's bar comes in at its edges under the Templates page, the client page's tabs centred under a workout");
+  assert.ok(src.includes('if (s.dockSlides && s.dock) { s.dock.style.transition = "none"; s.dock.style.transform = "translate3d(" + w + "px,0,0)"; }'), "Back refused (a template's Unsaved changes): the bar that went with the page comes back in with it");
+});
