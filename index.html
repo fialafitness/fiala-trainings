@@ -472,7 +472,7 @@
   .card-sum div + div { margin-top: 2px; }
 
   .rows { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
-  .block { --ss: var(--ink); --ss-ink: var(--ink-on); }   /* the coach's number square while he adds an exercise, and the picker's ring: black on light, white on dark — no card colour */
+  .block { --ss: var(--ink); --ss-ink: var(--ink-on); }   /* the coach's number squares and the picker's ring: black on light, white on dark — no card colour */
     .group-cap { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; margin: 0 0 8px 2px; font-size: 0.8125rem; letter-spacing: 0; color: var(--text-tertiary); }
   .group-cap b { font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-secondary); }
   .group-cap .info { appearance: none; width: 18px; height: 18px; padding: 0; margin: 0; border: 1.5px solid currentColor; border-radius: 50%; background: none; color: var(--brand-text); font-family: inherit; font-style: normal; font-weight: 600; font-size: 0.6875rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; align-self: center; }   /* Apple's circled i, in Inter like everything else: tap for what a superset is */
@@ -630,14 +630,14 @@
   .block.done.skipped .group { border-color: var(--card-border); background: var(--card); }
   .block.done.skipped .group-cap b { color: var(--text-secondary); }
   .row .top input.label { --name-size: 1rem; --line-at: 11px; text-align: left; font-size: min(var(--name-size), 23px); font-weight: 500; line-height: 1.375rem; height: 1.375rem; min-height: 0; margin-top: calc(var(--line-at) + 0.364 * max(0px, var(--name-size) - 23px)); padding: 0; border: 0; border-radius: 0; background: none; color: var(--text-primary); transition: none; }   /* the number as plain text (his pick, 9 Nov): black on light and white on dark on an open card, grey on a folded one (below), as Apple numbers a list: the name's size on the name's first line (its box's 1 px edge + 10 px padding), at the column's left edge. It stops at 23 pt: "44m", the widest label to 99, is 51 pt there, inside the narrow phone's 52 pt column; a name past that size has its baseline lower on the line, so the number drops 0.364 of the difference with it (measured: 2 pt at the largest Text Size, 23 under 28.5) */
-  :where(.block.done:not(.open), body.client .block.ahead) .row .top input.label { color: var(--text-secondary); }   /* a folded card, finished or still to come: the number grey like its name (his pick, 9 Nov: folded all grey, open the number black) */
+  body.client .block.done:not(.open) .row .top input.label { color: var(--text-secondary); }   /* the client's view: a folded finished card's number grey like its name; a card still to come, folded, keeps the number black on light and white on dark (his pick, 9 Nov) */
   .row .top input.label::placeholder { color: var(--text-tertiary); }
   .row .top .labwrap { align-self: start; }
-  body:not(.client) .row .top .labwrap { align-self: stretch; }   /* the coach's number column, as tall as the name's box: all of it opens the number (main.js forwards a click beside it), and the picker opens under the box */
-  body:not(.client) .row.adding .top input.label { text-align: center; font-size: 1rem; font-weight: 600; line-height: 1.3; height: 100%; min-height: 44px; margin-top: 0; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-field); background: var(--ss); color: var(--ss-ink); }   /* the exercise he is adding, from + Add exercise until he leaves it (main.js marks the row): his square again (his pick, 9 Nov: squares only while adding) */
-  body:not(.client) .row.adding .top input.label::placeholder { color: var(--ss-ink); opacity: 0.5; }
-  body:not(.client) .row.adding .top input.label:focus { box-shadow: 0 0 0 2px var(--brand); }   /* its picker open */
-  body:not(.client) .row:not(.adding) .top input.label:focus { color: var(--brand-text); }   /* renumbering an exercise he already has: the plain number in the app's purple while its picker is open */
+  body:not(.client) .row .top .labwrap { align-self: stretch; }   /* the coach's square: as tall as the name's box */
+  body:not(.client) .row .top input.label { text-align: center; font-size: 1rem; font-weight: 600; line-height: 1.3; height: 100%; min-height: 44px; margin-top: 0; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-field); background: var(--ss); color: var(--ss-ink); }   /* the coach's view: his squares, exactly as before 9 Nov (his pick): the card's ink, green when finished, grey when skipped; the client's view has plain numbers */
+  body:not(.client) .block.done:not(.open) .row .top input.label { min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
+  body:not(.client) .row .top input.label::placeholder { color: var(--ss-ink); opacity: 0.5; }
+  body:not(.client) .row .top input.label:focus { box-shadow: 0 0 0 2px var(--brand); }   /* his number picker open */
   .row .top .exwrap { position: relative; }
   .row .top .name { font-weight: 500; resize: none; overflow: hidden; min-height: 44px; padding: 10px 16px; line-height: 1.375rem; display: block; }
   .row .x {
@@ -1645,7 +1645,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=244";
+  import { boot } from "./app/main.js?v=245";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
