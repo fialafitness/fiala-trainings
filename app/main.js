@@ -913,30 +913,7 @@ import { reportRange, buildReport } from "./report.js";
   fitText(); window.addEventListener("resize", fitText);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { holdWake(false); fitText(); } });
   document.addEventListener("pointerdown", () => { if (S.view.name === "training") holdWake(true); }, { passive: true });
-  let addingId = null;                                               // the exercise the coach is adding: from "+ Add exercise" until he leaves it, its number is his square (his pick, 9 Nov: squares only while adding)
-  function setAdding(id) {                                           // the cards built from now on carry it (rowEl); a card already on the page lets it go here
-    addingId = id || null;
-    if (typeof document === "undefined" || !document.querySelectorAll) return;
-    for (const x of document.querySelectorAll(".row.adding")) if (!x.dataset || x.dataset.id !== addingId) x.classList.remove("adding");
-  }
-  const addingMark = (r, asClient) => !asClient && !!r && !!addingId && r.id === addingId;   // the card of the exercise he is adding, in his own view only
-  const inAdding = (n) => { const row = n && n.closest ? n.closest(".row") : null; return !!addingId && !!row && !!row.dataset && row.dataset.id === addingId; };
-  function addingFocusIn(e) { if (addingId && !inAdding(e && e.target)) setAdding(null); }   // he went on to a field of another exercise, or anywhere else on the page
-  function addingFocusOut(e) {                                       // he let go of the field with nothing after it (Done, Enter, a click on nothing): he is done adding it
-    if (!addingId) return;
-    setTimeout(() => {
-      if (!addingId) return;
-      const a = document.activeElement; if (a && a !== document.body) return;   // focus went to a field (or came back into the redrawn card, in the same turn): focusin has decided
-      setAdding(null);
-    }, 0);
-  }
-  function addingAfterRedraw() {                                      // the cards rebuilt: he is still adding only if focus came back into that exercise (a number picked, + Add exercise focusing its name); after Complete set or any redraw that leaves nothing focused, he is done
-    if (addingId) setTimeout(() => { if (addingId && !inAdding(document.activeElement)) setAdding(null); }, 0);
-  }
-  document.addEventListener("focusin", addingFocusIn);
-  document.addEventListener("focusout", addingFocusOut);
   function go(next, back) {
-    if (addingId) setAdding(null);
     if (S.templateDraft && S.templateDraft.dirty && S.view.name === "training" && S.view.id === S.templateDraft.id) {
       S.pendingGo = { next, back }; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
     }
@@ -2971,7 +2948,6 @@ import { reportRange, buildReport } from "./report.js";
     });
     const back = Math.min(keepScroll, Math.max(0, sc.scrollHeight - sc.clientHeight)); if (Math.abs(sc.scrollTop - back) > 1) sc.scrollTop = back;   // a box measured mid-rebuild made the browser clamp the scroll to a page with no cards yet: put it back where he was
     paintedSig = sigOf();
-    addingAfterRedraw();
     requestAnimationFrame(regrowNames);                               // once the cards are in the page, every name box at its true height                                         // what the cards now show, tidied rows included
   }
 
@@ -3242,7 +3218,6 @@ import { reportRange, buildReport } from "./report.js";
     q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; };
     const asClient = S.clientMode || previewClient;        // what to show; what to save still follows clientMode
-    if (addingMark(r, asClient)) el.classList.add("adding");   // the exercise he is adding: its number is his square
     const layoutIcons = () => { const w = asClient ? (q(".vid-btn").hidden ? 0 : 38) + (q(".alt-btn").hidden ? 0 : 46) : 0; /* the coach's name has the whole field: the discs are a row under it, and the stylesheet pins its padding */ for (const el of q(".exwrap").querySelectorAll(".name")) { const px = (w ? 4 + w + 8 : 16) + "px"; el.style.paddingRight = px; el.style.setProperty("--iconpad", px); } growName(); };   // the name wraps before the icons: their real footprint (the client's swap disc is 36px with a 10px gap, the others 38px, all 4px in from the edge) plus a breath
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
@@ -3414,7 +3389,7 @@ import { reportRange, buildReport } from "./report.js";
         const b = document.createElement("button"); b.type = "button"; b.textContent = n; if (n === "W") b.title = "Warmup";
         if (n === cur) b.classList.add("cur");
         b.addEventListener("mousedown", (ev) => ev.preventDefault());
-        b.addEventListener("click", () => { r.label = n; lastEditedId = r.id; q(".label").value = n; numpick.hidden = true; save(); if (addingId === r.id && String(r.name || "").trim()) setAdding(null); S.renderedTraining = null; render(); followRow(r.id, String(r.name || "").trim() ? null : "name"); });   // the card moves to its place; he goes with it, straight into the name if it is still empty
+        b.addEventListener("click", () => { r.label = n; lastEditedId = r.id; q(".label").value = n; numpick.hidden = true; save(); S.renderedTraining = null; render(); followRow(r.id, String(r.name || "").trim() ? null : "name"); });   // the card moves to its place; he goes with it, straight into the name if it is still empty
         return b;
       }));
       numpick.hidden = false;
@@ -3422,8 +3397,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!asClient) {
       let labelAtFocus = "";
       q(".label").addEventListener("focus", (e) => { labelAtFocus = e.target.value; if (el.closest && el.closest(".block.done:not(.open)")) return; showNumbers(); });   // a folded finished card takes no clicks: no picker there
-      q(".labwrap").addEventListener("click", (e) => { if (e.target === e.currentTarget) q(".label").focus(); });   // the number is one 22 pt line in a column the name box tall: all of the column opens it
-      q(".label").addEventListener("blur", (e) => { numpick.hidden = true; if (addingId === r.id && el.isConnected && !(e.relatedTarget && el.contains(e.relatedTarget))) setAdding(null);   /* he left the exercise he was adding from its number (not just the card being redrawn): done adding it */ if (q(".label").value !== labelAtFocus) { const to = e.relatedTarget, field = to && el.contains(to) && /^(INPUT|TEXTAREA)$/.test(to.tagName) ? [...to.classList].find((c) => /^(name|reps|rest|tempo|w|rp)$/.test(c)) : null; S.renderedTraining = null; render(); followRow(r.id, field || null); } });   // the card moves to its place; the field he tapped next is focused again in the moved card
+      q(".label").addEventListener("blur", (e) => { numpick.hidden = true; if (q(".label").value !== labelAtFocus) { const to = e.relatedTarget, field = to && el.contains(to) && /^(INPUT|TEXTAREA)$/.test(to.tagName) ? [...to.classList].find((c) => /^(name|reps|rest|tempo|w|rp)$/.test(c)) : null; S.renderedTraining = null; render(); followRow(r.id, field || null); } });   // the card moves to its place; the field he tapped next is focused again in the moved card
       q(".name").addEventListener("input", (e) => { closeAlt(); r.name = e.target.value.replace(/\n/g, " "); markNamed(); dropAltNamed(); growName(); save(); suggest(e.target.value); renderWeights(); paintVideo(); paintNewName(); });
       q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
       q(".name").addEventListener("focus", (e) => { closeAlt(); suggest(e.target.value); });
@@ -3797,7 +3771,7 @@ import { reportRange, buildReport } from "./report.js";
   $("addRow").addEventListener("click", () => {
     const t = trainings.get(S.view.id); if (!t) return;
     const r = newRow(nextLabel(t)); t.rows.push(r); scheduleSave("trainings", t.id);
-    setAdding(r.id); S.renderedTraining = null; render();
+    S.renderedTraining = null; render();
     const el = document.querySelector('.row[data-id="' + r.id + '"]'); if (el) el.querySelector(".name").focus();
   });
   function setSkipped(skipped, reason, id = S.view.id) {              // asked first (the sheet); the workout stays on screen, marked Skipped, with Undo (from a row on Workouts: it goes to History, Undo on its page)
@@ -3988,7 +3962,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, setAdding, addingRow: () => addingId, addingMark, addingFocusIn, addingFocusOut, addingAfterRedraw, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
