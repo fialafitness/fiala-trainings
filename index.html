@@ -1225,7 +1225,12 @@
   .list li.swipe-row.swiped, .list li.swipe-row.swiped + li { border-top-color: transparent; }   /* the hairlines beside a swiped row go, as Apple's */
   .list li.swipe-row > .swipe-acts { position: absolute; inset: 0; z-index: 0; display: none; align-items: center; justify-content: flex-end; gap: 10.33px; padding-right: 10.67px; background: var(--surface); }   /* two actions 10.33 apart, the outer 10.67 from the card's edge (measured) */
   .list li.swipe-row.swiped > .swipe-acts { display: flex; }
-  .list:has(> li.swipe-row.swiped), .card-head:has(+ .list > li.swipe-row.swiped) { background-clip: var(--swipe-clip); }   /* the card's own edge shows no white ring round the gap while a row is out (its title with it: one edge) */
+  .list:has(> li.swipe-row.swiped), .card-head:has(+ .list > li.swipe-row.swiped) { background-clip: var(--swipe-clip); }
+  .list li.swipe-row.ctx-on::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; border: 2px solid var(--brand); }   /* right-clicked: the Mac's ring round what was clicked while its menu is open, on the row's own corners */
+  .list li.swipe-row.ctx-on:first-child::after { border-top-left-radius: calc(var(--r-card) - 1px); border-top-right-radius: calc(var(--r-card) - 1px); }
+  .card-head + .list > li.swipe-row.ctx-on:first-child::after { border-top-left-radius: 0; border-top-right-radius: 0; }
+  .list li.swipe-row.ctx-on:last-child::after { border-bottom-left-radius: calc(var(--r-card) - 1px); border-bottom-right-radius: calc(var(--r-card) - 1px); }
+  .row.ctx-on { outline: 2px solid var(--brand); outline-offset: -6px; border-radius: 16px; }   /* an exercise right-clicked (the coach's view): the same ring, 4 px inside it: within a superset's own panel (its 16 px corners), and within the card's own corners where the exercise meets them (a template's last one) */   /* the card's own edge shows no white ring round the gap while a row is out (its title with it: one edge) */
   .list .swipe-act { appearance: none; border: 0; background: none; width: auto; min-height: 0; padding: 0; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: none; }
   .list .swipe-act:hover { opacity: 1; }
   .swipe-act .sa-cap { position: relative; flex: none; width: 61px; height: 37px; border-radius: 18.5px; background: var(--brand-fill); color: #ffffff; }   /* Apple's two-line rows: a 61 x 37 capsule, the title under it */
@@ -1286,7 +1291,7 @@
   .settings-list .seg button:hover { opacity: 1; }
   .settings-list .seg button.on { background: var(--seg-on); color: var(--text-primary); box-shadow: 0 1px 3px var(--seg-shadow); }
   body.client .settings-list .trainer-only + li { border-top: 0; }
-  @supports (corner-shape: squircle) { .list, .list li.swipe-row > :not(.swipe-acts), .group, .paused-card, .sheet, .card-head, .month > button, .btn, .pill, .msg-pill, .seg, input, textarea, .datefield, .numpick, .sugg, .alt-menu { corner-shape: squircle; } }
+  @supports (corner-shape: squircle) { .list, .list li.swipe-row > :not(.swipe-acts), .list li.swipe-row.ctx-on::after, .group, .paused-card, .sheet, .card-head, .month > button, .btn, .pill, .msg-pill, .seg, input, textarea, .datefield, .numpick, .sugg, .alt-menu { corner-shape: squircle; } }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   @media (max-width: 400px) {
@@ -1644,7 +1649,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=247";
+  import { boot } from "./app/main.js?v=248";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

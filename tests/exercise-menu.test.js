@@ -9,12 +9,12 @@ test("the exercise menu: Alternate exercise, instructions, and Delete exercise l
   const MI = fns.menuIcons(), calls = [];
   const on = { swap: () => calls.push("swap"), note: () => calls.push("note"), remove: () => calls.push("remove") };
   const items = fns.exerciseMenu({ note: "" }, on);
-  assert.deepStrictEqual(items.map((i) => i.label), ["Alternate exercise", "Add instructions", "Delete exercise"]);
+  assert.deepStrictEqual(items.map((i) => i.label), ["Alternate exercise…", "Add instructions…", "Delete exercise"]);
   assert.deepStrictEqual(items.map((i) => !!i.danger), [false, false, true], "only Delete is red");
   assert.deepStrictEqual(items.map((i) => i.icon), [MI.swap, MI.pencil, MI.trash]);
   items.forEach((i) => i.onPick());
   assert.deepStrictEqual(calls, ["swap", "note", "remove"], "each row does its own thing");
-  assert.strictEqual(fns.exerciseMenu({ note: "Keep the elbows in" }, on)[1].label, "Edit instructions", "an exercise with instructions: Edit");
+  assert.strictEqual(fns.exerciseMenu({ note: "Keep the elbows in" }, on)[1].label, "Edit instructions…", "an exercise with instructions: Edit");
 });
 
 test("the icons are filled shapes, sized like Apple's against the text", () => {

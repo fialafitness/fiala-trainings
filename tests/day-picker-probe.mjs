@@ -145,7 +145,7 @@ fns.closeDatePicker();
 // the "…" from the keyboard (or VoiceOver): focus goes into its menu, and comes back to the "…" when the menu or the days close; a tap leaves focus alone
 workout(true); document.activeElement = more;
 more.fire("click", { detail: 0, stopPropagation() {} });
-const row = pop.children[0]; out.menu = { open: bg.hidden === false, focusIn: document.activeElement === row };
+const row = pop.children[0]; out.menu = { open: bg.hidden === false, focusIn: document.activeElement === row, label: (row.children.at(-1) || {}).textContent };
 row.fire("click", { stopPropagation() {} });
 out.menu.closed = bg.hidden === true; out.menu.picker = !!fns.datePicker(); out.menu.backIsMore = !!fns.datePicker() && fns.datePicker().back === more;
 fns.closeDatePicker(); out.menu.focusBack = document.activeElement === more;
