@@ -383,8 +383,8 @@ test("a workout with nothing added yet: the client's page offers Skip workout as
   assert.deepStrictEqual(c.skipped.w1, { skipped: true, reason: "Sick", pending: true }, "skipped from its row, through the sheet");
   assert.deepStrictEqual({ page: c.skipped.page, text: c.skipped.text }, { page: skippedPage, text: "Skipped · Sick" }, "its page (from History): the Skipped line with its reason and Undo, as the sheet promised");
   assert.deepStrictEqual(c.undone, { page: c.before, w1: { skipped: false, reason: null, pending: true } }, "Undo brings it back, to the page it had");
-  assert.deepStrictEqual(k.toDo, { area: true, finishBtn: false, skipBtn: true, skippedLine: false, more: false }, "the trainer's own page of an empty workout still to do: Skip workout, as its row in his view now skips it (no Finish: nothing to finish; his date chip moves it, no \"…\")");
-  assert.deepStrictEqual(k.skipped, { page: skippedPage, text: "Skipped · Sick" }, "one the client skipped: its Skipped line with Undo");
+  assert.deepStrictEqual(k.toDo, { area: true, finishBtn: false, skipBtn: true, skippedLine: false, more: true }, "the trainer's own page of an empty workout still to do: Skip workout, as its row in his view now skips it (no Finish: nothing to finish), and his \"…\" (Reschedule, Delete workout)");
+  assert.deepStrictEqual(k.skipped, { page: { ...skippedPage, more: true }, text: "Skipped · Sick" }, "one the client skipped: its Skipped line with Undo, and his \"…\" (Delete workout)");
 });
 
 test("a row taken up again while it still closes, after a touch moved another row, is that same row: taken up where it is, its actions behind it", () => {

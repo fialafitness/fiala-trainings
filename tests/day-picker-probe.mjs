@@ -150,6 +150,15 @@ row.fire("click", { stopPropagation() {} });
 out.menu.closed = bg.hidden === true; out.menu.picker = !!fns.datePicker(); out.menu.backIsMore = !!fns.datePicker() && fns.datePicker().back === more;
 fns.closeDatePicker(); out.menu.focusBack = document.activeElement === more;
 document.activeElement = null; more.fire("click", { detail: 1, stopPropagation() {} }); out.menu.tapLeavesFocus = document.activeElement === null && bg.hidden === false;
+// the coach's own "…" (his ask, 10 Nov), tapped: its rows as drawn, the red one marked; a workout still to do, a finished one, a template, his Client view
+{ const { TEMPLATES_ID } = await import("../app/model.js");
+  const tap = () => { more.fire("click", { detail: 1, stopPropagation() {} }); return bg.hidden === false ? pop.children.map((r) => (/\bdanger\b/.test(r.className) ? "red " : "") + (r.children.at(-1) || {}).textContent) : []; };
+  out.coach = {};
+  workout(false); out.coach.toDo = tap();
+  maps.trainings.get("w1").completedAt = "2026-11-02T18:00:00.000Z"; fns.render(); out.coach.finishedClosed = bg.hidden === true; out.coach.finished = tap();
+  workout(false); maps.clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates" }); maps.trainings.set("tp", { id: "tp", clientId: TEMPLATES_ID, title: "Push", date: null, createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [] });
+  app.set({ view: { name: "training", id: "tp" }, renderedTraining: null }); fns.render(); out.coach.template = tap();
+  fns.setPreview(true); workout(false); out.coach.preview = tap(); fns.setPreview(false); }
 
 console.log(JSON.stringify(out));
 process.exit(0);

@@ -972,10 +972,11 @@ import { reportRange, buildReport } from "./report.js";
     window.addEventListener("pagehide", () => scrollMode("auto"));
     window.addEventListener("pageshow", (e) => { if (e && e.persisted) scrollMode("manual"); });
   }
-  let popClose = null, popAnchor = null;                            // the frosted bubble or menu that is open, if one is: its own close, and the button it hangs from
+  let popClose = null, popAnchor = null, popRows = "";              // the frosted bubble or menu that is open, if one is: its own close, the button it hangs from, and the rows it opened with (a menu)
+  const menuRows = (items) => items.map((it) => (it.danger ? "!" : "") + it.label).join("|");
   let liftClick = null, liftLate = 0;                               // a touch and hold's menu: what the dimmed page's click does, and the close that comes if that click never does
   let rs = null, rsT = null, wg = null, rsEat = 0, lpHoldAt = 0;    // a workout row swiped to its actions (below the swipe back): the row out or open, the finger or mouse on one, the trackpad's swipe under way, a tap's click to drop; when a touch and hold's menu came under a finger not yet let go (see lpOpen)
-  const closeMoreMenu = () => { if (popClose && popAnchor === $("tMore") && $("tMore").hidden) popClose(); };   // a redraw that takes the workout's "…" away (a sync brought a finish, a skip, a delete) takes its menu with it
+  const closeMoreMenu = () => { if (popClose && popAnchor === $("tMore") && ($("tMore").hidden || menuRows(moreItems(trainings.get(S.view.id))) !== popRows)) popClose(); };   // a redraw that takes the workout's "…" away (a sync brought a client's finish, skip or delete), or changes what it offers (the coach's: a finish or skip takes Reschedule out), takes its menu with it
   const stateDepth = () => { try { const st = hasState() && history.state; return st && typeof st.fiala === "number" ? st.fiala : 0; } catch (_) { return 0; } };
   nav.depth = stateDepth();
   try { if (hasState() && !(history.state && typeof history.state.fiala === "number")) history.replaceState({ fiala: nav.depth }, ""); } catch (_) {}   // the page's own first step carries its number, so going back to it is never mistaken for anything else
@@ -1131,7 +1132,7 @@ import { reportRange, buildReport } from "./report.js";
   const lookNow = () => (document.body.classList.contains("client") ? "client" : "coach") + "@" + (Number(window.innerWidth) || 0);
   function barFor(key) {                                            // the bar's buttons on the screen with this key (keep in step with render() and the settings pages)
     const [vk, sub] = String(key).split("|"), [name, id] = vk.split("/"), home = !sub && (name === "clients" || (S.clientMode && name === "client"));
-    return { back: !home, brand: home, meDisc: !sub && name === "client" && !isTemplateClient(id), navDone: sub === "exercise", tMore: !sub && name === "training" && canReschedule(trainings.get(id)), id };
+    return { back: !home, brand: home, meDisc: !sub && name === "client" && !isTemplateClient(id), navDone: sub === "exercise", tMore: !sub && name === "training" && moreOn(trainings.get(id)), id };
   }
   function barCopy(key) {                                           // the bar as the screen Back goes to will show it, when there is no copy of that screen
     const live = document.querySelector("header .bar"); if (!live) return null;
@@ -2130,7 +2131,7 @@ import { reportRange, buildReport } from "./report.js";
     $("back").hidden = S.view.name === "clients" || (S.clientMode && S.view.name === "client");
     $("brand").hidden = !(S.view.name === "clients" || (S.clientMode && S.view.name === "client"));
     $("meDisc").hidden = !(S.view.name === "client" && !isTemplateClient(S.view.id));   // the person disc: on a client's page, every tab, nowhere else — Settings for the client, the card for the coach
-    $("tMore").hidden = !(S.view.name === "training" && canReschedule(trainings.get(S.view.id))); closeMoreMenu();   // the workout's "…" (Reschedule): the client's view (and the coach's Client view) of a workout still to do
+    $("tMore").hidden = !(S.view.name === "training" && moreOn(trainings.get(S.view.id))); closeMoreMenu();   // the workout's "…": the client's view (and the coach's Client view) of a workout still to do, Reschedule; the coach's own view of any workout or template, Delete (and Reschedule while it is still to do)
     $("meDisc").setAttribute("aria-label", S.clientMode ? "Settings" : "Client card");
     paintMeDisc();
     if (S.clientMode && S.tab === "notes") setTab("workouts");   // Notes is the coach's tab
@@ -2693,7 +2694,7 @@ import { reportRange, buildReport } from "./report.js";
 
   function paintFinish(t) {
     $("finishWrap").hidden = t.rows.length === 0 && !t.skippedAt && !t.completedAt && !canSwipeRow(t);   // nothing added yet: nothing to finish, yet a workout its row can skip offers Skip workout here too, and a skipped or finished one shows its line with Undo
-    if (S.view.name === "training" && S.view.id === t.id) { $("tMore").hidden = !canReschedule(t); closeMoreMenu(); }   // Undo on a finish (which redraws only this) brings the "…" back
+    if (S.view.name === "training" && S.view.id === t.id) { $("tMore").hidden = !moreOn(t); closeMoreMenu(); }   // Undo on a finish (which redraws only this) brings the client's "…" back (the coach's stays: Delete)
     const done = !!t.completedAt, skipped = !done && !!t.skippedAt;
     $("finishBtn").hidden = done || skipped || t.rows.length === 0; $("finishedLine").hidden = !done;
     const left = document.body.classList.contains("client") && t.rows.some((r) => !r.done);   // the client's page: with an exercise still open, finishing is finishing early — a quiet pill like Skip workout, not the purple act
@@ -3123,7 +3124,7 @@ import { reportRange, buildReport } from "./report.js";
       b.addEventListener("click", (e) => { e.stopPropagation(); if (close) close(); if (opts && opts.lift && opts.lift.drop) opts.lift.drop(); it.onPick(); });   // close() first: a keyboard's focus is back on the anchor, so a sheet the row opens returns there (a held item's copy goes at once: what the pick opens, or the page it glides, is not under a copy of the item as it was)
       return b;
     }));
-    close = openPop(anchor, opts);
+    close = openPop(anchor, opts); popRows = menuRows(items);         // (after openPop: it closes the menu before)
     if (opts && opts.focus) { const f = pop.querySelector(".wopt"); if (f) f.focus({ preventScroll: true }); }   // opened from the keyboard or VoiceOver: into the menu, as a system menu takes focus (a tap leaves focus where it is)
   }
   const MI = {                                                         // the menu's leading glyphs, in a 1.25 em box (see #whenPop.menu .mi); swap, pencil and trash traced from Apple's and filled like theirs
@@ -4044,6 +4045,8 @@ import { reportRange, buildReport } from "./report.js";
   // the client's "…" on the workout page: Reschedule, in the same frosted menu as every other; the day picker then moves the workout
   // (from today on). A client's move reaches the server by its own rule (client_move_training, as Do it today); the coach's is an ordinary save.
   function canReschedule(t) { return !!t && !isTemplateClient(t.clientId) && !t.completedAt && !t.skippedAt && (S.clientMode || previewClient); }   // a declaration: render() and the swipe's bar ask before this line has run
+  function coachMore(t) { return !!t && !S.clientMode && !(previewClient && !isTemplateClient(t.clientId)); }   // the coach's own view of a workout or a template (not his Client view of it): his "…", with Delete (his ask, 10 Nov)
+  function moreOn(t) { return canReschedule(t) || coachMore(t); }   // the workout page's "…" in the bar
   function canSwipeRow(t) { return !!t && !isTemplateClient(t.clientId) && !t.completedAt && !t.skippedAt; }   // a workout still to do swipes to Skip and Reschedule on Today and Up next, in the client's view and in the trainer's (his pick); its page offers both too
   function moveWorkout(id, date) {                                  // the trainer's Reschedule from a row: any day, an ordinary save, as his date on the workout page ("Move to") moves it
     const t = trainings.get(id); if (!canSwipeRow(t) || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date === t.date) return false;   // asked again at the pick: a sync may have brought in a finish or a skip while the days were open
@@ -4054,10 +4057,27 @@ import { reportRange, buildReport } from "./report.js";
     t.date = date; touchState(id, "date"); if (S.clientMode) pendingMove.add(id);
     scheduleSave("trainings", id); S.renderedTraining = null; render(); return true;
   }
+  function moreItems(t) {                                             // the workout page's "…": the client's Reschedule (from today on); the coach's Reschedule (any day, as his row's and his date, while it is still to do) and, last and red, Delete, as Apple ends a menu with its destructive row
+    if (!moreOn(t)) return [];
+    const id = t.id, cid = t.clientId, page = () => S.view.name === "training" && S.view.id === id;
+    if (canReschedule(t)) {
+      const still = () => page() && canReschedule(trainings.get(id));   // the page is still this workout, still to do
+      return [{ label: "Reschedule\u2026", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, title: "Reschedule", selected: cur.date || today(), min: today, ok: still, onPick: (date) => applyReschedule(id, date) }); } }];   // min: today itself, asked at each redraw (days left open past midnight grey yesterday)
+    }
+    const items = [];
+    if (canSwipeRow(t)) { const still = () => page() && coachMore(trainings.get(id)) && canSwipeRow(trainings.get(id)); items.push({ label: "Reschedule\u2026", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, title: "Reschedule", selected: cur.date || today(), min: null, ok: still, onPick: (date) => moveWorkout(id, date) }); } }); }
+    items.push({ label: isTemplateClient(cid) ? "Delete template" : "Delete workout", icon: MI.trash, danger: true, onPick: () => askDelete(id) });   // Delete only asks: no ellipsis
+    return items;
+  }
+  async function askDelete(id) {                                       // Delete workout (the "…" and the page's foot): asked first, then gone for good; a template's workouts already made from it stay
+    const t = trainings.get(id); if (!t) return false; const tpl = isTemplateClient(t.clientId);
+    if (!(await askFirst({ title: tpl ? "Delete this template?" : "Delete this workout?", text: tpl ? "Workouts already made from it stay." : "It goes for good, with everything logged on it.", yes: "Delete" }))) return false;
+    if (!(S.view.name === "training" && S.view.id === id && trainings.has(id))) return false;   // still this page (a sync took nothing away while the question was up)
+    deleteTraining(id); return true;
+  }
   $("tMore").addEventListener("click", (e) => {
-    e.stopPropagation(); const t = trainings.get(S.view.id); if (!canReschedule(t)) return; const id = t.id, cid = t.clientId;
-    const still = () => S.view.name === "training" && S.view.id === id && canReschedule(trainings.get(id));   // the page is still this workout, still to do
-    showMenu($("tMore"), [{ label: "Reschedule\u2026", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, title: "Reschedule", selected: cur.date || today(), min: today, ok: still, onPick: (date) => applyReschedule(id, date) }); } }], { align: "right", focus: e.detail === 0 });   // min: today itself, asked at each redraw (days left open past midnight grey yesterday); a keyboard's Enter or VoiceOver's activation (detail 0) goes into the menu
+    e.stopPropagation(); const items = moreItems(trainings.get(S.view.id)); if (!items.length) return;
+    showMenu($("tMore"), items, { align: "right", focus: e.detail === 0 });   // a keyboard's Enter or VoiceOver's activation (detail 0) goes into the menu
   });
   $("tDate").addEventListener("click", () => {
     const t = trainings.get(S.view.id); if (!t || S.clientMode || isTemplateClient(t.clientId)) return;
@@ -4118,7 +4138,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!people.length) { const li = document.createElement("li"); li.className = "empty"; li.style.padding = "12px 16px"; li.textContent = "Add a client first."; ul.appendChild(li); }
     ul.hidden = false;
   });
-  $("delTraining").addEventListener("click", async () => { const t = trainings.get(S.view.id); if (!t) return; const tpl = isTemplateClient(t.clientId); if (await askFirst({ title: tpl ? "Delete this template?" : "Delete this workout?", text: tpl ? "Workouts already made from it stay." : "It goes for good, with everything logged on it.", yes: "Delete" })) deleteTraining(S.view.id); });
+  $("delTraining").addEventListener("click", () => { askDelete(S.view.id); });
 
   window.addEventListener("pagehide", flushAll);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushAll(); });
@@ -4260,7 +4280,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
