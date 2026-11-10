@@ -2,7 +2,7 @@
 // months, a right-click on a workout row and on an exercise, and a missed workout's Skip. The document keeps its listeners, the pagers, the
 // menu and the skip sheet keep theirs, and every timer runs on this probe's own clock, so this loads the real app/main.js with recording
 // stand-ins, plays the gestures (Safari's coasting after the fingers, as row-swipe-probe.mjs plays it) and prints, as JSON, what each one did.
-import { byId, el, storage } from "./env.js";
+import { byId, el } from "./env.js";
 // the clock: every timer the app sets is this one's, and so is performance.now
 let NOW = 10000, SEQ = 0; const Q = [];
 globalThis.setTimeout = (fn, ms) => { const id = ++SEQ; Q.push({ id, at: NOW + Math.max(0, ms || 0), fn }); return id; };
@@ -43,6 +43,7 @@ const recorder = (id, extra = {}) => { const e = listens(kids(el("div"))); Objec
 const W = 350;
 const calView = recorder("calView", { clientWidth: W }), calTrack = recorder("calTrack"), calTitle = recorder("calTitle");
 for (const id of ["calToday", "calPrev", "calNext", "calWrap"]) recorder(id);
+const calToggle = recorder("calToggle");                                  // the page's Month button: the month is opened there (it never comes back by itself, v251)
 const g = recorder("dpGrid", { clientWidth: W, setPointerCapture() {} });
 for (const id of ["dpPrev", "dpNext", "dpToday", "datePick", "dpCancel"]) recorder(id);
 const pop = recorder("whenPop", { offsetWidth: 243, offsetHeight: 150 });
@@ -54,7 +55,6 @@ globalThis.getComputedStyle = (node) => {                                // the 
   const m = /translate3d\(([-\d.e]+)px/.exec((node && node.style && node.style.transform) || "");
   return { transform: m ? "matrix(1, 0, 0, 1, " + Number(m[1]) + ", 0)" : "none", getPropertyValue: () => "", display: "block", color: "" };
 };
-storage.setItem("fiala.cal.open", "true");                               // the client page shows its month, not its week
 const app = (await import("../app/main.js")).internals();
 const { fns, maps } = app;
 sheetUp = () => !!fns.datePicker();
@@ -101,6 +101,7 @@ const clientPage = (clientMode = false) => {
   maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" });
   maps.trainings.set("w1", { id: "w1", clientId: "c1", title: "Legs", date: day(1), createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [] });
   app.set({ view: { name: "client", id: "c1" } }); fns.render();
+  if (!fns.calState().open) calToggle.fire("click", {});                   // the client page shows its month, not its week
 };
 const calX = () => { const m = /calc\(-100% \+ ([-\d.e]+)px\)/.exec(calTrack.style.transform || ""); return m ? Number(m[1]) : (calTrack.style.transform === "translateX(-100%)" ? 0 : calTrack.style.transform); };
 const month = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1, 12); return d.toLocaleDateString(undefined, { month: "long", year: "numeric" }); };

@@ -184,7 +184,9 @@ import { reportRange, buildReport } from "./report.js";
     } catch { return null; }
   }
 
-  function hideAllViews() { navWillChange(); $("meDisc").hidden = true; $("tMore").hidden = true; closeMoreMenu();
+  function hideAllViews() {
+    const dy = calFold(); if (dy && backScroll != null) backScroll = Math.max(0, backScroll + dy);   // the card, History or Settings opened over a client's month: the week comes back under it, and Back's place moves with the list
+    navWillChange(); $("meDisc").hidden = true; $("tMore").hidden = true; closeMoreMenu();
     rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
     $("tabbar").hidden = true; $("addBtn").hidden = true; document.body.classList.remove("tabs");
     for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vClientCard", "vHistory", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
@@ -918,6 +920,7 @@ import { reportRange, buildReport } from "./report.js";
       S.pendingGo = { next, back }; const b = $("draftBar"); b.classList.remove("nudge"); void b.offsetWidth; b.classList.add("nudge"); return;
     }
     if (!(next.name === "client" && isTemplateClient(next.id))) { pickFor = null; fillFor = null; }
+    if (viewKey(next) !== viewKey(S.view)) calFold();               // a client's page being left: its month folds back into the week before the page's picture and place are taken
     navWillChange(back ? "back" : "");                               // the screen as it was: Safari's (and the edge swipe's) page to come back to
     scrollMemo.set(viewKey(S.view), window.scrollY);                                              // the page being left: Back brings it back here
     if (S.view.name === "training" && !(next.name === "training" && next.id === S.view.id)) for (const k of [...cardNoteDraft.keys()]) if (k.startsWith(S.view.id + "/")) cardNoteDraft.delete(k);   // a card note left half-written goes with the page
@@ -2123,6 +2126,7 @@ import { reportRange, buildReport } from "./report.js";
     $("meDisc").setAttribute("aria-label", S.clientMode ? "Settings" : "Client card");
     paintMeDisc();
     if (S.clientMode && S.tab === "notes") setTab("workouts");   // Notes is the coach's tab
+    if (!(S.view.name === "client" && S.tab === "workouts" && !isTemplateClient(S.view.id))) calOpen = false;   // the month lasts only while its page is up: another page or tab and it is the week again (go() and the settings pages fold it already, before their picture)
     if (S.view.name === "clients") { S.renderedTraining = null; renderClients(); }
     else if (S.view.name === "client") { S.renderedTraining = null; $("backLabel").textContent = isTemplateClient(S.view.id) && S.view.phase ? S.view.program : (isTemplateClient(S.view.id) && S.view.program ? "Templates" : "Clients"); renderClient(); }
     else { const t = trainings.get(S.view.id); $("backLabel").textContent = fromHistory(t) ? "History" : S.clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
@@ -2222,13 +2226,28 @@ import { reportRange, buildReport } from "./report.js";
   $("tplCard").addEventListener("click", () => go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }));
   $("reorderBtn").addEventListener("click", () => { reordering = !reordering; renderClients(); });
   // month calendar under the week strip: Week | Month switch, arrows, Today, finger-follow swipe
-  let calOpen = lsGet("fiala.cal.open") === true, calMonth = today().slice(0, 7), calFor = null, calAnchor = calMonth, calSliding = false, calMissed = false;   // calMissed: a redraw came while the months were moving (it runs when they land)
+  let calOpen = false, calMonth = today().slice(0, 7), calFor = null, calAnchor = calMonth, calSliding = false, calMissed = false;   // calMissed: a redraw came while the months were moving (it runs when they land)   // calOpen: the month, only while its page is up (his ask, 10 Nov: back to the week "every time I leave the page"; a reload opens on the week too)
   const NEXT_DAYS = 3, NEXT_STEP = 5;      // "Up next" shows this many days ahead (the very next workout always); each "Show more" adds this many workouts
   let nextExtra = 0, nextFor = null;
   const monthAdd = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1, 12); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
   const monthTitle = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1, 12).toLocaleDateString(undefined, { month: "long", year: "numeric" }); };
+  const paintCalMode = () => {                                       // the week strip or the month, and the toggle that says which
+    $("weekHead").hidden = calOpen; $("week").hidden = calOpen; $("calWrap").hidden = !calOpen;
+    $("calToggleText").textContent = calOpen ? "Week" : "Month"; $("calToggle").classList.toggle("open", calOpen); $("calToggle").setAttribute("aria-expanded", String(calOpen));
+  };
+  function calFold() {                                               // the page is being left: the month folds back into the week first, so the picture the swipe back slides in and the place Back comes back to are the week's; returns how far the page scrolled
+    if (!calOpen) return 0;
+    calOpen = false;
+    if (S.view.name !== "client" || $("vClient").hidden || S.tab !== "workouts") return 0;   // not on the screen: its next draw is the week
+    const de = document.documentElement, y0 = Number(window.scrollY) || 0, h0 = Number(de.scrollHeight);
+    paintCalMode();
+    const d = Number(de.scrollHeight) - h0;                          // the week is shorter than the month: everything under it moved up by as much
+    if (!y0 || !Number.isFinite(d) || d >= 0) return 0;
+    window.scrollTo(0, Math.max(0, y0 + d));                         // so the list stays where it was on the screen (scrolled into the month: the top)
+    return (Number(window.scrollY) || 0) - y0;
+  }
   $("calToggle").addEventListener("click", () => {
-    calOpen = !calOpen; lsSet("fiala.cal.open", calOpen); if (calOpen) { calMonth = today().slice(0, 7); calAnchor = calMonth; }
+    calOpen = !calOpen; if (calOpen) { calMonth = today().slice(0, 7); calAnchor = calMonth; }
     if (S.view.name === "client") renderClient();
   });
   $("dpCancel").addEventListener("click", (e) => { if (dpSettled(e)) closeDatePicker(); });
@@ -2589,10 +2608,8 @@ import { reportRange, buildReport } from "./report.js";
     for (let i = 0; i < 7; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); weekEl.appendChild(dayButton(d, true)); }
     const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);   // the strip's title is the month it is in, as Calendar's; the month view carries its own
     $("weekHead").textContent = monday.getMonth() === sunday.getMonth() ? monday.toLocaleDateString(undefined, { month: "long" }) : monday.toLocaleDateString(undefined, { month: "short" }) + " \u2013 " + sunday.toLocaleDateString(undefined, { month: "short" });
-    $("weekHead").hidden = calOpen;
+    paintCalMode();
     // month view: three months on a sliding track (previous, shown, next) so a swipe follows the finger
-    $("calToggleText").textContent = calOpen ? "Week" : "Month"; $("calToggle").classList.toggle("open", calOpen); $("calToggle").setAttribute("aria-expanded", String(calOpen));
-    weekEl.hidden = calOpen; $("calWrap").hidden = !calOpen;
     if (calOpen) {
       // a new client, or the month rolling over while "this month" is shown, re-anchors to today; a browsed month stays
       const cur = today().slice(0, 7);
@@ -4168,7 +4185,7 @@ import { reportRange, buildReport } from "./report.js";
     let newest = 0;
     let resumedAt = 0;
     const busy = () => S.asking || /^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || "") || !!(S.templateDraft && S.templateDraft.dirty && S.view.name === "training" && S.view.id === S.templateDraft.id) || (settingsOpen === "exercise" && exDirty()) || !!(S.view.name === "client" && noteDraft.get(S.view.id)) || [...cardNoteDraft.keys()].some((k) => k.startsWith(String(S.renderedTraining) + "/")) || !!(document.querySelector(".sheet-bg:not([hidden])"));   // a sheet, typing, or something unsaved on the page on screen: no reload now
-    const settle = () => { if (newest > mine && !busy()) location.reload(); };
+    const settle = () => { if (newest > mine && !busy()) { calFold(); location.reload(); } };   // a client's month folds first: the reload opens on the week, and the place the browser keeps for it must be the week's (the list where it was)
     const ask = () => { if (sw.controller) sw.controller.postMessage({ type: "check" }); };
     sw.addEventListener("message", (e) => { if (e.data && e.data.type === "release") { newest = Math.max(newest, Number(e.data.current) || 0); if (performance.now() - resumedAt < 800 && document.visibilityState === "visible") settle(); } });   // an answer right after coming back lands before the first tap; a later one waits for the next quiet moment
     let had = !!sw.controller;
@@ -4230,7 +4247,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },

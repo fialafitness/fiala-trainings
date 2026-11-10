@@ -5,7 +5,7 @@
 // capture listeners, the element's own, the document's bubbling ones), a passive listener's preventDefault does nothing (the document's
 // and a page element's alike), and a page element hears its own events (a touch whose element a redraw took out of the page reaches only
 // that element). A frame comes every 16 ms of the clock.
-import { byId, el, storage } from "./env.js";
+import { byId, el } from "./env.js";
 import { ui } from "../app/state.js";
 // the clock: every timer the app sets is this one's, and so is performance.now
 let NOW = 10000, SEQ = 0; const Q = [];
@@ -84,7 +84,6 @@ globalThis.getComputedStyle = (node) => {                                // the 
   const m = /translate3d\(([-\d.e]+)px/.exec((node && node.style && node.style.transform) || "");
   return { transform: m ? "matrix(1, 0, 0, 1, " + Number(m[1]) + ", 0)" : "none", borderTopLeftRadius: (node && node.radius) || "0px", borderTopWidth: (node && node.bt) || "0px", backgroundColor: (node && node.bg) || "rgba(0, 0, 0, 0)", getPropertyValue: () => "", display: node && node.gone ? "none" : "block", color: "" };
 };
-storage.setItem("fiala.cal.open", "true");
 const app = (await import("../app/main.js")).internals();
 const { fns, maps } = app;
 sheetUp = () => !!fns.datePicker();
