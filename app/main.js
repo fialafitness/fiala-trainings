@@ -1516,12 +1516,20 @@ import { reportRange, buildReport } from "./report.js";
   const WG_GAP = 120, WG_END = 90;
   const NO_WHEEL_BACK = "#calView, #dpGrid, .kb-chips, .alt-menu, .sugg, li.swipe-row.swiped";   // the swipe back's own list, less what only a finger drags (a set track, the week strip: where one really scrolls, its scroll keeps the fingers) and the fields (two fingers select nothing)
   let wgNatural = true;                                             // natural scrolling (the Mac's default: the page moves with the fingers), from the latest wheel event
+  let calWheel = null, dpWheel = null;                              // the client page's month and the day picker's months, for two fingers: { begin, move, end }, set where each pager lives
+  function monthLetGo(kind, x, w) {                                  // a month let go x px from where it rests (+ = toward the month before): -1 the month before, 1 the next, 0 back. The client page's month goes on past 48 px, as it always has under a finger; the day picker's to the nearer month, as UIKit's pager does (a flick, a finger's speed or two fingers' coasting, has carried it on by then)
+    const past = kind === "cal" ? Math.abs(x) > 48 : Math.abs(x) > Math.max(1, w) / 2;
+    return past ? (x > 0 ? -1 : 1) : 0;
+  }
+  const monthWheel = (el) => (!el || !el.closest ? null : el.closest("#dpGrid") ? (dp ? dpWheel : null) : el.closest("#calView") && !held() ? calWheel : null);   // two fingers over a month: they page it (his pick, 9 Nov, "do what Apple would do": as a finger does on the phone, as two fingers page Calendar's days and weeks on the Mac)
   const canScrollX = (n, ax) => ((wgNatural ? ax < 0 : ax > 0) ? n.scrollLeft + n.clientWidth < n.scrollWidth - 1 : n.scrollLeft > 0);   // fingers this way (ax) scroll n toward its end, or toward its start: can it still go?
   const sideScroller = (el, ax) => { for (let n = el; n && n !== document.body && n.nodeType === 1; n = n.parentElement) { const cs = getComputedStyle(n); if (/(auto|scroll)/.test(cs.overflowX) && n.scrollWidth > n.clientWidth + 1 && canScrollX(n, ax)) return true; } return false; };
   const wheelBack = (el, ax) => (wgNatural ? ax > 0 : ax < 0) && (swipeOn || deskOn) && canBack() && !held() && !el.closest(NO_WHEEL_BACK) && !sideScroller(el, ax) && !(document.activeElement && el.closest("input, textarea") === document.activeElement && canScrollX(document.activeElement, ax));   // (the field being typed in keeps the fingers while its text can still scroll that way, as Safari's own swipe leaves it)
-  const wgMine = (el, ax) => !!rs || !!(el && el.closest && (el.closest("li.swipe-row") || wheelBack(el, ax)));   // a sideways start the app may take: kept from the browser while undecided
-  function wheelKind(el, ax) {                                      // what this sideways swipe moves: "row", "back" or nothing of the app's
-    if (!el || !el.closest || held() || sideScroller(el, ax)) return null;
+  const wgMine = (el, ax) => !!rs || !!(el && el.closest && (el.closest("li.swipe-row") || wheelBack(el, ax) || monthWheel(el)));   // a sideways start the app may take: kept from the browser while undecided
+  function wheelKind(el, ax) {                                      // what this sideways swipe moves: "row", "back", "month" or nothing of the app's
+    if (!el || !el.closest || sideScroller(el, ax)) return null;
+    if (monthWheel(el)) { if (rs) rsSettle(rs, 0, 0); return "month"; }   // a month under the fingers (the day picker's too: its sheet holds all the rest)
+    if (held()) return null;
     const li = el.closest("li.swipe-row");
     if (rs && li === rs.li) return "row";
     if (rs) rsSettle(rs, 0, 0);                                     // an open row elsewhere closes
@@ -1545,13 +1553,17 @@ import { reportRange, buildReport } from "./report.js";
   function wheelLetGo(g, how) {                                     // how: "rest" (the events stopped), "coast" (the page slowed past its point), "edge" (all the way over, or the row at its stop)
     if (g.done) return; g.done = true; g.doneAt = g.last; clearTimeout(g.timer);
     if (g.kind === "row") { if (how === "rest" && g.r && rs === g.r) rsLetGo(g, g.last + WG_END, false, true); }   // by where it is (it rested): open past half the actions, else closed
+    else if (g.kind === "month") { if (g.m) g.m.end(); }             // by a finger's rule from where it is (the coasting carried it on, as a flick would)
     else if (g.kind === "back" && sw && sw.wheel && sw.on && !sw.busy) endSwipe(false, how === "rest" ? g.last + WG_END : g.last);
     if (how === "rest" && wg === g) wg = null;                      // movement after a rest is a new gesture
     rsFlush();
   }
   function wheelStep(g, now, step) {                                // the fingers' (or the coasting's) travel since the last event, + to the right
     if (step) g.dir = Math.sign(step);
-    if (g.kind === "row") {
+    if (g.kind === "month") {
+      const sp = wgSpeed(g); if (sp != null && sp > g.peak) g.peak = sp;   // its top speed so far
+      if (!g.m || g.m.move(wgNatural ? step : -step)) { if (sp == null || sp >= g.peak * 0.7) g.spent = 0; wheelLetGo(g, "edge"); return; }   // a whole month over at speed (the fingers, not yet their coasting): spent, so those same fingers are never taken for new ones that would page a second month; once slowed, a new flick is new   // the months go the page's way (natural scrolling or not, as Safari's own swipe goes); a whole month over: it settles there, and the rest of the gesture moves nothing
+    } else if (g.kind === "row") {
       const r = g.r; if (!r || rs !== r) { g.done = true; return; }
       const x = Math.max(0, Math.min(r.w, r.x - step)); rsSample(g, now, x);
       if (x >= r.w || (x <= 0 && step > 0)) {                       // at its open width (or closed): it stays there, and nothing more moves it
@@ -1600,6 +1612,9 @@ import { reportRange, buildReport } from "./report.js";
       const li = (rs && rs.li.contains(el)) ? rs.li : el.closest("li.swipe-row"), r = li && rsBegin(li);   // the row under the event that decided (one a redraw replaced since the first is gone)
       if (!r) { g.axis = "none"; return; }
       g.r = r; g.li = li; rsSample(g, now, r.x);
+    } else if (g.kind === "month") {
+      const m = monthWheel(el); if (!m || !m.begin()) { g.axis = "none"; return; }   // (a finger or the mouse already on it: theirs)
+      g.m = m;
     } else {
       if (sw && (sw.on || sw.busy)) { g.axis = "x"; g.done = true; g.doneAt = now; g.spent = 0; e.preventDefault(); return; }   // the page still settling from the last one: this swipe back is spent (as UIKit takes none mid-transition), its rest kept from Safari, and the next one is new fingers by the let-go rules
       { const a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.blur) { a.blur(); document.body.classList.remove("typing"); } }   // the field typed in is let go first, its value kept, as a click elsewhere does (and the typing look with it: this page's tab bar slides with the page)
@@ -2205,7 +2220,7 @@ import { reportRange, buildReport } from "./report.js";
   $("tplCard").addEventListener("click", () => go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }));
   $("reorderBtn").addEventListener("click", () => { reordering = !reordering; renderClients(); });
   // month calendar under the week strip: Week | Month switch, arrows, Today, finger-follow swipe
-  let calOpen = lsGet("fiala.cal.open") === true, calMonth = today().slice(0, 7), calFor = null, calAnchor = calMonth, calSliding = false;
+  let calOpen = lsGet("fiala.cal.open") === true, calMonth = today().slice(0, 7), calFor = null, calAnchor = calMonth, calSliding = false, calMissed = false;   // calMissed: a redraw came while the months were moving (it runs when they land)
   const NEXT_DAYS = 3, NEXT_STEP = 5;      // "Up next" shows this many days ahead (the very next workout always); each "Show more" adds this many workouts
   let nextExtra = 0, nextFor = null;
   const monthAdd = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1, 12); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
@@ -2231,7 +2246,8 @@ import { reportRange, buildReport } from "./report.js";
   { const g = $("dpGrid"); let sx = null, sy = null, base = 0, drag = null, pts = [], swallow = false, gw = 1, pid = null, ptype = "";
     const at = () => { const t = dpTrack(), m = t && getComputedStyle(t).transform, w = dpW() || 1; if (!m || m === "none") return -dpIdx * w; const v = /matrix(3d)?\(([^)]+)\)/.exec(m); if (!v) return -dpIdx * w; const n = v[2].split(",").map(Number); return v[1] ? n[12] : n[4]; };   // where the track is, mid-settle too
     g.addEventListener("pointerdown", (e) => {
-      if (!e.isPrimary) return;                                      // a second finger is not a new touch: the first one's slide goes on
+      if (!e.isPrimary || wx !== null) return;                       // a second finger is not a new touch: the first one's slide goes on (and two fingers holding the months keep them)
+      if (e.pointerType === "mouse" && (e.button !== 0 || e.ctrlKey)) return;   // a right-click or a Control-click: its menu takes the release, so it never starts a drag
       g.classList.remove("dragged"); swallow = false;                // a new touch: the day under it may show its press again
       if (!dp) return; pid = e.pointerId; ptype = e.pointerType || ""; sx = e.clientX; sy = e.clientY; drag = null; pts = [[e.timeStamp, e.clientX]]; gw = dpW() || 1; dpTouching = true;
       if (Math.abs(at() + dpIdx * gw) > 1) { swallow = true; if (e.pointerType !== "mouse") g.classList.add("dragged"); }   // the months still settling: this touch only catches them, and its tap picks no day (as in UIKit)
@@ -2268,6 +2284,28 @@ import { reportRange, buildReport } from "./report.js";
       if (dpStale) { dpStale = false; setTimeout(renderDatePicker, 400); }   // a redraw that waited: once the month has settled
     };
     g.addEventListener("pointerup", (e) => release(e, false)); g.addEventListener("pointercancel", (e) => release(e, true));
+    document.addEventListener("pointerup", (e) => { if (sx !== null && !g.contains(e.target)) release(e, false); }, true);   // let go outside the months (a press that went up or down first, never captured): it ends there too, or the months would wait on it
+    document.addEventListener("pointercancel", (e) => { if (sx !== null && !g.contains(e.target)) release(e, true); }, true);
+    let wx = null, wbase = 0;                                        // two fingers' travel, and where the months were when they took them
+    dpWheel = {                                                      // two fingers on a Mac's trackpad: the months follow them, a month at most either way of the one shown, and settle by the finger's rule (the nearer month; the coasting carries a flick on, as a flick goes on)
+      begin() {                                                      // caught where they are, still settling too
+        if (!dp || sx !== null) return false; gw = dpW() || 1; wbase = at(); wx = 0; dpTouching = true;
+        const lo = -(dp.months.length - 1) * gw; if (wbase > 0) wbase *= 3; else if (wbase < lo) wbase = lo + (wbase - lo) * 3;   // caught bouncing back from past the first or the last month: on screen it is a third of the pull, so the pull is put back and nothing jumps (as under a finger)
+        return true;
+      },
+      move(d) {
+        if (wx === null || !dp) return true;
+        const w = gw, lo = -(dp.months.length - 1) * w, min = -(dpIdx + 1) * w - wbase, max = -(dpIdx - 1) * w - wbase;
+        wx = Math.max(min, Math.min(max, wx + d)); let x = wbase + wx;
+        if (x > 0) x /= 3; else if (x < lo) x = lo + (x - lo) / 3;   // past the first or the last month it gives a little, as under a finger
+        dpPlace(x, null); return wx <= min || wx >= max;             // true: a whole month over
+      },
+      end() {
+        if (wx === null) return; const x = wbase + wx; wx = null;
+        if (dp) { const i = Math.max(0, Math.min(dp.months.length - 1, dpIdx + monthLetGo("dp", x + dpIdx * gw, gw))); dpIdx = i; dpSync(); dpPlace(-i * gw, calmMotion() ? null : springEase(0, 0.3, 1)); }
+        dpTouching = false; if (dpStale) { dpStale = false; setTimeout(renderDatePicker, 400); }   // a redraw that waited: once the month has settled
+      },
+    };
     g.addEventListener("click", (e) => { if (swallow && e.detail !== 0) { swallow = false; e.stopPropagation(); e.preventDefault(); } else if (!dpSettled(e) && ptype !== "mouse") g.classList.add("dragged"); }, true);   // a keyboard's Enter (detail 0) is never a slide's click; a tap the days take no notice of yet (their first 350 ms) lets go of its day's grey, as a catch does
     if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", () => { if (dp) dpShow(dp.month, false); });   // turned: the month stays the one shown
   }
@@ -2276,7 +2314,7 @@ import { reportRange, buildReport } from "./report.js";
   {
     const view_ = $("calView"), track = $("calTrack");
     const reduced = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let busy = false, sx = null, sy = null, dragging = null, dx = 0, swallow = false, finishNow = null;
+    let busy = false, sx = null, sy = null, dragging = null, dx = 0, swallow = false, finishNow = null, cpid = null;
     const settle = (dir) => {                      // slide to the neighbour panel, then re-render around the new month
       if (busy) { if (finishNow) finishNow(); else return; }
       busy = true; calSliding = true;
@@ -2285,7 +2323,7 @@ import { reportRange, buildReport } from "./report.js";
       void view_.offsetHeight; view_.style.transition = "";
       if (target) view_.style.height = target.offsetHeight + "px";
       let done = false;
-      const finish = () => { if (done) return; done = true; finishNow = null; track.removeEventListener("transitionend", finish); busy = false; calSliding = false; view_.style.transition = ""; if (dir && S.view.name === "client") renderClient(); else view_.style.height = track.children[1].offsetHeight + "px"; };
+      const finish = () => { if (done) return; done = true; finishNow = null; track.removeEventListener("transitionend", finish); busy = false; calSliding = false; view_.style.transition = ""; if ((dir || calMissed) && S.view.name === "client") { calMissed = false; renderClient(); } else view_.style.height = track.children[1].offsetHeight + "px"; };
       finishNow = finish;
       if (reduced()) { track.style.transition = "none"; track.style.transform = "translateX(" + (-100 - (dir || 0) * 100) + "%)"; finish(); return; }
       track.addEventListener("transitionend", finish);
@@ -2295,25 +2333,34 @@ import { reportRange, buildReport } from "./report.js";
     };
     $("calPrev").addEventListener("click", () => settle(-1));
     $("calNext").addEventListener("click", () => settle(1));
-    view_.addEventListener("pointerdown", (e) => { view_.classList.remove("dragged"); if (!e.isPrimary) return; if (busy && finishNow) finishNow(); if (busy) return; sx = e.clientX; sy = e.clientY; dragging = null; dx = 0; });
+    const follow = (x) => {                        // the months x px from where they rest, the height easing toward the month coming in
+      track.style.transition = "none"; track.style.transform = "translateX(calc(-100% + " + x + "px))";
+      const centre = track.children[1], side = track.children[x < 0 ? 2 : 0];
+      if (centre && side) { const f = Math.min(1, Math.abs(x) / Math.max(1, view_.clientWidth)); view_.style.transition = "none"; view_.style.height = Math.round(centre.offsetHeight + (side.offsetHeight - centre.offsetHeight) * f) + "px"; }
+    };
+    let wx = null;                                 // two fingers' travel, while they hold the months
+    calWheel = {                                   // two fingers on a Mac's trackpad (the wheel's rules make the gesture): the months follow them, a month at most, and settle by the finger's rule
+      begin() { if (busy && finishNow) finishNow(); if (busy || sx !== null) return false; wx = 0; calSliding = true; return true; },   // (a slide still landing lands at once, as a touch catches it; a finger or the mouse on it keeps it)
+      move(d) { if (wx === null) return true; const w = Math.max(1, view_.clientWidth); wx = Math.max(-w, Math.min(w, wx + d)); follow(wx); return Math.abs(wx) >= w; },   // true: a whole month over
+      end() { if (wx === null) return; const x = wx; wx = null; calSliding = false; settle(monthLetGo("cal", x, view_.clientWidth)); },
+    };
+    view_.addEventListener("pointerdown", (e) => { view_.classList.remove("dragged"); if (!e.isPrimary || wx !== null) return; if (e.pointerType === "mouse" && (e.button !== 0 || e.ctrlKey)) return; if (busy && finishNow) finishNow(); if (busy) return; sx = e.clientX; sy = e.clientY; dragging = null; dx = 0; cpid = e.pointerId; });   // (two fingers holding the months keep them; a right-click or a Control-click never starts a drag: its menu takes the release)
     view_.addEventListener("pointermove", (e) => {
       if (sx === null || busy || !e.isPrimary) return;
       dx = e.clientX - sx; const dy = e.clientY - sy;
       if (dragging === null) { if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { dragging = true; try { view_.setPointerCapture(e.pointerId); } catch {} } else if (Math.abs(dy) > 8) dragging = false; if (dragging !== null && e.pointerType !== "mouse") view_.classList.add("dragged"); }   // not a tap: the day the finger landed on lets go of its grey
-      if (dragging) {
-        track.style.transition = "none"; track.style.transform = "translateX(calc(-100% + " + dx + "px))";
-        const centre = track.children[1], side = track.children[dx < 0 ? 2 : 0];
-        if (centre && side) { const f = Math.min(1, Math.abs(dx) / Math.max(1, view_.clientWidth)); view_.style.transition = "none"; view_.style.height = Math.round(centre.offsetHeight + (side.offsetHeight - centre.offsetHeight) * f) + "px"; }
-      }
+      if (dragging) follow(dx);
     });
     const release = (cancel) => {
       if (sx === null) return; const was = dragging; const moved = dx; sx = sy = null; dragging = null; dx = 0;
       if (!was) return;
       swallow = true; setTimeout(() => { swallow = false; }, 0);
-      if (!cancel && Math.abs(moved) > 48) settle(moved < 0 ? 1 : -1); else settle(0);
+      settle(cancel ? 0 : monthLetGo("cal", moved, view_.clientWidth));
     };
     view_.addEventListener("pointerup", () => release(false));
     view_.addEventListener("pointercancel", () => release(true));
+    document.addEventListener("pointerup", (e) => { if (sx !== null && e.pointerId === cpid && !view_.contains(e.target)) release(false); }, true);   // its own press let go outside the month (one that went up or down first, never captured): it ends there too, or two fingers would wait on it for good
+    document.addEventListener("pointercancel", (e) => { if (sx !== null && e.pointerId === cpid && !view_.contains(e.target)) release(true); }, true);
     view_.addEventListener("click", (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
   }
 
@@ -2469,7 +2516,7 @@ import { reportRange, buildReport } from "./report.js";
       const doToday = document.createElement("button"); doToday.type = "button"; doToday.className = "btn tint"; doToday.textContent = "Do it today";
       doToday.addEventListener("click", () => { t.date = today(); t.missed = false; t.skippedAt = null; touchState(t.id, "date", "missed", "skippedAt"); if (S.clientMode) { pendingMove.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
       const skip = document.createElement("button"); skip.type = "button"; skip.className = "btn tint"; skip.textContent = "Skip";
-      skip.addEventListener("click", () => { t.skippedAt = now(); t.missed = false; touchState(t.id, "skippedAt", "missed"); if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
+      skip.addEventListener("click", () => rowSkip(t.id));             // asks first, with the same "Skip this workout?" as the row's swipe and the workout page (his pick, 9 Nov: "do what Apple would do": one action, one way); its Skip workout files it as the old one did, with the reason
       acts.append(doToday, skip); li.appendChild(acts);                  // the choices sit under the row
     }
     if (swipe && (mode === "today" || mode === "next") && canSwipeRow(t)) {   // swiped to the left: Skip and Reschedule, behind the row (the workout page holds both: its Skip workout and its "…")
@@ -2479,6 +2526,7 @@ import { reportRange, buildReport } from "./report.js";
       layer.append(act("sa-skip", SA_SKIP, "Skip", () => { if (rs && rs.li === li) rsSettle(rs, 0, 0); rowSkip(t.id); }),   // asks first, as the workout page does
         act("sa-resched", SA_CALENDAR, "Reschedule", () => { if (rs && rs.li === li) rsFire(rs); else rowReschedule(t.id); }));   // outermost: the full swipe's
       li.appendChild(layer);                                             // last, under the row's own parts: they slide off it
+      li._ctx = () => rowMenu(t.id); li._ctx.ok = () => canSwipeRow(trainings.get(t.id));   // a right-click: the same two, at the pointer
     }
     return li;
   }
@@ -2559,7 +2607,7 @@ import { reportRange, buildReport } from "./report.js";
         wrap.appendChild(cal); return wrap;
       };
       const track = $("calTrack");
-      if (calSliding) return;                      // a slide is in flight: finish() re-renders when it lands
+      if (calSliding) { calMissed = true; return; }   // a slide is in flight, or two fingers hold the months: finish() re-renders when it lands
       track.style.transition = "none"; track.style.transform = "translateX(-100%)";
       track.replaceChildren(panel(monthAdd(calMonth, -1)), panel(calMonth), panel(monthAdd(calMonth, 1)));
       for (const p of [track.children[0], track.children[2]]) p.setAttribute("aria-hidden", "true");
@@ -3042,6 +3090,7 @@ import { reportRange, buildReport } from "./report.js";
       const b = document.createElement("button"); b.type = "button"; b.className = "wopt" + (it.danger ? " danger" : "");
       if (it.icon) b.innerHTML = it.icon;
       const s = document.createElement("span"); s.textContent = it.label; b.appendChild(s);
+      b.addEventListener("mousedown", (e) => e.preventDefault());   // pressing a row moves no focus: a field typed in keeps it (and its redraw waits) until the row is picked
       b.addEventListener("click", (e) => { e.stopPropagation(); if (close) close(); it.onPick(); });   // close() first: a keyboard's focus is back on the anchor, so a sheet the row opens returns there
       return b;
     }));
@@ -3050,6 +3099,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   const MI = {                                                         // the menu's leading glyphs, in a 1.25 em box (see #whenPop.menu .mi); swap, pencil and trash traced from Apple's and filled like theirs
     calendar: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.9" width="12" height="11.2" rx="2.2"/><path d="M2 6.5h12M5.2 1.6v2.6M10.8 1.6v2.6"/></svg>',
+    skip: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 3.7v8.6c0 .5.5.8.9.5l6.3-4.3c.4-.2.4-.8 0-1L4.4 3.2c-.4-.3-.9 0-.9.5z"/><path d="M13 3.2v9.6"/></svg>',   // Skip in a menu: the swipe's skip glyph in outline, as Apple's menus take the outline of what a swipe shows filled (Mail's flag, its trash), drawn like the calendar beside it
     swap: '<svg class="mi" viewBox="-10.16 -22.04 64.08 64.08" aria-hidden="true" fill="currentColor"><path d="M0 2.12L43.75 2.12A2.12 2.12 0 0 0 43.75 -2.12L0 -2.12A2.12 2.12 0 0 0 0 2.12ZM45.25 -1.5L32.52 -14.23A2.12 2.12 0 0 0 29.52 -11.23L42.25 1.5A2.12 2.12 0 0 0 45.25 -1.5ZM42.25 -1.5L29.52 11.23A2.12 2.12 0 0 0 32.52 14.23L45.25 1.5A2.12 2.12 0 0 0 42.25 -1.5ZM43.75 17.88L0 17.88A2.12 2.12 0 0 0 0 22.12L43.75 22.12A2.12 2.12 0 0 0 43.75 17.88ZM1.5 21.5L14.23 8.77A2.12 2.12 0 0 0 11.23 5.77L-1.5 18.5A2.12 2.12 0 0 0 1.5 21.5ZM-1.5 21.5L11.23 34.23A2.12 2.12 0 0 0 14.23 31.23L1.5 18.5A2.12 2.12 0 0 0 -1.5 21.5Z"/></svg>',   // Alternate exercise: two arrows the opposite ways, a swap, built from Apple's Sort By arrow in Reminders (its weight, head and length; 94% overlap with Apple's); his pick A, 9 Nov
     pencil: '<svg class="mi" viewBox="-8.38 -9.09 64.73 64.73" aria-hidden="true" fill="currentColor"><path d="M4.18 42.43L8.35 34.58L33.81 9.13L38.12 13.44L12.67 38.9L4.82 43.07ZM3.92 42.43A0.9 0.9 0 1 0 5.72 42.43A0.9 0.9 0 1 0 3.92 42.43ZM35.93 7.01L39.47 3.47A1.25 1.25 0 0 1 41.23 3.47L43.78 6.02A1.25 1.25 0 0 1 43.78 7.78L40.24 11.32Z"/></svg>',   // Edit instructions: Apple's pencil, traced from Rename in the Files menu (iOS 27.2; 96% overlap), 0.76 em as Apple's
     camera: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.25 5.6c0-.8.65-1.45 1.45-1.45h1.7l1.05-1.4h3.1l1.05 1.4h1.7c.8 0 1.45.65 1.45 1.45v5.95c0 .8-.65 1.45-1.45 1.45H3.7c-.8 0-1.45-.65-1.45-1.45z"/><circle cx="8" cy="8.55" r="2.35"/></svg>',
@@ -3058,27 +3108,42 @@ import { reportRange, buildReport } from "./report.js";
   };
   function exerciseMenu(r, on) {                                    // the coach's "…" on an exercise: swap it, its instructions, and last and red, delete it, as Apple ends a menu with its destructive row (his ask, 9 Nov: Delete was hidden in Alternate exercise); the video is the play disc's own business
     return [
-      { label: "Alternate exercise", icon: MI.swap, onPick: on.swap },
-      { label: (r.note || "").trim() ? "Edit instructions" : "Add instructions", icon: MI.pencil, onPick: on.note },
+      { label: "Alternate exercise\u2026", icon: MI.swap, onPick: on.swap },   // an ellipsis where the pick opens another step (the alternatives, the box), as Apple's menus mark it; Delete only asks, so it has none
+      { label: ((r.note || "").trim() ? "Edit instructions" : "Add instructions") + "\u2026", icon: MI.pencil, onPick: on.note },
       { label: "Delete exercise", icon: MI.trash, danger: true, onPick: on.remove },
     ];
+  }
+  function exerciseCtx(moreBtn, items, first) {                      // an exercise's right-click: the menu of its "…" (items), only where its "…" is shown (the coach's view: a client's card has none, a folded card shows none)
+    const f = () => { if (first) first(); return items(); };
+    f.ok = () => !!moreBtn && moreBtn.offsetParent !== null;
+    return f;
+  }
+  function ctxPlace(x, y, pw, ph, vw, vh) {                         // a right-click's menu, as the Mac opens one: its corner at the pointer, down and to the right; turned to the left or upward where the window's edge would cut it, and never past a margin of 8
+    const left = x + pw > vw - 8 ? x - pw : x, top = y + ph > vh - 8 ? y - ph : y;
+    return { left: Math.max(8, Math.min(left, vw - pw - 8)), top: Math.max(8, Math.min(top, vh - ph - 8)) };
   }
   function openPop(anchor, opts) {                                   // places the bubble under (or above) its anchor and wires the ways it closes; returns close
     if (popClose) popClose();                                        // one bubble at a time: a second Enter on its button replaces it, and leaves no closer of the first one waiting to eat a tap
     const bg = $("whenBg"), pop = $("whenPop");
-    bg.hidden = false; pop.classList.remove("above"); pop.classList.toggle("hung", !!(opts && opts.align === "right"));
+    const at = opts && opts.at;                                       // a right-click's menu: from the pointer itself, no pointer drawn (opts.at { x, y })
+    bg.hidden = false; pop.classList.remove("above"); pop.classList.toggle("hung", !!(opts && (opts.align === "right" || at)));
     const r = anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, pw = pop.offsetWidth, ph = pop.offsetHeight;
     const box = anchor.closest(".group, .card, .plan-card, .overview"), bb = box ? box.getBoundingClientRect() : null;   // the bubble stays inside the card it belongs to, as Apple keeps a popover inside its content's margins, never out at the screen's edge
     let minL = 8, maxL = vw - pw - 8; if (bb && bb.right - bb.left >= pw) { minL = Math.max(minL, bb.left); maxL = Math.min(maxL, bb.right - pw); }
     const want = opts && opts.align === "right" ? r.right - pw : opts && opts.align === "center" ? r.left + r.width / 2 - pw / 2 : r.left;   // hung from the right edge, centred under the anchor, or from its left
-    const left = Math.max(minL, Math.min(want, maxL)); let top = r.bottom + 8;
-    if (top + ph > vh - 8) { top = r.top - 8 - ph; pop.classList.add("above"); }
+    let left = Math.max(minL, Math.min(want, maxL)), top = r.bottom + 8;
+    if (at) ({ left, top } = ctxPlace(at.x, at.y, pw, ph, vw, vh));
+    else if (top + ph > vh - 8) { top = r.top - 8 - ph; pop.classList.add("above"); }
     pop.style.left = left + "px"; pop.style.top = top + "px"; pop.style.setProperty("--caret", Math.max(12, Math.min(r.left + r.width / 2 - left, pw - 12)) + "px");
     const close = () => {
       if (popClose === close) { popClose = null; popAnchor = null; } const inPop = pop.contains(document.activeElement);
-      bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", close, true);
-      if (inPop && document.contains(anchor)) anchor.focus({ preventScroll: true });   // focus was in the bubble (a keyboard, VoiceOver): back on the button it hangs from, never lost to the page
+      bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); document.removeEventListener("contextmenu", onCtx, true); window.removeEventListener("scroll", close, true);
+      const back = opts && opts.back && document.contains(opts.back) ? opts.back : anchor;
+      if (inPop && document.contains(back)) back.focus({ preventScroll: true });   // focus was in the bubble (a keyboard, VoiceOver): back on the button it hangs from (a right-click's: what had it), never lost to the page
+      if (opts && opts.onClose) opts.onClose();                       // (a right-click's ring comes off its item)
     };
+    const isMenu = pop.classList.contains("menu");                  // (showMenu sets it before it opens; a bubble of numbers has none)
+    const onCtx = (e) => { if (!pop.contains(e.target)) close(); else if (isMenu) e.preventDefault(); };   // a right-click anywhere else closes the bubble (the browser's own menu, or the next item's, opens there); in a menu it does nothing; in a bubble of numbers the browser's own stays (Copy, Look Up)
     const onKey = (e) => { if (e.key === "Escape") close(); };
     let down = null, eat = null;                                     // a tap outside closes the bubble and goes no further (as a system menu's dismissing tap): nothing under it is pressed or given focus; a finger that drags the page does not close it
     const uneat = () => { if (eat) { document.removeEventListener("mousedown", eat, true); eat = null; } };
@@ -3095,10 +3160,49 @@ import { reportRange, buildReport } from "./report.js";
       }
       close();
     };
-    document.addEventListener("pointerdown", onDown, true); document.addEventListener("pointerup", onUp, true); document.addEventListener("keydown", onKey); window.addEventListener("scroll", close, true);
+    document.addEventListener("pointerdown", onDown, true); document.addEventListener("pointerup", onUp, true); document.addEventListener("keydown", onKey); document.addEventListener("contextmenu", onCtx, true); window.addEventListener("scroll", close, true);
     popClose = close; popAnchor = anchor;
     return close;
   }
+  // a right-click (a trackpad's two-finger click, a Control-click): the item's own menu at the pointer, as the Mac gives its items one (his pick,
+  // 9 Nov: "do what Apple would do"). A workout row on Today and Up next: its swipe's two actions; an exercise in the coach's view: the menu of
+  // its "…". While the menu is open the item wears a ring, as the Mac rings what was right-clicked. In the field being typed in a right-click
+  // stays the browser's (Cut, Copy, Paste), as on the Mac, and a finger's long press never opens one (the phone has the swipe and the "…").
+  const CTX_NOT = ".alt-menu, .note-pop, .numpick, .vid-form, .player, .sugg, .swipe-acts";   // a panel open in the item, or the swipe's own buttons: not the item itself
+  const MAC = typeof navigator !== "undefined" && /Mac/.test(navigator.platform || navigator.userAgent || "");
+  let ctxDown = null, ctxArmed = false;                              // the latest press not yet answered by a menu ({ type, down, upAt }): a right-click comes with a mouse's (or a trackpad's), a long press with a finger's, the keyboard or VoiceOver (VO-Shift-M) with none; armed: a right press on an item is under way
+  function ctxItemOf(el) {                                           // the item a right-click on el is about (it carries its menu as _ctx), or null
+    if (!el || !el.closest || el.closest(CTX_NOT)) return null;
+    const a = document.activeElement; if (a && a !== document.body && el.closest("input, textarea") === a) return null;   // the field being typed in: the browser's own menu
+    const it = el.closest("li.swipe-row, .row");
+    return it && typeof it._ctx === "function" && it._ctx.ok() ? it : null;
+  }
+  const ctxPress = (e) => e.pointerType === "mouse" && (e.button === 2 || (e.button === 0 && !!e.ctrlKey && MAC));   // the press a right-click begins with (a Control-click is the Mac's)
+  document.addEventListener("pointerdown", (e) => { ctxDown = { type: e.pointerType || "", down: true, upAt: 0 }; ctxArmed = false; if (ctxPress(e) && ctxItemOf(e.target)) { e.preventDefault(); ctxArmed = true; } }, true);   // a right press focuses nothing (an exercise's number would open its picker): what opens is the item's menu
+  const ctxUp = () => { if (ctxDown && ctxDown.down) { ctxDown.down = false; ctxDown.upAt = performance.now(); } ctxArmed = false; };
+  document.addEventListener("pointerup", ctxUp, true); document.addEventListener("pointercancel", ctxUp, true);
+  document.addEventListener("selectstart", (e) => { if (ctxArmed) e.preventDefault(); }, true);   // nor selects anything: the word the Mac selects under a right-click, or a typed-in field's caret moved, never happens (the menu is the item's, not the text's)
+  const ctxBy = (e) => {                                              // what opened it: Chrome says so itself ("" for the keyboard); otherwise the press still down (Safari and Android fire during it) or just let go (Windows fires after it), and none means the keyboard or VoiceOver
+    if (typeof e.pointerType === "string") return e.pointerType || "keyboard";
+    const p = ctxDown; return p && (p.down || performance.now() - p.upAt < 300) ? p.type || "mouse" : "keyboard";
+  };
+  document.addEventListener("contextmenu", (e) => {
+    const by = ctxBy(e); ctxDown = null; ctxArmed = false;              // (the press is answered: a later keyboard menu is the keyboard's)
+    if (by === "touch" || by === "pen") return;                        // a finger's or a pen's long press: never this menu (the phone has the swipe and the "…")
+    const it = ctxItemOf(e.target); if (!it) return;                   // anywhere else, the browser's own
+    const items = it._ctx(); if (!items || !items.length) return;
+    e.preventDefault(); if (rsFree() && rs.open) rsSettle(rs, 0, 0);  // an open row closes, as a click elsewhere closes it
+    const pressed = by !== "keyboard", ir = it.getBoundingClientRect();
+    const at = pressed ? { x: e.clientX, y: e.clientY } : { x: ir.left + Math.min(24, ir.width / 2), y: ir.top + Math.min(24, ir.height / 2) };   // the keyboard's or VoiceOver's: at the item itself
+    const own = (n) => (n && n !== document.body && it.contains(n) ? n : null), tf = e.target && e.target.closest ? e.target.closest("button, a[href], input, textarea, select, [tabindex]") : null;
+    const back = pressed ? null : own(tf) || own(document.activeElement) || it.querySelector(".more-btn") || [...it.children].find((c) => c.tagName === "BUTTON") || null;   // where a keyboard's focus comes back to: what had it, else the exercise's "…" or the row's own button
+    it.classList.add("ctx-on");
+    showMenu(it, items, { at, focus: !pressed, back, onClose: () => it.classList.remove("ctx-on") });   // (with no press, focus goes into the menu, as a system menu takes it)
+  });
+  const rowMenu = (id) => [                                          // a workout row's right-click: its swipe's two actions, Reschedule first (the outermost, the full swipe's), then Skip; each asks before it acts (the days, the reasons): an ellipsis, as Apple marks an item that needs more
+    { label: "Reschedule\u2026", icon: MI.calendar, onPick: () => rowReschedule(id) },
+    { label: "Skip\u2026", icon: MI.skip, onPick: () => rowSkip(id) },
+  ];
   const followEl = (row, card) => (card && row.closest && row.closest(".block")) || row;   // the exercise itself (3c, not the top of its card at 3a); the whole card only when asked
   function followRow(id, field, card) {                             // an exercise that just moved (a new number): the page goes to that exercise, not to the top of its card (his ask, 9 Nov: "if I just added 3c it jumps to 3c and not 3a"), and the keyboard on the field he was heading for
     const row = $("rows").querySelector('.row[data-id="' + id + '"]'); if (!row) return;
@@ -3491,10 +3595,16 @@ import { reportRange, buildReport } from "./report.js";
       t.rows = t.rows.filter((x) => x.id !== r.id); save(); S.renderedTraining = null; render();
     };
     const moreBtn = q(".more-btn");                                  // the coach's "…" disc: the card's other actions, in a menu under it
+    const live = (sel, own) => () => {                                // a pick from the menu: a field still typed in is let go first (its redraw may draw this exercise again), then the button of the exercise as it is now
+      const a = document.activeElement; if (a && a !== document.body && /^(INPUT|TEXTAREA)$/.test(a.tagName) && a.blur) { a.blur(); document.body.classList.remove("typing"); }   // (and the typing look with it: a field its own redraw took off the page never tells the page it let go)
+      const now = $("rows").querySelector('.row[data-id="' + CSS.escape(r.id) + '"]'), b = (now && now.querySelector(sel)) || own; if (b) b.click();
+    };
+    const moreItems = () => exerciseMenu(r, { swap: live(".alt-btn", altBtn), note: live(".note-btn", noteBtn), remove: deleteRow });
     if (moreBtn) moreBtn.addEventListener("click", (e) => {
       e.stopPropagation(); closeAlt();
-      showMenu(moreBtn, exerciseMenu(r, { swap: () => altBtn.click(), note: () => noteBtn.click(), remove: deleteRow }), { align: "right", focus: e.detail === 0 });
+      showMenu(moreBtn, moreItems(), { align: "right", focus: e.detail === 0 });
     });
+    el._ctx = exerciseCtx(moreBtn, moreItems, closeAlt);             // a right-click on the exercise: the same menu, at the pointer (its open panel closes first)
 
     function suggest(v) {
       const ul = q(".sugg"); const s = squash(v);
@@ -3743,7 +3853,9 @@ import { reportRange, buildReport } from "./report.js";
   $("tabbar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b || b.dataset.tab === S.tab) return; setTab(b.dataset.tab); render(); window.scrollTo(0, 0); });
   const typingIn = (el) => !!el && /^(INPUT|TEXTAREA)$/.test(el.tagName) && !/^(date|month|checkbox|radio|file|range)$/.test(el.type || "");   // a keyboard is coming: a select or a date wheel is not typing
   document.addEventListener("focusin", (e) => { if (typingIn(e.target)) document.body.classList.add("typing"); });
-  document.addEventListener("focusout", () => { setTimeout(() => { if (!typingIn(document.activeElement)) document.body.classList.remove("typing"); }, 80); });
+  const typingOff = () => { setTimeout(() => { if (!typingIn(document.activeElement)) document.body.classList.remove("typing"); }, 80); };
+  document.addEventListener("focusout", typingOff);
+  document.addEventListener("blur", typingOff, true);                // a field whose own blur redraws the page (an exercise's new number) is off the page before its focusout, which then never reaches here: the tab bar stayed hidden after it. Its blur is heard on the way down, while it is still on the page
   $("newTraining").addEventListener("click", () => addTraining(S.view.id, null, today()));
   $("addBtn").addEventListener("click", newWorkoutHere);
   $("dayMore").addEventListener("click", () => { const t = trainings.get(S.view.id); const c = t && clients.get(t.clientId); if (c && effDate(t)) showDay(c, effDate(t)); });
@@ -3770,7 +3882,7 @@ import { reportRange, buildReport } from "./report.js";
   $("tMore").addEventListener("click", (e) => {
     e.stopPropagation(); const t = trainings.get(S.view.id); if (!canReschedule(t)) return; const id = t.id, cid = t.clientId;
     const still = () => S.view.name === "training" && S.view.id === id && canReschedule(trainings.get(id));   // the page is still this workout, still to do
-    showMenu($("tMore"), [{ label: "Reschedule", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, title: "Reschedule", selected: cur.date || today(), min: today, ok: still, onPick: (date) => applyReschedule(id, date) }); } }], { align: "right", focus: e.detail === 0 });   // min: today itself, asked at each redraw (days left open past midnight grey yesterday); a keyboard's Enter or VoiceOver's activation (detail 0) goes into the menu
+    showMenu($("tMore"), [{ label: "Reschedule\u2026", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, title: "Reschedule", selected: cur.date || today(), min: today, ok: still, onPick: (date) => applyReschedule(id, date) }); } }], { align: "right", focus: e.detail === 0 });   // min: today itself, asked at each redraw (days left open past midnight grey yesterday); a keyboard's Enter or VoiceOver's activation (detail 0) goes into the menu
   });
   $("tDate").addEventListener("click", () => {
     const t = trainings.get(S.view.id); if (!t || S.clientMode || isTemplateClient(t.clientId)) return;
@@ -3971,7 +4083,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },

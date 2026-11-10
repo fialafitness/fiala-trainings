@@ -66,7 +66,7 @@ test("days left open past midnight: yesterday is not picked, it greys out", () =
 });
 
 test("the \"…\" from the keyboard or VoiceOver: focus goes into its menu and comes back to it when the days close; a tap leaves focus alone", () => {
-  assert.deepStrictEqual(r.menu, { open: true, focusIn: true, closed: true, picker: true, backIsMore: true, focusBack: true, tapLeavesFocus: true });
+  assert.deepStrictEqual(r.menu, { open: true, focusIn: true, label: "Reschedule\u2026", closed: true, picker: true, backIsMore: true, focusBack: true, tapLeavesFocus: true }, "its one row: Reschedule\u2026, an ellipsis as the days open (the same words as a row's right-click menu)");
 });
 
 test("a short flick after the finger rested still goes on a month (the speed of the last tenth of a second, as UIKit's)", () => {
