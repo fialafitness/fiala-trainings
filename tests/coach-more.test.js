@@ -1,5 +1,5 @@
 // His ask, 10 Nov: "add the three dot button in the right top corner to coaches view too but in coaches view it will also have the option to
-// delete workout". His picks: Reschedule… (any day, as his row's) and, last and red, Delete workout, which asks first; a finished or skipped
+// delete workout". His picks: Reschedule (any day, as his row's) and, last and red, Delete workout, which asks first; a finished or skipped
 // workout shows only Delete, a template only Delete template; the red Delete workout at the page's foot stays. The client's "…" (and the
 // coach's Client view of a workout) keeps the client's Reschedule, from today on. And the client page's tabs are filled (his pick: B, a
 // dumbbell, bars, a page; traced to Apple's dumbbell.fill, chart.bar.fill and doc.text.fill).
@@ -30,7 +30,7 @@ const DONE = "2026-11-02T18:00:00.000Z";
 const quiet = () => { for (const t of maps.timers.values()) clearTimeout(t); maps.timers.clear(); fns.setPreview(false); };   // no save left to run into a later test
 
 test("the coach's own view: the \"…\" on every workout and template; Reschedule while it is still to do; last and red, Delete", () => {
-  page("w1"); assert.deepStrictEqual([shown(), menu("w1")], [true, ["Reschedule…", "red Delete workout"]], "still to do"); agree("w1");
+  page("w1"); assert.deepStrictEqual([shown(), menu("w1")], [true, ["Reschedule", "red Delete workout"]], "still to do"); agree("w1");
   page("w1", { completedAt: DONE }); assert.deepStrictEqual([shown(), menu("w1")], [true, ["red Delete workout"]], "finished: nothing to reschedule"); agree("w1");
   page("w1", { skippedAt: DONE }); assert.deepStrictEqual([shown(), menu("w1")], [true, ["red Delete workout"]], "skipped"); agree("w1");
   page("tp"); assert.deepStrictEqual([shown(), menu("tp")], [true, ["red Delete template"]], "a template: no day to move"); agree("tp");
@@ -39,9 +39,9 @@ test("the coach's own view: the \"…\" on every workout and template; Reschedul
 });
 
 test("the client's \"…\", and the coach's Client view of a workout: the client's Reschedule only, none once it is finished; never Delete", () => {
-  page("w1", {}, { client: true }); assert.deepStrictEqual([shown(), menu("w1")], [true, ["Reschedule…"]], "the client"); agree("w1");
+  page("w1", {}, { client: true }); assert.deepStrictEqual([shown(), menu("w1")], [true, ["Reschedule"]], "the client"); agree("w1");
   page("w1", { completedAt: DONE }, { client: true }); assert.deepStrictEqual([shown(), menu("w1")], [false, []], "the client, finished"); agree("w1");
-  page("w1", {}, { preview: true }); assert.deepStrictEqual([shown(), menu("w1")], [true, ["Reschedule…"]], "the coach's Client view: what the client sees"); agree("w1");
+  page("w1", {}, { preview: true }); assert.deepStrictEqual([shown(), menu("w1")], [true, ["Reschedule"]], "the coach's Client view: what the client sees"); agree("w1");
   page("w1", { completedAt: DONE }, { preview: true }); assert.deepStrictEqual([shown(), menu("w1")], [false, []], "and finished, as the client sees it"); agree("w1");
   page("w1"); app.set({ view: { name: "client", id: "c1" } }); fns.render(); assert.strictEqual(shown(), false, "only on the workout page");
   quiet();
@@ -64,7 +64,7 @@ test("the bar's buttons for the swipe back: the coach's workout and template hav
   quiet();
 });
 
-test("the coach's Reschedule…: the day picker, any day (one gone by too), as his row's; the pick moves the workout", () => {
+test("the coach's Reschedule: the day picker, any day (one gone by too), as his row's; the pick moves the workout", () => {
   page("w1");
   fns.moreItems(maps.trainings.get("w1"))[0].onPick();
   const dp = fns.datePicker();

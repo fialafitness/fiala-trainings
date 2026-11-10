@@ -361,7 +361,7 @@ const riseHold = async (slideAt, y, releaseAt) => {
   const label = (b) => (b && b !== elsewhere ? b.children.at(-1).textContent : null), litNow = () => label(pop.children.find((c) => c.classList.contains("lp-over")));
   await advance(slideAt); move(r.pri, 120, y); const atSlide = litNow();
   await advance(releaseAt - slideAt); const lit = litNow(), under = label(menuAt(120, y - off()));
-  up(r.pri, 120, y); await advance(400); const picked = fns.datePicker() ? "Reschedule…" : app.get().asking ? "Skip…" : null;
+  up(r.pri, 120, y); await advance(400); const picked = fns.datePicker() ? "Reschedule" : app.get().asking ? "Skip" : null;
   fns.closeSkip(); fns.closeDatePicker(); await reset(); return { atSlide, lit, under, picked }; };
 out.row.rise = { settled: await riseHold(300, 720, 600), between: await riseHold(300, 720, 406) };   // let go once it is in its place; and 6 ms after the next row came under the finger, before a frame showed it
 

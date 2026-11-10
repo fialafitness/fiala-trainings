@@ -3138,8 +3138,8 @@ import { reportRange, buildReport } from "./report.js";
   };
   function exerciseMenu(r, on) {                                    // the coach's "…" on an exercise: swap it, its instructions, and last and red, delete it, as Apple ends a menu with its destructive row (his ask, 9 Nov: Delete was hidden in Alternate exercise); the video is the play disc's own business
     return [
-      { label: "Alternate exercise\u2026", icon: MI.swap, onPick: on.swap },   // an ellipsis where the pick opens another step (the alternatives, the box), as Apple's menus mark it; Delete only asks, so it has none
-      { label: ((r.note || "").trim() ? "Edit instructions" : "Add instructions") + "\u2026", icon: MI.pencil, onPick: on.note },
+      { label: "Alternate exercise", icon: MI.swap, onPick: on.swap },   // no ellipsis on any menu row (his pick, 10 Nov: "I don't see the … in any apples design so drop it")
+      { label: (r.note || "").trim() ? "Edit instructions" : "Add instructions", icon: MI.pencil, onPick: on.note },
       { label: "Delete exercise", icon: MI.trash, danger: true, onPick: on.remove },
     ];
   }
@@ -3244,9 +3244,9 @@ import { reportRange, buildReport } from "./report.js";
     it.classList.add("ctx-on");
     showMenu(it, items, { at, focus: !pressed, back, onClose: () => it.classList.remove("ctx-on") });   // (with no press, focus goes into the menu, as a system menu takes it)
   });
-  const rowMenu = (id) => [                                          // a workout row's right-click: its swipe's two actions, Reschedule first (the outermost, the full swipe's), then Skip; each asks before it acts (the days, the reasons): an ellipsis, as Apple marks an item that needs more
-    { label: "Reschedule\u2026", icon: MI.calendar, onPick: () => rowReschedule(id) },
-    { label: "Skip\u2026", icon: MI.skip, onPick: () => rowSkip(id) },
+  const rowMenu = (id) => [                                          // a workout row's right-click: its swipe's two actions, Reschedule first (the outermost, the full swipe's), then Skip; each asks before it acts (the days, the reasons); no ellipsis (his pick, 10 Nov)
+    { label: "Reschedule", icon: MI.calendar, onPick: () => rowReschedule(id) },
+    { label: "Skip", icon: MI.skip, onPick: () => rowSkip(id) },
   ];
   // touch and hold: the phone's right-click (his pick, 10 Nov: "do 4"), with the same menus, opened the way iOS 27.2 opens them (measured on
   // its Contacts and Home Screen). A finger held still on a workout row, or on an exercise in the coach's view, lifts it a little where it is,
@@ -4062,11 +4062,11 @@ import { reportRange, buildReport } from "./report.js";
     const id = t.id, cid = t.clientId, page = () => S.view.name === "training" && S.view.id === id;
     if (canReschedule(t)) {
       const still = () => page() && canReschedule(trainings.get(id));   // the page is still this workout, still to do
-      return [{ label: "Reschedule\u2026", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, title: "Reschedule", selected: cur.date || today(), min: today, ok: still, onPick: (date) => applyReschedule(id, date) }); } }];   // min: today itself, asked at each redraw (days left open past midnight grey yesterday)
+      return [{ label: "Reschedule", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, title: "Reschedule", selected: cur.date || today(), min: today, ok: still, onPick: (date) => applyReschedule(id, date) }); } }];   // min: today itself, asked at each redraw (days left open past midnight grey yesterday)
     }
     const items = [];
-    if (canSwipeRow(t)) { const still = () => page() && coachMore(trainings.get(id)) && canSwipeRow(trainings.get(id)); items.push({ label: "Reschedule\u2026", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, title: "Reschedule", selected: cur.date || today(), min: null, ok: still, onPick: (date) => moveWorkout(id, date) }); } }); }
-    items.push({ label: isTemplateClient(cid) ? "Delete template" : "Delete workout", icon: MI.trash, danger: true, onPick: () => askDelete(id) });   // Delete only asks: no ellipsis
+    if (canSwipeRow(t)) { const still = () => page() && coachMore(trainings.get(id)) && canSwipeRow(trainings.get(id)); items.push({ label: "Reschedule", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, title: "Reschedule", selected: cur.date || today(), min: null, ok: still, onPick: (date) => moveWorkout(id, date) }); } }); }
+    items.push({ label: isTemplateClient(cid) ? "Delete template" : "Delete workout", icon: MI.trash, danger: true, onPick: () => askDelete(id) });
     return items;
   }
   async function askDelete(id) {                                       // Delete workout (the "…" and the page's foot): asked first, then gone for good; a template's workouts already made from it stay
