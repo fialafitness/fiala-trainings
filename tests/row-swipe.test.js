@@ -229,6 +229,10 @@ test("on a trackpad a rest mid-drag lets go and the fingers pick it up again; a 
 });
 
 const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+test("the questions' way out says Cancel, as Apple words it: Skip this workout?, and Finish (or Skip) this exercise?", () => {
+  assert.ok(html.includes('<button class="btn quiet" id="skKeep" type="button">Cancel</button>'), "Skip this workout?: Cancel (was Keep it)");
+  assert.ok(html.includes('<button class="btn quiet" id="esKeep" type="button">Cancel</button>'), "Finish this exercise? / Skip this exercise?: Cancel (was Keep training)");
+});
 const rule = (sel) => { const i = html.indexOf(sel + " {"); return i < 0 ? "" : html.slice(i, html.indexOf("}", i)); };   // a rule's (or a token block's) text, up to its first "}"
 test("the page keeps Apple's measured gaps behind the row: 10.33 between the actions, 10.67 to the card's edge, titles overhanging their capsules by 5.5", () => {
   assert.match(rule(".list li.swipe-row > .swipe-acts"), /gap: 10\.33px;/);
