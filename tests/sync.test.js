@@ -8,6 +8,11 @@ const day = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.
 const row = (id, w, r, done) => ({ id, label: "1", name: "Deadlift", sets: 3, reps: "5", rest: "90 sec", tempo: "", weights: w || [], repsDone: r || [], setsDone: done || 0, done: (done || 0) >= 3, note: "", alts: [] });
 const training = (id, extra) => ({ id, clientId: "c1", title: "Pull", date: day(0), createdAt: "2026-10-01T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [row("r1")], ...(extra || {}) });
 const coach = (sb) => { app.reset(); app.set({ sb, signedIn: true, clientMode: false, backend: fns.cloudBackend }); maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" }); };
+const settle = async () => {   // every save this test started has answered, and none is still waiting to go: nothing of it runs on into the next test
+  const until = Date.now() + 15000;                                   // generous: a save the server keeps refusing is tried four times over up to 5.4 s
+  do await tick(5); while ((app.get().inflight > 0 || maps.timers.size) && Date.now() < until);
+  assert.strictEqual(app.get().inflight, 0, "every save has answered (below zero: a save of an earlier test ended in this one)"); assert.strictEqual(maps.timers.size, 0, "and none is still waiting to go");
+};
 
 test("fetchAll pages through more than 1,000 rows and reports a complete answer", async () => {
   const sb = makeSupabase(); coach(sb);
@@ -174,6 +179,7 @@ test("a send that fails leaves every unsent row queued; a row the server refused
   sb.rpcs.client_log_set = async (a) => { if (a.p_row === "r1") { const e = new Error("row gone"); e.code = "P0001"; throw e; } if (a.p_row === "r2") { const e = new Error("network down"); e.code = "500"; throw e; } return null; };
   await assert.rejects(fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify(t))));
   assert.deepStrictEqual([...maps.pendingWeightRows.get("T")], ["r2", "r3"], "r1 dropped for good, r2 and r3 wait for the next try");
+  clearTimeout(app.get().syncTimer);                                  // the sync the refused row asks for (0.3 s on) is not this test's: it would run, and flush, inside the next one
 });
 test("the device copy reports when it cannot be written", () => {
   app.reset(); app.set({ backend: fns.localBackend });
@@ -189,7 +195,7 @@ test("a client whose monthly plan has ended keeps everything still queued: the s
   maps.dirty.set("trainings/T", 1); maps.pendingFinish.add("T"); maps.pendingWeightRows.set("T", new Set(["r1"]));
   await fns.syncDownNow();
   assert.ok(maps.dirty.has("trainings/T") && maps.pendingFinish.has("T") && maps.pendingWeightRows.has("T"), "the queue survives"); assert.ok(maps.trainings.has("T"), "and so does the device copy");
-  for (let i = 0; i < 300 && app.get().inflight; i++) await tick(10);   // the flush the sync started settles here, not inside the next test
+  await settle();                                                     // the flush the sync started ends here, not inside the next test: this server has no rules for it, so it is tried four times (about 5 s) and given up
 });
 
 test("a client on an 'in person by default' package gets new workouts with the switch on; other clients do not", async () => {
@@ -203,10 +209,10 @@ test("a client on an 'in person by default' package gets new workouts with the s
   const of = (id) => [...maps.trainings.values()].find((t) => t.clientId === id);
   assert.strictEqual(of("c1").inPerson, true); assert.strictEqual(of("c2").inPerson, undefined); assert.strictEqual(of("c3").inPerson, undefined);
   assert.strictEqual(fns.packageOf(maps.clients.get("c1")).name, "10 sessions"); assert.strictEqual(fns.packageOf(maps.clients.get("c3")), null);
+  await settle();                                                     // the three new workouts' saves land here, not inside a later test
 });
 
 const TPL = "00000000-0000-4000-8000-0000000000f1", U = (n) => "00000000-0000-4000-8000-" + String(n).padStart(12, "0");
-const settle = async () => { await tick(5); for (let i = 0; i < 300 && app.get().inflight; i++) await tick(10); };   // every save this test started has answered: nothing of it runs on into the next test
 test("a workout restored from a backup lands as the file has it: without a stamp and through a conflict, nothing of the server's is merged in", async () => {
   const sb = makeSupabase(); coach(sb);
   sb.seed("ft_trainings", "T", training("T", { title: "Server", completedAt: null, date: day(2), rows: [row("r1", ["40"], ["5"], 1)] }), { client_id: "c1" });

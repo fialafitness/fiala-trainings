@@ -969,7 +969,8 @@ import { reportRange, buildReport } from "./report.js";
     window.addEventListener("pageshow", (e) => { if (e && e.persisted) scrollMode("manual"); });
   }
   let popClose = null, popAnchor = null;                            // the frosted bubble or menu that is open, if one is: its own close, and the button it hangs from
-  let rs = null, rsT = null, wg = null, rsEat = 0;                  // a workout row swiped to its actions (below the swipe back): the row out or open, the finger or mouse on one, the trackpad's swipe under way, a tap's click to drop
+  let liftClick = null, liftLate = 0;                               // a touch and hold's menu: what the dimmed page's click does, and the close that comes if that click never does
+  let rs = null, rsT = null, wg = null, rsEat = 0, lpHoldAt = 0;    // a workout row swiped to its actions (below the swipe back): the row out or open, the finger or mouse on one, the trackpad's swipe under way, a tap's click to drop; when a touch and hold's menu came under a finger not yet let go (see lpOpen)
   const closeMoreMenu = () => { if (popClose && popAnchor === $("tMore") && $("tMore").hidden) popClose(); };   // a redraw that takes the workout's "…" away (a sync brought a finish, a skip, a delete) takes its menu with it
   const stateDepth = () => { try { const st = hasState() && history.state; return st && typeof st.fiala === "number" ? st.fiala : 0; } catch (_) { return 0; } };
   nav.depth = stateDepth();
@@ -1183,7 +1184,7 @@ import { reportRange, buildReport } from "./report.js";
       if (scrolledSince() || (Math.abs(dy) > 12 && Math.abs(dy) > dx)) { dropSw(); return; }   // a scroll
       if (dx < SWIPE_GO) return;
       if (dx < Math.abs(dy) * (sw.edge ? 1 : 2)) { dropSw(); return; }   // from the edge: anything not more up or down than right; from the page: clearly to the right
-      e.preventDefault(); sw.held = true; sw.hx = t.clientX; swipeSample(e, t.clientX); return;   // held from here; this move only holds, so WebKit has the answer at once (the page moves from the next)
+      e.preventDefault(); sw.held = true; lpYield(); sw.hx = t.clientX; swipeSample(e, t.clientX); return;   // held from here; this move only holds, so WebKit has the answer at once (the page moves from the next); a touch and hold under way is let go at once
     }
     e.preventDefault(); swipeSample(e, t.clientX);
     if (!sw.on) { if (scrolledSince()) { dropSw(); return; } sw.x0 = t.clientX; startSwipe(); }   // the page moves by the finger's travel from here, no jump (a page the browser scrolled anyway keeps the touch)
@@ -1329,7 +1330,8 @@ import { reportRange, buildReport } from "./report.js";
   const fingerX = (e) => (e && e.webkitDirectionInvertedFromDevice === false ? e.deltaX : -e.deltaX);   // a trackpad's sideways scroll as the fingers moved, + to the right (macOS scrolls naturally by default: the page's delta is the other way)
   const rsSample = (g, ts, x) => { const last = g.pts[g.pts.length - 1]; if (!last || ts - last[0] >= 8) { g.pts.push([ts, x]); while (g.pts.length > 2 && ts - g.pts[0][0] > 100) g.pts.shift(); } else last[1] = x; };
   const rsSpeed = (g, at) => { const a = g.pts[0], b = g.pts[g.pts.length - 1]; if (!a || !b || b[0] <= a[0] || (at != null && at - b[0] > 60)) return 0; return (b[1] - a[1]) / (b[0] - a[0]); };   // px per ms to the left over the last 100 ms; a finger that rested before it lifted has none
-  const rowHolds = () => !!(rsT && (rsT.held || performance.now() - rsT.at < 10000)) || !!(rs && rs.busy) || !!(wg && wg.r && !wg.done);   // a finger or the mouse on a row (a press that never came up holds nothing after 10 s), a row settling, two fingers moving one: a sync's redraw waits (renderUnlessSwiping), never the row under them rebuilt
+  const lpSettling = () => { const b = $("ctxLift"); return !!(b && !b.hidden && b.classList.contains("lp-back")); };   // a held item's copy settling back into its place (0.26 s): the row under it is not rebuilt meanwhile, or the copy would slide back over a row that is no longer there
+  const rowHolds = () => lpSettling() || !!(lpHoldAt && performance.now() - lpHoldAt < 10000) || !!(rsT && (rsT.held || performance.now() - rsT.at < 10000)) || !!(rs && rs.busy) || !!(wg && wg.r && !wg.done);   // a finger still down from a touch and hold, a finger or the mouse on a row (a press that never came up holds nothing after 10 s), a row settling, two fingers moving one: a sync's redraw waits (renderUnlessSwiping), never the item under them rebuilt (its release would then reach no listener, and iOS would click what lies under it)
   const rsFlush = () => { if (renderAfterSwipe && !(sw && (sw.on || sw.busy)) && !rowHolds()) { renderAfterSwipe = false; render(); } };
   const rsDrop = () => { rsT = null; rsFlush(); };                   // the finger or mouse is off the rows: what a sync brought meanwhile is drawn
   const rsFree = () => !!rs && !(rsT && rsT.held) && !(wg && wg.r === rs && !wg.done);   // the row out is in no finger's, mouse's or two fingers' hands (it may still be settling)
@@ -1401,7 +1403,7 @@ import { reportRange, buildReport } from "./report.js";
     openDatePicker({ clientId: cid, title: "Reschedule", selected: t.date || today(), min: asClient ? today : null, ok: still, onPick: (date) => (asClient ? applyReschedule(id, date) : moveWorkout(id, date)) });
     return true;
   }
-  function rowSkip(id) {                                            // the workout page's own "Skip this workout?" (its reasons, then Skip workout or Keep it), for this row's workout
+  function rowSkip(id) {                                            // the workout page's own "Skip this workout?" (its reasons, then Skip workout or Cancel), for this row's workout
     const t = trainings.get(id); if (!canSwipeRow(t)) return false;
     openSkip(id); return true;
   }
@@ -1447,7 +1449,7 @@ import { reportRange, buildReport } from "./report.js";
       if (Math.abs(dx) < Math.abs(dy) * 2 || (dx > 0 && !(rs && rs.li === g.li))) { if (g.act) return; rsT = null; closeOwn(); rsFlush(); return; }   // not clearly sideways (the page scrolls), or to the right on a closed row: the page's swipe back has it, where there is one (a tap on an action that rolls a little stays that tap)
       e.preventDefault(); if (sw && !sw.on && !sw.busy) dropSw();   // held: from here the page neither scrolls nor swipes back
       const r = rsBegin(g.li); if (!r) { rsDrop(); return; }
-      g.held = true; rsEatOff(); g.x0 = t.clientX; g.sx = r.x; rsSample(g, e.timeStamp, r.x); return;   // it moves from the next move, by the finger's travel from here: no jump
+      g.held = true; lpYield(); rsEatOff(); g.x0 = t.clientX; g.sx = r.x; rsSample(g, e.timeStamp, r.x); return;   // it moves from the next move, by the finger's travel from here: no jump (and a touch and hold under way is let go at once)
     }
     e.preventDefault(); if (!rs || rs.li !== g.li) { rsDrop(); return; }
     const x = Math.max(0, Math.min(rs.row, g.sx - (t.clientX - g.x0))); rsSample(g, e.timeStamp, x); rsPaint(rs, x, null);
@@ -2509,7 +2511,8 @@ import { reportRange, buildReport } from "./report.js";
     wt.append(pri, sec);
     const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a"; chev.setAttribute("aria-hidden", "true");
     b.append(wd, wi, wt, chev);
-    b.addEventListener("click", () => { if (settingsOpen === "history") openFromHistory(t.id); else go({ name: "training", id: t.id }); });   // on History the page is a settings page over the client's: it has to come off first
+    const open = () => { if (settingsOpen === "history") openFromHistory(t.id); else go({ name: "training", id: t.id }); };   // on History the page is a settings page over the client's: it has to come off first
+    b.addEventListener("click", open);
     li.dataset.tid = t.id; li.appendChild(b);
     if (overdue) {                                                       // the missed workout is the first thing to decide
       const acts = document.createElement("div"); acts.className = "missed-actions";
@@ -2526,7 +2529,7 @@ import { reportRange, buildReport } from "./report.js";
       layer.append(act("sa-skip", SA_SKIP, "Skip", () => { if (rs && rs.li === li) rsSettle(rs, 0, 0); rowSkip(t.id); }),   // asks first, as the workout page does
         act("sa-resched", SA_CALENDAR, "Reschedule", () => { if (rs && rs.li === li) rsFire(rs); else rowReschedule(t.id); }));   // outermost: the full swipe's
       li.appendChild(layer);                                             // last, under the row's own parts: they slide off it
-      li._ctx = () => rowMenu(t.id); li._ctx.ok = () => canSwipeRow(trainings.get(t.id));   // a right-click: the same two, at the pointer
+      li._ctx = () => rowMenu(t.id); li._ctx.ok = () => canSwipeRow(trainings.get(t.id)); li._ctx.open = open;   // a right-click: the same two, at the pointer; a touch and hold: the same two under the lifted row, a tap on which opens it
     }
     return li;
   }
@@ -3091,7 +3094,7 @@ import { reportRange, buildReport } from "./report.js";
       if (it.icon) b.innerHTML = it.icon;
       const s = document.createElement("span"); s.textContent = it.label; b.appendChild(s);
       b.addEventListener("mousedown", (e) => e.preventDefault());   // pressing a row moves no focus: a field typed in keeps it (and its redraw waits) until the row is picked
-      b.addEventListener("click", (e) => { e.stopPropagation(); if (close) close(); it.onPick(); });   // close() first: a keyboard's focus is back on the anchor, so a sheet the row opens returns there
+      b.addEventListener("click", (e) => { e.stopPropagation(); if (close) close(); if (opts && opts.lift && opts.lift.drop) opts.lift.drop(); it.onPick(); });   // close() first: a keyboard's focus is back on the anchor, so a sheet the row opens returns there (a held item's copy goes at once: what the pick opens, or the page it glides, is not under a copy of the item as it was)
       return b;
     }));
     close = openPop(anchor, opts);
@@ -3126,48 +3129,63 @@ import { reportRange, buildReport } from "./report.js";
     if (popClose) popClose();                                        // one bubble at a time: a second Enter on its button replaces it, and leaves no closer of the first one waiting to eat a tap
     const bg = $("whenBg"), pop = $("whenPop");
     const at = opts && opts.at;                                       // a right-click's menu: from the pointer itself, no pointer drawn (opts.at { x, y })
-    bg.hidden = false; pop.classList.remove("above"); pop.classList.toggle("hung", !!(opts && (opts.align === "right" || at)));
+    const lift = opts && opts.lift;                                   // a touch and hold's: under the item it lifted (opts.lift { box, rect, grow, open })
+    bg.hidden = false; pop.classList.remove("above"); pop.classList.toggle("hung", !!(opts && (opts.align === "right" || at || lift))); pop.classList.toggle("lift", !!lift);
+    pop.style.left = "0px"; pop.style.top = "0px";                   // measured at its own size: where the last bubble was, a menu would be squeezed by the screen's edge (taller, its rows wrapped) and placed by that
     const r = anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, pw = pop.offsetWidth, ph = pop.offsetHeight;
     const box = anchor.closest(".group, .card, .plan-card, .overview"), bb = box ? box.getBoundingClientRect() : null;   // the bubble stays inside the card it belongs to, as Apple keeps a popover inside its content's margins, never out at the screen's edge
     let minL = 8, maxL = vw - pw - 8; if (bb && bb.right - bb.left >= pw) { minL = Math.max(minL, bb.left); maxL = Math.min(maxL, bb.right - pw); }
     const want = opts && opts.align === "right" ? r.right - pw : opts && opts.align === "center" ? r.left + r.width / 2 - pw / 2 : r.left;   // hung from the right edge, centred under the anchor, or from its left
     let left = Math.max(minL, Math.min(want, maxL)), top = r.bottom + 8;
-    if (at) ({ left, top } = ctxPlace(at.x, at.y, pw, ph, vw, vh));
+    if (lift) {                                                       // the margins: the screen's safe areas (the dim layer is padded with them) and 16 more, as iOS keeps its menu off the home indicator (measured: 17)
+      const dcs = getComputedStyle($("ctxDim")), L = liftPlace(lift.rect, pw, ph, vw, vh, (parseFloat(dcs.paddingTop) || 0) + 16, (parseFloat(dcs.paddingBottom) || 0) + 16, lift.grow);
+      const b0 = typeof lift.box.getBoundingClientRect === "function" ? lift.box.getBoundingClientRect().bottom : NaN;   // the item's foot now, still growing
+      ({ left, top } = L); lift.vis = L.vis; lift.box.style.transform = "translateY(" + L.dy + "px) scale(" + L.s + ")";   // the item moves up with its menu where it must, and shrinks only if it is too tall to fit
+      pop.style.setProperty("--lift-off", (b0 > L.vis.bottom ? b0 - L.vis.bottom : 0) + "px");   // the menu starts that far lower and rises with it on the item's own curve (liftRise): 16 under it all the way, never over it
+    } else if (at) ({ left, top } = ctxPlace(at.x, at.y, pw, ph, vw, vh));
     else if (top + ph > vh - 8) { top = r.top - 8 - ph; pop.classList.add("above"); }
     pop.style.left = left + "px"; pop.style.top = top + "px"; pop.style.setProperty("--caret", Math.max(12, Math.min(r.left + r.width / 2 - left, pw - 12)) + "px");
     const close = () => {
       if (popClose === close) { popClose = null; popAnchor = null; } const inPop = pop.contains(document.activeElement);
-      bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); document.removeEventListener("contextmenu", onCtx, true); window.removeEventListener("scroll", close, true);
+      if (lift) { liftClick = null; clearTimeout(liftLate); }
+      bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); document.removeEventListener("contextmenu", onCtx, true); window.removeEventListener("scroll", close, true); window.removeEventListener("resize", close);
       const back = opts && opts.back && document.contains(opts.back) ? opts.back : anchor;
       if (inPop && document.contains(back)) back.focus({ preventScroll: true });   // focus was in the bubble (a keyboard, VoiceOver): back on the button it hangs from (a right-click's: what had it), never lost to the page
       if (opts && opts.onClose) opts.onClose();                       // (a right-click's ring comes off its item)
     };
     const isMenu = pop.classList.contains("menu");                  // (showMenu sets it before it opens; a bubble of numbers has none)
-    const onCtx = (e) => { if (!pop.contains(e.target)) close(); else if (isMenu) e.preventDefault(); };   // a right-click anywhere else closes the bubble (the browser's own menu, or the next item's, opens there); in a menu it does nothing; in a bubble of numbers the browser's own stays (Copy, Look Up)
+    const onCtx = (e) => { if (lift && /^(touch|pen)$/.test(ctxBy(e))) { e.preventDefault(); return; } if (!pop.contains(e.target)) close(); else if (isMenu) e.preventDefault(); };   // (a touch and hold's own long press, Android's contextmenu coming after its menu: it keeps the menu, and its browser's own never shows)   // a right-click anywhere else closes the bubble (the browser's own menu, or the next item's, opens there); in a menu it does nothing; in a bubble of numbers the browser's own stays (Copy, Look Up)
     const onKey = (e) => { if (e.key === "Escape") close(); };
     let down = null, eat = null;                                     // a tap outside closes the bubble and goes no further (as a system menu's dismissing tap): nothing under it is pressed or given focus; a finger that drags the page does not close it
     const uneat = () => { if (eat) { document.removeEventListener("mousedown", eat, true); eat = null; } };
     const onDown = (e) => {
       if (pop.contains(e.target)) { down = null; return; }
+      if (lift) { down = { x: e.clientX, y: e.clientY }; return; }   // over the dimmed page nothing under the tap can take focus or a press, and a cancelled press makes iOS hold the tap's click (see onUp)
       e.preventDefault(); down = { x: e.clientX, y: e.clientY };     // no mouse events follow a cancelled pointerdown, so a field under the tap is not focused (focus is mousedown's doing); on the phone that mousedown comes after pointerup, so it is eaten there too
       uneat(); eat = (ev) => { ev.preventDefault(); uneat(); }; document.addEventListener("mousedown", eat, true); setTimeout(uneat, 400);
     };
     const onUp = (e) => {
       if (!down) return; const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y); down = null; if (moved > 10) { uneat(); return; }
+      if (lift) { clearTimeout(liftLate); liftLate = setTimeout(close, 600); return; }   // a touch and hold's menu: the dimmed page's own click closes it (liftClick). Closing here changed the page under the tap, and iOS then held that tap's click 0.4 s and gave it to what was under the dim (measured: the calendar day); the click comes at once when nothing changes (measured: 35 ms)
       if (e.button === 0 && e.isPrimary) {                            // only a primary tap is followed by a click; a right or middle button, or a second finger, is not, and must not leave the swallower waiting for someone else's click
         const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); disarm(); }, disarm = () => { document.removeEventListener("click", swallow, true); document.removeEventListener("pointerdown", disarm, true); uneat(); };
         document.addEventListener("click", swallow, true); document.addEventListener("pointerdown", disarm, true); setTimeout(disarm, 400);   // the click that follows this tap is the dismissal, not a press on what lies under
       }
       close();
     };
+    if (lift) liftClick = (e) => {                                    // the dimmed page's click: the menu closes; on the lifted workout it opens it, as Apple's open what they lift (measured: Contacts opens the contact)
+      const v = lift.vis, onItem = !!(v && e.clientX >= v.left && e.clientX <= v.right && e.clientY >= v.top && e.clientY <= v.bottom);
+      close(); if (onItem && lift.open) { if (lift.hide) lift.hide(); lift.open(); }   // (the copy and the dim go at once, not over the workout that opens)
+    };
     document.addEventListener("pointerdown", onDown, true); document.addEventListener("pointerup", onUp, true); document.addEventListener("keydown", onKey); document.addEventListener("contextmenu", onCtx, true); window.addEventListener("scroll", close, true);
+    if (lift) window.addEventListener("resize", close);              // (the lifted item would no longer sit over its place)
     popClose = close; popAnchor = anchor;
     return close;
   }
   // a right-click (a trackpad's two-finger click, a Control-click): the item's own menu at the pointer, as the Mac gives its items one (his pick,
   // 9 Nov: "do what Apple would do"). A workout row on Today and Up next: its swipe's two actions; an exercise in the coach's view: the menu of
   // its "…". While the menu is open the item wears a ring, as the Mac rings what was right-clicked. In the field being typed in a right-click
-  // stays the browser's (Cut, Copy, Paste), as on the Mac, and a finger's long press never opens one (the phone has the swipe and the "…").
+  // stays the browser's (Cut, Copy, Paste), as on the Mac. A finger's long press is the touch and hold below, never this.
   const CTX_NOT = ".alt-menu, .note-pop, .numpick, .vid-form, .player, .sugg, .swipe-acts";   // a panel open in the item, or the swipe's own buttons: not the item itself
   const MAC = typeof navigator !== "undefined" && /Mac/.test(navigator.platform || navigator.userAgent || "");
   let ctxDown = null, ctxArmed = false;                              // the latest press not yet answered by a menu ({ type, down, upAt }): a right-click comes with a mouse's (or a trackpad's), a long press with a finger's, the keyboard or VoiceOver (VO-Shift-M) with none; armed: a right press on an item is under way
@@ -3188,7 +3206,7 @@ import { reportRange, buildReport } from "./report.js";
   };
   document.addEventListener("contextmenu", (e) => {
     const by = ctxBy(e); ctxDown = null; ctxArmed = false;              // (the press is answered: a later keyboard menu is the keyboard's)
-    if (by === "touch" || by === "pen") return;                        // a finger's or a pen's long press: never this menu (the phone has the swipe and the "…")
+    if (by === "touch" || by === "pen") { if (lp) e.preventDefault(); return; }   // a finger's or a pen's long press: the touch and hold's (Android's own menu never comes over it), never this one
     const it = ctxItemOf(e.target); if (!it) return;                   // anywhere else, the browser's own
     const items = it._ctx(); if (!items || !items.length) return;
     e.preventDefault(); if (rsFree() && rs.open) rsSettle(rs, 0, 0);  // an open row closes, as a click elsewhere closes it
@@ -3203,6 +3221,135 @@ import { reportRange, buildReport } from "./report.js";
     { label: "Reschedule\u2026", icon: MI.calendar, onPick: () => rowReschedule(id) },
     { label: "Skip\u2026", icon: MI.skip, onPick: () => rowSkip(id) },
   ];
+  // touch and hold: the phone's right-click (his pick, 10 Nov: "do 4"), with the same menus, opened the way iOS 27.2 opens them (measured on
+  // its Contacts and Home Screen). A finger held still on a workout row, or on an exercise in the coach's view, lifts it a little where it is,
+  // with a shadow; at 0.4 s the page dims (20%; 48% in the dark) and the menu opens 16 under the item on its leading edge, the two moving up
+  // together where the menu would not fit. A release before then is a tap, as ever, and a finger that wanders 10 points is a scroll or a swipe.
+  // The finger can slide onto a row and let go there to pick it; a tap on the lifted workout opens it, as Apple's open what they lift; a tap
+  // anywhere else closes. A field is never held (a finger held there is its own loupe and caret), nor anything while a menu, a sheet or the
+  // keyboard is up, or a row is swiped open (a tap then only closes it).
+  const LP_LIFT = 100, LP_MS = 400, LP_SLOP = 10, LP_GROW = 1.035, LP_RISE = 470;   // measured: a row starts growing 0.07-0.08 s after it lights up; a hold of 0.35 s is a tap, of 0.40 s the menu; 8 points of drift keep it and 16 lose it; 3.6% bigger by the menu. LP_RISE: the menu moving into its place (liftRise, 450 ms) and a frame
+  let lp = null, lpEatUntil = 0, lpBackT = 0, lpGone = null, lpAc = null;   // the hold under way or answered ({ it, id, x, y, lx, ly, lift, timer, box, rect, open, openAt, down, ox, oy, slid, over, fx, fy, track }); the end of the window in which its release's click goes nowhere; the lifted copy's way back; the finger of a hold whose menu went while it was still down; its finger's listeners on the element it began on
+  const lpUnlisten = () => { if (lpAc) { lpAc.abort(); lpAc = null; } };
+  const lpField = (el) => !!(el && el.closest && el.closest("input, textarea, select, [contenteditable], .chip, .tempo-tiles"));   // a field, or a box that is one (Reps, Rest, a set's Weight: its words, then its field on a tap; the tempo's tiles)
+  const lpItemOf = (el) => (lpField(el) ? null : ctxItemOf(el));
+  function liftPlace(r, pw, ph, vw, vh, top0, bot0, grow) {          // where a held item and its menu go: r its place, pw x ph the menu, top0 / bot0 the margins; returns the item's move and scale and its rect on screen, and the menu's corner
+    const GAP = 16, s = Math.max(0.05, Math.min(grow, (vh - top0 - bot0 - GAP - ph) / r.height));   // grown a little, or shrunk to fit over its menu (a tall card), as iOS scales a preview
+    const h = r.height * s, w = r.width * s, y0 = r.top + (r.height - h) / 2;   // scaled about its centre
+    const y = Math.max(top0, Math.min(y0, vh - bot0 - ph - GAP - h)), x = r.left + (r.width - w) / 2;   // up with its menu until the menu fits under it, never above the top margin
+    return { dy: y - y0, s, vis: { left: x, top: y, right: x + w, bottom: y + h }, left: Math.max(8, Math.min(x, vw - pw - 8)), top: Math.min(y + h + GAP, vh - bot0 - ph) };   // (the menu never past the bottom margin, even over a card too tall to shrink enough)
+  }
+  function lpClone(it) {                                             // a copy of the item over the item, to lift: in copies of its card and list, for the styles it takes from them
+    clearTimeout(lpBackT); lpUnwatch();
+    const box = $("ctxLift"), r = it.getBoundingClientRect();
+    box.replaceChildren(); let host = box;
+    for (const w of it.tagName === "LI" ? [it.parentElement] : [it.closest(".block"), it.closest(".group")]) {
+      if (!w) continue; const d = document.createElement(/^(UL|OL)$/.test(w.tagName) ? w.tagName : "div"); d.className = w.className; d.classList.add("lp-wrap"); host.appendChild(d); host = d;
+    }
+    const c = it.cloneNode(true), from = it.querySelectorAll("input, textarea, select"), to = c.querySelectorAll("input, textarea, select");
+    to.forEach((f, i) => { if (from[i]) f.value = from[i].value; f.disabled = true; f.tabIndex = -1; });   // what is typed, not what was first drawn; and never a field (it slides under the finger, and iOS took it for one: its magnifier came up, measured)
+    const os = [it, ...it.querySelectorAll("*")], ks = [c, ...c.querySelectorAll("*")];   // what the item's page hides, the copy hides too (rules its copy's ancestors cannot carry: a template's set log, say)
+    os.forEach((o, i) => { if (ks[i] && o.getClientRects && !o.getClientRects().length && getComputedStyle(o).display === "none") ks[i].style.display = "none"; });
+    c.querySelectorAll(".alt-menu, .note-pop, .numpick, .sugg").forEach((n) => { n.hidden = true; });   // an open panel is no part of the lifted item (its menu closes the alternatives as it opens)
+    const vids = it.querySelectorAll("iframe, video");
+    c.querySelectorAll("iframe, video").forEach((f, i) => { const o = vids[i], ph = document.createElement("div"); ph.style.width = (o ? o.offsetWidth : 0) + "px"; ph.style.height = (o ? o.offsetHeight : 0) + "px"; ph.style.background = "#000000"; f.replaceWith(ph); });   // a playing video is not loaded again
+    for (const n of [c, ...c.querySelectorAll("[id]")]) n.removeAttribute("id");
+    c.classList.remove("ctx-on", "rs-ate", "swiped"); c.style.margin = "0"; c.style.width = r.width + "px"; c.style.boxSizing = "border-box";
+    const cs = getComputedStyle(it), rad = parseFloat(cs.borderTopLeftRadius) || 0, bt = parseFloat(cs.borderTopWidth) || 0;
+    if (bt > 0) c.style.borderTop = bt + "px solid transparent";      // the hairline above a row that is not its list's first (li + li): kept as room, so its words do not jump up a point as it lifts
+    host.appendChild(c);
+    box.style.borderRadius = rad > 0 ? cs.borderTopLeftRadius : "";   // a superset's exercise keeps its own panel's corners; a row or a card has the card's
+    const card = it.tagName === "LI" ? null : it.closest(".group"), tint = card ? getComputedStyle(card).backgroundColor : "";
+    box.style.background = tint && tint !== "transparent" && !/^rgba\(\d+, \d+, \d+, 0\)$/.test(tint) ? "linear-gradient(" + tint + ", " + tint + "), var(--surface)" : "";   // its card's own colour, over the page as the card lies on it (a finished card's fern wash), not a white card
+    box.style.left = r.left + "px"; box.style.top = r.top + "px"; box.style.width = r.width + "px"; box.style.height = r.height + "px"; box.style.transform = "";
+    box.classList.remove("up", "lp-back"); box.hidden = false;
+    return { box, rect: { left: r.left, top: r.top, width: r.width, height: r.height } };
+  }
+  function lpLift() {                                                // 0.1 s into the hold: the item starts to lift
+    const p = lp; if (!p || p.box) return;
+    if (!p.it.isConnected || !p.it._ctx.ok()) { lpDrop(); return; }
+    const c = lpClone(p.it); p.box = c.box; p.rect = c.rect;
+    void p.box.offsetWidth; p.box.style.transform = "scale(" + LP_GROW + ")"; p.box.classList.add("up");   // from its place (laid out first), growing with its shadow
+  }
+  function lpHide() { clearTimeout(lpBackT); lpUnwatch(); const box = $("ctxLift"), dim = $("ctxDim"); box.hidden = true; box.classList.remove("up", "lp-back"); box.style.transform = ""; box.replaceChildren(); dim.hidden = true; dim.classList.remove("on"); }
+  function lpUnwatch() { window.removeEventListener("scroll", lpCopyOff, true); window.removeEventListener("resize", lpCopyOff); }
+  function lpCopyOff() { lpUnwatch(); const box = $("ctxLift"); box.hidden = true; box.classList.remove("up", "lp-back"); box.style.transform = ""; box.replaceChildren(); }   // only the copy, at once (a pick, the page moving under it, a new touch): the dim fades on, taking no touch, and lpHide ends it
+  function lpDrop() {                                                // the hold is let go before its menu (a tap, a scroll, a swipe, a second finger): the item is down at once
+    const p = lp; if (!p) return; lp = null; lpUnlisten();
+    clearTimeout(p.lift); clearTimeout(p.timer);
+    if (p.box && !p.open) lpHide();
+  }
+  function lpYield() { if (lp && !lp.open) lpDrop(); }               // the row's swipe or the swipe back took the finger, on this very move: the hold is let go at once (its copy too, lifted or not)
+  function lpOpen() {                                                // 0.4 s: the menu
+    const p = lp; if (!p || p.open) return;
+    const it = p.it;
+    if (!it.isConnected || !it._ctx.ok() || held() || typingIn(document.activeElement)) { lpDrop(); return; }   // (a row's swipe or the swipe back that takes the finger lets the hold go on that move: lpYield)
+    const items = it._ctx(); if (!items || !items.length) { lpDrop(); return; }
+    clearTimeout(p.lift); if (!p.box) lpLift(); if (lp !== p) return;
+    p.open = true; p.ox = p.lx; p.oy = p.ly; p.slid = false; rsT = null; dropSw();   // the finger is the menu's now: no row slides and the page does not swipe back under it (ox, oy: where it was as the menu came)
+    lpHoldAt = p.openAt = performance.now();                          // and until it lets go, a sync's redraw waits (rowHolds): the item under it is not rebuilt, so its release stays the hold's
+    const dim = $("ctxDim"); dim.hidden = false; void dim.offsetWidth; dim.classList.add("on");
+    showMenu(it, items, { lift: { box: p.box, rect: p.rect, grow: LP_GROW, open: it._ctx.open, hide: lpHide, drop: lpCopyOff }, onClose: lpClosed });
+  }
+  function lpClosed() {                                              // the menu went (a tap, Escape; a pick takes the copy at once): the page brightens and the item settles back into its place, then is itself again
+    const p = lp; if (p) { lp = null; clearTimeout(p.lift); clearTimeout(p.timer); if (p.over) p.over.classList.remove("lp-over"); if (p.down) lpGone = p.id; }   // (a finger still down: its release is still the hold's)
+    const box = $("ctxLift"), dim = $("ctxDim");
+    dim.classList.remove("on"); box.classList.remove("up"); box.classList.add("lp-back"); box.style.transform = "";
+    clearTimeout(lpBackT); lpBackT = setTimeout(() => { lpHide(); rsFlush(); }, 260);   // (a sync's redraw that waited for the settle comes as the copy goes)
+    const r = p && p.rect && p.it.isConnected ? p.it.getBoundingClientRect() : null;
+    if (!r || Math.abs(r.top - p.rect.top) > 1 || Math.abs(r.left - p.rect.left) > 1 || Math.abs(r.width - p.rect.width) > 1) { lpCopyOff(); return; }   // the item is no longer where its copy would settle (a scroll or a turn of the phone closed the menu, a redraw took it): the copy goes at once
+    window.addEventListener("scroll", lpCopyOff, { capture: true, passive: true }); window.addEventListener("resize", lpCopyOff);   // and it goes as soon as the page moves under it
+  }
+  const lpRowAt = (x, y) => { const el = typeof document.elementFromPoint === "function" ? document.elementFromPoint(x, y) : null; return el && el.closest ? el.closest("#whenPop .wopt") : null; };
+  const lpOver = (b) => { const p = lp; if (!p || p.over === (b || null)) return; if (p.over) p.over.classList.remove("lp-over"); p.over = b || null; if (b) b.classList.add("lp-over"); };   // the row under the sliding finger lights, as Apple's
+  document.addEventListener("touchstart", (e) => {
+    lpEatUntil = 0; if (e.touches.length === 1) { lpGone = null; lpHoldAt = 0; lpUnlisten(); }   // a new touch: its own click goes through (one finger alone: no earlier one is still down)
+    if (lp && lp.open) return;                                        // a menu up: a tap is its own (a row, or anywhere else to close it)
+    lpDrop(); if (!$("ctxLift").hidden) lpCopyOff();                 // (a copy still settling from a closed menu goes at once: not over what this touch opens or scrolls)
+    if (e.touches.length !== 1 || held() || (rs && rs.open) || swipeHolds() || typingIn(document.activeElement)) return;   // (held: a menu, a bubble, a sheet or a question is up; this touch is theirs)
+    const it = lpItemOf(e.target); if (!it) return;
+    const t = e.touches[0], tgt = e.target;
+    lp = { it, id: t.identifier, x: t.clientX, y: t.clientY, lx: t.clientX, ly: t.clientY, open: false, down: true, box: null, rect: null, slid: false, over: null, track: false };
+    lp.lift = setTimeout(lpLift, LP_LIFT); lp.timer = setTimeout(lpOpen, LP_MS);
+    if (tgt && tgt.addEventListener && typeof AbortController === "function") {   // a touch's events stay aimed at the element it began on: one a redraw takes out of the document no longer passes them on, so they are heard on it too (as the swipe back hears its own)
+      const ac = lpAc = new AbortController(), on = (type, fn) => tgt.addEventListener(type, (ev) => { if (!tgt.isConnected) fn(ev); }, { passive: type === "touchcancel", signal: ac.signal });
+      on("touchmove", (ev) => lpMove(ev)); on("touchend", (ev) => lpUp(ev, false)); on("touchcancel", (ev) => lpUp(ev, true));
+    }
+  }, { capture: true, passive: true });
+  const lpMove = (e) => {
+    const p = lp; if (!p) return;
+    const t = [...(e.touches || [])].find((x) => x.identifier === p.id);
+    if (!p.open) { if (!t || e.touches.length > 1 || Math.hypot(t.clientX - p.x, t.clientY - p.y) > LP_SLOP) lpDrop(); else { p.lx = t.clientX; p.ly = t.clientY; } return; }   // it wandered: a scroll, a row's swipe, the swipe back
+    if (!p.down) return;
+    if (e.cancelable) e.preventDefault();                             // the page under the menu never scrolls
+    if (!t) return;
+    if (!p.slid && Math.hypot(t.clientX - p.ox, t.clientY - p.oy) > LP_SLOP) p.slid = true;   // a slide, not the menu coming to lie under a still finger (measured: Apple's picks only what the finger moves onto)
+    if (!p.slid) return;
+    p.fx = t.clientX; p.fy = t.clientY; lpOver(lpRowAt(t.clientX, t.clientY));
+    if (!p.track && performance.now() - p.openAt < LP_RISE) { p.track = true; requestAnimationFrame(() => lpTrack(p)); }   // the menu still moving into its place: the row under the finger is found again every frame, as the rows pass under it
+  };
+  const lpTrack = (p) => { if (lp !== p || !p.down) return; lpOver(lpRowAt(p.fx, p.fy)); if (performance.now() - p.openAt < LP_RISE) requestAnimationFrame(() => lpTrack(p)); else p.track = false; };
+  document.addEventListener("touchmove", lpMove, { capture: true, passive: false });
+  const lpLetGo = () => { lpHoldAt = 0; lpUnlisten(); setTimeout(rsFlush, 400); };   // the hold's finger is up: a sync's redraw that waited comes once its click would have
+  const lpUp = (e, cancelled) => {
+    const p = lp;
+    if (!p) {                                                         // the menu went while this finger was still down (Escape, a turn of the phone): its release is still the hold's, no click
+      if (lpGone === null || ![...(e.changedTouches || [])].some((x) => x.identifier === lpGone)) return;
+      lpGone = null; lpLetGo(); if (!cancelled && e.cancelable) e.preventDefault(); lpEatUntil = performance.now() + 400; return;
+    }
+    const t = [...(e.changedTouches || [])].find((x) => x.identifier === p.id); if (!t) return;
+    if (!p.open) { lpDrop(); return; }                                // let go before the menu: a tap, as ever
+    if (!p.down) return; p.down = false; lpLetGo();
+    const b = cancelled || !p.slid ? null : p.over; lpOver(null);   // the row that is lit, and no other: never found again here, where the moving menu may have brought the next one under the finger since it was lit
+    if (!cancelled && e.cancelable) e.preventDefault();               // no click on what the hold began on (WebKit sends none for a cancelled touchend)
+    if (b) b.click();                                                 // slid onto a row and let go there: that row (measured on the Home Screen)
+    lpEatUntil = performance.now() + 400;                             // and a click that comes anyway (a long press clicks on release) goes nowhere
+  };
+  document.addEventListener("touchend", (e) => lpUp(e, false), { capture: true, passive: false });
+  document.addEventListener("touchcancel", (e) => lpUp(e, true), { capture: true, passive: true });
+  document.addEventListener("click", (e) => { if (lpEatUntil && performance.now() <= lpEatUntil) { lpEatUntil = 0; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+  window.addEventListener("scroll", () => { if (lp && !lp.open) lpDrop(); }, { capture: true, passive: true });   // the page moved under the finger: a scroll, never a hold
+  { const dim = $("ctxDim"); if (dim && dim.addEventListener) dim.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); if (liftClick) liftClick(e); }); }   // the dimmed page takes the closing tap itself (see openPop)
   const followEl = (row, card) => (card && row.closest && row.closest(".block")) || row;   // the exercise itself (3c, not the top of its card at 3a); the whole card only when asked
   function followRow(id, field, card) {                             // an exercise that just moved (a new number): the page goes to that exercise, not to the top of its card (his ask, 9 Nov: "if I just added 3c it jumps to 3c and not 3a"), and the keyboard on the field he was heading for
     const row = $("rows").querySelector('.row[data-id="' + id + '"]'); if (!row) return;
@@ -3913,7 +4060,7 @@ import { reportRange, buildReport } from "./report.js";
   $("skGo").addEventListener("click", () => { if (!skSettled()) return; const reason = sk.reason, id = sk.t.id; closeSkip(); setSkipped(true, reason, id); });
   $("skKeep").addEventListener("click", (e) => { if (skSettled(e)) closeSkip(); });
   $("skipSheet").addEventListener("click", (e) => { if (e.target === $("skipSheet") && skSettled()) closeSkip(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && sk) closeSkip(); });   // Escape is Keep it, as the other sheets take it
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && sk) closeSkip(); });   // Escape is Cancel, as the other sheets take it
   $("skReasons").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b || !sk || !skSettled(e)) return;
     const on = !b.classList.contains("on");                          // tap again to clear
@@ -4083,7 +4230,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
