@@ -688,9 +688,8 @@
   .alt-menu .add { color: var(--brand-text); }
   .alt-menu .item.last { border-top: 1px solid var(--card-border); margin-top: 4px; padding-top: 4px; }
   .alt-menu .remove { color: var(--danger); }
-  .alt-menu .alt-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; padding: 10px 4px 4px; border-top: 1px solid var(--glass-bar-edge); }   /* one line: Remove exercise on the left, Done on the right, each as wide as its words */
+  .alt-menu .alt-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; padding: 10px 4px 4px; border-top: 1px solid var(--glass-bar-edge); }   /* one line: Done on the right (Delete exercise is in the exercise's "…" menu) */
   .alt-menu .alt-foot button { flex: 0 0 auto; width: auto; white-space: nowrap; min-height: 44px; padding: 10px 18px; text-align: center; font-size: 1rem; font-weight: 500; border-radius: 50px; background: var(--glass-bar-on); color: var(--text-primary); }
-  .alt-menu .alt-foot .remove { color: var(--danger); }
   .alt-menu .alt-foot .done { font-weight: 600; min-width: 96px; margin-left: auto; }
   .alt-menu .alt-input { width: calc(100% - 24px); margin: 8px 12px 6px; }
   .alt-menu .alt-hits:empty { display: none; }
@@ -940,7 +939,7 @@
   #whenPop .wopt { appearance: none; border: 0; background: none; text-align: left; padding: 11px 14px; border-radius: 11px; font: inherit; font-size: 1rem; letter-spacing: -0.01em; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; }
   #whenPop .wopt:active, #whenPop .wopt:hover { background: var(--glass-bar-on); }
   #whenPop.menu .wopt { display: flex; align-items: center; gap: 16px; min-height: 42px; padding: 0 16px 0 17px; border-radius: 16px; font-size: 1.0625rem; }   /* after the base rule, so these win */
-  #whenPop.menu .wopt .mi { width: 17px; height: 17px; flex: none; }
+  #whenPop.menu .wopt .mi { width: 1.25em; height: 1.25em; flex: none; }   /* Apple's menu glyphs are as tall as the text is big (measured on his iPhone, 9 Nov: the trash 1.01 em, info 0.92 em; ours were 0.53-0.73 em at his Text Size): a box of 1.25 em, the glyph 80% of it */
   #whenPop .wopt:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }   /* a keyboard's place in the menu, as on every other button (a tap shows none) */
   #whenPop .wopt.danger { color: var(--danger); }                              /* Remove photo: red, as Apple marks a destructive row */
   @keyframes popIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
@@ -1645,7 +1644,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=246";
+  import { boot } from "./app/main.js?v=247";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
