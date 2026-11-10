@@ -1,7 +1,7 @@
 // His three questions, 9 Nov, answered "do what Apple would do for all 3":
 // 1. a missed workout's Skip asks first, with the same "Skip this workout?" as every other Skip;
 // 2. on a Mac, two fingers sideways over a month (the client page's, the day picker's) page it, as a finger does on the phone;
-// 3. a right-click (two-finger click, Control-click) opens the item's own menu at the pointer: a workout row's Reschedule… and Skip…, an
+// 3. a right-click (two-finger click, Control-click) opens the item's own menu at the pointer: a workout row's Reschedule and Skip, an
 //    exercise's "…" menu in the coach's view; the item wears a ring while it is open; in the field being typed in it stays the browser's.
 // The gestures, menus and sheets run in their own process (month-menu-probe.mjs), whose document, pagers and sheet keep their listeners.
 import { execFileSync } from "node:child_process";
@@ -79,16 +79,16 @@ test("two fingers over the day picker's months: they follow, settle on the neare
   assert.strictEqual(r.dp.behind.after, r.dp.behind.before, "the client page's month under the sheet does not move");
 });
 
-test("a right-click on a workout row: Reschedule… and Skip… at the pointer, the row ringed while it is open, in the client's view and the coach's", () => {
+test("a right-click on a workout row: Reschedule and Skip at the pointer, the row ringed while it is open, in the client's view and the coach's", () => {
   for (const k of ["client", "coach"]) {
     const m = r.row[k];
-    assert.deepStrictEqual({ press: m.pressKept, menu: m.menuKept, open: m.open, labels: m.labels }, { press: true, menu: true, open: true, labels: ["Reschedule…", "Skip…"] }, k);
+    assert.deepStrictEqual({ press: m.pressKept, menu: m.menuKept, open: m.open, labels: m.labels }, { press: true, menu: true, open: true, labels: ["Reschedule", "Skip"] }, k);
   }
   assert.deepStrictEqual([r.row.client.left, r.row.client.top], ["300px", "200px"], "its corner at the pointer");
   assert.deepStrictEqual([r.row.coach.left, r.row.coach.top], ["657px", "550px"], "near the window's corner it opens to the left of the pointer and above it");
   assert.deepStrictEqual({ ring: r.row.client.ring, closed: r.row.client.closed, off: r.row.client.ringOff }, { ring: true, closed: true, off: true }, "ringed while open; Escape closes it and the ring comes off");
-  assert.deepStrictEqual(r.row.coach.skip, { asking: true, sheet: true, skipped: false, closed: true, ringOff: true }, "Skip…: the menu closes and the question opens; nothing skipped yet");
-  assert.deepStrictEqual(r.row.reschedule, { picker: true, title: "Reschedule" }, "Reschedule…: the days");
+  assert.deepStrictEqual(r.row.coach.skip, { asking: true, sheet: true, skipped: false, closed: true, ringOff: true }, "Skip: the menu closes and the question opens; nothing skipped yet");
+  assert.deepStrictEqual(r.row.reschedule, { picker: true, title: "Reschedule" }, "Reschedule: the days");
 });
 
 test("a right-click elsewhere: the swipe's own buttons, a finished workout, a finger's long press, inside the menu, the page", () => {
@@ -107,10 +107,10 @@ test("a right-click elsewhere: the swipe's own buttons, a finished workout, a fi
 });
 
 test("a right-click on an exercise: the menu of its \"…\" at the pointer; in the field being typed in the browser's own; in its open panel nothing", () => {
-  const labels = ["Alternate exercise…", "Add instructions…", "Delete exercise"];   // an ellipsis where the pick opens another step, as Apple's menus mark it; Delete only asks
+  const labels = ["Alternate exercise", "Add instructions", "Delete exercise"];   // no ellipsis on a menu row (his pick, 10 Nov)
   assert.deepStrictEqual({ press: r.ex.name.pressKept, menu: r.ex.name.menuKept, open: r.ex.name.open, labels: r.ex.name.labels }, { press: true, menu: true, open: true, labels }, "on its name, not being typed in: the press focuses nothing, the menu opens");
   assert.deepStrictEqual([r.ex.name.ring, r.ex.name.ringOff], [true, true], "ringed while open");
-  assert.deepStrictEqual(r.ex.noted.labels, ["Alternate exercise…", "Edit instructions…", "Delete exercise"], "on its number (no picker: the press focuses nothing); it has instructions");
+  assert.deepStrictEqual(r.ex.noted.labels, ["Alternate exercise", "Edit instructions", "Delete exercise"], "on its number (no picker: the press focuses nothing); it has instructions");
   assert.strictEqual(r.ex.noted.pressKept, true);
   assert.deepStrictEqual({ press: r.ex.typing.pressKept, menu: r.ex.typing.menuKept, open: r.ex.typing.open }, { press: false, menu: false, open: false }, "the name being typed in: Cut, Copy, Paste");
   assert.deepStrictEqual({ press: r.ex.otherField.pressKept, open: r.ex.otherField.open }, { press: true, open: true }, "typing in its reps, right-clicking its name: the menu");
@@ -140,9 +140,9 @@ test("where a right-click's menu goes: its corner at the pointer, turned left or
   assert.deepStrictEqual(fns.ctxPlace(100, 100, 243, 150, 200, 120), { left: 8, top: 8 }, "a window smaller than the menu: from its top-left margin");
 });
 
-test("a workout row's menu: Reschedule… (the calendar) then Skip… (the skip glyph in outline, as a menu has it); the let-go rule both months share", () => {
+test("a workout row's menu: Reschedule (the calendar) then Skip (the skip glyph in outline, as a menu has it); the let-go rule both months share", () => {
   const m = fns.rowMenu("w1");
-  assert.deepStrictEqual(m.map((x) => x.label), ["Reschedule…", "Skip…"]);
+  assert.deepStrictEqual(m.map((x) => x.label), ["Reschedule", "Skip"]);
   assert.deepStrictEqual(m.map((x) => x.icon), [fns.menuIcons().calendar, fns.menuIcons().skip]);
   assert.ok(/fill="none"/.test(fns.menuIcons().skip) && /stroke-width="1.5"/.test(fns.menuIcons().skip), "drawn as the calendar beside it is: an outline of the same weight");
   assert.ok(m.every((x) => !x.danger), "nothing red: neither deletes anything");

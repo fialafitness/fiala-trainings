@@ -13,7 +13,7 @@ import { load } from "./load.js";
 const { fns } = await load();
 const probe = path.join(path.dirname(fileURLToPath(import.meta.url)), "hold-menu-probe.mjs");
 const r = JSON.parse(execFileSync(process.execPath, [probe], { encoding: "utf8", timeout: 60000 }).trim().split("\n").pop());
-const ROW = ["Reschedule…", "Skip…"], EX = ["Alternate exercise…", "Add instructions…", "Delete exercise"];
+const ROW = ["Reschedule", "Skip"], EX = ["Alternate exercise", "Add instructions", "Delete exercise"];
 const none = { open: false, menu: false, lifted: false, dim: false };
 const brief = (s) => ({ open: !!(s.hold && s.hold.open), menu: s.menu, lifted: s.lifted, dim: s.dim });
 const tf = (s) => { const m = /^translateY\(([-\d.e]+)px\) scale\(([\d.e]+)\)$/.exec(s || ""); return m ? { dy: +(+m[1]).toFixed(2), s: +(+m[2]).toFixed(4) } : s; };   // the lifted copy's move and scale, rounded
@@ -77,7 +77,7 @@ test("sliding onto a row of the menu lights it, and letting go there picks it; s
   assert.deepStrictEqual({ over1: r.row.slide.over1, over2: r.row.slide.over2 }, { over1: false, over2: true }, "lit only under the finger");
   assert.deepStrictEqual(r.row.slide.movesKept, [true, true], "once the menu is up the finger's moves are its own: the page never scrolls under it (a scroll would close it)");
   assert.deepStrictEqual({ liftedAtPick: r.row.slide.liftedAtPick, dimAtPick: r.row.slide.dimAtPick }, { liftedAtPick: false, dimAtPick: true }, "picked: the copy goes at once, the page brightens over its fade");
-  assert.deepStrictEqual({ kept: r.row.slide.kept, sheet: r.row.slide.sheet, asking: r.row.slide.asking, menu: r.row.slide.menu, overOff: r.row.slide.overOff }, { kept: true, sheet: true, asking: true, menu: false, overOff: true }, "Skip… picked: its question, the menu gone");
+  assert.deepStrictEqual({ kept: r.row.slide.kept, sheet: r.row.slide.sheet, asking: r.row.slide.asking, menu: r.row.slide.menu, overOff: r.row.slide.overOff }, { kept: true, sheet: true, asking: true, menu: false, overOff: true }, "Skip picked: its question, the menu gone");
   assert.deepStrictEqual({ over: r.row.slideOff.over, off: r.row.slideOff.off, picker: r.row.slideOff.picker, menu: r.row.slideOff.menu }, { over: true, off: true, picker: false, menu: true }, "off again: nothing, and the menu stays");
 });
 
@@ -167,13 +167,13 @@ test("a touchcancel after the menu came (the system took the finger: a call, Sir
   assert.deepStrictEqual(r.row.cancelOpen, { drawn: 1, listening: 0, down: false, menu: true }, "the menu up: a sync's redraw that waited comes, the row's listeners go, the menu stays");
   assert.deepStrictEqual(r.row.cancelGone, { drawn: 1, listening: 0 }, "the menu gone first (Escape): the same");
   const slid = { lit: true, litAfter: false, down: false, listening: 0, litLater: false, asking: false, menu: true };
-  assert.deepStrictEqual(r.row.cancelSlid, slid, "slid onto Skip… and cancelled there (the menu still rising): nothing picked, the row unlit and not lit again by the rise's frames, the menu stays");
+  assert.deepStrictEqual(r.row.cancelSlid, slid, "slid onto Skip and cancelled there (the menu still rising): nothing picked, the row unlit and not lit again by the rise's frames, the menu stays");
   assert.deepStrictEqual(r.row.cancelSlidDetached, slid, "the same with the row taken out of the page: the cancel heard on the row itself");
 });
 
 test("the menu still rising into its place under a finger that slid onto it: the row under the finger lights frame by frame, and letting go picks the row that is lit", () => {
-  assert.deepStrictEqual(r.row.rise.settled, { atSlide: "Reschedule…", lit: "Skip…", under: "Skip…", picked: "Skip…" }, "the finger rests while the rows rise under it: the row now under it is lit, and that is the one picked (never a lit row and another picked)");
-  assert.deepStrictEqual(r.row.rise.between, { atSlide: "Reschedule…", lit: "Reschedule…", under: "Skip…", picked: "Reschedule…" }, "let go just after the next row came under the finger, before a frame showed it: the row it saw lit");
+  assert.deepStrictEqual(r.row.rise.settled, { atSlide: "Reschedule", lit: "Skip", under: "Skip", picked: "Skip" }, "the finger rests while the rows rise under it: the row now under it is lit, and that is the one picked (never a lit row and another picked)");
+  assert.deepStrictEqual(r.row.rise.between, { atSlide: "Reschedule", lit: "Reschedule", under: "Skip", picked: "Reschedule" }, "let go just after the next row came under the finger, before a frame showed it: the row it saw lit");
   const riseMs = +(/liftRise\s+(\d+)ms/.exec(css) || [])[1], lpRise = +(/LP_RISE = (\d+)/.exec(src) || [])[1];
   assert.ok(riseMs > 0 && lpRise >= riseMs + 16, "the rows are followed for as long as the menu rises (liftRise), and a frame more");
 });
@@ -210,7 +210,7 @@ test("after the menu: its copy settles back, but goes at once if the page moves 
 test("let go, then a new finger's tap 0.15 s later (no click came for the release, so its eater is armed): the tap is its own", () => {
   assert.deepStrictEqual(r.row.quickDim, { menu: false, view: "client", eaten: false }, "a tap on the dimmed page closes the menu, pressing nothing under it");
   assert.deepStrictEqual(r.row.quickLift, { view: "training" }, "a tap on the lifted workout opens it");
-  assert.deepStrictEqual(r.row.quickSkip, { asking: true, sheet: true, menu: false, lifted: false }, "a tap on Skip… asks, and the copy is gone");
+  assert.deepStrictEqual(r.row.quickSkip, { asking: true, sheet: true, menu: false, lifted: false }, "a tap on Skip asks, and the copy is gone");
 });
 
 test("near the bottom the row and its menu move up together: the copy where a tap opens the workout, the menu rising with it 16 under it; a tall card shrinks", () => {

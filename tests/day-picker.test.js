@@ -66,7 +66,7 @@ test("days left open past midnight: yesterday is not picked, it greys out", () =
 });
 
 test("the \"…\" from the keyboard or VoiceOver: focus goes into its menu and comes back to it when the days close; a tap leaves focus alone", () => {
-  assert.deepStrictEqual(r.menu, { open: true, focusIn: true, label: "Reschedule\u2026", closed: true, picker: true, backIsMore: true, focusBack: true, tapLeavesFocus: true }, "its one row: Reschedule\u2026, an ellipsis as the days open (the same words as a row's right-click menu)");
+  assert.deepStrictEqual(r.menu, { open: true, focusIn: true, label: "Reschedule", closed: true, picker: true, backIsMore: true, focusBack: true, tapLeavesFocus: true }, "its one row: Reschedule, no ellipsis (his pick, 10 Nov) (the same words as a row's right-click menu)");
 });
 
 test("a short flick after the finger rested still goes on a month (the speed of the last tenth of a second, as UIKit's)", () => {
@@ -80,6 +80,6 @@ test("only the month shown takes focus, and the pager never stays scrolled off i
   assert.strictEqual(r.afterNext.idx, 13, "Next went on a month");
 });
 
-test("the coach's own \"…\" (his ask, 10 Nov), tapped: Reschedule\u2026 and the red Delete workout; a finish takes the open menu away and leaves only Delete; a template, Delete template; his Client view, the client's Reschedule", () => {
-  assert.deepStrictEqual(r.coach, { toDo: ["Reschedule\u2026", "red Delete workout"], finishedClosed: true, finished: ["red Delete workout"], template: ["red Delete template"], preview: ["Reschedule\u2026"] });
+test("the coach's own \"…\" (his ask, 10 Nov), tapped: Reschedule and the red Delete workout; a finish takes the open menu away and leaves only Delete; a template, Delete template; his Client view, the client's Reschedule", () => {
+  assert.deepStrictEqual(r.coach, { toDo: ["Reschedule", "red Delete workout"], finishedClosed: true, finished: ["red Delete workout"], template: ["red Delete template"], preview: ["Reschedule"] });
 });
