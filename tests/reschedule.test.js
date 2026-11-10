@@ -13,7 +13,7 @@ const setup = (clientMode, extra = {}) => {
   app.set({ view: { name: "training", id: "w1" } }); fns.render();
 };
 
-test("the client sees the \"…\" on a workout still to do; not on a finished or skipped one, not in the coach's own view", () => {
+test("the client sees the \"…\" on a workout still to do; not on a finished or skipped one; the coach's own view has his own (with Delete: coach-more.test.js)", () => {
   setup(true);
   assert.strictEqual(fns.canReschedule(maps.trainings.get("w1")), true);
   assert.strictEqual($("tMore").hidden, false, "the \"…\" is in the bar");
@@ -22,7 +22,7 @@ test("the client sees the \"…\" on a workout still to do; not on a finished or
   setup(true, { skippedAt: "2026-11-02T18:00:00.000Z" });
   assert.strictEqual($("tMore").hidden, true, "skipped: no \"…\"");
   setup(false);
-  assert.strictEqual($("tMore").hidden, true, "the coach moves it with the date chip instead");
+  assert.strictEqual($("tMore").hidden, false, "the coach's own view: his \"…\", Reschedule and Delete workout (his ask, 10 Nov)");
   setup(true);                                                         // the client, whose workout shows the "…": Back to the Workouts page takes it away
   app.set({ view: { name: "client", id: "c1" } }); fns.render();
   assert.strictEqual($("tMore").hidden, true, "only on the workout page");
@@ -91,14 +91,14 @@ test("five years ahead or back, the coach's Move to still holds the workout's mo
 
 test("a sync that takes the \"…\" away (the coach finished or deleted the workout) takes its menu with it; one that leaves it, does not", () => {
   setup(true);
-  fns.showMenu($("tMore"), [{ label: "Reschedule", onPick: () => {} }], { align: "right" });
+  fns.showMenu($("tMore"), fns.moreItems(maps.trainings.get("w1")), { align: "right" });
   assert.strictEqual($("whenBg").hidden, false, "the menu is up");
   fns.render();
   assert.strictEqual($("whenBg").hidden, false, "a sync with nothing new leaves it up");
   maps.trainings.get("w1").completedAt = "2026-11-08T18:00:00.000Z"; fns.render();
   assert.strictEqual($("tMore").hidden, true); assert.strictEqual($("whenBg").hidden, true, "the finish came in: the menu went with the \"…\"");
   setup(true);
-  fns.showMenu($("tMore"), [{ label: "Reschedule", onPick: () => {} }], { align: "right" });
+  fns.showMenu($("tMore"), fns.moreItems(maps.trainings.get("w1")), { align: "right" });
   maps.trainings.delete("w1"); fns.render();
   assert.strictEqual(app.get().view.name, "client", "deleted: back on the Workouts page"); assert.strictEqual($("whenBg").hidden, true, "and no menu left over it");
 });
@@ -109,8 +109,8 @@ test("a second Enter on a menu's button replaces the menu: nothing of the first 
   document.removeEventListener = (type, fn) => { live.delete(fn); };
   try {
     setup(true);
-    fns.showMenu($("tMore"), [{ label: "Reschedule", onPick: () => {} }], { align: "right" }); const once = live.size;
-    fns.showMenu($("tMore"), [{ label: "Reschedule", onPick: () => {} }], { align: "right" });
+    fns.showMenu($("tMore"), fns.moreItems(maps.trainings.get("w1")), { align: "right" }); const once = live.size;
+    fns.showMenu($("tMore"), fns.moreItems(maps.trainings.get("w1")), { align: "right" });
     assert.strictEqual(live.size, once, "one menu's worth of listeners, not two");
     maps.trainings.get("w1").skippedAt = "2026-11-08T18:00:00.000Z"; fns.render();
     assert.strictEqual(live.size, 0, "and closing it removes them all");
