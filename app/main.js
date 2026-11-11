@@ -186,7 +186,7 @@ import { reportRange, buildReport } from "./report.js";
 
   function hideAllViews() {
     const dy = calFold(); if (dy && backScroll != null) backScroll = Math.max(0, backScroll + dy);   // the card, History or Settings opened over a client's month: the week comes back under it, and Back's place moves with the list
-    navWillChange(); $("meDisc").hidden = true; $("tMore").hidden = true; closeMoreMenu();
+    navWillChange(); $("meDisc").hidden = true; $("tMore").hidden = true; $("barMsg").hidden = true; closeMoreMenu();
     rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
     $("tabbar").hidden = true; $("addBtn").hidden = true; document.body.classList.remove("tabs");
     $("viewSeg").hidden = true; $("addExBtn").hidden = true; document.body.classList.remove("wsdock"); $("dock").classList.remove("ws");   // the workout page's bar too: Coach | Client and its +
@@ -1087,7 +1087,7 @@ import { reportRange, buildReport } from "./report.js";
   let swipeOn = (() => { try { return (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || (typeof navigator !== "undefined" && navigator.standalone === true); } catch (_) { return false; } })();
   const deskOn = (() => { try { return typeof matchMedia === "function" && matchMedia("(hover: hover) and (pointer: fine)").matches; } catch (_) { return false; } })();   // a computer (mouse or trackpad): two fingers swipe the page back there too, in a browser tab as in the Dock's web app (the web app's own swipe has no page behind it, and Chrome's is off under overscroll-behavior-x: none)
   const SWIPE_EDGE = 24, SWIPE_GO = 8, NO_SWIPE = "#calView, #week, #dpGrid, .tr-chips, .kb-chips, .grip, .alt-menu, .sugg, input, textarea, select, [contenteditable], li.swipe-row.swiped";   // things that drag sideways or scroll themselves keep the touch (Apple's rule for its swipe from anywhere)
-  const GLASS_RES = 0.416, GLASS_DAMP = 0.75, GLASS = ["back", "meDisc", "navDone", "tMore"];   // the bar's buttons, and their change on release
+  const GLASS_RES = 0.416, GLASS_DAMP = 0.75, GLASS = ["back", "meDisc", "navDone", "tMore", "barMsg"];   // the bar's buttons, and their change on release
   const easeMemo = new Map();
   const springEase = (v0, response, damping) => {                   // a spring (from rest at 0 to 1, starting at speed v0 in "whole distances per second") as a CSS easing and its length,
     const key = v0.toFixed(2) + "|" + response + "|" + damping; if (easeMemo.has(key)) return easeMemo.get(key);   // ending where it first arrives: past that it only overshoots (0.6% at rest, 1.2% at the fastest start allowed, 2.8% for the buttons) and comes back, which a page underneath shows as a bounce past its place
@@ -1126,13 +1126,12 @@ import { reportRange, buildReport } from "./report.js";
     }
     const dock = $("dock"); box._dock = dockShows(dock); box._dockSig = box._dock ? dockSig(dock) : "";
     if (box._dock) { const d = dock.cloneNode(true); d.classList.add("shot-dock"); box.appendChild(d); }   // the page's tab bar too, styled as itself (fixed inside the copy, which holds it in place: will-change): it comes in with the page
-    const bar = document.querySelector("header .bar"); if (bar) box._bar = bar.cloneNode(true);   // the bar's buttons and logo as they were over this page
     return box;
   }
   const lookNow = () => (document.body.classList.contains("client") ? "client" : "coach") + "@" + (Number(window.innerWidth) || 0);
   function barFor(key) {                                            // the bar's buttons on the screen with this key (keep in step with render() and the settings pages)
     const [vk, sub] = String(key).split("|"), [name, id] = vk.split("/"), home = !sub && (name === "clients" || (S.clientMode && name === "client"));
-    return { back: !home, brand: home, meDisc: !sub && name === "client" && !isTemplateClient(id), navDone: sub === "exercise", tMore: !sub && name === "training" && moreOn(trainings.get(id)), id };
+    return { back: !home, brand: home, meDisc: !sub && name === "client" && !isTemplateClient(id), navDone: sub === "exercise", tMore: !sub && name === "training" && moreOn(trainings.get(id)), barMsg: !sub && (name === "client" || name === "training") && !!msgTarget(name, id), id };
   }
   function barCopy(key) {                                           // the bar as the screen Back goes to will show it, when there is no copy of that screen
     const live = document.querySelector("header .bar"); if (!live) return null;
@@ -1160,7 +1159,6 @@ import { reportRange, buildReport } from "./report.js";
       put(Math.max(0, Math.min(at, max)));
     };
     box._dock = false;
-    box._bar = barCopy(viewKey({ name: "clients" }) + "||");
     return box;
   }
   let sw = null, renderAfterSwipe = false;
@@ -1231,8 +1229,10 @@ import { reportRange, buildReport } from "./report.js";
     // the bar: its buttons stay as they are while the finger moves; the logo of the page underneath comes in with that page
     const live = document.querySelector("header .bar"); sw.glassOut = []; sw.glassIn = []; sw.anims = [];
     if (live) {
-      const nb = (shot && shot._bar) || barCopy(bk), vis = (b, id) => { const el = b && b.querySelector("#" + id); return !!el && !el.hidden; };   // no copy of the page underneath: its bar as render() will show it
-      for (const id of GLASS) if (vis(live, id) && !vis(nb, id)) sw.glassOut.push($(id));   // a button only this page has: it goes when the finger lets go
+      const nb = barCopy(bk), vis = (b, id) => { const el = b && b.querySelector("#" + id); return !!el && !el.hidden; };   // the page underneath's bar as render() will show it now (never its picture's own: a number added on her card since, or a sync, would pop in after the slide)
+      const slot = (b, id) => { const ks = [...((b && b.children) || [])], i = ks.findIndex((k) => k.id === id), st = ks.findIndex((k) => k.id === "status"); return i < st ? "L" + ks.slice(0, i).filter((k) => !k.hidden).length : "R" + ks.slice(i + 1).filter((k) => !k.hidden).length; };   // a button's place, counted from its own edge (every circle 44, the bar's 12 between)
+      const stays = (id) => vis(live, id) && vis(nb, id) && slot(live, id) === slot(nb, id);   // the same button in the same place on both bars stays put (the Messages circle from a workout to her page); in another place it goes and comes, as UIKit cross-fades bar items (a finished workout has no "…": its Messages circle is at the edge, on her page it is beside her photo)
+      for (const id of GLASS) if (vis(live, id) && !stays(id)) sw.glassOut.push($(id));   // a button only this page has, or in another place: it goes when the finger lets go
       if (nb) {
         sw.barRect = live.getBoundingClientRect();
         const put = (b) => { b.setAttribute("aria-hidden", "true"); b.style.position = "absolute"; b.style.top = "0"; b.style.left = "0"; b.style.pointerEvents = "none"; live.after(b); return b; };
@@ -1245,7 +1245,7 @@ import { reportRange, buildReport } from "./report.js";
         for (const k of tb.children) if (!(k.id === "brand" && !k.hidden && $("brand").hidden)) k.style.visibility = "hidden";
         win.appendChild(tb); live.after(win); sw.textWin = win; sw.textBar = tb;
         const gb = put(nb.cloneNode(true));                         // the page underneath's buttons this page does not have: they come when the finger lets go
-        for (const k of gb.children) { const g = GLASS.includes(k.id) && !k.hidden && !vis(live, k.id); k.style.visibility = "hidden"; if (g) sw.glassIn.push(k); }
+        for (const k of gb.children) { const g = GLASS.includes(k.id) && !k.hidden && !stays(k.id); k.style.visibility = "hidden"; if (g) sw.glassIn.push(k); }
         sw.glassBar = gb;
       }
     }
@@ -2133,7 +2133,7 @@ import { reportRange, buildReport } from "./report.js";
     $("meDisc").hidden = !(S.view.name === "client" && !isTemplateClient(S.view.id));   // the person disc: on a client's page, every tab, nowhere else — Settings for the client, the card for the coach
     $("tMore").hidden = !(S.view.name === "training" && moreOn(trainings.get(S.view.id))); closeMoreMenu();   // the workout's "…": the client's view (and the coach's Client view) of a workout still to do, Reschedule; the coach's own view of any workout or template, Delete (and Reschedule while it is still to do)
     $("meDisc").setAttribute("aria-label", S.clientMode ? "Settings" : "Client card");
-    paintMeDisc();
+    paintMeDisc(); paintBarMsg();
     if (S.clientMode && S.tab === "notes") setTab("workouts");   // Notes is the coach's tab
     if (!(S.view.name === "client" && S.tab === "workouts" && !isTemplateClient(S.view.id))) calOpen = false;   // the month lasts only while its page is up: another page or tab and it is the week again (go() and the settings pages fold it already, before their picture)
     if (S.view.name === "clients") { S.renderedTraining = null; renderClients(); }
@@ -2572,7 +2572,6 @@ import { reportRange, buildReport } from "./report.js";
     $("cName").textContent = c.name; renderPlanCard(c); renderOverview(c);
     $("meDisc").classList.toggle("needs", !S.clientMode && !c.email);   // no sign-in email yet: the red dot on the card disc
     if (!S.clientMode) renderNotif(c); else $("notifWrap").hidden = true;
-    paintMsg(c); paintTrainerMsg(c);
     $("pausedCard").hidden = !(effPaused(c) && S.clientMode);
     $("pausedText").textContent = phoneDigits(c.trainerPhone) ? "Your workouts are on hold for now. Message Michal when you’re ready to pick up again." : "Your workouts are on hold for now. Michal will switch them back on when you’re ready to pick up again.";
     $("pausedCard").firstElementChild.textContent = !c.paused && effPaused(c) ? "Plan ended" : "Access paused";
@@ -2742,11 +2741,9 @@ import { reportRange, buildReport } from "./report.js";
     if (document.activeElement !== $("tTitle")) { $("tTitle").value = t.title || ""; requestAnimationFrame(() => { const el = $("tTitle"); el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); }
     const asClient = S.clientMode || previewClient; paintSessionPill(t, asClient);
     $("tDate").textContent = (asClient ? fmtDayLong : fmtDay)(t.date || today());
-    if (S.clientMode && !isTemplateClient(t.clientId)) paintTrainerMsg(clients.get(t.clientId)); else $("trainerBtn2").hidden = true;   // the client's Messages disc beside the title, as on the Workouts page: people message from the workout itself   // the client reads "Wednesday, Nov 4" as a plain line under the title; the coach keeps the date field to tap
     $("tTitle").readOnly = asClient; $("tDate").disabled = asClient;
     const isTpl = isTemplateClient(t.clientId);
     if (isTpl) draftFor(t);
-    paintTrainerMsg(clients.get(t.clientId));
     const src = !asClient && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
     $("fromTpl").hidden = !src; if (src) $("fromTplText").textContent = templatePath(src);
     $("tplFill").hidden = asClient || isTpl || (t.rows || []).length > 0 || !!t.completedAt;   // only an empty workout offers a template
@@ -3997,10 +3994,7 @@ import { reportRange, buildReport } from "./report.js";
   $("cBirthday").addEventListener("change", (e) => { const c = clients.get(S.view.id); if (!c) return; c.birthday = e.target.value || ""; scheduleSave("clients", c.id); });
   // phone -> international digits for sms: and wa.me (US numbers without a country code get +1)
   const phoneDigits = (p) => { let d = String(p || "").replace(/\D/g, ""); if (!d) return ""; if (String(p).trim().startsWith("+")) return d; if (d.length === 10) return "1" + d; if (d.length === 11 && d[0] === "1") return d; return d.length >= 7 ? d : ""; };
-  function paintTrainerMsg(c) {
-    const tel = c ? phoneDigits(c.trainerPhone) : ""; const wa = c && (c.chat || "sms") === "whatsapp";
-    for (const id of ["trainerBtn", "trainerBtn2"]) { const a = $(id); if (!tel || !S.clientMode) { a.hidden = true; continue; } a.hidden = false; a.href = wa ? "https://wa.me/" + tel : "sms:+" + tel; if (wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); } }
-  }
+
   // the coach's "Message <first name>" link: sms: or WhatsApp, by the client's chat setting. Returns false when there is no number to reach.
   function fillMsg(a, textEl, c) {
     const tel = c ? phoneDigits(c.phone) : ""; if (!tel) return false;
@@ -4009,11 +4003,22 @@ import { reportRange, buildReport } from "./report.js";
     a.href = wa ? "https://wa.me/" + tel : "sms:+" + tel;
     if (wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); }
     return true;
+  }  function msgTarget(name, id) {                                     // the bar's Messages disc on a client's page and on a workout: the coach messages the client (her number), a client the trainer (his number on her record), by her chat setting (sms: or WhatsApp); none on a template or without a number
+    const t = name === "training" ? trainings.get(id) : null, c = name === "client" ? clients.get(id) : t ? clients.get(t.clientId) : null;
+    if (!c || isTemplateClient(c.id)) return null;
+    const tel = phoneDigits(S.clientMode ? c.trainerPhone : c.phone); if (!tel) return null;
+    const wa = (c.chat || "sms") === "whatsapp";
+    return { href: wa ? "https://wa.me/" + tel : "sms:+" + tel, wa, label: S.clientMode ? "Message Michal" : "Message " + ((c.name || "").trim().split(/\s+/)[0] || "client") };
   }
-  function paintMsg(c) {
-    const ok = fillMsg($("msgBtn"), $("msgText"), c); $("msgBtn").hidden = !ok || S.clientMode;   // the hidden words "Message Jane" are the disc's name for VoiceOver
+  function paintBarMsg() {                                           // up in the bar beside the photo, and beside the workout's "…" (his pick, 10 Nov: as Apple's Fitness, two separate circles); the client's view the same
+    const a = $("barMsg"), m = S.view.name === "client" || S.view.name === "training" ? msgTarget(S.view.name, S.view.id) : null;
+    a.hidden = !m; if (!m) return;
+    a.href = m.href; $("barMsgText").textContent = m.label;
+    if (m.wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); }
   }
-  $("cPhone").addEventListener("blur", () => { const c = clients.get(S.view.id); if (c) paintMsg(c); });
+
+
+
   $("accessSeg").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
     const c = clients.get(S.view.id); if (!c || isTemplateClient(c.id)) return;
@@ -4024,7 +4029,6 @@ import { reportRange, buildReport } from "./report.js";
     const b = e.target.closest("button[data-chat]"); const c = clients.get(S.view.id); if (!b || !c) return;
     c.chat = b.dataset.chat; scheduleSave("clients", c.id);
     for (const x of $("chatSeg").querySelectorAll("button")) x.classList.toggle("on", x === b);
-    paintMsg(c);
   });
   $("tabbar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b || b.dataset.tab === S.tab) return; setTab(b.dataset.tab); render(); window.scrollTo(0, 0); });
   const typingIn = (el) => !!el && /^(INPUT|TEXTAREA)$/.test(el.tagName) && !/^(date|month|checkbox|radio|file|range)$/.test(el.type || "");   // a keyboard is coming: a select or a date wheel is not typing
@@ -4280,7 +4284,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, paintTrainerMsg, startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
