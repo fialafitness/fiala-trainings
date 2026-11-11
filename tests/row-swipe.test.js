@@ -102,6 +102,11 @@ test("a let-go row: armed once its edge is within 81 points of its start, it res
   assert.strictEqual(fns.rowDecide(w, 0.2, w, row), "open", "a slow drift is not a flick: where it is decides");
   assert.strictEqual(fns.rowArmed(w - 1, w, 200), false, "a row too narrow for the rule never arms before its actions are open");
   assert.strictEqual(fns.rowArmed(648 - 81, w, 648), true, "a wide row (a computer's window) arms by the same 81 points");
+  const w3 = 11.67 + 61 + 10.33 + 61 + 10.33 + 61 + 10.67, se = 320 - 34;   // a missed workout's three, open; a 320-point phone's card row
+  assert.strictEqual(fns.rowArmed(w3, w3, se), false, "a 320-point phone: a missed row let go open is never armed (81 short of its start is inside its open actions)");
+  assert.strictEqual(fns.rowDecide(w3 + 6, 0, w3, se), "open", "so letting go just past the open width keeps it open, never Do it today");
+  assert.strictEqual(fns.rowArmed(w3 + 49, w3, se), false); assert.strictEqual(fns.rowArmed(w3 + 50, w3, se), true, "50 points past the open width it arms (the room a row of two has there: 205 - 154.67)");
+  assert.strictEqual(fns.rowArmed(se, 262, se), false, "a large Text Size there: no full swipe at all, the actions are tapped");
 });
 
 test("two fingers on a Mac's trackpad: the way they moved, natural scrolling or not", () => {
@@ -241,11 +246,14 @@ test("the page keeps Apple's measured gaps behind the row: 10.33 between the act
   assert.match(rule(".swipe-act .sa-cap"), /width: 61px; height: 37px;/);
 });
 
-test("the page draws the actions as measured: Skip's capsule grey, armed only Reschedule's icon moves and only its title goes, the tokens in light and both darks; a closing tap leaves no hover; the keyboard's ring sits inside the row", () => {
+test("the page draws the actions as measured: Skip's capsule grey, armed only the outermost action's icon moves and only its title goes, the tokens in light and both darks; a closing tap leaves no hover; the keyboard's ring sits inside the row", () => {
   assert.ok(html.includes(".swipe-act.sa-skip .sa-cap { background: var(--swipe-skip); }"), "Skip's capsule systemGray3, as Reminders' Details (Reschedule's the brand's)");
-  assert.ok(html.includes(".armed .sa-resched .sa-cap .mi { left: 20px; margin-left: 0; }"), "armed: Reschedule's icon goes to its capsule's leading edge");
-  assert.ok(html.includes(".armed .sa-resched .sa-lbl { opacity: 0; }"), "and its title goes");
-  assert.deepStrictEqual([...html.matchAll(/\.armed\b([^{]*)\{/g)].map((m) => m[1].trim()), [".sa-resched .sa-cap .mi", ".sa-resched .sa-lbl"], "only Reschedule's: armed, Skip keeps its title (it shows at 30%); these two are the armed look's only rules");
+  assert.ok(html.includes(".swipe-act.sa-today .sa-cap { background: var(--swipe-today); }"), "a missed workout's Do it today: his Steel blue (his pick B, 10 Nov)");
+  assert.deepStrictEqual(rule(":root").match(/--swipe-today: [^;]*;/g), ["--swipe-today: #5e8ca7;"], "his Brand Bible's Steel blue, #5E8CA7");
+  assert.ok(![...html.matchAll(/--swipe-today:/g)].slice(1).length, "one value in both modes, as the Bible ships its accents (no dark override)");
+  assert.ok(html.includes(".armed .swipe-act:last-child .sa-cap .mi { left: 20px; margin-left: 0; }"), "armed: the outermost action's icon (Reschedule's, a missed workout's Do it today's) goes to its capsule's leading edge");
+  assert.ok(html.includes(".armed .swipe-act:last-child .sa-lbl { opacity: 0; }"), "and its title goes");
+  assert.deepStrictEqual([...html.matchAll(/\.armed\b([^{]*)\{/g)].map((m) => m[1].trim()), [".swipe-act:last-child .sa-cap .mi", ".swipe-act:last-child .sa-lbl"], "only the outermost's: armed, the inner ones keep their titles (they show at 30%); these two are the armed look's only rules");
   const tokens = (sel) => rule(sel).match(/--swipe-(?:label|skip): [^;]*;/g);
   assert.deepStrictEqual(tokens(":root"), ["--swipe-label: rgba(60,60,67,0.6);", "--swipe-skip: #c7c7cc;"], "light: the titles secondary grey (measured 138,138,142), Skip systemGray3 (199,199,204)");
   for (const dark of [':root:not([data-theme="light"])', ':root[data-theme="dark"]']) assert.deepStrictEqual(tokens(dark), ["--swipe-label: rgba(235,235,245,0.6);", "--swipe-skip: #48484a;"], "dark (" + dark + "): measured 141,141,147 and 72,72,74");
@@ -468,4 +476,34 @@ test("the trainer's view of a client's page (his pick): Reschedule from a row op
 
 test("the trainer on a Mac: on a client's page two fingers open the row the app draws and stop, its Reschedule opens the days for any day; two fingers to the right over a closed row go back to Clients", () => {
   assert.deepStrictEqual(g.coachRow, { hasActions: true, opened: { open: true, x: 154.67, kept: 54 }, tap: { cancelled: false, clicked: true }, days: { title: "Reschedule", min: null }, rightOverRow: { view: "clients", kept: 54, row: null } });
+});
+
+test("a missed workout's row swipes to three (his pick B, 10 Nov): Skip, Reschedule and outermost Today, drawn out as Apple's two: each grows as its own slot is uncovered, past the open width the inner ones fade alike, armed both at 30%; let go armed, the workout comes to today", () => {
+  const T = g.three, W3 = 11.67 + 61 + 10.33 + 61 + 10.33 + 61 + 10.67, op = (v) => (v === "" || v == null ? 1 : Number(v));
+  assert.ok(!T.error, T.error);
+  const near = (v, want, msg) => assert.ok(Math.abs(Number(v) - want) < 0.01, msg + ": " + v + ", want " + want);
+  assert.deepStrictEqual([T.classes, T.titles], [["swipe-act sa-skip", "swipe-act sa-resched", "swipe-act sa-today"], ["Skip", "Reschedule", "Today"]], "the menu's three, outermost first as it lists them");
+  near(T.w, W3, "open: the row's edge, the three 10.33 apart, the outer one's end");
+  const L = T.look;
+  near(L[62].ops[2], 0.51, "x 62: Today half grown, as the outer one of two"); assert.deepStrictEqual(L[62].ops.slice(0, 2), ["0", "0"], "the others not yet");
+  near(L[134].ops[1], (134 - 112.5) / (153.33 - 112.5), "x 134: Reschedule half grown in its own slot (82 + 30.5 to 82 + 61 + 10.33)"); assert.strictEqual(L[134].ops[0], "0", "Skip not yet"); assert.strictEqual(L[134].ops[2], "1", "Today whole");
+  near(L[206].ops[0], (206 - 183.83) / (W3 - 183.83), "x 206: Skip half grown in the last slot, to the open width"); assert.strictEqual(L[206].ops[1], "1");
+  for (const k of [0, 1]) near(L[256].ops[k], 1 - 0.337, "x 256, 30 points past: both inner ones at 66%, as Skip of two");
+  near(parseFloat(L[256].w), 61 + 256 - W3, "Today stretches by the overshoot");
+  assert.strictEqual(L[290].armed, true, "armed at 290 (368 - 81 = 287)");
+  for (const k of [0, 1]) for (const c of L[290].kids[k]) near(op(L[290].ops[k]) * op(c), 0.3, "armed: each inner one at 30% (itself times its insides)");
+  assert.strictEqual(L[290].ops[2], "1", "Today whole");
+  for (const x of [62, 134, 206, 256, 290]) assert.deepStrictEqual(L[x].parts, Array(2).fill("translate3d(-" + x + "px,0,0)"), "x " + x + ": the row and its \"…\" slide together");
+  assert.deepStrictEqual(T.fired, { today: true, moved: true, days: false, closed: true }, "the full swipe: Do it today (the client's through client_move_training), no days, the row closed");
+  assert.ok(T.cleared.length === 7 && T.cleared.every((c) => c.join("") === ""), "closed: nothing left on any of the three or the inner ones' insides " + JSON.stringify(T.cleared));
+});
+
+test("a sync's redraw with a missed workout's row open: the Missed card's new row for it stays open, as Today's and Up next's do", () => {
+  assert.ok(!g.missRedraw.error, g.missRedraw.error);
+  assert.deepStrictEqual(g.missRedraw, { openBefore: true, open: true });
+});
+
+test("a tap on an open missed row's Reschedule opens the days and moves nothing (only Today's button and the full swipe bring it to today)", () => {
+  assert.ok(!g.missResched.error, g.missResched.error);
+  assert.deepStrictEqual(g.missResched, { open: true, tap: { cancelled: false, clicked: true }, days: "Reschedule", date: true, moved: false });
 });

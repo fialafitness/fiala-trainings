@@ -1332,10 +1332,12 @@ import { reportRange, buildReport } from "./report.js";
   // (a Mac's way). Two fingers on a Mac's trackpad open and close it but stop there (below): the actions are clicked. Skip asks first, with
   // the workout page's own sheet; the workout page holds both too (its "…" and its Skip workout): Apple, never a gesture only. The trainer's
   // view of a client's page swipes the same (his pick, 9 Nov): his Reschedule takes any day, as his date on the workout page ("Move to") does.
-  const RS_GAP = 11.67, RS_BETWEEN = 10.33, RS_END = 10.67, RS_HOLD = 8, RS_ARM_EDGE = 81, RS_FLICK = 0.3;   // RS_FLICK: px per ms; a let-go faster than this goes its own way
+  const RS_GAP = 11.67, RS_BETWEEN = 10.33, RS_END = 10.67, RS_HOLD = 8, RS_ARM_EDGE = 81, RS_FLICK = 0.3, RS_ARM_PAST = 50;   // RS_FLICK: px per ms; a let-go faster than this goes its own way. RS_ARM_PAST: never armed while merely open (a 320-point phone or a large Text Size with a missed workout's three actions): 50 past the open width at least, the room a row of two already has on the narrowest phone (205 - 154.67)
   const SA_CALENDAR = '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M4.2 2.9h7.6c1.2 0 2.2 1 2.2 2.2v7c0 1.2-1 2.2-2.2 2.2H4.2C3 14.3 2 13.3 2 12.1v-7c0-1.2 1-2.2 2.2-2.2zM3.5 6.6v5.5c0 .4.3.7.7.7h7.6c.4 0 .7-.3.7-.7V6.6z"/><path fill="currentColor" d="M5 8h1.6v1.6H5zM7.2 8h1.6v1.6H7.2zM9.4 8H11v1.6H9.4zM5 10.2h1.6v1.6H5zM7.2 10.2h1.6v1.6H7.2z"/><path d="M5.2 1.5v2.2M10.8 1.5v2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';   // the calendar filled, as Apple's swipe actions use the fill variants (HIG, SF Symbols)
   const SA_SKIP = '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3 3.4v9.2c0 .6.6.9 1.1.6l7-4.6c.4-.3.4-.9 0-1.2l-7-4.6C3.6 2.5 3 2.8 3 3.4z"/><rect x="11.6" y="2.6" width="2" height="10.8" rx="1" fill="currentColor"/></svg>';   // forward.end.fill: skip, as media controls draw it
-  const rowArmed = (x, w, row) => x >= Math.max(row - RS_ARM_EDGE, w);   // the full swipe: the row's edge within 81 points of its own start (never before the actions are open)
+  const saToday = () => '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M4.2 2.9h7.6c1.2 0 2.2 1 2.2 2.2v7c0 1.2-1 2.2-2.2 2.2H4.2C3 14.3 2 13.3 2 12.1v-7c0-1.2 1-2.2 2.2-2.2zM3.5 6.6v5.5c0 .4.3.7.7.7h7.6c.4 0 .7-.3.7-.7V6.6z"/><text x="8" y="11.85" text-anchor="middle" font-size="5.4" font-weight="600" fill="currentColor">' + Number(today().slice(8)) + '</text><path d="M5.2 1.5v2.2M10.8 1.5v2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';   // Do it today on a missed workout's swipe: the filled calendar with today's date in it
+  const DOTS = '<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" fill="currentColor"><circle cx="3.8" cy="10" r="1.75"/><circle cx="10" cy="10" r="1.75"/><circle cx="16.2" cy="10" r="1.75"/></svg>';   // a "…" disc's three dots, as the coach's exercise "…"
+  const rowArmed = (x, w, row) => x >= Math.max(row - RS_ARM_EDGE, w + RS_ARM_PAST);   // the full swipe: the row's edge within 81 points of its own start, and never before 50 points past the open actions (a row let go open stays open; where that is past the row's end there is no full swipe, the actions are tapped)
   const rowDecide = (x, v, w, row) => (rowArmed(x, w, row) ? "fire" : Math.abs(v) > RS_FLICK ? (v > 0 ? "open" : "close") : x > w / 2 ? "open" : "close");   // where a let-go row goes; v: px per ms to the left
   const fingerX = (e) => (e && e.webkitDirectionInvertedFromDevice === false ? e.deltaX : -e.deltaX);   // a trackpad's sideways scroll as the fingers moved, + to the right (macOS scrolls naturally by default: the page's delta is the other way)
   const rsSample = (g, ts, x) => { const last = g.pts[g.pts.length - 1]; if (!last || ts - last[0] >= 8) { g.pts.push([ts, x]); while (g.pts.length > 2 && ts - g.pts[0][0] > 100) g.pts.shift(); } else last[1] = x; };
@@ -1350,7 +1352,7 @@ import { reportRange, buildReport } from "./report.js";
     r.x = x;
     const sp = ease ? ease.ms + "ms " + ease.css : "", mv = x ? "translate3d(" + (-x) + "px,0,0)" : "";
     for (const p of r.parts) { p.style.transition = (ease ? "transform " + sp + ", " : "") + "background-color 200ms ease"; p.style.transform = mv; }
-    const extra = Math.max(0, x - r.w), armed = rowArmed(x, r.w, r.row), look = armed || !!r.fired, oSlot = RS_END + r.ow + (r.inner ? RS_BETWEEN : RS_GAP);   // look: a full swipe let go keeps its armed look while the row closes (its title stays gone, Skip's insides at their share of 30% while Skip itself fades with the row)
+    const extra = Math.max(0, x - r.w), armed = rowArmed(x, r.w, r.row), look = armed || !!r.fired, oSlot = RS_END + r.ow + (r.inners.length ? RS_BETWEEN : RS_GAP);   // look: a full swipe let go keeps its armed look while the row closes (its title stays gone, Skip's insides at their share of 30% while Skip itself fades with the row)
     const tr = (props) => (ease ? props.map((k) => k + " " + sp).join(", ") : "none");
     const grow = (el, q, fade) => {                                // size and opacity together, as Apple's actions come in
       el.style.opacity = String(fade != null ? fade : q); el.style.transform = q < 1 ? "scale(" + q.toFixed(3) + ")" : "";
@@ -1358,14 +1360,17 @@ import { reportRange, buildReport } from "./report.js";
     r.outer.style.transition = tr(["opacity", "transform", "width"]); r.cap.style.transition = tr(["width"]);
     r.outer.style.width = (r.ow + extra) + "px"; r.cap.style.width = (r.capW + extra) + "px";   // past the actions the outer one stretches into the room, its right edge where it was (its title centred under it)
     grow(r.outer, rsGrow(x, RS_END + r.ow / 2, oSlot));            // (its capsule sits centred in it: half of it is uncovered at half the action, a title wider than the capsule at a larger Text Size included)
-    if (r.inner) {
-      const q = rsGrow(x, oSlot + r.iw / 2, r.w), dim = extra <= 0 ? null : extra < 30 ? 1 - 0.337 * extra / 30 : Math.max(0.3, 0.72 - 0.0019 * extra), own = dim == null ? q : dim;   // measured: 66% at 30 points past, then 0.19% a point
-      if (armed && !r.armed) r.dimArm = own;                        // armed, it holds at 30%: the action keeps the look it had there and its insides take it the rest of the way, easing over 150 ms both ways, while the action itself follows the row
-      r.inner.style.transition = tr(["opacity", "transform"]);
-      grow(r.inner, q, armed ? r.dimArm : own);
-      const k = look ? 0.3 / r.dimArm : 1;
-      for (const c of r.inner.children) { c.style.transition = "opacity 150ms ease"; c.style.opacity = k < 1 ? k.toFixed(4) : ""; }
-    }
+    const dim = extra <= 0 ? null : extra < 30 ? 1 - 0.337 * extra / 30 : Math.max(0.3, 0.72 - 0.0019 * extra);   // measured: 66% at 30 points past, then 0.19% a point
+    let start = oSlot;                                               // the inner actions, from the outer one's side in (a missed workout's Reschedule, then Skip): each grows as its own slot is uncovered, the last one's slot ending at the row's edge, and all dim alike past the actions
+    r.inners.forEach((el, j) => {
+      const iw = r.iws[j], end = start + iw + (j === r.inners.length - 1 ? RS_GAP : RS_BETWEEN), q = rsGrow(x, start + iw / 2, end), own = dim == null ? q : dim;
+      if (armed && !r.armed) r.dimArm[j] = own;                     // armed, it holds at 30%: the action keeps the look it had there and its insides take it the rest of the way, easing over 150 ms both ways, while the action itself follows the row
+      el.style.transition = tr(["opacity", "transform"]);
+      grow(el, q, armed ? r.dimArm[j] : own);
+      const k = look ? 0.3 / r.dimArm[j] : 1;
+      for (const c of el.children) { c.style.transition = "opacity 150ms ease"; c.style.opacity = k < 1 ? k.toFixed(4) : ""; }
+      start = end;
+    });
     if (look !== r.armed) { r.armed = look; r.li.classList.toggle("armed", look); }
   }
   function rsBegin(li, quiet) {                                     // a row starts to move: it and its actions, measured as they are now (quiet: put back open by a redraw, no grey fading in)
@@ -1378,15 +1383,15 @@ import { reportRange, buildReport } from "./report.js";
     }
     if (rs) rsSettle(rs, 0, 0);                                     // another one was open: it closes as this one moves
     const layer = [...li.children].find((c) => c.classList && c.classList.contains("swipe-acts")), acts = layer ? [...layer.children].filter((c) => c.classList && c.classList.contains("swipe-act")) : [];
-    const outer = acts[acts.length - 1], inner = acts.length > 1 ? acts[0] : null, cap = outer && outer.firstElementChild;
+    const outer = acts[acts.length - 1], inners = acts.slice(0, -1).reverse(), cap = outer && outer.firstElementChild;   // inners: from the outer one's side in
     if (!layer || !outer || !cap || li.isConnected === false) return null;   // a row a redraw has already replaced moves nothing
     const row = li.getBoundingClientRect().width; if (!row) return null;   // nor one with no width (its page hidden)
     const parts = [...li.children].filter((c) => c !== layer);
     for (const p of parts) p.style.transition = quiet ? "none" : "background-color 200ms ease";   // the grey comes in (put back by a redraw: it is simply there)
     li.classList.add("swiped");                                     // its actions laid out from here, to be measured
-    const r = { li, layer, outer, inner, cap, parts, row, x: 0, open: false, busy: false, armed: false, timer: null };
-    r.capW = cap.offsetWidth || 61; r.ow = outer.offsetWidth || r.capW; r.iw = inner ? inner.offsetWidth || r.capW : 0;
-    r.w = RS_GAP + (inner ? r.iw + RS_BETWEEN : 0) + r.ow + RS_END;
+    const r = { li, layer, outer, inners, cap, parts, row, x: 0, open: false, busy: false, armed: false, timer: null, dimArm: [] };
+    r.capW = cap.offsetWidth || 61; r.ow = outer.offsetWidth || r.capW; r.iws = inners.map((a) => a.offsetWidth || r.capW);
+    r.w = RS_GAP + r.iws.reduce((s, iw) => s + iw + RS_BETWEEN, 0) + r.ow + RS_END;   // the row's edge, each action and the gaps between them, the outer one's end
     li._rs = r; rs = r; return r;
   }
   function rsSettle(r, to, v) {                                     // to: 0 (closed) or r.w (open), on the spring from the finger's speed (px per ms to the left)
@@ -1398,15 +1403,15 @@ import { reportRange, buildReport } from "./report.js";
   function rsDone(r, quiet) {                                       // closed: the row as it was drawn (quiet: at once, for a redraw or another page; else the grey fades)
     clearTimeout(r.timer); r.busy = false; r.open = false;
     for (const p of r.parts) { p.style.transition = quiet ? "" : "background-color 200ms ease"; p.style.transform = ""; }
-    for (const el of [r.outer, r.inner, r.cap]) if (el) { el.style.transition = ""; el.style.width = ""; el.style.opacity = ""; el.style.transform = ""; }
-    if (r.inner) for (const c of r.inner.children) { c.style.transition = ""; c.style.opacity = ""; }
+    for (const el of [r.outer, ...r.inners, r.cap]) if (el) { el.style.transition = ""; el.style.width = ""; el.style.opacity = ""; el.style.transform = ""; }
+    for (const el of r.inners) for (const c of el.children) { c.style.transition = ""; c.style.opacity = ""; }
     r.li.classList.remove("swiped", "armed");
     if (!quiet) setTimeout(() => { if (!r.li.classList.contains("swiped")) for (const p of r.parts) p.style.transition = ""; }, 220);   // no fade left at rest: a light/dark switch changes the row with its card
     if (rs === r) rs = null;
     if (!quiet) rsFlush();
   }
   function rsForget() { if (rs) rsDone(rs, true); rsT = null; if (typeof document !== "undefined" && document.body && document.body.classList) document.body.classList.remove("rs-drag"); }   // a redraw or another page: the row goes back at once (no flush: the caller is drawing)
-  function rsFire(r) { const id = r.li.dataset.tid; r.fired = !!r.armed; rsSettle(r, 0, 0); if (id) rowReschedule(id); }   // the row closes as the days open (in its armed look, as it was let go)
+  function rsFire(r) { const id = r.li.dataset.tid, full = r.li._full; r.fired = !!r.armed; rsSettle(r, 0, 0); if (full) full(); else if (id) rowReschedule(id); }   // the row closes as its outermost action runs (in its armed look, as it was let go): the days open, or a missed workout comes to today
   function rowReschedule(id) {                                      // the day picker for this row's workout: the client's from today on, as the workout page's "…" opens it; the trainer's any day, as his date on the workout page
     const t = trainings.get(id); if (!canSwipeRow(t)) return false;
     const cid = t.clientId, asClient = canReschedule(t), still = () => S.view.name === "client" && S.view.id === cid && !settingsOpen && canSwipeRow(trainings.get(id));   // still the Workouts page, the workout still to do
@@ -1903,12 +1908,14 @@ import { reportRange, buildReport } from "./report.js";
     }) });
   }
   const dayList = (clientId, key) => clientTrainings(clientId).filter((t) => effDate(t) === key && !(t.skippedAt && !t.completedAt));   // a day's workouts: planned or finished, not the skipped ones
+  function missedOf(cid) {                                           // a client's missed workouts: still to do, their day gone, the newest first (the Missed card's order, as a stack of notifications puts the newest on top)
+    return clientTrainings(cid).filter((t) => canSwipeRow(t) && !!effDate(t) && effDate(t) < today()).sort((a, b) => effDate(b).localeCompare(effDate(a)) || byMade(b, a));
+  }
   async function showDay(c, key) {                                                           // a day with more than one workout: the day's rows, each its own workout; the coach can add another
     const d = new Date(key + "T12:00:00"), list = dayList(c.id, key).sort(byMade);
     const rows = list.map((t) => {
       const li = workoutRow(t, t.completedAt || t.skippedAt ? "past" : key === today() ? "today" : "next");
-      const b = li.querySelector("button"), nb = b.cloneNode(true); nb.dataset.id = t.id; b.replaceWith(nb);      // the row's own tap is replaced by the sheet's
-      const acts = li.querySelector(".missed-actions"); if (acts) acts.remove();
+      const b = li.querySelector("button"), nb = b.cloneNode(true); nb.dataset.id = t.id; b.replaceWith(nb);      // the row's own tap is replaced by the sheet's (a past day's workout still to do says Missed, its choices on the Missed card)
       return li;
     });
     if (!S.clientMode) { const li = document.createElement("li"); li.className = "more"; const box = document.createElement("div"); const b = document.createElement("button"); b.type = "button"; b.dataset.id = "+"; b.textContent = "Add a workout"; box.appendChild(b); li.appendChild(box); rows.push(li); }
@@ -2238,6 +2245,7 @@ import { reportRange, buildReport } from "./report.js";
   let calOpen = false, calMonth = today().slice(0, 7), calFor = null, calAnchor = calMonth, calSliding = false, calMissed = false;   // calMissed: a redraw came while the months were moving (it runs when they land)   // calOpen: the month, only while its page is up (his ask, 10 Nov: back to the week "every time I leave the page"; a reload opens on the week too)
   const NEXT_DAYS = 3, NEXT_STEP = 5;      // "Up next" shows this many days ahead (the very next workout always); each "Show more" adds this many workouts
   let nextExtra = 0, nextFor = null;
+  let missOpen = false, missFor = null;   // the Missed card: folded to its newest workout and "2 more", or open (Up next's fold, his pick B, 10 Nov); folded again on another client's page
   const monthAdd = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1, 12); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
   const monthTitle = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1, 12).toLocaleDateString(undefined, { month: "long", year: "numeric" }); };
   const paintCalMode = () => {                                       // the week strip or the month, and the toggle that says which
@@ -2516,12 +2524,13 @@ import { reportRange, buildReport } from "./report.js";
     return n > -14 ? (-n) + " days ago" : Math.round(-n / 7) + " weeks ago";
   };
   const liftGlyph = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round"><circle cx="12" cy="2.65" r="1.95" stroke="none"/><path stroke-width=".25" d="M10.1 5.5Q12 5.1 13.9 5.5L15 6.6 15.5 7.4 15.8 8.3 16.3 9.1 16.7 9.97 17.1 10.8 17.5 11.7 18 12.5 18.7 14.1Q18.6 15 17.8 15 17 15 16.9 14.2L16 12.5 15.6 11.7 15.2 10.8 14.8 9.97 14.2 9.6 14 9.6 14 11.4 10 11.4 10 9.6 9.8 9.6 9.2 9.97 8.8 10.8 8.4 11.7 8 12.5 7.1 14.2Q7 15 6.2 15 5.4 15 5.3 14.1L6 12.5 6.5 11.7 6.9 10.8 7.3 9.97 7.7 9.1 8.2 8.3 8.5 7.4 9 6.6Z"/><path stroke-width=".25" d="M9.5 14.9h5l1.6 7.3q.2 1-.8 1.1-.8.1-1-.7L12 15.1l-2.3 7.5q-.2.8-1 .7-1-.1-.8-1.1z"/><rect x="1.3" y="12.95" width="21.4" height=".95" rx=".45" stroke="none"/><rect x="2.1" y="9.6" width="1.9" height="6.5" rx=".9" stroke="none"/><rect x="20" y="9.6" width="1.9" height="6.5" rx=".9" stroke="none"/></svg>';   // the lifter at the bar, traced from the proportions of Apple's: head, rounded shoulders, arms down to the bar, legs set
-  function workoutRow(t, mode, swipe) {                                 // one workout as Fitness lays a row out: the day in a column, a disc with the lifter, the title over a quiet line, a chevron. mode: "today" | "next" | "past"; swipe: Today and Up next, where a workout still to do swipes to its Reschedule
+  function workoutRow(t, mode, swipe) {                                 // one workout as Fitness lays a row out: the day in a column, a disc with the lifter, the title over a quiet line, a chevron. mode: "today" | "next" | "missed" | "past"; swipe: Missed, Today and Up next, where a workout still to do swipes to its actions
     const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
     const n = t.rows.length, done = t.rows.filter((r) => r.done).length;      // exercises are rows: a superset counts each of its lifts
     const skipped = !t.completedAt && !!t.skippedAt;
-    const overdue = mode === "next" && !skipped && !t.completedAt && !!effDate(t) && effDate(t) < today();
-    li.className = "w" + (t.completedAt ? " done" : "") + (skipped ? " off" : "");
+    const overdue = mode === "next" && !skipped && !t.completedAt && !!effDate(t) && effDate(t) < today();   // a past day's own sheet: the red word Missed (the Missed card's rows say how long ago, under its title)
+    const missed = mode === "missed";
+    li.className = "w" + (t.completedAt ? " done" : "") + (skipped ? " off" : "") + (missed ? " miss" : "");
     const d = effDate(t) ? new Date(effDate(t) + "T12:00:00") : null;
     const wd = document.createElement("span"); wd.className = "wd"; wd.innerHTML = '<span class="dow"></span><span class="dn"></span>';
     const otherMonth = mode === "next" && d && effDate(t).slice(0, 7) !== today().slice(0, 7);   // weeks ahead in another month: the month over the day, not the weekday
@@ -2531,33 +2540,38 @@ import { reportRange, buildReport } from "./report.js";
     const pri = document.createElement("span"); pri.className = "pri"; pri.textContent = String(t.title || "").trim() || "Workout";
     const count = n ? n + (n === 1 ? " exercise" : " exercises") : "Nothing added yet";
     const sec = document.createElement("span"); sec.className = "sec";                 // the quiet line: when, and how much
-    if (overdue) { const miss = document.createElement("span"); miss.className = "missed"; miss.textContent = "Missed"; sec.append(miss, " \u00b7 " + count); }
+    if (overdue || missed) { const miss = document.createElement("span"); miss.className = "missed"; miss.textContent = missed ? relDay(effDate(t)) : "Missed"; sec.append(miss, " \u00b7 " + count); }   // the one red word: Missed, or under the Missed card's title how long ago ("Yesterday", "3 days ago"), as Reminders reddens an overdue date
     else if (mode === "next") sec.textContent = [relDay(effDate(t)), count].filter(Boolean).join(" \u00b7 ");
     else if (mode === "today") sec.textContent = done ? done + " of " + n + " done" : count;
     else if (skipped) sec.textContent = (t.missed === true ? "Missed" : "Skipped") + (t.skipReason ? " \u00b7 " + t.skipReason : "");
     else sec.textContent = count;
     wt.append(pri, sec);
     const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a"; chev.setAttribute("aria-hidden", "true");
-    b.append(wd, wi, wt, chev);
+    b.append(wd, wi, wt); if (!missed) b.appendChild(chev);              // a missed workout's "\u2026" sits where the chevron would
     const open = () => { if (settingsOpen === "history") openFromHistory(t.id); else go({ name: "training", id: t.id }); };   // on History the page is a settings page over the client's: it has to come off first
     b.addEventListener("click", open);
     li.dataset.tid = t.id; li.appendChild(b);
-    if (overdue) {                                                       // the missed workout is the first thing to decide
-      const acts = document.createElement("div"); acts.className = "missed-actions";
-      const doToday = document.createElement("button"); doToday.type = "button"; doToday.className = "btn tint"; doToday.textContent = "Do it today";
-      doToday.addEventListener("click", () => { t.date = today(); t.missed = false; t.skippedAt = null; touchState(t.id, "date", "missed", "skippedAt"); if (S.clientMode) { pendingMove.add(t.id); pendingMiss.add(t.id); } scheduleSave("trainings", t.id); renderClient(); });
-      const skip = document.createElement("button"); skip.type = "button"; skip.className = "btn tint"; skip.textContent = "Skip";
-      skip.addEventListener("click", () => rowSkip(t.id));             // asks first, with the same "Skip this workout?" as the row's swipe and the workout page (his pick, 9 Nov: "do what Apple would do": one action, one way); its Skip workout files it as the old one did, with the reason
-      acts.append(doToday, skip); li.appendChild(acts);                  // the choices sit under the row
+    if (missed) {                                                        // the missed workout's choices (his pick B, 10 Nov): a "…" where the chevron would be, opening Do it today, Reschedule and Skip, as Apple keeps an overdue row plain and its choices in a menu; the swipe and the touch and hold give the same three
+      const more = document.createElement("button"); more.type = "button"; more.className = "miss-more"; more.setAttribute("aria-label", "More");
+      more.innerHTML = DOTS;
+      more.addEventListener("click", (e) => { e.stopPropagation(); const items = missItems(t.id); if (items.length) showMenu(more, items, { align: "right", focus: e.detail === 0 }); });   // a keyboard's Enter or VoiceOver's activation (detail 0) goes into the menu
+      li.appendChild(more);                                              // after the row's button: read after it, and its own tap
     }
-    if (swipe && (mode === "today" || mode === "next") && canSwipeRow(t)) {   // swiped to the left: Skip and Reschedule, behind the row (the workout page holds both: its Skip workout and its "…")
+    if (swipe && (mode === "today" || mode === "next" || missed) && canSwipeRow(t)) {   // swiped to the left: Skip and Reschedule behind the row (the workout page holds both: its Skip workout and its "…"); a missed workout's Do it today outermost
       li.classList.add("swipe-row");
       const layer = document.createElement("div"); layer.className = "swipe-acts"; layer.setAttribute("aria-hidden", "true");
       const act = (cls, icon, label, run) => { const b = document.createElement("button"); b.type = "button"; b.className = "swipe-act " + cls; b.tabIndex = -1; b.innerHTML = '<span class="sa-cap">' + icon + '</span><span class="sa-lbl">' + label + '</span>'; b.addEventListener("click", (e) => { e.stopPropagation(); run(); }); return b; };
-      layer.append(act("sa-skip", SA_SKIP, "Skip", () => { if (rs && rs.li === li) rsSettle(rs, 0, 0); rowSkip(t.id); }),   // asks first, as the workout page does
-        act("sa-resched", SA_CALENDAR, "Reschedule", () => { if (rs && rs.li === li) rsFire(rs); else rowReschedule(t.id); }));   // outermost: the full swipe's
+      const skip = act("sa-skip", SA_SKIP, "Skip", () => { if (rs && rs.li === li) rsSettle(rs, 0, 0); rowSkip(t.id); });   // asks first, as the workout page does
+      if (missed) {                                                      // the menu's three, outermost first as the menu lists them: Do it today (the full swipe's; its title "Today", one word as Apple's swipe titles, beside its calendar with the date), Reschedule, Skip
+        layer.append(skip, act("sa-resched", SA_CALENDAR, "Reschedule", () => { if (rs && rs.li === li) rsSettle(rs, 0, 0); rowReschedule(t.id); }),
+          act("sa-today", saToday(), "Today", () => { if (rs && rs.li === li) rsFire(rs); else doToday(t.id); }));
+        li._full = () => doToday(t.id);
+      } else {
+        layer.append(skip, act("sa-resched", SA_CALENDAR, "Reschedule", () => { if (rs && rs.li === li) rsFire(rs); else rowReschedule(t.id); }));   // outermost: the full swipe's
+        li._full = () => rowReschedule(t.id);
+      }
       li.appendChild(layer);                                             // last, under the row's own parts: they slide off it
-      li._ctx = () => rowMenu(t.id); li._ctx.ok = () => canSwipeRow(trainings.get(t.id)); li._ctx.open = open;   // a right-click: the same two, at the pointer; a touch and hold: the same two under the lifted row, a tap on which opens it
+      li._ctx = () => (missed ? missItems(t.id) : rowMenu(t.id)); li._ctx.ok = () => canSwipeRow(trainings.get(t.id)); li._ctx.open = open;   // a right-click: the same actions, at the pointer; a touch and hold: the same under the lifted row, a tap on which opens it
     }
     return li;
   }
@@ -2646,14 +2660,14 @@ import { reportRange, buildReport } from "./report.js";
       $("calView").style.height = track.children[1].offsetHeight + "px";
     }
 
-    // missed by more than a week with nothing logged: it files itself under History as "Missed"
+    // missed by more than a week: it files itself under History as "Missed" (his rule, 10 Nov: the Missed card keeps a week), what was logged on it kept there
     const stale = (() => { const d = new Date(base); d.setDate(base.getDate() - 7); return iso(d); })();
-    const nothingLogged = (t) => (t.rows || []).every((r) => !r.done && !(parseInt(r.setsDone, 10) > 0) && !(r.weights || []).some((w) => String(w == null ? "" : w).trim()) && !(r.repsDone || []).some((x) => String(x == null ? "" : x).trim()));
-    if (!S.sb || S.syncedOnce) for (const t of list) {                              // only once this device has seen the server's copy
-      if (t.completedAt || t.skippedAt || t.missed !== undefined || !effDate(t) || effDate(t) >= stale || !nothingLogged(t)) continue;   // missed: true = filed before, false = a person decided
+    if (!S.sb || (S.syncedOnce && S.syncedOn === today())) for (const t of list) {   // only once this device has seen the server's copy today: a copy days old (an iPad woken offline) never files what another device moved since
+      if (t.completedAt || t.skippedAt || t.missed !== undefined || !effDate(t) || effDate(t) >= stale) continue;   // missed: true = filed before, false = a person brought it back (Undo on its page) or decided before Do it today stopped deciding
       t.skippedAt = now(); t.missed = true; if (S.clientMode) pendingMiss.add(t.id); scheduleSave("trainings", t.id);
     }
-    const next = list.filter((t) => !t.completedAt && !t.skippedAt).sort((a, b) => effDate(a).localeCompare(effDate(b)) || byMade(a, b));   // by day, and within a day in the order they were made
+    const missed = missedOf(c.id);                                                   // its day gone, still to do: the Missed card, the newest first
+    const next = list.filter((t) => !t.completedAt && !t.skippedAt && !missed.includes(t)).sort((a, b) => effDate(a).localeCompare(effDate(b)) || byMade(a, b));   // by day, and within a day in the order they were made
     // keep it short: anything due within the next few days (the very next workout always shows);
     // "Show more" adds the next few workouts each tap, "Show less" folds back to the short list
     if (nextFor !== c.id) { nextFor = c.id; nextExtra = 0; }
@@ -2664,6 +2678,21 @@ import { reportRange, buildReport } from "./report.js";
     const shown = next.slice(0, soon.length + nextExtra), left = next.length - shown.length;
     const todays = shown.filter((t) => effDate(t) === iso(base)), later = shown.filter((t) => effDate(t) !== iso(base));   // today's workout on its own card, the days after it under "Up next"
     const keepOpen = rs && rs.open && !rs.busy && !(rsT && rsT.held) && rs.li.dataset ? rs.li.dataset.tid : ""; rsForget();   // a row left open stays open across the redraw (the rows are new)
+    // the Missed card, above Today (his picks, 10 Nov): one card, its newest workout, and with more a row "2 more" that opens them all (Up
+    // next's own fold, as Apple's lists show more), its up chevron folding them back; Skip all on its title whenever there are two or more
+    if (missFor !== c.id || missed.length < 2) { missFor = c.id; missOpen = false; }   // another client's page, or nothing left to fold: folded again
+    const open2 = missOpen && missed.length > 1;
+    $("missHead").hidden = !missed.length; $("missList").hidden = !missed.length; $("skipAll").hidden = missed.length < 2;
+    $("missList").replaceChildren(...(open2 ? missed : missed.slice(0, 1)).map((t) => workoutRow(t, "missed", true)));
+    if (missed.length > 1) {
+      const li = document.createElement("li"); li.className = "more only"; const bar = document.createElement("div");
+      const fold = document.createElement("button"); fold.type = "button"; fold.className = "fold" + (open2 ? " open" : " wide");
+      fold.setAttribute("aria-label", open2 ? "Show less" : "Show more"); fold.setAttribute("aria-expanded", String(open2));
+      fold.innerHTML = (open2 ? "" : '<span class="cnt"></span>') + '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5.5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      if (!open2) fold.firstChild.textContent = (missed.length - 1) + " more";   // folded: "2 more" at the left in the rows' own type, the chevron at the right
+      fold.addEventListener("click", () => { missOpen = !open2; renderClient(); });
+      bar.appendChild(fold); li.appendChild(bar); $("missList").appendChild(li);
+    }
     $("todayHead").hidden = !todays.length; $("todayList").hidden = !todays.length; $("todayList").replaceChildren(...todays.map((t) => workoutRow(t, "today", true)));
     $("nextHead").hidden = !later.length && left === 0; $("nextList").hidden = !later.length && left === 0;
     $("nextList").replaceChildren(...later.map((t) => workoutRow(t, "next", true)));
@@ -2684,7 +2713,7 @@ import { reportRange, buildReport } from "./report.js";
       bar.appendChild(fold); li.appendChild(bar); $("nextList").appendChild(li);
     }
 
-    if (keepOpen) { const li = [...$("todayList").children, ...$("nextList").children].find((x) => x.dataset && x.dataset.tid === keepOpen && x.classList.contains("swipe-row")), r = li && rsBegin(li, true); if (r) { rsPaint(r, r.w, null); r.open = true; } }
+    if (keepOpen) { const li = [...$("missList").children, ...$("todayList").children, ...$("nextList").children].find((x) => x.dataset && x.dataset.tid === keepOpen && x.classList.contains("swipe-row")), r = li && rsBegin(li, true); if (r) { rsPaint(r, r.w, null); r.open = true; } }
     const rest = list.filter((t) => t.completedAt || t.skippedAt);           // History: a card under Up next; its page lays the past out by week, month and year
     $("histCard").hidden = !rest.length; $("histSub").textContent = rest.length + (rest.length === 1 ? " workout" : " workouts");
     $("trainingEmpty").hidden = list.length > 0;
@@ -3242,6 +3271,12 @@ import { reportRange, buildReport } from "./report.js";
     showMenu(it, items, { at, focus: !pressed, back, onClose: () => it.classList.remove("ctx-on") });   // (with no press, focus goes into the menu, as a system menu takes it)
   });
   const rowMenu = (id) => [                                          // a workout row's right-click: its swipe's two actions, Reschedule first (the outermost, the full swipe's), then Skip; each asks before it acts (the days, the reasons); no ellipsis (his pick, 10 Nov)
+    { label: "Reschedule", icon: MI.calendar, onPick: () => rowReschedule(id) },
+    { label: "Skip", icon: MI.skip, onPick: () => rowSkip(id) },
+  ];
+  const miToday = () => MI.calendar.replace("</svg>", '<text x="8" y="12.3" text-anchor="middle" font-size="5.6" font-weight="600" fill="currentColor" stroke="none">' + Number(today().slice(8)) + "</text></svg>");   // Do it today: the calendar with today's date on it, as Reminders marks its Today
+  const missItems = (id) => [                                        // a missed workout's "…", touch and hold and right-click (his pick B, 10 Nov): the swipe's three, outermost first: Do it today (the likeliest, the full swipe's), Reschedule (the days), Skip (its reasons)
+    { label: "Do it today", icon: miToday(), onPick: () => doToday(id) },
     { label: "Reschedule", icon: MI.calendar, onPick: () => rowReschedule(id) },
     { label: "Skip", icon: MI.skip, onPick: () => rowSkip(id) },
   ];
@@ -4056,6 +4091,26 @@ import { reportRange, buildReport } from "./report.js";
     const t = trainings.get(id); if (!canSwipeRow(t) || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date === t.date) return false;   // asked again at the pick: a sync may have brought in a finish or a skip while the days were open
     touchState(id, "date"); t.date = date; scheduleSave("trainings", id); S.renderedTraining = null; render(); return true;
   }
+  function doToday(id) {                                             // a missed workout comes to today (its "…", its swipe, its touch and hold): the client's by the server's own rule (client_move_training), the coach's an ordinary save. Not marked as decided: missed again, it files itself after a week like any other (his rule, 10 Nov)
+    const t = trainings.get(id); if (!canSwipeRow(t) || !effDate(t) || effDate(t) >= today()) return false;   // asked again at the pick: a sync may have finished, skipped or moved it meanwhile
+    t.date = today(); t.skippedAt = null; delete t.missed; touchState(id, "date", "skippedAt", "missed"); if (S.clientMode) pendingMove.add(id);   // (the coach's save then carries all three over a filing another device sent meanwhile)
+    scheduleSave("trainings", id); S.renderedTraining = null; render(); return true;
+  }
+  async function skipAllMissed() {                                    // the Missed card's Skip all (his ask, 10 Nov): asked first, then every workout still missed goes to History as skipped, as each one's own Skip files it (without a reason)
+    const cid = S.view.name === "client" && !settingsOpen ? S.view.id : null, ids = cid ? missedOf(cid).map((t) => t.id) : [];
+    if (ids.length < 2) return false;
+    if (!(await askFirst({ title: "Skip " + ids.length + " missed workouts?", text: "They move to History as skipped.", yes: "Skip all" }))) return false;
+    if (!(S.view.name === "client" && S.view.id === cid && !settingsOpen)) return false;   // still her page: Back or a settings page while the question was up takes nothing
+    let n = 0;
+    for (const id of ids) {
+      const t = trainings.get(id); if (!canSwipeRow(t) || !effDate(t) || effDate(t) >= today()) continue;   // still missed: a sync may have finished or moved one meanwhile
+      t.skippedAt = now(); t.missed = false; delete t.skipReason; touchState(id, "skippedAt", "missed", "skipReason");   // a person decided, as setSkipped records it
+      if (S.clientMode) { pendingSkip.add(id); pendingMiss.add(id); }
+      scheduleSave("trainings", id); n++;
+    }
+    if (n) { S.renderedTraining = null; render(); }
+    return n > 0;
+  }
   function applyReschedule(id, date) {
     const t = trainings.get(id); if (!canReschedule(t) || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date === t.date || date < today()) return false;   // asked again at the pick: a sync may have brought in a finish or a skip while the days were open, or midnight made the day picked yesterday
     t.date = date; touchState(id, "date"); if (S.clientMode) pendingMove.add(id);
@@ -4079,6 +4134,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!(S.view.name === "training" && S.view.id === id && trainings.has(id))) return false;   // still this page (a sync took nothing away while the question was up)
     deleteTraining(id); return true;
   }
+  $("skipAll").addEventListener("click", () => { skipAllMissed(); });
   $("tMore").addEventListener("click", (e) => {
     e.stopPropagation(); const items = moreItems(trainings.get(S.view.id)); if (!items.length) return;
     showMenu($("tMore"), items, { align: "right", focus: e.detail === 0 });   // a keyboard's Enter or VoiceOver's activation (detail 0) goes into the menu
@@ -4284,7 +4340,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },

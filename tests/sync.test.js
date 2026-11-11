@@ -673,3 +673,11 @@ test("a server copy whose rows only differ in array order is the same workout: n
   fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: training("T", { rows: [{ ...row("a"), label: "2" }, { ...row("b"), label: "1" }] }), updated_at: "S1" }], true, Date.now());
   assert.strictEqual(maps.trainings.get("T"), t, "the same object stays");
 });
+
+test("a full answer from the server marks the day it came: the week's filing of missed workouts waits for one from today", async () => {
+  const sb = makeSupabase(); coach(sb);
+  assert.deepStrictEqual([app.get().syncedOnce, app.get().syncedOn], [false, ""], "none yet this session");
+  await fns.syncDownNow();
+  assert.deepStrictEqual([app.get().syncedOnce, app.get().syncedOn], [true, fns.today()], "today's");
+  await settle();
+});

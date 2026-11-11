@@ -397,7 +397,7 @@ async function syncDownNow() {
   } else {
     mergeDown(clients, "clients", c.data, c.complete !== false, startedAt); mergeDown(trainings, "trainings", t.data, t.complete !== false, startedAt);
   }
-  lsSet("fiala.trainings.migrated", true); S.syncedOnce = true;
+  lsSet("fiala.trainings.migrated", true); S.syncedOnce = true; S.syncedOn = today();
   localBackend.save();
   if (S.clientMode) {
     S.myClientId = clients.size ? [...clients.keys()][0] : null;

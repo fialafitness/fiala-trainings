@@ -50,6 +50,7 @@ const pop = recorder("whenPop", { offsetWidth: 243, offsetHeight: 150 });
 pop.querySelector = (sel) => (sel === ".wopt" ? pop.children.find((c) => /\bwopt\b/.test(c.className)) || null : null); pop.contains = (x) => !!x && pop.children.includes(x);
 const bg = recorder("whenBg"); bg.hidden = true;
 const sheet = recorder("skipSheet"); sheet.hidden = true; const skGo = recorder("skGo"), skKeep = recorder("skKeep"); recorder("skReasons");
+const skipAllBtn = recorder("skipAll"), askSheet = recorder("askSheet"), askYes = recorder("askYes"), askNo = recorder("askNo"); askSheet.hidden = true;   // the Missed card's Skip all and the question it asks
 const make = document.createElement; document.createElement = (t) => listens(kids(make(t)));
 globalThis.getComputedStyle = (node) => {                                // the day picker's track stands at its last written transform
   const m = /translate3d\(([-\d.e]+)px/.exec((node && node.style && node.style.transform) || "");
@@ -286,16 +287,31 @@ out.ex = {};
 { clientPage(false); const f = onPage(mk("input", ["label"])); document.activeElement = f; fire("focusin", { target: f }); const on = document.body.classList.contains("typing");
   document.activeElement = document.body; fire("blur", { target: f }); await advance(100);   // (its focusout went to a field no longer on the page)
   out.typing = { on, off: !document.body.classList.contains("typing") }; }
-// ---------- a missed workout's Skip ----------
+// ---------- a missed workout's Skip, from its "…" on the Missed card (his pick B, 10 Nov) ----------
+const missRow = (t) => { const li = fns.workoutRow(t, "missed", true); return { li, more: li.children.find((c) => c.className === "miss-more") }; };
+const label = (b) => (b.children.find((c) => c.tagName === "SPAN") || {}).textContent;
 { clientPage(true); const t = maps.trainings.get("w1"); t.date = day(-2);
-  const li = fns.workoutRow(t, "next", true), acts = li.children.find((c) => c.className === "missed-actions"), skip = acts && acts.children.find((c) => c.textContent === "Skip");
-  skip.fire("click", {});
-  out.missed = { asked: sheet.hidden === false, asking: !!app.get().asking, skippedAtOnce: !!t.skippedAt };
+  const { more } = missRow(t); more.fire("click", { stopPropagation() {}, detail: 1 });
+  const rows = pop.children.map(label), open = bg.hidden === false;
+  pop.children.find((b) => label(b) === "Skip").fire("click", { stopPropagation() {} });
+  out.missed = { rows, open, asked: sheet.hidden === false, asking: !!app.get().asking, skippedAtOnce: !!t.skippedAt, menuClosed: bg.hidden === true };
   await advance(400); skGo.fire("click", {});
   out.missed.after = { skipped: !!t.skippedAt, missed: t.missed, pending: maps.pendingSkip.has("w1"), closed: sheet.hidden === true }; }
 { clientPage(true); const t = maps.trainings.get("w1"); t.date = day(-2);
-  const li = fns.workoutRow(t, "next", true), acts = li.children.find((c) => c.className === "missed-actions"), skip = acts.children.find((c) => c.textContent === "Skip");
-  skip.fire("click", {}); await advance(400); skKeep.fire("click", { detail: 1 }); out.missed.keep = { skipped: !!t.skippedAt, closed: sheet.hidden === true }; }
+  const { more } = missRow(t); more.fire("click", { stopPropagation() {}, detail: 1 }); pop.children.find((b) => label(b) === "Skip").fire("click", { stopPropagation() {} });
+  await advance(400); skKeep.fire("click", { detail: 1 }); out.missed.keep = { skipped: !!t.skippedAt, closed: sheet.hidden === true }; }
+// ---------- its Do it today, from the same "…" ----------
+{ clientPage(true); const t = maps.trainings.get("w1"); t.date = day(-2);
+  const { more } = missRow(t); more.fire("click", { stopPropagation() {}, detail: 1 }); pop.children.find((b) => label(b) === "Do it today").fire("click", { stopPropagation() {} });
+  out.missed.today = { date: t.date === fns.today(), moved: maps.pendingMove.has("w1"), decided: maps.pendingMiss.has("w1") || t.missed !== undefined, closed: bg.hidden === true }; }
+// ---------- the Missed card's Skip all: its own button asks first; Cancel skips nothing, Skip all both ----------
+{ clientPage(false); maps.trainings.get("w1").date = day(-2); maps.trainings.set("w2", { ...maps.trainings.get("w1"), id: "w2", title: "Push", date: day(-4) }); fns.render();
+  skipAllBtn.fire("click", {}); await flush();
+  out.skipAll = { asked: askSheet.hidden === false, title: document.getElementById("askTitle").textContent };
+  askNo.fire("click", {}); await flush();
+  out.skipAll.cancelled = { skipped: ["w1", "w2"].filter((id) => !!maps.trainings.get(id).skippedAt), closed: askSheet.hidden === true };
+  skipAllBtn.fire("click", {}); await advance(400); askYes.fire("click", {}); await flush();
+  out.skipAll.done = ["w1", "w2"].filter((id) => !!maps.trainings.get(id).skippedAt); }
 
 console.log(JSON.stringify(out));
 process.exit(0);
