@@ -1539,7 +1539,7 @@ import { reportRange, buildReport } from "./report.js";
     const past = kind === "cal" ? Math.abs(x) > 48 : Math.abs(x) > Math.max(1, w) / 2;
     return past ? (x > 0 ? -1 : 1) : 0;
   }
-  const monthWheel = (el) => (!el || !el.closest ? null : el.closest("#dpGrid") ? (dp ? dpWheel : null) : el.closest("#calView") && !held() ? calWheel : null);   // two fingers over a month: they page it (his pick, 9 Nov, "do what Apple would do": as a finger does on the phone, as two fingers page Calendar's days and weeks on the Mac)
+  const monthWheel = (el) => (!el || !el.closest ? null : el.closest("#pvBox") ? (pv && !pvNested() ? pvWheel : null) : el.closest("#dpGrid") ? (dp ? dpWheel : null) : el.closest("#calView") && !held() ? calWheel : null);   // two fingers over a month: they page it (his pick, 9 Nov, "do what Apple would do": as a finger does on the phone, as two fingers page Calendar's days and weeks on the Mac)
   const canScrollX = (n, ax) => ((wgNatural ? ax < 0 : ax > 0) ? n.scrollLeft + n.clientWidth < n.scrollWidth - 1 : n.scrollLeft > 0);   // fingers this way (ax) scroll n toward its end, or toward its start: can it still go?
   const sideScroller = (el, ax) => { for (let n = el; n && n !== document.body && n.nodeType === 1; n = n.parentElement) { const cs = getComputedStyle(n); if (/(auto|scroll)/.test(cs.overflowX) && n.scrollWidth > n.clientWidth + 1 && canScrollX(n, ax)) return true; } return false; };
   const wheelBack = (el, ax) => (wgNatural ? ax > 0 : ax < 0) && (swipeOn || deskOn) && canBack() && !held() && !el.closest(NO_WHEEL_BACK) && !sideScroller(el, ax) && !(document.activeElement && el.closest("input, textarea") === document.activeElement && canScrollX(document.activeElement, ax));   // (the field being typed in keeps the fingers while its text can still scroll that way, as Safari's own swipe leaves it)
@@ -1875,7 +1875,7 @@ import { reportRange, buildReport } from "./report.js";
       $("askTitle").textContent = title; $("askText").textContent = text || ""; $("askText").hidden = !text; y.textContent = yes;
       let armed = false; y.disabled = true;                                                  // the second tap of a double tap must not land on the red button
       const settle = setTimeout(() => { armed = true; y.disabled = false; }, 350);
-      const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = false; bg.hidden = true; y.disabled = false; for (const el of behind) el.inert = false; y.removeEventListener("click", onYes); n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); document.removeEventListener("keydown", onKey); resolve(v); };
+      const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = !!pv; bg.hidden = true; y.disabled = false; for (const el of behind) el.inert = false; y.removeEventListener("click", onYes); n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); document.removeEventListener("keydown", onKey); resolve(v); };
       const onYes = () => { if (armed) done(true); }, onNo = () => done(false), onBg = (e) => { if (armed && e.target === bg) done(false); }, onKey = (e) => { if (e.key === "Escape") done(false); };
       askOpen = done; S.asking = true;
       y.addEventListener("click", onYes); n.addEventListener("click", onNo); bg.addEventListener("click", onBg); document.addEventListener("keydown", onKey);
@@ -1892,7 +1892,7 @@ import { reportRange, buildReport } from "./report.js";
       ul.replaceChildren(...rows);
       let armed = false;                                                                      // the second tap of a double tap must not pick a row
       const settle = setTimeout(() => { armed = true; }, 350);
-      const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = false; bg.hidden = true; for (const el of behind) el.inert = false; n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); ul.removeEventListener("click", onRow); document.removeEventListener("keydown", onKey); resolve(v); };
+      const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = !!pv; bg.hidden = true; for (const el of behind) el.inert = false; n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); ul.removeEventListener("click", onRow); document.removeEventListener("keydown", onKey); resolve(v); };
       const onNo = () => done(null), onBg = (e) => { if (armed && e.target === bg) done(null); }, onKey = (e) => { if (e.key === "Escape") done(null); };
       const onRow = (e) => { const b = e.target.closest("button[data-id]"); if (b && armed) done(b.dataset.id); };
       askOpen = done; S.asking = true;
@@ -1940,13 +1940,13 @@ import { reportRange, buildReport } from "./report.js";
     dp = { clientId: opts.clientId, title: opts.title || "Pick a day", selected, min: opts.min || null, months, month, aim: null, onPick: opts.onPick, ok: opts.ok || null, back: document.activeElement, at: performance.now() };   // ok: asked on every redraw; false closes the days (the workout was finished, skipped or left). min as a function is asked at every redraw: Reschedule's "from today on" moves on at midnight
     dpIdx = Math.max(0, months.indexOf(month)); dpTouching = false; dpStale = false; dpRestAt = 0; clearTimeout(dpLater); renderDatePicker(); $("datePick").hidden = false;
     dpShow(dp.month, false);                                         // opens on the day's month, without a slide (now that the sheet has its width)
-    for (const el of document.querySelectorAll("main, header")) el.inert = true;
+    for (const el of document.querySelectorAll("main, header")) el.inert = true; if (pv) $("pvSheet").inert = true;   // (over the preview, the preview waits)
     setTimeout(() => { const page = dpTrack() && dpTrack().children[dpIdx], f = (page && page.querySelector("button.sel:not(:disabled)")) || $("dpCancel"); if (f && dp) f.focus({ preventScroll: true }); }, 0);   // the chosen day when it is on the month shown
   }
   const dpSettled = (e) => !!dp && (performance.now() - dp.at >= 350 || (!!e && e.detail === 0));   // the second tap of a double tap (on a row's Reschedule, on the "…" menu's) lands on the days as they come up: in their first 350 ms it picks no day and closes nothing, as the skip sheet's skSettled; a keyboard's Enter or VoiceOver (detail 0) always goes through
   function closeDatePicker() {
     const back = dp && dp.back; $("datePick").hidden = true; dp = null; clearTimeout(dpLater);
-    for (const el of document.querySelectorAll("main, header")) el.inert = false;
+    if (pv) $("pvSheet").inert = false; else for (const el of document.querySelectorAll("main, header")) el.inert = false;   // (over the preview: back to it; the page behind stays out of reach until it goes)
     if (back && typeof back.focus === "function" && document.contains(back)) back.focus({ preventScroll: true });
   }
   // The months sit side by side on a track (index.html .dp-pager): it follows the finger and, let go, settles on a month on UIKit's own spring,
@@ -2714,7 +2714,7 @@ import { reportRange, buildReport } from "./report.js";
     const rest = list.filter((t) => t.completedAt || t.skippedAt);           // History: a card under Up next; its page lays the past out by week, month and year
     $("histCard").hidden = !rest.length; $("histSub").textContent = rest.length + (rest.length === 1 ? " workout" : " workouts");
     $("trainingEmpty").hidden = list.length > 0;
-    if (pv) { const pt = trainings.get(pv.id); if (pt && pt.clientId === c.id) paintPreview(pt); else closePreview(); }   // a sync's redraw: the preview shows the workout as it is now, or goes with it
+    if (pv && !pg) { const pt = trainings.get(pv.id); if (pt && pt.clientId === c.id) { const more = $("pvMore"), y0 = popClose && popAnchor === more ? more.getBoundingClientRect().top : null; paintPreview(pt); if (popClose && popAnchor === more && (menuRows(pvItems(pt)) !== popRows || more.getBoundingClientRect().top !== y0)) popClose(); } else closePreview(); } else if (pv) pvArrows();   // a sync's redraw: the preview shows the workout as it is now (its "…" menu closes if what it offers changed, or if the "…" moved: the sheet sits at the screen's foot as tall as its workout, and the menu stays where it was placed), or goes with it; a slide under way paints where it lands, its arrows and its "…" at once (Skip's and Delete's own redraw as the slide to the next workout begins: the one skipped or deleted is no longer either side of it)
     $("delClientConfirm").hidden = true; $("delClient").hidden = false;
   }
 
@@ -3144,6 +3144,7 @@ import { reportRange, buildReport } from "./report.js";
     pencil: '<svg class="mi" viewBox="-8.38 -9.09 64.73 64.73" aria-hidden="true" fill="currentColor"><path d="M4.18 42.43L8.35 34.58L33.81 9.13L38.12 13.44L12.67 38.9L4.82 43.07ZM3.92 42.43A0.9 0.9 0 1 0 5.72 42.43A0.9 0.9 0 1 0 3.92 42.43ZM35.93 7.01L39.47 3.47A1.25 1.25 0 0 1 41.23 3.47L43.78 6.02A1.25 1.25 0 0 1 43.78 7.78L40.24 11.32Z"/></svg>',   // Edit instructions: Apple's pencil, traced from Rename in the Files menu (iOS 27.2; 96% overlap), 0.76 em as Apple's
     camera: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.25 5.6c0-.8.65-1.45 1.45-1.45h1.7l1.05-1.4h3.1l1.05 1.4h1.7c.8 0 1.45.65 1.45 1.45v5.95c0 .8-.65 1.45-1.45 1.45H3.7c-.8 0-1.45-.65-1.45-1.45z"/><circle cx="8" cy="8.55" r="2.35"/></svg>',
     photo: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><rect x="1.9" y="2.9" width="12.2" height="10.2" rx="2.2"/><circle cx="5.7" cy="6.3" r="1.15"/><path d="M2.3 11.7l3.5-3.3 2.4 2.2 1.9-1.7 3.6 3.1"/></svg>',
+    copy: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><rect x="5.4" y="5.4" width="8.8" height="8.8" rx="2.1"/><path d="M10.6 5.4V3.9c0-1.15-.95-2.1-2.1-2.1H3.9c-1.15 0-2.1.95-2.1 2.1v4.6c0 1.15.95 2.1 2.1 2.1h1.5"/></svg>',   // Copy workout: a page over a page
     eye: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M1.6 8C2.9 5.6 5.2 3.9 8 3.9s5.1 1.7 6.4 4.1C13.1 10.4 10.8 12.1 8 12.1S2.9 10.4 1.6 8z"/><circle cx="8" cy="8" r="2.1"/></svg>',   // Preview in a menu: the swipe's eye in outline, as the menus take the outline of what a swipe shows filled
     trash: '<svg class="mi" viewBox="-7.3 -3.3 62.6 62.6" aria-hidden="true" fill="currentColor"><path d="M5 13.5H43L41.25 50.5A5 5 0 0 1 36.25 55.5H11.75A5 5 0 0 1 6.75 50.5ZM8.6 13.5L10.35 50.5A1.4 1.4 0 0 0 11.75 51.9H36.25A1.4 1.4 0 0 0 37.65 50.5L39.4 13.5ZM17.75 0.5H30.25A4.5 4.5 0 0 1 34.75 5V6.25A4.5 4.5 0 0 1 30.25 10.75H17.75A4.5 4.5 0 0 1 13.25 6.25V5A4.5 4.5 0 0 1 17.75 0.5ZM19.5 4A2.5 2.5 0 0 0 17 6.5V10.25A2.5 2.5 0 0 0 19.5 12.75H28.5A2.5 2.5 0 0 0 31 10.25V6.5A2.5 2.5 0 0 0 28.5 4ZM1.45 10.25H46.55A1.45 1.45 0 0 1 48 11.7V12.2A1.45 1.45 0 0 1 46.55 13.65H1.45A1.45 1.45 0 0 1 0 12.2V11.7A1.45 1.45 0 0 1 1.45 10.25ZM14.5 19.78L15 46.28A1.5 1.5 0 0 0 18 46.22L17.5 19.72A1.5 1.5 0 0 0 14.5 19.78ZM22.5 19.75L22.5 46.25A1.5 1.5 0 0 0 25.5 46.25L25.5 19.75A1.5 1.5 0 0 0 22.5 19.75ZM30.5 19.72L30 46.22A1.5 1.5 0 0 0 33 46.28L33.5 19.78A1.5 1.5 0 0 0 30.5 19.72Z"/></svg>',   // Apple's trash, traced from its Delete in the Files and Reminders menus (iOS 27.2, 3x): lid, handle, a can narrowing to rounded corners, three lines leaning in; filled shapes, 93% overlap; 1.10 em tall as Apple's at 17 pt
   };
@@ -4103,10 +4104,14 @@ import { reportRange, buildReport } from "./report.js";
     return { early: true, skipped: false, lines: ["Finished early \u00b7 " + sets(did), left + (left === 1 ? " set" : " sets") + " not completed" + (why ? " \u00b7 " + why : "")] };
   }
   const pvReps = (v) => { const t = String(v == null ? "" : v).trim() || REPS_DEFAULT; const w = repsWord(t); return showReps(t) + (w ? " " + w : ""); };   // blank: the page's own grey "10"   // "10, 8, 6 reps", "30 sec", "8 reps / side": as the workout's cards write them
-  function paintPreview(t) {
+  const pvName = (t) => String((t && t.title) || "").trim() || "Workout";
+  const pvMissed = (t) => canSwipeRow(t) && !!effDate(t) && effDate(t) < today();   // its day gone, still to do (the Missed card's)
+  function pvFill(t, titleEl, dayEl, cardsEl) {                        // a workout's page: its title, its day, its cards (the list's own, or the one sliding in beside it)
     const span = (cls, text) => { const s = document.createElement("span"); s.className = cls; s.textContent = text; return s; };
-    $("pvTitle").textContent = $("pvBarTitle").textContent = String(t.title || "").trim() || "Workout";
-    $("pvDay").textContent = fmtDayLong(effDate(t) || "");
+    titleEl.textContent = pvName(t);
+    const day = fmtDayLong(effDate(t) || "");
+    if (pvMissed(t)) dayEl.replaceChildren(span("missed", "Missed"), document.createTextNode(day ? " \u00b7 " + day : ""));   // a missed one says so first, in red (his ask, 11 Nov), as its row does
+    else dayEl.textContent = day;
     const cards = groupsOf(t.rows).map((g) => {
       const st = g.rows.every((r) => r.done) ? groupSummary(g) : null;
       const card = document.createElement("div"); card.className = "pv-card";
@@ -4126,29 +4131,37 @@ import { reportRange, buildReport } from "./report.js";
       return grp;
     });
     if (!cards.length) { const none = document.createElement("p"); none.className = "pv-none"; none.textContent = "Nothing added yet"; cards.push(none); }
-    $("pvCards").replaceChildren(...cards);
-    pvFit();                                                          // (a sync's redraw: it may scroll now, or no longer)
+    cardsEl.replaceChildren(...cards);
+  }
+  function paintPreview(t) {
+    pvFill(t, $("pvTitle"), $("pvDay"), $("pvCards")); $("pvBarTitle").textContent = pvName(t);
+    const say = $("pvSay"); if (say.textContent && say.textContent !== pvLine(t)) say.textContent = "";   // VoiceOver's line never tells of another workout or an old day
+    pvFit(); pvArrows(); pvTitleRoom();                               // (a sync's redraw: it may scroll now, or no longer; the workouts either side may have changed)
   }
   function openPreview(id) {                                           // its swipe's Preview, its touch and hold, a missed workout's "…"
     const t = trainings.get(id); if (!t || isTemplateClient(t.clientId) || pv || S.asking) return false;   // (another question up: it waits for that one)
     paintPreview(t);
-    const bg = $("pvSheet"); pv = { id, at: performance.now(), back: document.activeElement, behind: [...document.body.children].filter((el) => el !== bg && !el.inert) };   // (what was inert already, as #ctxLift, stays so)
+    const bg = $("pvSheet"); pv = { id, at: performance.now(), back: document.activeElement, behind: [...document.body.children].filter((el) => el !== bg && !el.inert && !(el.hidden && (el.id === "whenBg" || (el.classList && el.classList.contains("sheet-bg"))))) };   // (what was inert already, as #ctxLift, stays so; the menu layer and the other sheets, hidden, stay usable: the preview's "…" opens them over it)
     for (const el of pv.behind) el.inert = true;                       // the page behind is out of reach until the sheet goes, as every sheet's
-    S.asking = true; pvReset(); bg.hidden = false; $("pvScroll").scrollTop = 0; pvFingers = 0; pvTop(true); pvFit(); pvHeader();
+    S.asking = true; pvReset(); pvSlideReset(); bg.hidden = false; document.body.classList.add("pv-up"); $("pvScroll").scrollTop = 0; pvFingers = 0; pvTop(true); pvFit(); pvHeader(); pvArrows(); pvTitleRoom();
     setTimeout(() => { if (pv) $("pvBox").focus({ preventScroll: true }); }, 0);   // into the sheet (a keyboard or VoiceOver reads it from its title), no ring on a button nobody chose
     return true;
   }
   function closePreview(refocus) {                                    // refocus: closed by a keyboard or VoiceOver (Escape, the cross's Enter): its place goes back where it was (the "…" it came from, else the row), as the menus and the day picker give it back; a tap leaves focus where WebKit put it (no ring on a row nobody chose)
-    if (!pv) return false; const p = pv; pv = null; pvReset(); $("pvSheet").hidden = true; pvBarReset(); for (const el of p.behind) el.inert = false; S.asking = false;
+    if (!pv) return false; const p = pv; pv = null; if (askOpen) askOpen(false); if (sk) closeSkip(); if (dp) closeDatePicker(); pvReset(); pvSlideReset(); $("pvSay").textContent = ""; if (popClose && popAnchor === $("pvMore")) popClose(); $("pvSheet").hidden = true; $("pvSheet").inert = false; document.body.classList.remove("pv-up"); pvBarReset(); for (const el of p.behind) el.inert = false; S.asking = false;   // (a question up over it goes with it, as UIKit dismisses what is above a sheet it takes away)
     if (refocus) { const b = p.back, ok = b && b !== document.body && b.isConnected !== false && !(b.closest && b.closest(".swipe-acts")); const to = ok ? b : $("vClient").querySelector('li[data-tid="' + CSS.escape(p.id) + '"] > button'); if (to && typeof to.focus === "function") to.focus({ preventScroll: true }); }
     rsFlush();                                                        // what a sync brought while it was pulled or springing
     return true;
   }
   const pvSettled = (e) => !!pv && (performance.now() - pv.at >= 350 || (!!e && e.detail === 0));   // the second tap of a double tap (on Preview in a menu or on the row) lands on nothing in its first 350 ms, as askFirst's buttons; a keyboard's Enter (detail 0) acts at once
-  $("pvGo").addEventListener("click", (e) => { if (!pvSettled(e)) return; const id = pv.id; closePreview(); if (trainings.has(id)) go({ name: "training", id }); });
+  $("pvGo").addEventListener("click", (e) => { if (!pvSettled(e)) return; if (pg && pg.finish) pg.finish(); if (!pv || pg) return; const id = pv.id; closePreview(); if (trainings.has(id)) go({ name: "training", id }); });   // (a slide still landing lands first: a Mac's click or a key has no touch to land it)
   $("pvX").addEventListener("click", (e) => { if (pvSettled(e)) closePreview(e.detail === 0); });   // the close cross (his ask, 10 Nov: no Cancel, Apple's cross as in Calendar's event sheet); its Enter or VoiceOver (detail 0) gives the keyboard its place back
   $("pvSheet").addEventListener("click", (e) => { if (e.target === $("pvSheet") && pvSettled(e)) closePreview(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pv) closePreview(true); });   // Escape closes, as the other sheets take it
+  document.addEventListener("keydown", (e) => {                     // Escape closes, as the other sheets take it; the left and right arrow keys go to the workout before or after, as Quick Look steps through files (heard first, so a menu or a sheet up over the preview takes its own keys: one Escape closes one thing)
+    if (!pv || pvNested()) return;
+    if (e.key === "Escape") { closePreview(true); return; }
+    if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) { e.preventDefault(); pvGo(e.key === "ArrowLeft" ? -1 : 1); }
+  }, true);
   // ---------- its header and its swipe down (his asks, 11 Nov, with Calendar's event sheet beside them: "the header … transparent just like
   // apples in the calendar … in both light and dark view", "if I swipe from top of the card down it closes the card … exactly like apple").
   // Measured on the test iPhone (iOS 27.2, Calendar's event sheet, 11 Nov). The header: 70 points from the sheet's top (the cross 16 in); at
@@ -4172,7 +4185,7 @@ import { reportRange, buildReport } from "./report.js";
   // scroll is the sheet's, as the header (WebKit would hand its pan to the page behind).
   const PV_BAR = 70, PV_SLOP = 10, PV_SPRING = 0.357, PV_DIM = 0.45, PV_PROJECT = 0.099, PV_FLICK = 1000, PV_FLICK_MS = 50, PV_TOP_MS = 100, PV_TOP_WAIT = 1000;
   function pvHeader() {                                               // the header's see-through and its title, from where the list is
-    if (!pv) return; const bar = $("pvBar"), s = Math.max(0, $("pvScroll").scrollTop || 0);
+    if (!pv || (pg && pg.out)) return; const bar = $("pvBar"), s = Math.max(0, $("pvScroll").scrollTop || 0);   // (while the page going out slides away the header is its: the list's own scroll event, from being put at its top at the let-go, comes a frame later; pvLand puts the header as the list is)
     bar.style.setProperty("--pv-on", String(Math.min(1, s / 10)));
     const t = $("pvTitle").getBoundingClientRect(), b = $("pvBox").getBoundingClientRect();
     bar.classList.toggle("pv-titled", s > 0 && t.top - b.top < PV_BAR - 10);   // the big title's letters going under the edge (its box 10 under, its letters 2 to 4: Calendar's moment)
@@ -4189,6 +4202,7 @@ import { reportRange, buildReport } from "./report.js";
     pvHeader();
     if (pvAtTop()) { pvSettleLater(); return; }
     pvTop(false); const d = pvDrag;                                   // the list moved: it bounces at both ends again, and a touch on it is its own scroll
+    if (d && d.slide) { if (pg && !pg.settling) pvLetGo(0); pvDrop(); return; }   // never a slide and a scroll at once: the slide goes back
     if (d && d.inList) { if (d.on && d.off > 0) pvRelease(d.off, Math.min(0, pvSpeed(d, performance.now())), d.h, 0, true); pvDrop(); }   // (a sheet that touch pulled goes home by the spring, from the finger's speed: iOS took the list from where its own scroll began, a few points short of the sheet's place)
   }
   $("pvScroll").addEventListener("scroll", pvScrolled, { passive: true });
@@ -4196,13 +4210,13 @@ import { reportRange, buildReport } from "./report.js";
   const pvCount = (e) => { pvFingers = ((e && e.touches) || []).length; if (!pvFingers && pvAtTop()) pvSettleLater(); };   // the fingers on the sheet (touches: every finger still down)
   for (const type of ["touchstart", "touchend", "touchcancel"]) $("pvSheet").addEventListener(type, (e) => {
     pvCount(e); const tgt = e && e.target;
-    if (type !== "touchstart" || !tgt || !tgt.addEventListener || !tgt.closest || !tgt.closest("#pvCards") || typeof AbortController !== "function") return;
+    if (type !== "touchstart" || !tgt || !tgt.addEventListener || !tgt.closest || !tgt.closest("#pvScroll") || typeof AbortController !== "function") return;
     const ids = [...((e && e.changedTouches) || [])].map((t) => t.identifier), ac = new AbortController();   // a card a sync's redraw takes out of the page passes its finger's lift to nothing else: heard on it too (as pvHear hears a pull's)
     const up = (ev) => { if (![...((ev && ev.changedTouches) || [])].some((t) => ids.includes(t.identifier))) return; ac.abort(); if (!tgt.isConnected) pvCount(ev); };
     tgt.addEventListener("touchend", up, { passive: true, signal: ac.signal }); tgt.addEventListener("touchcancel", up, { passive: true, signal: ac.signal });
   }, { capture: true, passive: true });
   function pvFit() { if (!pv) return; const sc = $("pvScroll"); sc.classList.toggle("pv-fits", (sc.scrollHeight || 0) <= (sc.clientHeight || 0) + 1); }   // nothing to scroll: a touch on the list is the sheet's, as the header's (measured once the sheet is up, and again after a sync's redraw or a turn)
-  if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", () => { if (pv) pvFit(); });
+  if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", () => { if (pv) { pvFit(); pvTitleRoom(); } });
   function pvBarReset() { const bar = $("pvBar"); bar.classList.remove("pv-titled"); bar.style.setProperty("--pv-on", "0"); }   // the header at rest while the sheet is away: the next one opens at its list's top, with no name or veil left from this one
   const pvDecide = (off, v, h, ms) => { const to = off + v * PV_PROJECT; return to > h / 2 || (v >= PV_FLICK && ms >= PV_FLICK_MS && to > h / 4) ? "close" : "back"; };   // off: points pulled down; v: the finger's points a second, down; ms: from its touch to its lift; to: where it would coast to
   function pvPlace(off, h, dim) {                                     // the sheet pulled down by off, the dim lightened by the share pulled away (or set: dim)
@@ -4226,29 +4240,38 @@ import { reportRange, buildReport } from "./report.js";
   const pvBank = (d, ts) => { if (!ts.length) return; const m = pvMid(ts); d.bx += m.x - d.cx; d.by += m.y - d.cy; };   // the way they have gone so far, kept
   const pvAnchor = (d, ts) => { if (!ts.length) return; const m = pvMid(ts); d.cx = m.x; d.cy = m.y; };
   const pvSample = (d, e, dy) => { d.s.push([e.timeStamp, dy]); if (d.s.length > 12) d.s.shift(); };
-  const pvHolds = () => !!pvAnim || !!(pvDrag && performance.now() - pvDrag.at < 10000);   // a finger on the sheet, or its spring: a sync's redraw waits (rowHolds), never a card rebuilt under the finger mid-pull (a touch that never came up holds nothing after 10 s)
+  const pvHolds = () => !!pvAnim || !!pg || !!(pvDrag && performance.now() - pvDrag.at < 10000);   // a finger on the sheet, or its spring: a sync's redraw waits (rowHolds), never a card rebuilt under the finger mid-pull (a touch that never came up holds nothing after 10 s)
   const pvUnhear = (d) => { if (d && d.ac) { d.ac.abort(); d.ac = null; } };
-  function pvHear(d, tgt) {                                           // a touch's events stay aimed at the element it began on: a card a redraw takes out of the page no longer passes them on, so they are heard on it too (as the swipe back and the hold hear theirs)
-    if (!tgt || !tgt.addEventListener || !tgt.closest || !tgt.closest("#pvCards") || typeof AbortController !== "function") return;
+  function pvHear(d, tgt, onList) {                                  // a touch's events stay aimed at the element it began on: anything in the list a redraw takes out of the page (a card, a missed day's red word) no longer passes them on, so they are heard on it too (as the swipe back and the hold hear theirs); onList: where it began, read before anything could repaint it
+    if (!tgt || !tgt.addEventListener || !(onList != null ? onList : !!(tgt.closest && tgt.closest("#pvScroll"))) || typeof AbortController !== "function") return;
     const ac = d.ac || (d.ac = new AbortController()), on = (type, fn) => tgt.addEventListener(type, (ev) => { if (!tgt.isConnected) fn(ev); }, { passive: type !== "touchmove", signal: ac.signal });
     on("touchmove", pvMove); on("touchend", pvUp); on("touchcancel", pvUp);
   }
   const pvDrop = () => { const d = pvDrag; pvDrag = null; pvUnhear(d); rsFlush(); };   // this touch is not the sheet's (then a sync's redraw that waited is drawn)
   $("pvBox").addEventListener("touchstart", (e) => {
+    pvEatUntil = 0;                                                   // a new touch: its own click goes through (a slide's own click, if iOS sends one, came at its lift)
     const d = pvDrag, fresh = [...((e.changedTouches && e.changedTouches.length ? e.changedTouches : e.touches) || [])];
     if (d) { pvBank(d, pvMine(e, d)); for (const t of fresh) d.ids.add(t.identifier); pvAnchor(d, pvMine(e, d)); pvHear(d, e.target); return; }   // another finger on the sheet joins the pull (Calendar's sheet follows two, measured), from where they are now
-    if (!pv || pvAnim || !fresh.length) return;                       // while it springs, a new finger does not catch it
-    const tgt = e.target, sc = $("pvScroll"), inList = !!(tgt && tgt.closest && tgt.closest("#pvScroll")) && !sc.classList.contains("pv-fits");   // (a list with nothing to scroll is the sheet's, as the header)
-    const top = !inList || (sc.classList.contains("pv-top") && pvAtTop() && performance.now() - pvTopAt >= PV_TOP_MS);   // the list at its top, still, and iOS has taken up that it does not bounce there
-    const nd = pvDrag = { ids: new Set(fresh.map((t) => t.identifier)), t0: e.timeStamp, at: performance.now(), inList, top, on: false, off: 0, bx: 0, by: 0, cx: 0, cy: 0, h: $("pvBox").offsetHeight || 1, s: [[e.timeStamp, 0]], ac: null };   // s: the fingers' way down [moment, points], for their speed as they let go
-    pvAnchor(nd, pvMine(e, nd)); pvHear(nd, tgt);
+    if (!pv || pvAnim || !fresh.length || (pg && !(pg.settling && pg.finish))) return;   // while it springs, a new finger does not catch it; nor a slide still under the fingers (two on a trackpad)
+    const tgt = e.target, onList = !!(tgt && tgt.closest && tgt.closest("#pvScroll"));   // where it landed, read before a slide still landing lands
+    const nd = pvDrag = { ids: new Set(fresh.map((t) => t.identifier)), t0: e.timeStamp, at: performance.now(), inList: false, top: true, on: false, off: 0, bx: 0, by: 0, cx: 0, cy: 0, h: 1, s: [[e.timeStamp, 0]], ac: null };   // s: the fingers' way down [moment, points], for their speed as they let go
+    pvHear(nd, tgt, onList);                                          // held from here: a sync's redraw a landing lets through waits for this finger
+    if (pg) pg.finish();                                              // a slide still landing lands at once under a new finger, as the month view's (the list already holds the workout it went to: nothing is repainted under the finger)
+    if (!pv || pvDrag !== nd) return;                                 // (it landed on a workout a sync took away: the preview closed)
+    const sc = $("pvScroll"), inList = onList && !sc.classList.contains("pv-fits");   // (a list with nothing to scroll is the sheet's, as the header)
+    nd.inList = inList; nd.top = !inList || (sc.classList.contains("pv-top") && pvAtTop() && performance.now() - pvTopAt >= PV_TOP_MS); nd.h = $("pvBox").offsetHeight || 1;   // the list at its top, still, and iOS has taken up that it does not bounce there
+    pvAnchor(nd, pvMine(e, nd));
   }, { passive: true });
   function pvMove(e) {
     const d = pvDrag; if (!d || !pv) return; const ts = pvMine(e, d); if (!ts.length) return;
     const m = pvMid(ts), dx = d.bx + m.x - d.cx, dy = d.by + m.y - d.cy;
+    if (d.slide) { if (e.cancelable) e.preventDefault(); pvFollow(dx - d.slide); return; }   // the workouts slide under the fingers; nothing else moves (every move refused: the list never scrolls in a slide)
     if (!d.on) {
-      if (!d.top || (d.inList && dy <= -PV_SLOP) || (Math.abs(dx) > PV_SLOP && Math.abs(dx) > Math.abs(dy))) { pvDrop(); return; }   // a scrolled list scrolls back first, and the sheet stays for that touch (measured); up, the list scrolls; sideways is nobody's
-      if (dy >= PV_SLOP) d.on = true;
+      const ax = Math.abs(dx), ay = Math.abs(dy);
+      if (ax >= PV_SIDE && ax >= PV_CONE * ay && e.cancelable && !pg) { e.preventDefault(); d.slide = dx > 0 ? PV_SIDE : -PV_SIDE; pvSlideStart(); return; }   // sideways, within 30 degrees of level: a slide to the workout before or after (refused at once, so iOS starts no scroll of the list; it follows from the next move, never a jump)
+      if (!d.top) { if (ay >= PV_SLOP) pvDrop(); return; }            // a scrolled list: up or down is its own scroll, and the sheet stays for that touch (measured)
+      if ((d.inList && dy <= -PV_SLOP) || (ax > PV_SLOP && ax > ay)) { pvDrop(); return; }   // up, the list scrolls; between 30 and 45 degrees nobody's
+      if (dy >= PV_SLOP) { d.on = true; if (popClose && popAnchor === $("pvMore")) popClose(); }   // (its "…" menu goes as the sheet starts to move, as a slide takes it)
     }
     if (d.on && !d.inList && e.cancelable) e.preventDefault();       // the header's pull is ours (nothing is refused until the pull itself, so a tap on the cross that rolls a point stays a tap); on the list nothing ever is, and iOS scrolls it as its own
     pvSample(d, e, dy);
@@ -4267,10 +4290,157 @@ import { reportRange, buildReport } from "./report.js";
     const left = pvMine(e, d).filter((t) => !gone.some((g) => g.identifier === t.identifier));
     if (left.length) { pvBank(d, [...left, ...gone]); for (const g of gone) d.ids.delete(g.identifier); pvAnchor(d, left); return; }   // one of its fingers lifted and another is still on: the pull goes on with it, from where it is
     pvDrag = null; pvUnhear(d);
+    if (d.slide) { pvEatUntil = performance.now() + 400; if (pg && !pg.settling) pvLetGo(e && e.type === "touchcancel" ? 0 : monthLetGo("cal", pg.x, pvW())); return; }   // let go: past 48 points on to that workout, else back (the month view's rule); a cancelled touch, back
     if (!d.on || !pv) { rsFlush(); return; }
     pvRelease(d.off, pvSpeed(d, e.timeStamp), d.h, e.timeStamp - d.t0);
   }
   $("pvBox").addEventListener("touchend", pvUp); $("pvBox").addEventListener("touchcancel", pvUp);
+  // ---------- its arrows, its slide and its "…" (his asks, 11 Nov: "arrow buttons in shared pills like Apple does it to go to the next workout
+  // and previous", "you will also be able to slide finger to the next workout and it will have the same sliding effect like calendar in month
+  // view", "the arrows will be on top right corner and then to them there will be our typical … button … when client clicks on it they will
+  // see reschedule and skip … coach will see one more option and that is delete workout", "another tab in … button for coach will be copy
+  // workout"; his picks the same day: the "…" left of the arrows; every preview walks the missed workouts too, each clearly marked missed;
+  // after Skip or Delete the next workout; after Reschedule the same workout on its new day; Do it today first on a missed one). The walk:
+  // every workout of the client still to do, by its day and then as made (the missed ones, today's, the scheduled ones); finished and skipped
+  // ones (History) are not in it. The slide is the client page's month view's: the page follows the finger, past 48 points it goes on (else
+  // back), a 280 ms settle on the month's curve, at once with Reduce Motion; past the first or the last workout a third of the way, and back.
+  // Only the workout moves: the header and Start workout stay, as Apple keeps a pager's bars and the month view its title.
+  const PV_SIDE = 8, PV_CONE = 1.732;                                // a slide: 8 points sideways within 30 degrees of level (iOS 27 lets a list scroll only past that: no touch is both)
+  const pvOrder = (a, b) => effDate(a).localeCompare(effDate(b)) || byMade(a, b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const pvWalk = (cid) => clientTrainings(cid).filter(canSwipeRow).sort(pvOrder);
+  function pvNear(id) {                                              // the workouts either side of this one in the walk (it may have left it, finished or skipped meanwhile: where it would sort)
+    const t = trainings.get(id); if (!t) return { prev: null, next: null };
+    const w = pvWalk(t.clientId).filter((x) => x.id !== id), i = w.findIndex((x) => pvOrder(x, t) > 0), k = i < 0 ? w.length : i;
+    return { prev: k > 0 ? w[k - 1].id : null, next: k < w.length ? w[k].id : null };
+  }
+  const pvNested = () => { const wb = $("whenBg"); return !!(wb && !wb.hidden) || [...document.querySelectorAll(".sheet-bg:not([hidden])")].some((el) => el.id !== "pvSheet"); };   // a menu, or a sheet, up over the preview
+  function pvArrows() {                                              // an arrow with nowhere to go is dimmed (a keyboard on it moves to the other, else to the sheet); the "…" with nothing to offer too
+    if (!pv) return; const n = pvNear(pv.id), p = $("pvPrev"), x = $("pvNext"), f = document.activeElement;
+    p.disabled = !n.prev; x.disabled = !n.next; $("pvMore").disabled = !pvItems(trainings.get(pv.id)).length;
+    if ((f === p && p.disabled) || (f === x && x.disabled)) { const to = !p.disabled ? p : !x.disabled ? x : $("pvBox"); if (to && typeof to.focus === "function") to.focus({ preventScroll: true }); }
+  }
+  function pvTitleRoom() {                                           // the name in the header: centred on the bar where it fits between the cross and the buttons on the right, as UIKit centres a title; else in the room between them, cut short
+    const bar = $("pvBar"), el = $("pvBarTitle"), tools = bar && bar.querySelector(".pv-tools"), W = bar ? pvNum(bar.clientWidth) : 0;
+    if (!pv || !W || !tools || typeof document.createRange !== "function") return;
+    const L = 16 + 44 + 8, R = W - 16 - pvNum(tools.offsetWidth) - 8, half = Math.min(W / 2 - L, R - W / 2), rg = document.createRange(); rg.selectNodeContents(el);
+    const w = Math.ceil(pvNum(rg.getBoundingClientRect().width));
+    if (w / 2 <= half) { el.style.left = el.style.right = Math.round(W / 2 - half) + "px"; } else { el.style.left = L + "px"; el.style.right = Math.round(W - R) + "px"; }
+  }
+  const pvLine = (t) => { const day = fmtDayLong(effDate(t) || ""); return pvName(t) + (pvMissed(t) ? ", missed" : "") + (day ? ", " + day : ""); };   // what VoiceOver hears of a workout
+  const pvSay = () => { const t = pv && trainings.get(pv.id); if (t) $("pvSay").textContent = pvLine(t); };   // VoiceOver hears the workout it went to
+  let pg = null, pvEatUntil = 0;                                     // a slide under way: { dir: the side it shows (-1 the workout before, 1 the next), to: that workout, x: where it is, peek: that workout's page, out: a copy of the page going out (once let go on), top/foot/h0/max: the sheet as the slide began, h1: its height with the incoming workout, settling, finish }
+  const PV_CURVE = "280ms cubic-bezier(0.22, 1, 0.36, 1)";           // the month view's own settle
+  const pvNum = (v) => +v || 0;                                       // a size read off the page (0 where there is none)
+  const pvW = () => pvNum($("pvBox").clientWidth) || 1;
+  function pvPage(t) {                                               // a workout's page as the list shows it, for sliding (out of reach of taps and VoiceOver), placed where the list is
+    const p = document.createElement("div"); p.className = "pv-scroll pv-peek"; p.setAttribute("aria-hidden", "true"); p.inert = true;
+    const h = document.createElement("h3"), d = document.createElement("p"), c = document.createElement("div"); d.className = "pv-day"; c.className = "pv-cards"; p.append(h, d, c); pvFill(t, h, d, c);
+    p.style.top = pg.top + "px"; p.style.bottom = pg.foot + "px"; p.cards = c; return p;
+  }
+  function pvPeek(dir) {                                             // the workout on that side, painted beside the list, from its top (built when a slide shows it, gone when it lands)
+    if (!pg || !pv) return null; const n = pvNear(pv.id), to = dir < 0 ? n.prev : n.next;
+    if (pg.dir === dir && pg.to === to && (pg.peek || !to)) return pg.peek;
+    if (pg.peek) { pg.peek.remove(); pg.peek = null; }
+    pg.dir = dir; pg.to = to; const t = to && trainings.get(to); if (!t) return null;
+    const sc = $("pvScroll"), box = $("pvBox");
+    if (pg.h0 == null) {                                             // the sheet as the slide began, measured once (the list grows and shrinks with the sheet as it eases), in fractions of a point as laid out (whole points added up left it up to a point short, and it jumped by that as the slide landed: measured on the test iPhone)
+      const br = box.getBoundingClientRect(), sr = sc.getBoundingClientRect(), bs = getComputedStyle(box) || {};
+      pg.h0 = pvNum(br.height); pg.list = pvNum(sr.height);
+      pg.top = pvNum(sr.top - br.top - (parseFloat(bs.borderTopWidth) || 0)); pg.foot = Math.max(0, pvNum(br.bottom - (parseFloat(bs.borderBottomWidth) || 0) - sr.bottom));   // the list's place in the sheet, from its padding edge (where a page placed beside it goes)
+      const was = box.style.height; box.style.height = "100000px"; pg.max = pvNum(box.getBoundingClientRect().height) || Infinity; box.style.height = was;   // its cap as laid out (its max-height reads back as calc(), not in points)
+    }
+    const p = pvPage(t); p.style.transform = "translate3d(" + (dir < 0 ? -pvW() : pvW()) + "px,0,0)";
+    sc.after(p); pg.peek = p; void p.offsetWidth;                    // placed at its side before anything moves it
+    const pr = p.getBoundingClientRect(), cr = p.cards.getBoundingClientRect();
+    pg.h1 = Math.min(pg.max, pg.h0 - pg.list + pvNum(cr.bottom - pr.top)) || pg.h0;   // the sheet's height with that workout in it: the list's own height given up for the incoming page's, to its cards' foot; up to the cap, as the month view measures the month coming in
+    return p;
+  }
+  function pvSlideTo(x, settle) {                                    // the page going out x points from its place (+: to the right, the one before coming in from the left), the one coming in beside it, the header's veil with the page it is over; the sheet's height eased toward the incoming one's by the share slid, as the month view's (settle: there on the slide's own curve)
+    const W = pvW(), out = (pg && pg.out) || $("pvScroll"), bar = $("pvBar"); out.style.transform = x ? "translate3d(" + x + "px,0,0)" : "";   // (the width read before anything moves: a read between the two pages' moves starts the page going out, and the veil, a frame before the one coming in, and the list shows between them: measured in WebKit)
+    bar.style.setProperty("--pv-veil-x", x + "px"); bar.style.setProperty("--pv-veil-tr", settle ? "transform " + settle : "none");
+    if (pg && pg.peek) {
+      pg.peek.style.transform = "translate3d(" + (x + (pg.dir < 0 ? -W : W)) + "px,0,0)";
+      if (pg.h1 !== pg.h0) { const f = Math.min(1, Math.abs(x) / W), box = $("pvBox");
+        if (settle && !box.style.height) { box.style.transition = "none"; box.style.height = pg.h0 + "px"; void box.offsetHeight; }   // an arrow's or a key's: from the sheet's own height in points (WebKit eases nothing from height auto; a finger's follow has already set one)
+        box.style.transition = settle ? "height " + settle : "none"; box.style.height = (f >= 1 ? pg.h1 : f <= 0 ? pg.h0 : Math.round(pg.h0 + (pg.h1 - pg.h0) * f)) + "px"; }   // (its ends to the fraction: landed, the sheet's own height is the same)
+    }
+  }
+  function pvFollow(raw) {                                           // the fingers raw points from where they took the slide: the workout that way comes in; with none that way, a third of the way (the day picker's months at their ends)
+    if (!pg || pg.settling) return; const dir = raw < 0 ? 1 : raw > 0 ? -1 : pg.dir;
+    if (dir) pvPeek(dir);
+    pg.x = raw && !pg.to ? raw / 3 : raw; pvSlideTo(pg.x);
+  }
+  function pvLetGo(go) {                                             // let go, or an arrow: on to the workout that way (go -1 / 1), or back (0), on the month view's 280 ms curve; at once with Reduce Motion
+    if (!pg || pg.settling) return; const g = pg, to = go && go === g.dir && g.to && trainings.has(g.to) ? g.to : null, sc = $("pvScroll"), bar = $("pvBar"), calm = calmMotion() || !!(to && pv && !trainings.has(pv.id));   // (the workout going out gone, a sync's while the fingers held it: nothing left to slide away, it lands at once, as with Reduce Motion)
+    g.settling = true; let done = false, timer = null;
+    if (to && pv) {                                                  // on: from this moment it is the preview's workout (a click, a key or a finger acts on it), as the month view takes its month at the let-go. The list takes it at once and stays still; a copy of the page going out (as the finger left it, scrolled or not) slides away over it, so nothing is repainted under a finger that lands meanwhile
+      const from = trainings.get(pv.id), was = pvNum(sc.scrollTop);
+      if (from && !calm) { const o = pvPage(from); o.style.transform = sc.style.transform; if (pvNum(sc.offsetWidth) > pvNum(sc.clientWidth) && pvNum(sc.scrollHeight) > pvNum(sc.clientHeight) + 1) o.style.overflowY = "scroll"; sc.after(o); o.scrollTop = was; g.out = o; void o.offsetWidth; }
+      sc.style.transition = ""; sc.style.transform = ""; pv.id = to; paintPreview(trainings.get(to)); sc.scrollTop = 0; pvTop(true); pvSay();
+      bar.classList.remove("pv-titled"); bar.style.setProperty("--pv-on", String(Math.min(1, Math.max(0, was) / 10)));   // the header: the incoming workout's name at once, as the month's title; its veil leaves with the page under it
+    }
+    const mv = g.out || sc;
+    const finish = () => { if (done) return; done = true; clearTimeout(timer); mv.removeEventListener("transitionend", onEnd); pvLand(g, to); };
+    const onEnd = (e) => { if (!e || e.target === mv) finish(); };
+    g.finish = finish;
+    if (calm) { finish(); return; }
+    const tr = "transform " + PV_CURVE; mv.style.transition = tr; if (g.peek) g.peek.style.transition = tr;
+    mv.addEventListener("transitionend", onEnd); timer = setTimeout(finish, 360);
+    pvSlideTo(to ? -g.dir * pvW() : 0, PV_CURVE);
+  }
+  function pvLand(g, to) {                                           // the slide over: the pages that slid gone, the sheet its own height again, the header as its list is
+    if (pg !== g) return; pg = null;                                  // (a slide reset meanwhile, by a close or a reopen: its leftover end changes nothing)
+    const sc = $("pvScroll"), box = $("pvBox"), bar = $("pvBar");
+    if (to && sc.scrollTop) sc.scrollTop = 0;                         // (a Mac trackpad's coasting, begun before the let-go, carried on scrolling the list under the copies: it lands at its top, as the page that slid in showed it)
+    sc.style.transition = ""; sc.style.transform = ""; if (g.peek) g.peek.remove(); if (g.out) g.out.remove(); box.style.height = ""; if (/height/.test(box.style.transition || "")) box.style.transition = "";
+    bar.style.removeProperty("--pv-veil-x"); bar.style.removeProperty("--pv-veil-tr");
+    if (to && pv && !trainings.has(to)) closePreview();               // (a sync took it away meanwhile)
+    else if (pv) { pvFit(); pvHeader(); }
+    rsFlush();                                                        // a sync's redraw that waited for it
+  }
+  function pvSlideReset() { const g = pg; pg = null; if (g && g.peek) g.peek.remove(); if (g && g.out) g.out.remove(); const sc = $("pvScroll"), box = $("pvBox"), bar = $("pvBar"); sc.style.transition = ""; sc.style.transform = ""; box.style.height = ""; if (/height/.test(box.style.transition || "")) box.style.transition = ""; bar.style.removeProperty("--pv-veil-x"); bar.style.removeProperty("--pv-veil-tr"); }
+  const pvSlideStart = () => { pg = { dir: 0, to: null, x: 0, peek: null, settling: false, finish: null }; if (popClose && popAnchor === $("pvMore")) popClose(); return pg; };
+  function pvGo(dir) {                                               // an arrow, a key, or after Skip or Delete: the same slide on its own; a slide still landing lands at once first (two quick taps: two workouts, as the month's arrows)
+    if (!pv || pvDrag || pvAnim) return false;
+    if (pg && pg.finish) pg.finish(); if (pg || !pv) return false;
+    const n = pvNear(pv.id); if (!(dir < 0 ? n.prev : n.next)) return false;
+    pvSlideStart(); pvPeek(dir); pvLetGo(dir); return true;
+  }
+  $("pvPrev").addEventListener("click", (e) => { if (pvSettled(e)) pvGo(-1); });
+  $("pvNext").addEventListener("click", (e) => { if (pvSettled(e)) pvGo(1); });
+  $("pvBox").addEventListener("click", (e) => { if (performance.now() < pvEatUntil) { e.stopPropagation(); e.preventDefault(); } }, true);   // a slide that began on a button presses nothing
+  let pvWx = null;                                                   // two fingers' travel on a Mac's trackpad, while they hold the workouts
+  const pvWheel = {                                                  // two fingers sideways: the workouts follow them, one at most, and settle by the finger's rule (the month view's own way)
+    begin() { if (!pv || pvDrag || pvAnim || pvNested()) return false; if (pg && pg.finish) pg.finish(); if (pg || !pv) return false; pvWx = 0; pvSlideStart(); return true; },
+    move(d) { if (pvWx === null || !pg || pg.settling) return true; const W = pvW(); pvWx = Math.max(-W, Math.min(W, pvWx + d)); pvFollow(pvWx); return Math.abs(pvWx) >= W; },
+    end() { if (pvWx === null) return; pvWx = null; if (pg && !pg.settling) pvLetGo(monthLetGo("cal", pg.x, pvW())); },
+  };
+  function pvItems(t) {                                              // the "…": Do it today on a missed one (first, as its row's), Reschedule and Skip on any still to do; the coach's own view adds Copy workout and, last and red, Delete workout
+    if (!t || isTemplateClient(t.clientId)) return [];
+    const id = t.id, todo = canSwipeRow(t), items = [];
+    if (pvMissed(t)) items.push({ label: "Do it today", icon: miToday(), onPick: () => doToday(id) });
+    if (todo) items.push({ label: "Reschedule", icon: MI.calendar, onPick: () => rowReschedule(id) }, { label: "Skip", icon: MI.skip, onPick: () => pvSkip(id) });
+    if (coachMore(t)) items.push({ label: "Copy workout", icon: MI.copy, onPick: () => pvCopy(id) }, { label: "Delete workout", icon: MI.trash, danger: true, onPick: () => pvDelete(id) });
+    return items;
+  }
+  $("pvMore").addEventListener("click", (e) => { if (!pv || !pvSettled(e) || pvAnim) return; if (pg && pg.finish) pg.finish(); if (!pv || pg) return; const items = pvItems(trainings.get(pv.id)); if (items.length) showMenu($("pvMore"), items, { align: "right", focus: e.detail === 0 }); });   // (a slide still landing lands first; one still under the fingers opens nothing)
+  function pvOn(id) {                                                // after Skip or Delete (his pick, 11 Nov): the next workout, else the one before, as Mail goes on to the next message; the last one closes the preview
+    if (!pv || pv.id !== id) return; const n = pvNear(id);
+    if (!(n.next && pvGo(1)) && !(n.prev && pvGo(-1))) closePreview();
+    if (pv && !$("pvBox").contains(document.activeElement)) $("pvBox").focus({ preventScroll: true });   // focus not in the sheet (a pointer's: the body; a keyboard's: the closed question's button) comes back into it
+  }
+  function pvSkip(id) { if (canSwipeRow(trainings.get(id))) openSkip(id, () => pvOn(id)); }   // Skip's own question (its reasons), then on to the next
+  async function pvDelete(id) {                                      // the coach's Delete workout: asked first (the workout page's question), then on to the next
+    if (!coachMore(trainings.get(id))) return;
+    if (!(await askFirst({ title: "Delete this workout?", text: "It goes for good, with everything logged on it.", yes: "Delete" }))) return;
+    if (!pv || pv.id !== id || !trainings.has(id)) return;
+    pvOn(id); trainings.delete(id); scheduleSave("trainings", id, 0); S.renderedTraining = null; render();   // (the page behind redraws now; the preview paints where its slide lands)
+  }
+  async function pvCopy(id) {                                        // the coach's Copy workout: which client gets it (this one first), then the copy opens, as the workout page's Copy workout does
+    const t = trainings.get(id); if (!coachMore(t)) return;
+    const to = await copyTarget(t); if (!to || !clients.has(to) || !trainings.has(id)) return;
+    closePreview(); addTraining(to, t);
+  }
   function doToday(id) {                                             // a missed workout comes to today (its "…" and its touch and hold): the client's by the server's own rule (client_move_training), the coach's an ordinary save. Not marked as decided: missed again, it files itself after a week like any other (his rule, 10 Nov)
     const t = trainings.get(id); if (!canSwipeRow(t) || !effDate(t) || effDate(t) >= today()) return false;   // asked again at the pick: a sync may have finished, skipped or moved it meanwhile
     t.date = today(); t.skippedAt = null; delete t.missed; touchState(id, "date", "skippedAt", "missed"); if (S.clientMode) pendingMove.add(id);   // (the coach's save then carries all three over a filing another device sent meanwhile)
@@ -4340,14 +4510,14 @@ import { reportRange, buildReport } from "./report.js";
     scheduleSave("trainings", t.id); if (S.view.name === "training" && S.view.id === t.id) paintFinish(t); S.renderedTraining = null; render();
   }
   let sk = null;                                                       // the skip sheet: { t, reason }
-  function openSkip(id) {                                              // the workout page's, or a row's on Workouts (id)
-    const t = trainings.get(id || S.view.id); if (!t) return; sk = { t, reason: "", at: performance.now() }; S.asking = true;
+  function openSkip(id, after) {                                       // the workout page's, or a row's on Workouts (id), or the preview's (after: what follows the skip there)
+    const t = trainings.get(id || S.view.id); if (!t) return; sk = { t, reason: "", at: performance.now(), after: after || null }; S.asking = true; if (pv) $("pvSheet").inert = true;   // (over the preview, the preview waits)
     for (const b of $("skReasons").querySelectorAll("button")) { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); }
     $("skipSheet").hidden = false; setTimeout(() => { if (sk) $("skGo").focus({ preventScroll: true }); }, 0);
   }
-  function closeSkip() { $("skipSheet").hidden = true; sk = null; S.asking = false; }
+  function closeSkip() { $("skipSheet").hidden = true; sk = null; S.asking = !!pv; if (pv) $("pvSheet").inert = false; }   // (over the preview: back to it, still a question up)
   const skSettled = (e) => !!sk && (performance.now() - sk.at >= 350 || (!!e && e.detail === 0));   // the second tap of a double tap (on Skip, on a row low on the screen) must not land on Skip workout, as askFirst's red button, nor pick a reason or close the question (a keyboard's Enter or VoiceOver, detail 0, acts at once on those)
-  $("skGo").addEventListener("click", () => { if (!skSettled()) return; const reason = sk.reason, id = sk.t.id; closeSkip(); setSkipped(true, reason, id); });
+  $("skGo").addEventListener("click", () => { if (!skSettled()) return; const reason = sk.reason, id = sk.t.id, after = sk.after; closeSkip(); if (after) after(); setSkipped(true, reason, id); });   // (the preview's: on to the next workout first, then the skip, as its Delete does)
   $("skKeep").addEventListener("click", (e) => { if (skSettled(e)) closeSkip(); });
   $("skipSheet").addEventListener("click", (e) => { if (e.target === $("skipSheet") && skSettled()) closeSkip(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && sk) closeSkip(); });   // Escape is Cancel, as the other sheets take it
@@ -4361,11 +4531,14 @@ import { reportRange, buildReport } from "./report.js";
   $("unskipBtn").addEventListener("click", () => setSkipped(false));
   $("finishBtn").addEventListener("click", () => setFinished(true));
   $("unfinishBtn").addEventListener("click", () => setFinished(false));
-  $("copyTraining").addEventListener("click", async () => {                 // "Copy workout" asks which client gets the copy; this client is the first row
-    const t = trainings.get(S.view.id); if (!t) return;
+  function copyTarget(t) {                                            // "Copy workout" asks which client gets the copy; this client is the first row
     const me = clients.get(t.clientId), others = peopleList().filter((c) => c.id !== t.clientId);
     const items = [me, ...others].filter(Boolean).map((c) => ({ id: c.id, label: c.name || "Unnamed", sub: c.id === t.clientId ? "this client" : (c.paused ? "Paused" : "") }));
-    const id = await pickOne({ title: "Copy workout to", items });
+    return pickOne({ title: "Copy workout to", items });
+  }
+  $("copyTraining").addEventListener("click", async () => {
+    const t = trainings.get(S.view.id); if (!t) return;
+    const id = await copyTarget(t);
     if (id && clients.has(id)) addTraining(id, t);
   });
   $("saveTemplate").addEventListener("click", () => { const t = trainings.get(S.view.id); if (t) saveAsTemplate(t); });
@@ -4520,7 +4693,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
