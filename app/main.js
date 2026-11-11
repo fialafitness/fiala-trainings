@@ -1344,7 +1344,7 @@ import { reportRange, buildReport } from "./report.js";
   const rsSample = (g, ts, x) => { const last = g.pts[g.pts.length - 1]; if (!last || ts - last[0] >= 8) { g.pts.push([ts, x]); while (g.pts.length > 2 && ts - g.pts[0][0] > 100) g.pts.shift(); } else last[1] = x; };
   const rsSpeed = (g, at) => { const a = g.pts[0], b = g.pts[g.pts.length - 1]; if (!a || !b || b[0] <= a[0] || (at != null && at - b[0] > 60)) return 0; return (b[1] - a[1]) / (b[0] - a[0]); };   // px per ms to the left over the last 100 ms; a finger that rested before it lifted has none
   const lpSettling = () => { const b = $("ctxLift"); return !!(b && !b.hidden && b.classList.contains("lp-back")); };   // a held item's copy settling back into its place (0.26 s): the row under it is not rebuilt meanwhile, or the copy would slide back over a row that is no longer there
-  const rowHolds = () => lpSettling() || !!(lpHoldAt && performance.now() - lpHoldAt < 10000) || !!(rsT && (rsT.held || performance.now() - rsT.at < 10000)) || !!(rs && rs.busy) || !!(wg && wg.r && !wg.done);   // a finger still down from a touch and hold, a finger or the mouse on a row (a press that never came up holds nothing after 10 s), a row settling, two fingers moving one: a sync's redraw waits (renderUnlessSwiping), never the item under them rebuilt (its release would then reach no listener, and iOS would click what lies under it)
+  const rowHolds = () => lpSettling() || !!(lpHoldAt && performance.now() - lpHoldAt < 10000) || !!(rsT && (rsT.held || performance.now() - rsT.at < 10000)) || !!(rs && rs.busy) || !!(wg && wg.r && !wg.done) || pvHolds();   // a finger still down from a touch and hold, a finger or the mouse on a row (a press that never came up holds nothing after 10 s), a row settling, two fingers moving one, a finger on the workout preview or its spring: a sync's redraw waits (renderUnlessSwiping), never the item under them rebuilt (its release would then reach no listener, and iOS would click what lies under it)
   const rsFlush = () => { if (renderAfterSwipe && !(sw && (sw.on || sw.busy)) && !rowHolds()) { renderAfterSwipe = false; render(); } };
   const rsDrop = () => { rsT = null; rsFlush(); };                   // the finger or mouse is off the rows: what a sync brought meanwhile is drawn
   const rsFree = () => !!rs && !(rsT && rsT.held) && !(wg && wg.r === rs && !wg.done);   // the row out is in no finger's, mouse's or two fingers' hands (it may still be settling)
@@ -4086,7 +4086,7 @@ import { reportRange, buildReport } from "./report.js";
   // from the name to the card's edge between them; a finished card says so in a quiet line, nothing green; Start workout (Apple's Fitness
   // says Start Workout on a planned one) at the foot, Apple's close cross in the corner (no Cancel, his ask, from Calendar's event sheet). Both
   // views. It asks nothing: a look, then the page or back.
-  let pv = null;                                                       // the sheet up: { id, at, behind }
+  let pv = null, pvDrag = null, pvAnim = null;                         // the sheet up: { id, at, back, behind }; a finger pulling it; its spring after the finger
   function groupsOf(rows) {                                            // a workout's cards: rows next to each other under one number are one card (a superset)
     const groups = [];
     (rows || []).forEach((r, i) => { const k = groupKey(r.label, i); if (!groups.length || groups[groups.length - 1].key !== k) groups.push({ key: k, rows: [] }); groups[groups.length - 1].rows.push(r); });
@@ -4105,7 +4105,7 @@ import { reportRange, buildReport } from "./report.js";
   const pvReps = (v) => { const t = String(v == null ? "" : v).trim() || REPS_DEFAULT; const w = repsWord(t); return showReps(t) + (w ? " " + w : ""); };   // blank: the page's own grey "10"   // "10, 8, 6 reps", "30 sec", "8 reps / side": as the workout's cards write them
   function paintPreview(t) {
     const span = (cls, text) => { const s = document.createElement("span"); s.className = cls; s.textContent = text; return s; };
-    $("pvTitle").textContent = String(t.title || "").trim() || "Workout";
+    $("pvTitle").textContent = $("pvBarTitle").textContent = String(t.title || "").trim() || "Workout";
     $("pvDay").textContent = fmtDayLong(effDate(t) || "");
     const cards = groupsOf(t.rows).map((g) => {
       const st = g.rows.every((r) => r.done) ? groupSummary(g) : null;
@@ -4127,19 +4127,21 @@ import { reportRange, buildReport } from "./report.js";
     });
     if (!cards.length) { const none = document.createElement("p"); none.className = "pv-none"; none.textContent = "Nothing added yet"; cards.push(none); }
     $("pvCards").replaceChildren(...cards);
+    pvFit();                                                          // (a sync's redraw: it may scroll now, or no longer)
   }
   function openPreview(id) {                                           // its swipe's Preview, its touch and hold, a missed workout's "…"
     const t = trainings.get(id); if (!t || isTemplateClient(t.clientId) || pv || S.asking) return false;   // (another question up: it waits for that one)
     paintPreview(t);
     const bg = $("pvSheet"); pv = { id, at: performance.now(), back: document.activeElement, behind: [...document.body.children].filter((el) => el !== bg && !el.inert) };   // (what was inert already, as #ctxLift, stays so)
     for (const el of pv.behind) el.inert = true;                       // the page behind is out of reach until the sheet goes, as every sheet's
-    S.asking = true; bg.hidden = false; $("pvCards").scrollTop = 0;
+    S.asking = true; pvReset(); bg.hidden = false; $("pvScroll").scrollTop = 0; pvFingers = 0; pvTop(true); pvFit(); pvHeader();
     setTimeout(() => { if (pv) $("pvBox").focus({ preventScroll: true }); }, 0);   // into the sheet (a keyboard or VoiceOver reads it from its title), no ring on a button nobody chose
     return true;
   }
   function closePreview(refocus) {                                    // refocus: closed by a keyboard or VoiceOver (Escape, the cross's Enter): its place goes back where it was (the "…" it came from, else the row), as the menus and the day picker give it back; a tap leaves focus where WebKit put it (no ring on a row nobody chose)
-    if (!pv) return false; const p = pv; pv = null; $("pvSheet").hidden = true; for (const el of p.behind) el.inert = false; S.asking = false;
+    if (!pv) return false; const p = pv; pv = null; pvReset(); $("pvSheet").hidden = true; pvBarReset(); for (const el of p.behind) el.inert = false; S.asking = false;
     if (refocus) { const b = p.back, ok = b && b !== document.body && b.isConnected !== false && !(b.closest && b.closest(".swipe-acts")); const to = ok ? b : $("vClient").querySelector('li[data-tid="' + CSS.escape(p.id) + '"] > button'); if (to && typeof to.focus === "function") to.focus({ preventScroll: true }); }
+    rsFlush();                                                        // what a sync brought while it was pulled or springing
     return true;
   }
   const pvSettled = (e) => !!pv && (performance.now() - pv.at >= 350 || (!!e && e.detail === 0));   // the second tap of a double tap (on Preview in a menu or on the row) lands on nothing in its first 350 ms, as askFirst's buttons; a keyboard's Enter (detail 0) acts at once
@@ -4147,6 +4149,128 @@ import { reportRange, buildReport } from "./report.js";
   $("pvX").addEventListener("click", (e) => { if (pvSettled(e)) closePreview(e.detail === 0); });   // the close cross (his ask, 10 Nov: no Cancel, Apple's cross as in Calendar's event sheet); its Enter or VoiceOver (detail 0) gives the keyboard its place back
   $("pvSheet").addEventListener("click", (e) => { if (e.target === $("pvSheet") && pvSettled(e)) closePreview(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pv) closePreview(true); });   // Escape closes, as the other sheets take it
+  // ---------- its header and its swipe down (his asks, 11 Nov, with Calendar's event sheet beside them: "the header … transparent just like
+  // apples in the calendar … in both light and dark view", "if I swipe from top of the card down it closes the card … exactly like apple").
+  // Measured on the test iPhone (iOS 27.2, Calendar's event sheet, 11 Nov). The header: 70 points from the sheet's top (the cross 16 in); at
+  // rest it is the sheet itself, and once anything scrolls under it (fully by 10 points) it shows it blurred and veiled to a hard edge; the
+  // event's name comes into it, 17 semibold, at once (no fade), as the big title's letters start going under that edge (at 33 to 34 points of
+  // scroll there, its letters 2 to 4 points under). The pull: a finger pulls the sheet down from its header (or anywhere outside the list), and
+  // from the list when that is at its top (a scrolled list scrolls back first and the sheet stays); two fingers pull it as one; it follows
+  // after 10 points, and the dim lightens with the share of the sheet pulled away. The let-go: it closes when where it would coast to (the
+  // pull plus 0.099 s of its speed, UIKit's fast deceleration) is past half its height, or past a quarter for a fast flick down (1,000 points
+  // a second or more, in a touch of 50 ms or more); else it comes back. That rule fits all 26 releases played there with fingers at known
+  // speeds and timed by the page's own touch clock (each one is a case in tests/preview-swipe.test.js; a fixed distance, a speed line or a
+  // projection alone fails some): at 1,034 points a second 125, 155 and 185 pulled closed and 95 came back, 1,517 from 50 came back, flicks of
+  // 44 ms from touch to lift came back however fast, 793 from 327 came back and from 373 closed; past half, flicked back up at 897 to 2,070
+  // it came back, drifting up at 517 it closed. Either way a critically damped spring of 0.357 s from the finger's own speed (fitted to three
+  // releases within 1.3 points).
+  // The list scrolls itself (iOS's own scroll, with its own momentum and bounce), and nothing on it is ever refused: WebKit lets a list scroll
+  // for the whole touch, or never, by the page's answer to the first move it hands over, and a later answer can come after iOS has begun
+  // scrolling it (a quick flick from a still finger: the list would slide down inside the sheet as the sheet moved). Instead, at its top and
+  // still, the list does not bounce there (overscroll-behavior-y: none, a class iOS has had 100 ms to take up), so a pull from it moves the
+  // sheet alone, as Calendar's; once it scrolls it bounces at both ends again, until it is back at its top and still. A list with nothing to
+  // scroll is the sheet's, as the header (WebKit would hand its pan to the page behind).
+  const PV_BAR = 70, PV_SLOP = 10, PV_SPRING = 0.357, PV_DIM = 0.45, PV_PROJECT = 0.099, PV_FLICK = 1000, PV_FLICK_MS = 50, PV_TOP_MS = 100, PV_TOP_WAIT = 1000;
+  function pvHeader() {                                               // the header's see-through and its title, from where the list is
+    if (!pv) return; const bar = $("pvBar"), s = Math.max(0, $("pvScroll").scrollTop || 0);
+    bar.style.setProperty("--pv-on", String(Math.min(1, s / 10)));
+    const t = $("pvTitle").getBoundingClientRect(), b = $("pvBox").getBoundingClientRect();
+    bar.classList.toggle("pv-titled", s > 0 && t.top - b.top < PV_BAR - 10);   // the big title's letters going under the edge (its box 10 under, its letters 2 to 4: Calendar's moment)
+  }
+  let pvTopAt = 0, pvTopT = null, pvFingers = 0;
+  function pvTop(on) {                                                // the list at its top and still: no bounce there (a pull from it moves the sheet alone); scrolled, it bounces at both ends
+    const sc = $("pvScroll"); clearTimeout(pvTopT); pvTopT = null;
+    if (sc.classList.contains("pv-top") !== on) { sc.classList.toggle("pv-top", on); pvTopAt = on ? performance.now() : 0; }
+  }
+  const pvAtTop = () => ($("pvScroll").scrollTop || 0) < 1;
+  function pvSettle() { if (pv && !pvFingers && pvAtTop()) pvTop(true); }   // back at its top, no finger on the sheet, its scroll over (scrollend; or a second after it last moved, its bounce long done)
+  const pvSettleLater = () => { if (!pv || $("pvScroll").classList.contains("pv-top")) return; clearTimeout(pvTopT); pvTopT = setTimeout(() => { pvTopT = null; pvSettle(); }, PV_TOP_WAIT); };
+  function pvScrolled() {
+    pvHeader();
+    if (pvAtTop()) { pvSettleLater(); return; }
+    pvTop(false); const d = pvDrag;                                   // the list moved: it bounces at both ends again, and a touch on it is its own scroll
+    if (d && d.inList) { if (d.on && d.off > 0) pvRelease(d.off, Math.min(0, pvSpeed(d, performance.now())), d.h, 0, true); pvDrop(); }   // (a sheet that touch pulled goes home by the spring, from the finger's speed: iOS took the list from where its own scroll began, a few points short of the sheet's place)
+  }
+  $("pvScroll").addEventListener("scroll", pvScrolled, { passive: true });
+  $("pvScroll").addEventListener("scrollend", pvSettle, { passive: true });
+  const pvCount = (e) => { pvFingers = ((e && e.touches) || []).length; if (!pvFingers && pvAtTop()) pvSettleLater(); };   // the fingers on the sheet (touches: every finger still down)
+  for (const type of ["touchstart", "touchend", "touchcancel"]) $("pvSheet").addEventListener(type, (e) => {
+    pvCount(e); const tgt = e && e.target;
+    if (type !== "touchstart" || !tgt || !tgt.addEventListener || !tgt.closest || !tgt.closest("#pvCards") || typeof AbortController !== "function") return;
+    const ids = [...((e && e.changedTouches) || [])].map((t) => t.identifier), ac = new AbortController();   // a card a sync's redraw takes out of the page passes its finger's lift to nothing else: heard on it too (as pvHear hears a pull's)
+    const up = (ev) => { if (![...((ev && ev.changedTouches) || [])].some((t) => ids.includes(t.identifier))) return; ac.abort(); if (!tgt.isConnected) pvCount(ev); };
+    tgt.addEventListener("touchend", up, { passive: true, signal: ac.signal }); tgt.addEventListener("touchcancel", up, { passive: true, signal: ac.signal });
+  }, { capture: true, passive: true });
+  function pvFit() { if (!pv) return; const sc = $("pvScroll"); sc.classList.toggle("pv-fits", (sc.scrollHeight || 0) <= (sc.clientHeight || 0) + 1); }   // nothing to scroll: a touch on the list is the sheet's, as the header's (measured once the sheet is up, and again after a sync's redraw or a turn)
+  if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", () => { if (pv) pvFit(); });
+  function pvBarReset() { const bar = $("pvBar"); bar.classList.remove("pv-titled"); bar.style.setProperty("--pv-on", "0"); }   // the header at rest while the sheet is away: the next one opens at its list's top, with no name or veil left from this one
+  const pvDecide = (off, v, h, ms) => { const to = off + v * PV_PROJECT; return to > h / 2 || (v >= PV_FLICK && ms >= PV_FLICK_MS && to > h / 4) ? "close" : "back"; };   // off: points pulled down; v: the finger's points a second, down; ms: from its touch to its lift; to: where it would coast to
+  function pvPlace(off, h, dim) {                                     // the sheet pulled down by off, the dim lightened by the share pulled away (or set: dim)
+    const box = $("pvBox"), bg = $("pvSheet"); box.style.transform = off ? "translate3d(0," + off + "px,0)" : "";
+    bg.style.backgroundColor = dim != null ? "rgba(0,0,0," + dim + ")" : off ? "rgba(0,0,0," + (PV_DIM * Math.max(0, 1 - off / h)).toFixed(4) + ")" : "";
+  }
+  function pvReset() { clearTimeout(pvAnim); pvAnim = null; pvUnhear(pvDrag); pvDrag = null; const box = $("pvBox"), bg = $("pvSheet"); box.style.transition = bg.style.transition = ""; box.style.transform = ""; bg.style.backgroundColor = ""; }
+  function pvRelease(off, v, h, ms, back) {                           // let go: closed, or back, by the measured spring from the finger's speed (back: home whatever the rule says)
+    const close = !back && pvDecide(off, v, h, ms) === "close", to = close ? h + 30 : 0;
+    if (calmMotion()) { if (close) closePreview(); else { pvReset(); rsFlush(); } return close; }
+    const e = springEase(Math.max(-40, Math.min(15, (close ? v : -v) / (Math.abs(to - off) || 1))), PV_SPRING, 1), box = $("pvBox"), bg = $("pvSheet");   // the finger's own speed, in sheet-distances a second: away from where it goes up to 40, toward it up to 15 (so it never passes its place)
+    box.style.transition = "transform " + e.ms + "ms " + e.css; bg.style.transition = "background-color " + e.ms + "ms " + e.css;
+    pvPlace(to, h, close ? 0 : PV_DIM);
+    pvAnim = setTimeout(() => { pvAnim = null; if (close) closePreview(); else { pvReset(); rsFlush(); } }, e.ms);   // (then a sync's redraw that waited is drawn)
+    return close;
+  }
+  // The pull's fingers: every finger that lands on the sheet, followed through their middle, as UIKit's pan follows them; one that comes or
+  // goes moves the middle, so the pull carries on from where it is, never a jump.
+  const pvMine = (e, d) => [...((e && e.touches) || [])].filter((t) => d.ids.has(t.identifier));
+  const pvMid = (ts) => { let x = 0, y = 0; for (const t of ts) { x += t.clientX; y += t.clientY; } return { x: x / ts.length, y: y / ts.length }; };
+  const pvBank = (d, ts) => { if (!ts.length) return; const m = pvMid(ts); d.bx += m.x - d.cx; d.by += m.y - d.cy; };   // the way they have gone so far, kept
+  const pvAnchor = (d, ts) => { if (!ts.length) return; const m = pvMid(ts); d.cx = m.x; d.cy = m.y; };
+  const pvSample = (d, e, dy) => { d.s.push([e.timeStamp, dy]); if (d.s.length > 12) d.s.shift(); };
+  const pvHolds = () => !!pvAnim || !!(pvDrag && performance.now() - pvDrag.at < 10000);   // a finger on the sheet, or its spring: a sync's redraw waits (rowHolds), never a card rebuilt under the finger mid-pull (a touch that never came up holds nothing after 10 s)
+  const pvUnhear = (d) => { if (d && d.ac) { d.ac.abort(); d.ac = null; } };
+  function pvHear(d, tgt) {                                           // a touch's events stay aimed at the element it began on: a card a redraw takes out of the page no longer passes them on, so they are heard on it too (as the swipe back and the hold hear theirs)
+    if (!tgt || !tgt.addEventListener || !tgt.closest || !tgt.closest("#pvCards") || typeof AbortController !== "function") return;
+    const ac = d.ac || (d.ac = new AbortController()), on = (type, fn) => tgt.addEventListener(type, (ev) => { if (!tgt.isConnected) fn(ev); }, { passive: type !== "touchmove", signal: ac.signal });
+    on("touchmove", pvMove); on("touchend", pvUp); on("touchcancel", pvUp);
+  }
+  const pvDrop = () => { const d = pvDrag; pvDrag = null; pvUnhear(d); rsFlush(); };   // this touch is not the sheet's (then a sync's redraw that waited is drawn)
+  $("pvBox").addEventListener("touchstart", (e) => {
+    const d = pvDrag, fresh = [...((e.changedTouches && e.changedTouches.length ? e.changedTouches : e.touches) || [])];
+    if (d) { pvBank(d, pvMine(e, d)); for (const t of fresh) d.ids.add(t.identifier); pvAnchor(d, pvMine(e, d)); pvHear(d, e.target); return; }   // another finger on the sheet joins the pull (Calendar's sheet follows two, measured), from where they are now
+    if (!pv || pvAnim || !fresh.length) return;                       // while it springs, a new finger does not catch it
+    const tgt = e.target, sc = $("pvScroll"), inList = !!(tgt && tgt.closest && tgt.closest("#pvScroll")) && !sc.classList.contains("pv-fits");   // (a list with nothing to scroll is the sheet's, as the header)
+    const top = !inList || (sc.classList.contains("pv-top") && pvAtTop() && performance.now() - pvTopAt >= PV_TOP_MS);   // the list at its top, still, and iOS has taken up that it does not bounce there
+    const nd = pvDrag = { ids: new Set(fresh.map((t) => t.identifier)), t0: e.timeStamp, at: performance.now(), inList, top, on: false, off: 0, bx: 0, by: 0, cx: 0, cy: 0, h: $("pvBox").offsetHeight || 1, s: [[e.timeStamp, 0]], ac: null };   // s: the fingers' way down [moment, points], for their speed as they let go
+    pvAnchor(nd, pvMine(e, nd)); pvHear(nd, tgt);
+  }, { passive: true });
+  function pvMove(e) {
+    const d = pvDrag; if (!d || !pv) return; const ts = pvMine(e, d); if (!ts.length) return;
+    const m = pvMid(ts), dx = d.bx + m.x - d.cx, dy = d.by + m.y - d.cy;
+    if (!d.on) {
+      if (!d.top || (d.inList && dy <= -PV_SLOP) || (Math.abs(dx) > PV_SLOP && Math.abs(dx) > Math.abs(dy))) { pvDrop(); return; }   // a scrolled list scrolls back first, and the sheet stays for that touch (measured); up, the list scrolls; sideways is nobody's
+      if (dy >= PV_SLOP) d.on = true;
+    }
+    if (d.on && !d.inList && e.cancelable) e.preventDefault();       // the header's pull is ours (nothing is refused until the pull itself, so a tap on the cross that rolls a point stays a tap); on the list nothing ever is, and iOS scrolls it as its own
+    pvSample(d, e, dy);
+    if (!d.on) return;
+    d.off = Math.max(0, dy - PV_SLOP); pvPlace(d.off, d.h);
+  }
+  $("pvBox").addEventListener("touchmove", pvMove, { passive: false });
+  function pvSpeed(d, now) {                                          // the fingers' speed as they let go, points a second: from where they were 40 ms before the last move, never back across a rest of more than 40 ms (a still finger sends no moves); none if they rested more than 60 ms before lifting (as the rows' swipe)
+    const s = d.s, b = s[s.length - 1]; let a = s.length > 1 ? s[s.length - 2] : b;
+    for (let i = s.length - 3; i >= 0 && b[0] - a[0] < 40; i--) { if (s[i + 1][0] - s[i][0] > 40) break; a = s[i]; }
+    return b[0] > a[0] && now - b[0] <= 60 ? ((b[1] - a[1]) / (b[0] - a[0])) * 1000 : 0;
+  }
+  function pvUp(e) {
+    const d = pvDrag; if (!d) return;
+    const gone = [...((e && e.changedTouches) || [])].filter((t) => d.ids.has(t.identifier)); if (!gone.length) return;   // another finger, not the pull's
+    const left = pvMine(e, d).filter((t) => !gone.some((g) => g.identifier === t.identifier));
+    if (left.length) { pvBank(d, [...left, ...gone]); for (const g of gone) d.ids.delete(g.identifier); pvAnchor(d, left); return; }   // one of its fingers lifted and another is still on: the pull goes on with it, from where it is
+    pvDrag = null; pvUnhear(d);
+    if (!d.on || !pv) { rsFlush(); return; }
+    pvRelease(d.off, pvSpeed(d, e.timeStamp), d.h, e.timeStamp - d.t0);
+  }
+  $("pvBox").addEventListener("touchend", pvUp); $("pvBox").addEventListener("touchcancel", pvUp);
   function doToday(id) {                                             // a missed workout comes to today (its "…" and its touch and hold): the client's by the server's own rule (client_move_training), the coach's an ordinary save. Not marked as decided: missed again, it files itself after a week like any other (his rule, 10 Nov)
     const t = trainings.get(id); if (!canSwipeRow(t) || !effDate(t) || effDate(t) >= today()) return false;   // asked again at the pick: a sync may have finished, skipped or moved it meanwhile
     t.date = today(); t.skippedAt = null; delete t.missed; touchState(id, "date", "skippedAt", "missed"); if (S.clientMode) pendingMove.add(id);   // (the coach's save then carries all three over a filing another device sent meanwhile)
@@ -4396,7 +4520,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
