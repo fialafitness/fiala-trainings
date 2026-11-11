@@ -35,7 +35,8 @@ Object.defineProperty(pvSheet, "hidden", { get: () => hidden, set: (v) => { hidd
 const pvBox = recorder("pvBox", { offsetHeight: 600 });                   // a sheet 600 tall: half is 300, a quarter 150
 const pvScroll = recorder("pvScroll", { scrollTop: 0, scrollHeight: 1600, clientHeight: 600 }), pvTitle = recorder("pvTitle"), pvCards = recorder("pvCards");
 let paints = 0; { const rc = pvCards.replaceChildren; pvCards.replaceChildren = (...k) => { paints++; rc(...k); }; }   // the cards repainted (a redraw)
-for (const id of ["pvBarTitle", "pvX", "pvGo", "pvDay"]) recorder(id);
+for (const id of ["pvBarTitle", "pvX", "pvGo", "pvDay", "pvMore", "pvPrev", "pvNext", "pvSay"]) recorder(id);
+recorder("whenBg", { hidden: true });                                      // the menu layer, hidden as in the page
 const TITLE_AT = 94;                                                      // the big title's top below the sheet's, at rest (the list's own padding)
 pvBox.getBoundingClientRect = () => ({ top: 200, left: 0, width: 402, height: 600, right: 402, bottom: 800 });
 pvTitle.getBoundingClientRect = () => ({ top: 200 + TITLE_AT - pvScroll.scrollTop, left: 20, width: 300, height: 30, right: 320, bottom: 230 + TITLE_AT - pvScroll.scrollTop });

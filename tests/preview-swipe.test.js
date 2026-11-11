@@ -87,7 +87,7 @@ test("the spring starts at the finger's own speed: a close carries the flick on 
   assert.ok(e15.ms > 300, "home in over 300 ms");
 });
 
-test("the list scrolls as its own and nothing on it is refused: at its top and still, a pull from it is the sheet's (iOS cannot move the list down there: it does not bounce at its top), even once iOS's own scroll has the touch, and a quick flick from a still finger closes it; scrolled, it scrolls back first and the sheet stays; up, or once the list moves, the touch is the list's (a sheet it pulled back at its place); sideways is nobody's", () => {
+test("the list scrolls as its own and nothing on it is refused: at its top and still, a pull from it is the sheet's (iOS cannot move the list down there: it does not bounce at its top), even once iOS's own scroll has the touch, and a quick flick from a still finger closes it; scrolled, it scrolls back first and the sheet stays; up, or once the list moves, the touch is the list's (a sheet it pulled back at its place); sideways is the slide's", () => {
   assert.deepStrictEqual([r.listTop.prevented.some(Boolean), r.listTop.during.transform, r.listTop.settled.up], [false, "translate3d(0,110px,0)", true], "the list at its top: the sheet follows, nothing refused");
   for (const k of ["listScrolled", "listUp"]) assert.deepStrictEqual([r[k].prevented.some(Boolean), r[k].during.transform, r[k].during.drag], [false, "", null], k + ": the list's own scroll, untouched");
   assert.deepStrictEqual(r.listRollUp, { prevented: [false, false, false, false], waiting: { on: false, off: 0, top: true }, still: { on: false, off: 0, top: true }, drag: null }, "up 1, then 5: still waiting; 15: the list's");
@@ -100,7 +100,7 @@ test("the list scrolls as its own and nothing on it is refused: at its top and s
   const tb = r.listTurnBack;
   assert.deepStrictEqual([tb.prevented.some(Boolean), tb.before.transform, tb.at.transform, tb.at.drag, tb.settled.up, tb.settled.transform], [false, "translate3d(0,11px,0)", "", null, true, ""], "pulled from the list and turned back: as iOS takes the list (its own scroll began 10 points further down than the sheet's pull), the sheet goes home");
   const e15 = fns.springEase(15, 0.357, 1); assert.strictEqual(tb.at.transition, "transform " + e15.ms + "ms " + e15.css, "home by the spring from the finger's speed (up at 440 a second: the most toward its place, 15 sheet-distances a second), never a jump");
-  assert.deepStrictEqual([r.sideways.prevented, r.sideways.transform, r.sideways.drag], [false, "", null], "sideways is nobody's");
+  assert.deepStrictEqual([r.sideways.prevented, r.sideways.transform, r.sideways.drag], [true, "", { on: false, off: 0, top: true }], "sideways within 30 degrees of level: the slide to the workout beside it (preview-pager.test.js), refused at once; never a pull");
   assert.deepStrictEqual(r.diagonal, { prevented: true, up: true, transform: "translate3d(0,20px,0)", dim: "rgba(0,0,0,0.4350)", drag: { on: true, off: 20, top: true } }, "16 sideways and 30 down in one move: more down than sideways, the sheet's");
   assert.deepStrictEqual(r.headerCoast, { up: true, transform: "translate3d(0,90px,0)", dim: "rgba(0,0,0,0.3825)", drag: { on: true, off: 90, top: true } }, "a pull on the header goes on while the list under it still coasts");
 });
