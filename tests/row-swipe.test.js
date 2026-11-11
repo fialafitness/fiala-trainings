@@ -56,13 +56,13 @@ test("behind the row: Skip, then Reschedule outermost (the full swipe's), as App
   try {
     keeping(() => {
       const li = fns.workoutRow(t, "next", true), acts = actsOf(li);
-      assert.deepStrictEqual(acts.map((a) => a.className), ["swipe-act sa-skip", "swipe-act sa-resched"], "Skip inside, Reschedule outermost");
+      assert.deepStrictEqual(acts.map((a) => a.className), ["swipe-act sa-prev", "swipe-act sa-skip", "swipe-act sa-resched"], "Preview innermost (his pick, 10 Nov: on the same swipe), then Skip, Reschedule outermost");
       assert.ok(acts.every((a) => a.tabIndex === -1), "out of the keyboard's way: the workout page holds both");
-      acts[1].on.click[0]({ stopPropagation() {} });
+      acts[2].on.click[0]({ stopPropagation() {} });
       assert.strictEqual(fns.datePicker() && fns.datePicker().title, "Reschedule", "Reschedule opens the days");
       fns.closeDatePicker();
       sheet.hidden = true;                                             // as the page starts it
-      acts[0].on.click[0]({ stopPropagation() {} });
+      acts[1].on.click[0]({ stopPropagation() {} });
       assert.deepStrictEqual(fns.skipSheet(), { id: "w1", reason: "" }, "Skip asks first: the workout page's own sheet, for this workout");
       assert.strictEqual(sheet.hidden, false, "the sheet is up");
       assert.strictEqual(maps.trainings.get("w1").skippedAt, null, "and nothing is skipped before the answer");
@@ -85,7 +85,7 @@ test("the Workouts page draws Today's and Up next's rows with their actions behi
     for (const k of ["today", "next"]) {
       const li = (drawn[k] || [])[0];
       assert.ok(li && li.classList.contains("swipe-row"), k + ": its workout's row swipes");
-      assert.strictEqual(actsOf(li).length, 2, k + ": Skip and Reschedule behind it");
+      assert.strictEqual(actsOf(li).length, 3, k + ": Preview, Skip and Reschedule behind it");
     }
   });
 });
@@ -102,9 +102,9 @@ test("a let-go row: armed once its edge is within 81 points of its start, it res
   assert.strictEqual(fns.rowDecide(w, 0.2, w, row), "open", "a slow drift is not a flick: where it is decides");
   assert.strictEqual(fns.rowArmed(w - 1, w, 200), false, "a row too narrow for the rule never arms before its actions are open");
   assert.strictEqual(fns.rowArmed(648 - 81, w, 648), true, "a wide row (a computer's window) arms by the same 81 points");
-  const w3 = 11.67 + 61 + 10.33 + 61 + 10.33 + 61 + 10.67, se = 320 - 34;   // a missed workout's three, open; a 320-point phone's card row
-  assert.strictEqual(fns.rowArmed(w3, w3, se), false, "a 320-point phone: a missed row let go open is never armed (81 short of its start is inside its open actions)");
-  assert.strictEqual(fns.rowDecide(w3 + 6, 0, w3, se), "open", "so letting go just past the open width keeps it open, never Do it today");
+  const w3 = 11.67 + 61 + 10.33 + 61 + 10.33 + 61 + 10.67, se = 320 - 34;   // a row's three (Preview, Skip, Reschedule), open; a 320-point phone's card row
+  assert.strictEqual(fns.rowArmed(w3, w3, se), false, "a 320-point phone: a row of three let go open is never armed (81 short of its start is inside its open actions)");
+  assert.strictEqual(fns.rowDecide(w3 + 6, 0, w3, se), "open", "so letting go just past the open width keeps it open, never the full swipe");
   assert.strictEqual(fns.rowArmed(w3 + 49, w3, se), false); assert.strictEqual(fns.rowArmed(w3 + 50, w3, se), true, "50 points past the open width it arms (the room a row of two has there: 205 - 154.67)");
   assert.strictEqual(fns.rowArmed(se, 262, se), false, "a large Text Size there: no full swipe at all, the actions are tapped");
 });
@@ -248,10 +248,8 @@ test("the page keeps Apple's measured gaps behind the row: 10.33 between the act
 
 test("the page draws the actions as measured: Skip's capsule grey, armed only the outermost action's icon moves and only its title goes, the tokens in light and both darks; a closing tap leaves no hover; the keyboard's ring sits inside the row", () => {
   assert.ok(html.includes(".swipe-act.sa-skip .sa-cap { background: var(--swipe-skip); }"), "Skip's capsule systemGray3, as Reminders' Details (Reschedule's the brand's)");
-  assert.ok(html.includes(".swipe-act.sa-today .sa-cap { background: var(--swipe-today); }"), "a missed workout's Do it today: his Steel blue (his pick B, 10 Nov)");
-  assert.deepStrictEqual(rule(":root").match(/--swipe-today: [^;]*;/g), ["--swipe-today: #5e8ca7;"], "his Brand Bible's Steel blue, #5E8CA7");
-  assert.ok(![...html.matchAll(/--swipe-today:/g)].slice(1).length, "one value in both modes, as the Bible ships its accents (no dark override)");
-  assert.ok(html.includes(".armed .swipe-act:last-child .sa-cap .mi { left: 20px; margin-left: 0; }"), "armed: the outermost action's icon (Reschedule's, a missed workout's Do it today's) goes to its capsule's leading edge");
+  assert.ok(!/sa-today|--swipe-today/.test(html), "no Today capsule on any swipe (his ask, 10 Nov: a missed workout's Do it today is in its \"…\" and touch and hold)");
+  assert.ok(html.includes(".armed .swipe-act:last-child .sa-cap .mi { left: 20px; margin-left: 0; }"), "armed: the outermost action's icon (Reschedule's) goes to its capsule's leading edge");
   assert.ok(html.includes(".armed .swipe-act:last-child .sa-lbl { opacity: 0; }"), "and its title goes");
   assert.deepStrictEqual([...html.matchAll(/\.armed\b([^{]*)\{/g)].map((m) => m[1].trim()), [".swipe-act:last-child .sa-cap .mi", ".swipe-act:last-child .sa-lbl"], "only the outermost's: armed, the inner ones keep their titles (they show at 30%); these two are the armed look's only rules");
   const tokens = (sel) => rule(sel).match(/--swipe-(?:label|skip): [^;]*;/g);
@@ -478,23 +476,23 @@ test("the trainer on a Mac: on a client's page two fingers open the row the app 
   assert.deepStrictEqual(g.coachRow, { hasActions: true, opened: { open: true, x: 154.67, kept: 54 }, tap: { cancelled: false, clicked: true }, days: { title: "Reschedule", min: null }, rightOverRow: { view: "clients", kept: 54, row: null } });
 });
 
-test("a missed workout's row swipes to three (his pick B, 10 Nov): Skip, Reschedule and outermost Today, drawn out as Apple's two: each grows as its own slot is uncovered, past the open width the inner ones fade alike, armed both at 30%; let go armed, the workout comes to today", () => {
+test("a missed workout's row swipes to every row's three (his ask, 10 Nov: \"to keep it clean\"): Preview, Skip and outermost Reschedule, drawn out as Apple's two: each grows as its own slot is uncovered, past the open width the inner ones fade alike, armed both at 30%; let go armed, Reschedule's days (never Do it today)", () => {
   const T = g.three, W3 = 11.67 + 61 + 10.33 + 61 + 10.33 + 61 + 10.67, op = (v) => (v === "" || v == null ? 1 : Number(v));
   assert.ok(!T.error, T.error);
   const near = (v, want, msg) => assert.ok(Math.abs(Number(v) - want) < 0.01, msg + ": " + v + ", want " + want);
-  assert.deepStrictEqual([T.classes, T.titles], [["swipe-act sa-skip", "swipe-act sa-resched", "swipe-act sa-today"], ["Skip", "Reschedule", "Today"]], "the menu's three, outermost first as it lists them");
+  assert.deepStrictEqual([T.classes, T.titles], [["swipe-act sa-prev", "swipe-act sa-skip", "swipe-act sa-resched"], ["Preview", "Skip", "Reschedule"]], "the row as the app draws it: Preview innermost, Reschedule outermost");
   near(T.w, W3, "open: the row's edge, the three 10.33 apart, the outer one's end");
   const L = T.look;
-  near(L[62].ops[2], 0.51, "x 62: Today half grown, as the outer one of two"); assert.deepStrictEqual(L[62].ops.slice(0, 2), ["0", "0"], "the others not yet");
-  near(L[134].ops[1], (134 - 112.5) / (153.33 - 112.5), "x 134: Reschedule half grown in its own slot (82 + 30.5 to 82 + 61 + 10.33)"); assert.strictEqual(L[134].ops[0], "0", "Skip not yet"); assert.strictEqual(L[134].ops[2], "1", "Today whole");
-  near(L[206].ops[0], (206 - 183.83) / (W3 - 183.83), "x 206: Skip half grown in the last slot, to the open width"); assert.strictEqual(L[206].ops[1], "1");
+  near(L[62].ops[2], 0.51, "x 62: Reschedule half grown, as the outer one of two"); assert.deepStrictEqual(L[62].ops.slice(0, 2), ["0", "0"], "the others not yet");
+  near(L[134].ops[1], (134 - 112.5) / (153.33 - 112.5), "x 134: Skip half grown in its own slot (82 + 30.5 to 82 + 61 + 10.33)"); assert.strictEqual(L[134].ops[0], "0", "Preview not yet"); assert.strictEqual(L[134].ops[2], "1", "Reschedule whole");
+  near(L[206].ops[0], (206 - 183.83) / (W3 - 183.83), "x 206: Preview half grown in the last slot, to the open width"); assert.strictEqual(L[206].ops[1], "1");
   for (const k of [0, 1]) near(L[256].ops[k], 1 - 0.337, "x 256, 30 points past: both inner ones at 66%, as Skip of two");
-  near(parseFloat(L[256].w), 61 + 256 - W3, "Today stretches by the overshoot");
+  near(parseFloat(L[256].w), 61 + 256 - W3, "Reschedule stretches by the overshoot");
   assert.strictEqual(L[290].armed, true, "armed at 290 (368 - 81 = 287)");
   for (const k of [0, 1]) for (const c of L[290].kids[k]) near(op(L[290].ops[k]) * op(c), 0.3, "armed: each inner one at 30% (itself times its insides)");
-  assert.strictEqual(L[290].ops[2], "1", "Today whole");
+  assert.strictEqual(L[290].ops[2], "1", "Reschedule whole");
   for (const x of [62, 134, 206, 256, 290]) assert.deepStrictEqual(L[x].parts, Array(2).fill("translate3d(-" + x + "px,0,0)"), "x " + x + ": the row and its \"…\" slide together");
-  assert.deepStrictEqual(T.fired, { today: true, moved: true, days: false, closed: true }, "the full swipe: Do it today (the client's through client_move_training), no days, the row closed");
+  assert.deepStrictEqual(T.fired, { today: false, moved: false, days: true, closed: true }, "the full swipe: Reschedule's days, nothing moved to today, the row closed");
   assert.ok(T.cleared.length === 7 && T.cleared.every((c) => c.join("") === ""), "closed: nothing left on any of the three or the inner ones' insides " + JSON.stringify(T.cleared));
 });
 
@@ -506,4 +504,11 @@ test("a sync's redraw with a missed workout's row open: the Missed card's new ro
 test("a tap on an open missed row's Reschedule opens the days and moves nothing (only Today's button and the full swipe bring it to today)", () => {
   assert.ok(!g.missResched.error, g.missResched.error);
   assert.deepStrictEqual(g.missResched, { open: true, tap: { cancelled: false, clicked: true }, days: "Reschedule", date: true, moved: false });
+});
+
+test("the rows the app draws, whole (his pick, 10 Nov: Preview on the same swipe): Preview, Skip and outermost Reschedule, a missed one the same three (his ask, 10 Nov: Do it today in its \u2026); open at their widths; a tap on Preview opens the preview as the row closes", () => {
+  const R = g.real; assert.ok(!R.error, R.error);
+  const tapped = { tap: { cancelled: false, clicked: true }, preview: { id: "w1" }, row: null, days: false, moved: false };   // Preview's tap alone: never the row's own action (the days, Do it today) under it
+  assert.deepStrictEqual(R.next, { classes: ["swipe-act sa-prev", "swipe-act sa-skip", "swipe-act sa-resched"], titles: ["Preview", "Skip", "Reschedule"], open: true, w: 226, tap: tapped }, "a workout: three, 11.67 + 3 x 61 + 2 x 10.33 + 10.67");
+  assert.deepStrictEqual(R.missed, { classes: ["swipe-act sa-prev", "swipe-act sa-skip", "swipe-act sa-resched"], titles: ["Preview", "Skip", "Reschedule"], open: true, w: 226, tap: tapped }, "a missed one: the same three (no Today capsule)");
 });

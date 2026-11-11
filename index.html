@@ -38,6 +38,7 @@
     --seg-shadow: rgba(0,0,0,0.12);
     --key-fill: #ffffff; --key-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 0 0 0.5px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.12), 0 3px 8px rgba(0,0,0,0.06);   /* the set track's key: lit along the top, lifted off the track */
     --card: #ffffff;
+    --pv-bg: var(--surface); --pv-card: var(--card);   /* the preview sheet: the page's own grey and its white cards (in dark, Apple's raised pair below) */
     --card-border: rgba(0,0,0,0.06);    /* hairlines inside cards */
     --card-edge: transparent;           /* around a card: none in light, a faint line in dark */
     --header: rgba(255,255,255,0.74);   /* the top bar, measured off Apple Mail (iOS 26): 74% over what scrolls under it, a 2-point blur, a hairline at its edge */
@@ -46,8 +47,8 @@
     --field-in: #f5f5f5;                /* a field inside a white card is grey */
     --swipe-row: #e5e5ea;              /* a workout row swiped to its actions: iOS systemGray5, as Apple's swiped rows (measured, iOS 27.2) */
     --swipe-label: rgba(60,60,67,0.6);  /* the title under a swipe action: iOS secondary label (measured 138,138,142 on white, the glyphs' core) */
+    --swipe-preview: #006072;          /* the Preview capsule, its one job (his pick, 10 Nov: "I do like the peacock teal"): a deep concierge-clinic teal (measured: The Lanby's peacock pill #004253, lifted to read on black), one value in both modes; white on it 7.2:1. His Steel blue is saved for its Bible meaning, rest (a rest timer) */
     --swipe-skip: #c7c7cc;             /* the Skip capsule: systemGray3, as Reminders' Details (measured 199,199,204) */
-    --swipe-today: #5e8ca7;            /* a missed workout's Today: his Brand Bible's Steel blue (accent-rest, one value in both modes; white on it 3.6:1). His pick B, 10 Nov, knowing the Bible keeps it for rest, sleep and recovery: he gave it this second meaning */
     --swipe-clip: padding-box;          /* while a row is out the card's white stops inside its clear edge: no white line round the gap */
     --inset: #f2f2f4; --inset-field: #ffffff;   /* a superset: each exercise on a grey panel inside the white card, its boxes white on it */
     --glyph-fill: rgba(120,120,128,0.14); /* the circle behind a small symbol (secondary system fill) */
@@ -88,6 +89,7 @@
       --seg-shadow: transparent;
       --key-fill: rgba(255,255,255,0.22); --key-shadow: inset 0 1px 0 rgba(255,255,255,0.28), inset 0 0 0 0.5px rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.35), 0 3px 8px rgba(0,0,0,0.22);
       --card: #1c1c1e;                  /* Apple's dark grouped card */
+      --pv-bg: #1c1c1e; --pv-card: #2c2c2e;   /* the preview in dark: Apple's raised grouped pair (black on the dimmed black had no edge) */
       --card-border: rgba(255,255,255,0.10);
       --card-edge: rgba(255,255,255,0.10);
       --header: rgba(11,11,11,0.74);
@@ -137,6 +139,7 @@
       --seg-shadow: transparent;
       --key-fill: rgba(255,255,255,0.22); --key-shadow: inset 0 1px 0 rgba(255,255,255,0.28), inset 0 0 0 0.5px rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.35), 0 3px 8px rgba(0,0,0,0.22);
     --card: #1c1c1e;                  /* Apple's dark grouped card */
+    --pv-bg: #1c1c1e; --pv-card: #2c2c2e;   /* the preview in dark: Apple's raised grouped pair (black on the dimmed black had no edge) */
     --card-border: rgba(255,255,255,0.10);
     --card-edge: rgba(255,255,255,0.10);
     --header: rgba(11,11,11,0.74);
@@ -467,6 +470,43 @@
   .pick-sheet .ask-actions { margin-top: 10px; }
   .pick-sheet .list li.w .wd { display: none; }   /* a day's sheet: the date is its title, the rows need not repeat it */
   .ask-actions { display: grid; gap: 10px; margin-top: 18px; }
+  /* the workout preview (his asks, 10 Nov: "very simple and clean", "aesthetically pleasing and simple", "no green lines", no buttons or
+     chevrons in it): the page's own grey; the title and day as the workout page writes them (26 semibold, 17 Steel); the cards as Apple draws an
+     inset grouped list (17 semibold names in ink, 15 under them in Steel, the number quiet, a hairline from the name to the card's edge) */
+  .pv-sheet:focus { outline: none; }
+  .sheet.pv-sheet { background: var(--pv-bg); display: flex; flex-direction: column; padding-top: 16px; }   /* the base sheet's height: 24 below the status bar, as every sheet */
+  .pv-x {                                                   /* the close cross, as Apple's sheets (his ask, 10 Nov, from Calendar's event sheet: measured there, a 44-point circle 16 in from the sheet's top and left edges): the app's round-button grey, as the back button's */
+    appearance: none; border: 0; padding: 0; border-radius: 50%; flex: none; align-self: flex-start; margin: 0 0 10px;
+    background: var(--disc-fill); color: var(--disc-ink); font: inherit; cursor: pointer;
+    width: 44px; height: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
+    transition: opacity 300ms ease, transform 300ms ease;
+  }
+  .pv-x svg { width: 18px; height: 18px; flex: none; }     /* xmark: a 16.7-point cross of 2.1-point round strokes (measured there) */
+  .pv-x:hover { opacity: 0.85; }
+  .pv-x:active { transform: scale(0.97); }
+  .pv-x:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .pv-sheet h3 { margin: 0 4px 2px; font-size: 1.625rem; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); }
+  .pv-day { margin: 0 4px 16px; font-size: 1.0625rem; color: var(--text-secondary); }
+  .pv-day:empty { display: none; }
+  .pv-cards { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 18px; align-content: start; }
+  .pv-grp { display: grid; gap: 7px; }                       /* a card under its caption */
+  .pv-cap { margin: 0 0 0 18px; font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.10em; line-height: 1.25rem; text-transform: uppercase; color: var(--text-secondary); }   /* "EXERCISE 2 · SUPERSET": the client's workout page's caption (his pick B, 10 Nov), over the number's column */
+  .pv-cap i { font-style: normal; color: var(--text-tertiary); }
+  .pv-cards:focus { outline: none; }
+  .pv-cards:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--r-card); }   /* a keyboard reaches the list (Tab) to scroll it with the arrows; a tap shows no ring */
+  .pv-card { background: var(--pv-card); border: 1px solid var(--card-edge); border-radius: var(--r-card); }
+  .pv-row { position: relative; display: flex; align-items: baseline; gap: 12px; padding: 13px 16px 13px 18px; }
+  .pv-row + .pv-row::before { content: ""; position: absolute; top: 0; right: 0; left: calc(30px + 2rem); border-top: 1px solid var(--card-border); }   /* Apple's inset hairline: from the name to the card's edge */
+  .pv-l { flex: none; width: 2rem; font-size: 1.0625rem; font-weight: 500; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+  .pv-b { flex: 1 1 auto; min-width: 0; }
+  .pv-n { display: block; font-size: 1.0625rem; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary); overflow-wrap: anywhere; }
+  .pv-sub { display: block; margin-top: 1px; font-size: 0.8125rem; font-weight: 500; color: var(--text-secondary); }
+  .pv-sum { display: flex; flex-wrap: wrap; margin-top: 3px; font-size: 0.9375rem; line-height: 1.35; color: var(--text-secondary); }
+  .pv-sum .si + .si::before { content: "\00b7"; margin: 0 6px; }
+  .pv-foot { padding: 0 16px 13px calc(30px + 2rem); font-size: 0.8125rem; color: var(--text-tertiary); }   /* a finished card: one quiet line, nothing green */
+  .pv-line { display: block; }
+  .pv-none { margin: 4px 4px 0; font-size: 1.0625rem; color: var(--text-secondary); }
+  .pv-sheet .ask-actions { margin-top: 18px; }
   .ask-actions .btn { min-height: 50px; font-size: 1.0625rem; }
   .sheet.ask .reasons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .sheet.ask .reasons button { appearance: none; cursor: pointer; min-height: 44px; padding: 0 12px; border-radius: var(--r-field); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-primary); font-size: 0.9375rem; transition: opacity 300ms ease; }
@@ -1278,7 +1318,7 @@
   .swipe-act .sa-cap { position: relative; flex: none; width: 61px; height: 37px; border-radius: 18.5px; background: var(--brand-fill); color: #ffffff; }   /* Apple's two-line rows: a 61 x 37 capsule, the title under it */
   .swipe-act .sa-cap .mi { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; transition: left 200ms ease, margin-left 200ms ease; }
   .swipe-act.sa-skip .sa-cap { background: var(--swipe-skip); }
-  .swipe-act.sa-today .sa-cap { background: var(--swipe-today); }             /* a missed workout's Do it today: his Steel blue, beside Reschedule's purple and Skip's grey */
+  .swipe-act.sa-prev .sa-cap { background: var(--swipe-preview); }           /* Preview: his peacock teal, beside Skip's grey and Reschedule's purple */
   .armed .swipe-act:last-child .sa-cap .mi { left: 20px; margin-left: 0; }      /* armed (the row's edge within 81 points of its start): the outer icon at its capsule's leading edge, as Apple's */
   .swipe-act .sa-lbl { margin: 0 -5.5px; font-size: 0.8125rem; line-height: 1.2; letter-spacing: 0; color: var(--swipe-label); white-space: nowrap; transition: opacity 150ms ease; }   /* "Reschedule" is 72 px to the capsule's 61: it overhangs it by 5.5 px a side, so the action is the capsule's width and the gaps are measured from the capsule (a larger Text Size widens the action instead, the title always clear of the row) */
   .armed .swipe-act:last-child .sa-lbl { opacity: 0; }
@@ -1653,6 +1693,7 @@
 </div>
 <div id="ctxDim" hidden></div><div id="ctxLift" hidden aria-hidden="true" inert></div><div id="whenBg" hidden><div id="whenPop" role="dialog" aria-live="polite"></div></div>
 <input type="file" id="photoInput" accept="image/*" hidden>
+<div class="sheet-bg" id="pvSheet" hidden><div class="sheet pv-sheet" id="pvBox" role="dialog" aria-modal="true" aria-labelledby="pvTitle" tabindex="-1"><button class="pv-x" id="pvX" type="button" aria-label="Close"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M1.7 1.7 16.3 16.3M16.3 1.7 1.7 16.3"/></svg></button><h3 id="pvTitle"></h3><p class="pv-day" id="pvDay"></p><div class="pv-cards" id="pvCards" tabindex="0" role="group" aria-label="Exercises"></div><div class="ask-actions"><button class="btn" id="pvGo" type="button">Start workout</button></div></div></div>
 <div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="pickSheet" hidden><div class="sheet ask confirm-sheet pick-sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle"><h3 id="pickTitle"></h3><ul class="list" id="pickList"></ul><div class="ask-actions"><button class="btn quiet" id="pickNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="skipSheet" hidden>
@@ -1694,7 +1735,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=257";
+  import { boot } from "./app/main.js?v=258";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
