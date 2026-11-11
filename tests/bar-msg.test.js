@@ -94,3 +94,16 @@ test("the page: the disc in the bar before the … and the photo, the bar's 12 b
   assert.ok(html.includes(".bar-msg { background: var(--disc-fill); color: var(--disc-ink); text-decoration: none; }"), "the bar's grey circle, as the …");
   assert.ok(!/id="(msgBtn|trainerBtn|trainerBtn2)"|msg-disc/.test(html), "no Messages disc beside a title any more");
 });
+
+test("the status line beside the bar's circles: offline it says just Offline (his pick, 10 Nov), or Offline \u00b7 will sync with changes waiting; both fit the narrowest bar", async () => {
+  const { parseTtf } = await import("../app/pdf.js");
+  const b = fs.readFileSync(new URL("../fonts/Inter-Regular.ttf", import.meta.url)), f = parseTtf(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+  const width = (s) => [...s].reduce((t, ch) => t + f.width(f.gid(ch)), 0) / 1000 * 13;   // 13 px Inter, as #status
+  page({ name: "client", id: "c1" });
+  try {
+    app.set({ backend: {}, offline: true }); fns.setStatus(); const idle = $("status").textContent;
+    maps.dirty.set("trainings/w1", true); fns.setStatus(); const waiting = $("status").textContent; maps.dirty.clear();
+    assert.deepStrictEqual([idle, waiting], ["Offline", "Offline \u00b7 will sync"]);
+    for (const s of [idle, waiting]) assert.ok(width(s) <= 153, s + ": " + width(s).toFixed(1) + " pt, the room left on a 375-point iPhone's own Workouts page (logo, Messages circle, photo)");
+  } finally { maps.dirty.clear(); quiet(); }
+});

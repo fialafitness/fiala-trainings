@@ -97,7 +97,7 @@ import { reportRange, buildReport } from "./report.js";
     const el = $("status");
     const pending = timers.size + S.inflight;
     if (S.deviceFull) { el.className = "err"; el.textContent = "Not saved on this device \u00b7 free up space"; return; }
-    if (S.backend && S.backend !== localBackend && (S.offline || !navigator.onLine)) { el.className = ""; el.textContent = (dirty.size || pending) ? "Offline \u00b7 will sync" : "Offline \u00b7 showing your last sync"; return; }
+    if (S.backend && S.backend !== localBackend && (S.offline || !navigator.onLine)) { el.className = ""; el.textContent = (dirty.size || pending) ? "Offline \u00b7 will sync" : "Offline"; return; }   // short enough for the bar beside its Messages circle (his pick, 10 Nov: "Offline")
     if (S.failed && pending === 0) { el.textContent = "Couldn't save" + (S.failReason ? " \u00b7 " + S.failReason : "") + (dirty.size ? " \u00b7 tap to retry" : ""); el.className = "err"; return; }
     el.className = "";
     el.textContent = pending > 0 ? "Saving\u2026" : (S.backend ? "Saved" : "");
