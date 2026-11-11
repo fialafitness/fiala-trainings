@@ -13,11 +13,15 @@ const { fns } = await load();
 const probe = path.join(path.dirname(fileURLToPath(import.meta.url)), "month-menu-probe.mjs");
 const r = JSON.parse(execFileSync(process.execPath, [probe], { encoding: "utf8", timeout: 60000 }).trim().split("\n").pop());
 
-test("a missed workout's Skip asks first (the sheet, nothing skipped yet); Skip workout files it as skipped, Cancel leaves it", () => {
+test("a missed workout's \u2026: Do it today, Reschedule, Skip; its Skip asks first (the sheet, nothing skipped yet), Skip workout files it as skipped, Cancel leaves it; its Do it today moves it to today", () => {
+  assert.deepStrictEqual(r.missed.rows, ["Do it today", "Reschedule", "Skip"], "the menu's three, Do it today first (his pick B, 10 Nov)");
+  assert.strictEqual(r.missed.open, true, "the \u2026 opens it"); assert.strictEqual(r.missed.menuClosed, true, "a pick closes it");
   assert.deepStrictEqual({ asked: r.missed.asked, asking: r.missed.asking }, { asked: true, asking: true }, "the same question as the row's swipe and the workout page");
   assert.strictEqual(r.missed.skippedAtOnce, false, "not skipped by the tap itself");
   assert.deepStrictEqual(r.missed.after, { skipped: true, missed: false, pending: true, closed: true }, "Skip workout: skipped, no longer missed, on its way to the server");
   assert.deepStrictEqual(r.missed.keep, { skipped: false, closed: true }, "Cancel: still missed");
+  assert.deepStrictEqual(r.skipAll, { asked: true, title: "Skip 2 missed workouts?", cancelled: { skipped: [], closed: true }, done: ["w1", "w2"] }, "the Missed card's Skip all button: asked first, Cancel skips nothing, Skip all both");
+  assert.deepStrictEqual(r.missed.today, { date: true, moved: true, decided: false, closed: true }, "Do it today: today, through the server's own rule, never marked as decided (missed again, it files itself after a week)");
 });
 
 test("two fingers over the client page's month: it follows them and, past 48 px, goes on a month; less comes back", () => {
