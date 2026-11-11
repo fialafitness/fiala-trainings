@@ -1335,7 +1335,8 @@ import { reportRange, buildReport } from "./report.js";
   const RS_GAP = 11.67, RS_BETWEEN = 10.33, RS_END = 10.67, RS_HOLD = 8, RS_ARM_EDGE = 81, RS_FLICK = 0.3, RS_ARM_PAST = 50;   // RS_FLICK: px per ms; a let-go faster than this goes its own way. RS_ARM_PAST: never armed while merely open (a 320-point phone or a large Text Size with a missed workout's three actions): 50 past the open width at least, the room a row of two already has on the narrowest phone (205 - 154.67)
   const SA_CALENDAR = '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M4.2 2.9h7.6c1.2 0 2.2 1 2.2 2.2v7c0 1.2-1 2.2-2.2 2.2H4.2C3 14.3 2 13.3 2 12.1v-7c0-1.2 1-2.2 2.2-2.2zM3.5 6.6v5.5c0 .4.3.7.7.7h7.6c.4 0 .7-.3.7-.7V6.6z"/><path fill="currentColor" d="M5 8h1.6v1.6H5zM7.2 8h1.6v1.6H7.2zM9.4 8H11v1.6H9.4zM5 10.2h1.6v1.6H5zM7.2 10.2h1.6v1.6H7.2z"/><path d="M5.2 1.5v2.2M10.8 1.5v2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';   // the calendar filled, as Apple's swipe actions use the fill variants (HIG, SF Symbols)
   const SA_SKIP = '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3 3.4v9.2c0 .6.6.9 1.1.6l7-4.6c.4-.3.4-.9 0-1.2l-7-4.6C3.6 2.5 3 2.8 3 3.4z"/><rect x="11.6" y="2.6" width="2" height="10.8" rx="1" fill="currentColor"/></svg>';   // forward.end.fill: skip, as media controls draw it
-  const saToday = () => '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M4.2 2.9h7.6c1.2 0 2.2 1 2.2 2.2v7c0 1.2-1 2.2-2.2 2.2H4.2C3 14.3 2 13.3 2 12.1v-7c0-1.2 1-2.2 2.2-2.2zM3.5 6.6v5.5c0 .4.3.7.7.7h7.6c.4 0 .7-.3.7-.7V6.6z"/><text x="8" y="11.85" text-anchor="middle" font-size="5.4" font-weight="600" fill="currentColor">' + Number(today().slice(8)) + '</text><path d="M5.2 1.5v2.2M10.8 1.5v2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';   // Do it today on a missed workout's swipe: the filled calendar with today's date in it
+  const REPS_DEFAULT = "10";                                          // blank reps read as 10: the reps field's grey, the client's filled-in value, the preview
+  const SA_EYE = '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M8 3.6c3.1 0 5.6 2.1 6.7 4.1a.6.6 0 0 1 0 .6C13.6 10.3 11.1 12.4 8 12.4S2.4 10.3 1.3 8.3a.6.6 0 0 1 0-.6C2.4 5.7 4.9 3.6 8 3.6zm0 2.1a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6z"/></svg>';   // eye.fill: Preview, as Apple's Quick Look
   const DOTS = '<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" fill="currentColor"><circle cx="3.8" cy="10" r="1.75"/><circle cx="10" cy="10" r="1.75"/><circle cx="16.2" cy="10" r="1.75"/></svg>';   // a "…" disc's three dots, as the coach's exercise "…"
   const rowArmed = (x, w, row) => x >= Math.max(row - RS_ARM_EDGE, w + RS_ARM_PAST);   // the full swipe: the row's edge within 81 points of its own start, and never before 50 points past the open actions (a row let go open stays open; where that is past the row's end there is no full swipe, the actions are tapped)
   const rowDecide = (x, v, w, row) => (rowArmed(x, w, row) ? "fire" : Math.abs(v) > RS_FLICK ? (v > 0 ? "open" : "close") : x > w / 2 ? "open" : "close");   // where a let-go row goes; v: px per ms to the left
@@ -1411,7 +1412,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!quiet) rsFlush();
   }
   function rsForget() { if (rs) rsDone(rs, true); rsT = null; if (typeof document !== "undefined" && document.body && document.body.classList) document.body.classList.remove("rs-drag"); }   // a redraw or another page: the row goes back at once (no flush: the caller is drawing)
-  function rsFire(r) { const id = r.li.dataset.tid, full = r.li._full; r.fired = !!r.armed; rsSettle(r, 0, 0); if (full) full(); else if (id) rowReschedule(id); }   // the row closes as its outermost action runs (in its armed look, as it was let go): the days open, or a missed workout comes to today
+  function rsFire(r) { const id = r.li.dataset.tid, full = r.li._full; r.fired = !!r.armed; rsSettle(r, 0, 0); if (full) full(); else if (id) rowReschedule(id); }   // the row closes as its outermost action runs (in its armed look, as it was let go): Reschedule's days open, on every row
   function rowReschedule(id) {                                      // the day picker for this row's workout: the client's from today on, as the workout page's "…" opens it; the trainer's any day, as his date on the workout page
     const t = trainings.get(id); if (!canSwipeRow(t)) return false;
     const cid = t.clientId, asClient = canReschedule(t), still = () => S.view.name === "client" && S.view.id === cid && !settingsOpen && canSwipeRow(trainings.get(id));   // still the Workouts page, the workout still to do
@@ -1850,6 +1851,7 @@ import { reportRange, buildReport } from "./report.js";
   function fitNotes(root) {                                      // show "More" only under notes that really run past three lines
     for (const el of root.querySelectorAll(".entry .text.clamp")) { const more = el.nextElementSibling; if (more && more.classList.contains("more")) more.hidden = !(el.scrollHeight > el.clientHeight + 1); }
   }
+  const groupCaption = (g) => ({ main: g.key === "w" ? "Warmup" : ("Exercise " + (/^\d+$/.test(String(g.key)) ? String(g.key) : "")).trim(), kind: g.rows.length < 2 ? "" : g.rows.length === 2 ? "Superset" : g.rows.length === 3 ? "Tri-set" : "Giant set" });   // a card's caption, the client's workout page's and the preview's: "Exercise 1", "Exercise 2" · "Superset", "Warmup" · "Superset"
   const groupWord = (g) => g.key === "w" ? "warmup" : g.rows.length === 2 ? "superset" : g.rows.length === 3 ? "tri-set" : g.rows.length > 3 ? "giant set" : "exercise";
   function openFinishEarly(t, g, selKey, skip) {   // skip: an exercise still to come, nothing logged — the same sheet, worded as a skip
     const total = Math.max(...g.rows.map(setsOf));
@@ -1869,7 +1871,7 @@ import { reportRange, buildReport } from "./report.js";
   function askFirst({ title, text, yes = "Delete" }) {               // nothing is deleted or discarded by accident: a sheet asks, and only its red button does it
     return new Promise((resolve) => {
       if (askOpen) askOpen(false);
-      const bg = $("askSheet"), y = $("askYes"), n = $("askNo"), behind = [...document.body.children].filter((el) => el !== bg);
+      const bg = $("askSheet"), y = $("askYes"), n = $("askNo"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert);   // (what was inert already, as #ctxLift in the markup, stays so: only what the sheet held is given back)
       $("askTitle").textContent = title; $("askText").textContent = text || ""; $("askText").hidden = !text; y.textContent = yes;
       let armed = false; y.disabled = true;                                                  // the second tap of a double tap must not land on the red button
       const settle = setTimeout(() => { armed = true; y.disabled = false; }, 350);
@@ -1885,7 +1887,7 @@ import { reportRange, buildReport } from "./report.js";
   function sheetList({ title, rows }) {
     return new Promise((resolve) => {
       if (askOpen) askOpen(false);
-      const bg = $("pickSheet"), ul = $("pickList"), n = $("pickNo"), behind = [...document.body.children].filter((el) => el !== bg);
+      const bg = $("pickSheet"), ul = $("pickList"), n = $("pickNo"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert);
       $("pickTitle").textContent = title;
       ul.replaceChildren(...rows);
       let armed = false;                                                                      // the second tap of a double tap must not pick a row
@@ -2551,25 +2553,20 @@ import { reportRange, buildReport } from "./report.js";
     const open = () => { if (settingsOpen === "history") openFromHistory(t.id); else go({ name: "training", id: t.id }); };   // on History the page is a settings page over the client's: it has to come off first
     b.addEventListener("click", open);
     li.dataset.tid = t.id; li.appendChild(b);
-    if (missed) {                                                        // the missed workout's choices (his pick B, 10 Nov): a "…" where the chevron would be, opening Do it today, Reschedule and Skip, as Apple keeps an overdue row plain and its choices in a menu; the swipe and the touch and hold give the same three
+    if (missed) {                                                        // the missed workout's choices (his pick B, 10 Nov): a "…" where the chevron would be, opening Do it today, Reschedule, Skip and Preview, as Apple keeps an overdue row plain and its choices in a menu; the touch and hold gives the same four, its swipe every row's three (his ask, 10 Nov: Do it today only here)
       const more = document.createElement("button"); more.type = "button"; more.className = "miss-more"; more.setAttribute("aria-label", "More");
       more.innerHTML = DOTS;
       more.addEventListener("click", (e) => { e.stopPropagation(); const items = missItems(t.id); if (items.length) showMenu(more, items, { align: "right", focus: e.detail === 0 }); });   // a keyboard's Enter or VoiceOver's activation (detail 0) goes into the menu
       li.appendChild(more);                                              // after the row's button: read after it, and its own tap
     }
-    if (swipe && (mode === "today" || mode === "next" || missed) && canSwipeRow(t)) {   // swiped to the left: Skip and Reschedule behind the row (the workout page holds both: its Skip workout and its "…"); a missed workout's Do it today outermost
+    if (swipe && (mode === "today" || mode === "next" || missed) && canSwipeRow(t)) {   // swiped to the left: Preview, Skip and Reschedule behind the row (the workout page holds the last two: its Skip workout and its "…"); a missed workout's the same three, its Do it today in its "…" and touch and hold (his ask, 10 Nov: "keep do it today … the sliding menu can only have reschedule skip and preview to keep it clean")
       li.classList.add("swipe-row");
       const layer = document.createElement("div"); layer.className = "swipe-acts"; layer.setAttribute("aria-hidden", "true");
       const act = (cls, icon, label, run) => { const b = document.createElement("button"); b.type = "button"; b.className = "swipe-act " + cls; b.tabIndex = -1; b.innerHTML = '<span class="sa-cap">' + icon + '</span><span class="sa-lbl">' + label + '</span>'; b.addEventListener("click", (e) => { e.stopPropagation(); run(); }); return b; };
       const skip = act("sa-skip", SA_SKIP, "Skip", () => { if (rs && rs.li === li) rsSettle(rs, 0, 0); rowSkip(t.id); });   // asks first, as the workout page does
-      if (missed) {                                                      // the menu's three, outermost first as the menu lists them: Do it today (the full swipe's; its title "Today", one word as Apple's swipe titles, beside its calendar with the date), Reschedule, Skip
-        layer.append(skip, act("sa-resched", SA_CALENDAR, "Reschedule", () => { if (rs && rs.li === li) rsSettle(rs, 0, 0); rowReschedule(t.id); }),
-          act("sa-today", saToday(), "Today", () => { if (rs && rs.li === li) rsFire(rs); else doToday(t.id); }));
-        li._full = () => doToday(t.id);
-      } else {
-        layer.append(skip, act("sa-resched", SA_CALENDAR, "Reschedule", () => { if (rs && rs.li === li) rsFire(rs); else rowReschedule(t.id); }));   // outermost: the full swipe's
-        li._full = () => rowReschedule(t.id);
-      }
+      const prev = act("sa-prev", SA_EYE, "Preview", () => { if (rs && rs.li === li) rsSettle(rs, 0, 0); openPreview(t.id); });   // innermost, on the same swipe as Skip and Reschedule (his pick, 10 Nov): a look at the workout, the row closing as it opens
+      layer.append(prev, skip, act("sa-resched", SA_CALENDAR, "Reschedule", () => { if (rs && rs.li === li) rsFire(rs); else rowReschedule(t.id); }));   // outermost: the full swipe's
+      li._full = () => rowReschedule(t.id);
       li.appendChild(layer);                                             // last, under the row's own parts: they slide off it
       li._ctx = () => (missed ? missItems(t.id) : rowMenu(t.id)); li._ctx.ok = () => canSwipeRow(trainings.get(t.id)); li._ctx.open = open;   // a right-click: the same actions, at the pointer; a touch and hold: the same under the lifted row, a tap on which opens it
     }
@@ -2717,6 +2714,7 @@ import { reportRange, buildReport } from "./report.js";
     const rest = list.filter((t) => t.completedAt || t.skippedAt);           // History: a card under Up next; its page lays the past out by week, month and year
     $("histCard").hidden = !rest.length; $("histSub").textContent = rest.length + (rest.length === 1 ? " workout" : " workouts");
     $("trainingEmpty").hidden = list.length > 0;
+    if (pv) { const pt = trainings.get(pv.id); if (pt && pt.clientId === c.id) paintPreview(pt); else closePreview(); }   // a sync's redraw: the preview shows the workout as it is now, or goes with it
     $("delClientConfirm").hidden = true; $("delClient").hidden = false;
   }
 
@@ -2795,12 +2793,7 @@ import { reportRange, buildReport } from "./report.js";
     t.rows.sort((a, b) => cmpLabel(a.label, b.label));
     if (closeOpenAlt) closeOpenAlt();
     rowsEl.replaceChildren();
-    const groups = [];
-    t.rows.forEach((r, i) => {
-      const k = groupKey(r.label, i);
-      if (!groups.length || groups[groups.length - 1].key !== k) groups.push({ key: k, rows: [] });
-      groups[groups.length - 1].rows.push(r);
-    });
+    const groups = groupsOf(t.rows);
     let numbered = 0;
     const unfinished = groups.filter((g) => !g.rows.every((r) => r.done));
     const currentKey = asClient && !isTpl ? (unfinished[0] || {}).key : null;   // client: the first card not yet finished is the one open
@@ -2810,10 +2803,9 @@ import { reportRange, buildReport } from "./report.js";
       block.className = "block"; block.dataset.key = g.key;
       if (g.rows.length >= 2 || warm || asClient) {
         const cap = document.createElement("div"); cap.className = "group-cap";
-        const kind = g.rows.length < 2 ? "" : g.rows.length === 2 ? "Superset" : g.rows.length === 3 ? "Tri-set" : "Giant set";
+        const gc = groupCaption(g), kind = gc.kind;
         if (asClient) {                                        // client: a big numeral up here does the work the badge used to do
-          const num = /^\d+$/.test(String(g.key)) ? String(g.key) : "";
-          const big = document.createElement("b"); big.className = "num"; big.textContent = warm ? "Warmup" : "Exercise " + num;   // "Exercise 1", "Exercise 2 · Superset", "Warmup · Superset": always "Exercise N" first, so the numbers run in order
+          const big = document.createElement("b"); big.className = "num"; big.textContent = gc.main;   // "Exercise 1", "Exercise 2 · Superset", "Warmup · Superset": always "Exercise N" first, so the numbers run in order
           if (kind) { const k = document.createElement("i"); k.className = "kind"; k.textContent = " \u00b7 " + kind; big.appendChild(k); }
           cap.appendChild(big);
         } else {
@@ -2995,18 +2987,10 @@ import { reportRange, buildReport } from "./report.js";
       const sum = document.createElement("div"); sum.className = "card-sum";
       const paintSum = (all) => {
         sum.replaceChildren(); if (resume) resume.hidden = true; if (!all) { block.classList.remove("skipped"); return; }
-        const did = Math.min(...g.rows.map((r) => { const n = Math.min(doneCount(r), setsOf(r)); return n >= setsOf(r) ? Math.max(...g.rows.map(setsOf)) : n; }));
-        const early = g.rows.some((r) => r.done && Math.min(doneCount(r), setsOf(r)) < setsOf(r));   // doneCount: a row finished before the counter existed is simply finished
-        if (resume) resume.hidden = !early;
-        const sets = (n) => n + " of " + total + (total === 1 ? " set" : " sets");
-        const line = (text) => { const d = document.createElement("div"); d.textContent = text; sum.appendChild(d); };
-        if (!early) { line("Finished \u00b7 " + sets(total)); return; }
-        const why0 = (g.rows.find((r) => r.earlyReason) || {}).earlyReason || "";
-        block.classList.toggle("skipped", did === 0);
-        if (did === 0) { line("Skipped" + (why0 ? " \u00b7 " + why0 : "")); return; }   // nothing logged: skipped, not "finished early · 0 of 4" — and the card stays grey, not fern
-        line("Finished early \u00b7 " + sets(did));
-        const left = total - did, why = (g.rows.find((r) => r.earlyReason) || {}).earlyReason || "";
-        line(left + (left === 1 ? " set" : " sets") + " not completed" + (why ? " \u00b7 " + why : ""));
+        const st = groupSummary(g);
+        if (resume) resume.hidden = !st.early;
+        if (st.early) block.classList.toggle("skipped", st.skipped);   // nothing logged: skipped, and the card stays grey, not fern
+        for (const text of st.lines) { const d = document.createElement("div"); d.textContent = text; sum.appendChild(d); }
       };
       const chev = document.createElement("button"); chev.type = "button"; chev.className = "card-chev";   // finished card: a chevron on the status line (folded) or in the corner (open)
       chev.innerHTML = '<svg class="i-down" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg><svg class="i-up" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg>';
@@ -3160,6 +3144,7 @@ import { reportRange, buildReport } from "./report.js";
     pencil: '<svg class="mi" viewBox="-8.38 -9.09 64.73 64.73" aria-hidden="true" fill="currentColor"><path d="M4.18 42.43L8.35 34.58L33.81 9.13L38.12 13.44L12.67 38.9L4.82 43.07ZM3.92 42.43A0.9 0.9 0 1 0 5.72 42.43A0.9 0.9 0 1 0 3.92 42.43ZM35.93 7.01L39.47 3.47A1.25 1.25 0 0 1 41.23 3.47L43.78 6.02A1.25 1.25 0 0 1 43.78 7.78L40.24 11.32Z"/></svg>',   // Edit instructions: Apple's pencil, traced from Rename in the Files menu (iOS 27.2; 96% overlap), 0.76 em as Apple's
     camera: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.25 5.6c0-.8.65-1.45 1.45-1.45h1.7l1.05-1.4h3.1l1.05 1.4h1.7c.8 0 1.45.65 1.45 1.45v5.95c0 .8-.65 1.45-1.45 1.45H3.7c-.8 0-1.45-.65-1.45-1.45z"/><circle cx="8" cy="8.55" r="2.35"/></svg>',
     photo: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><rect x="1.9" y="2.9" width="12.2" height="10.2" rx="2.2"/><circle cx="5.7" cy="6.3" r="1.15"/><path d="M2.3 11.7l3.5-3.3 2.4 2.2 1.9-1.7 3.6 3.1"/></svg>',
+    eye: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M1.6 8C2.9 5.6 5.2 3.9 8 3.9s5.1 1.7 6.4 4.1C13.1 10.4 10.8 12.1 8 12.1S2.9 10.4 1.6 8z"/><circle cx="8" cy="8" r="2.1"/></svg>',   // Preview in a menu: the swipe's eye in outline, as the menus take the outline of what a swipe shows filled
     trash: '<svg class="mi" viewBox="-7.3 -3.3 62.6 62.6" aria-hidden="true" fill="currentColor"><path d="M5 13.5H43L41.25 50.5A5 5 0 0 1 36.25 55.5H11.75A5 5 0 0 1 6.75 50.5ZM8.6 13.5L10.35 50.5A1.4 1.4 0 0 0 11.75 51.9H36.25A1.4 1.4 0 0 0 37.65 50.5L39.4 13.5ZM17.75 0.5H30.25A4.5 4.5 0 0 1 34.75 5V6.25A4.5 4.5 0 0 1 30.25 10.75H17.75A4.5 4.5 0 0 1 13.25 6.25V5A4.5 4.5 0 0 1 17.75 0.5ZM19.5 4A2.5 2.5 0 0 0 17 6.5V10.25A2.5 2.5 0 0 0 19.5 12.75H28.5A2.5 2.5 0 0 0 31 10.25V6.5A2.5 2.5 0 0 0 28.5 4ZM1.45 10.25H46.55A1.45 1.45 0 0 1 48 11.7V12.2A1.45 1.45 0 0 1 46.55 13.65H1.45A1.45 1.45 0 0 1 0 12.2V11.7A1.45 1.45 0 0 1 1.45 10.25ZM14.5 19.78L15 46.28A1.5 1.5 0 0 0 18 46.22L17.5 19.72A1.5 1.5 0 0 0 14.5 19.78ZM22.5 19.75L22.5 46.25A1.5 1.5 0 0 0 25.5 46.25L25.5 19.75A1.5 1.5 0 0 0 22.5 19.75ZM30.5 19.72L30 46.22A1.5 1.5 0 0 0 33 46.28L33.5 19.78A1.5 1.5 0 0 0 30.5 19.72Z"/></svg>',   // Apple's trash, traced from its Delete in the Files and Reminders menus (iOS 27.2, 3x): lid, handle, a can narrowing to rounded corners, three lines leaning in; filled shapes, 93% overlap; 1.10 em tall as Apple's at 17 pt
   };
   function exerciseMenu(r, on) {                                    // the coach's "…" on an exercise: swap it, its instructions, and last and red, delete it, as Apple ends a menu with its destructive row (his ask, 9 Nov: Delete was hidden in Alternate exercise); the video is the play disc's own business
@@ -3270,15 +3255,17 @@ import { reportRange, buildReport } from "./report.js";
     it.classList.add("ctx-on");
     showMenu(it, items, { at, focus: !pressed, back, onClose: () => it.classList.remove("ctx-on") });   // (with no press, focus goes into the menu, as a system menu takes it)
   });
-  const rowMenu = (id) => [                                          // a workout row's right-click: its swipe's two actions, Reschedule first (the outermost, the full swipe's), then Skip; each asks before it acts (the days, the reasons); no ellipsis (his pick, 10 Nov)
+  const rowMenu = (id) => [                                          // a workout row's right-click and touch and hold: its swipe's actions, outermost first: Reschedule (the full swipe's), Skip, then Preview; Reschedule and Skip ask before they act (the days, the reasons); no ellipsis (his pick, 10 Nov)
     { label: "Reschedule", icon: MI.calendar, onPick: () => rowReschedule(id) },
     { label: "Skip", icon: MI.skip, onPick: () => rowSkip(id) },
+    { label: "Preview", icon: MI.eye, onPick: () => openPreview(id) },
   ];
   const miToday = () => MI.calendar.replace("</svg>", '<text x="8" y="12.3" text-anchor="middle" font-size="5.6" font-weight="600" fill="currentColor" stroke="none">' + Number(today().slice(8)) + "</text></svg>");   // Do it today: the calendar with today's date on it, as Reminders marks its Today
-  const missItems = (id) => [                                        // a missed workout's "…", touch and hold and right-click (his pick B, 10 Nov): the swipe's three, outermost first: Do it today (the likeliest, the full swipe's), Reschedule (the days), Skip (its reasons)
+  const missItems = (id) => [                                        // a missed workout's "…", touch and hold and right-click (his pick B, 10 Nov): Do it today (the likeliest; only here, not on its swipe), then the swipe's own, outermost first: Reschedule (the days), Skip (its reasons), Preview
     { label: "Do it today", icon: miToday(), onPick: () => doToday(id) },
     { label: "Reschedule", icon: MI.calendar, onPick: () => rowReschedule(id) },
     { label: "Skip", icon: MI.skip, onPick: () => rowSkip(id) },
+    { label: "Preview", icon: MI.eye, onPick: () => openPreview(id) },   // last, as on its swipe: the innermost
   ];
   // touch and hold: the phone's right-click (his pick, 10 Nov: "do 4"), with the same menus, opened the way iOS 27.2 opens them (measured on
   // its Contacts and Home Screen). A finger held still on a workout row, or on an exercise in the coach's view, lifts it a little where it is,
@@ -3522,7 +3509,7 @@ import { reportRange, buildReport } from "./report.js";
       <div class="vidrow trainer-only" hidden><button class="vid-edit" type="button">Change video</button></div>
       <div class="vid-form" hidden><input class="vid-url" type="url" placeholder="Paste a YouTube link" autocomplete="off" autocapitalize="none" inputmode="url"><div class="vid-actions"><button class="btn sm vid-save" type="button">Save</button><button class="btn danger vid-remove" type="button" hidden>Remove</button><button class="btn quiet vid-cancel" type="button">Cancel</button></div></div>
       <div class="specs">
-        <div class="chip"><span class="val"></span><input class="reps tab" inputmode="decimal" placeholder="10" aria-label="Reps"><span class="suffix">reps</span></div>
+        <div class="chip"><span class="val"></span><input class="reps tab" inputmode="decimal" placeholder="${REPS_DEFAULT}" aria-label="Reps"><span class="suffix">reps</span></div>
         <div class="chip"><span class="val"></span><input class="rest tab" inputmode="decimal" placeholder="60 sec" aria-label="Rest"><span class="suffix rest-suffix">rest</span></div>
       </div>
       <div class="tempo-wrap"><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"><div class="tempo-tiles" hidden></div></div>
@@ -4091,7 +4078,76 @@ import { reportRange, buildReport } from "./report.js";
     const t = trainings.get(id); if (!canSwipeRow(t) || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date === t.date) return false;   // asked again at the pick: a sync may have brought in a finish or a skip while the days were open
     touchState(id, "date"); t.date = date; scheduleSave("trainings", id); S.renderedTraining = null; render(); return true;
   }
-  function doToday(id) {                                             // a missed workout comes to today (its "…", its swipe, its touch and hold): the client's by the server's own rule (client_move_training), the coach's an ordinary save. Not marked as decided: missed again, it files itself after a week like any other (his rule, 10 Nov)
+  // ---------- the workout preview (his ask, 10 Nov: "I want to be able to see preview of the workout cleanly … at the bottom … go to workout and
+  // cancel"; "it can look like my closed cards in actual workout", "not exactly like that but aesthetically pleasing and simple", "no green
+  // lines", "it can say start workout … whatever Apple would say"). A row's swipe (Preview, beside Skip and Reschedule), its touch and hold
+  // and a missed workout's "…" open a sheet on the page's grey: the workout's title and day, then its cards as Apple draws an inset grouped
+  // list, one card per number (a superset together): each exercise's number (quiet), its name, and "4 sets · 10 reps" under it, a hairline
+  // from the name to the card's edge between them; a finished card says so in a quiet line, nothing green; Start workout (Apple's Fitness
+  // says Start Workout on a planned one) at the foot, Apple's close cross in the corner (no Cancel, his ask, from Calendar's event sheet). Both
+  // views. It asks nothing: a look, then the page or back.
+  let pv = null;                                                       // the sheet up: { id, at, behind }
+  function groupsOf(rows) {                                            // a workout's cards: rows next to each other under one number are one card (a superset)
+    const groups = [];
+    (rows || []).forEach((r, i) => { const k = groupKey(r.label, i); if (!groups.length || groups[groups.length - 1].key !== k) groups.push({ key: k, rows: [] }); groups[groups.length - 1].rows.push(r); });
+    return groups;
+  }
+  function groupSummary(g) {                                           // a finished card's status lines (its folded card's and the preview's): finished, finished early, or skipped
+    const total = Math.max(...g.rows.map(setsOf));
+    const did = Math.min(...g.rows.map((r) => { const n = Math.min(doneCount(r), setsOf(r)); return n >= setsOf(r) ? total : n; }));
+    const early = g.rows.some((r) => r.done && Math.min(doneCount(r), setsOf(r)) < setsOf(r));   // doneCount: a row finished before the counter existed is simply finished
+    const sets = (n) => n + " of " + total + (total === 1 ? " set" : " sets"), why = (g.rows.find((r) => r.earlyReason) || {}).earlyReason || "";
+    if (!early) return { early: false, skipped: false, lines: ["Finished \u00b7 " + sets(total)] };
+    if (did === 0) return { early: true, skipped: true, lines: ["Skipped" + (why ? " \u00b7 " + why : "")] };   // nothing logged: skipped, not "finished early · 0 of 4"
+    const left = total - did;
+    return { early: true, skipped: false, lines: ["Finished early \u00b7 " + sets(did), left + (left === 1 ? " set" : " sets") + " not completed" + (why ? " \u00b7 " + why : "")] };
+  }
+  const pvReps = (v) => { const t = String(v == null ? "" : v).trim() || REPS_DEFAULT; const w = repsWord(t); return showReps(t) + (w ? " " + w : ""); };   // blank: the page's own grey "10"   // "10, 8, 6 reps", "30 sec", "8 reps / side": as the workout's cards write them
+  function paintPreview(t) {
+    const span = (cls, text) => { const s = document.createElement("span"); s.className = cls; s.textContent = text; return s; };
+    $("pvTitle").textContent = String(t.title || "").trim() || "Workout";
+    $("pvDay").textContent = fmtDayLong(effDate(t) || "");
+    const cards = groupsOf(t.rows).map((g) => {
+      const st = g.rows.every((r) => r.done) ? groupSummary(g) : null;
+      const card = document.createElement("div"); card.className = "pv-card";
+      for (const r of g.rows) {
+        const row = document.createElement("div"); row.className = "pv-row";
+        const body = document.createElement("div"); body.className = "pv-b";
+        const parts = splitName(r.name, subtitleFor(r.name));
+        body.appendChild(span("pv-n", parts.title || "Exercise")); if (parts.sub) body.appendChild(span("pv-sub", parts.sub));
+        const sum = document.createElement("div"); sum.className = "pv-sum"; const n = setsOf(r);
+        for (const text of [n + (n === 1 ? " set" : " sets"), pvReps(r.reps)]) if (text) sum.appendChild(span("si", text));
+        body.appendChild(sum); row.append(span("pv-l", String(r.label || "").trim()), body); card.appendChild(row);
+      }
+      if (st) { const foot = document.createElement("div"); foot.className = "pv-foot"; for (const line of st.lines) foot.appendChild(span("pv-line", line)); card.appendChild(foot); }   // finished: a quiet line, as its folded card says it (nothing green)
+      const gc = groupCaption(g), cap = document.createElement("div"); cap.className = "pv-cap"; cap.textContent = gc.main;   // its caption over it, as the client's workout page captions its cards (his pick B, 10 Nov): "EXERCISE 2 · SUPERSET"
+      if (gc.kind) { const k = document.createElement("i"); k.textContent = " \u00b7 " + gc.kind; cap.appendChild(k); }
+      const grp = document.createElement("div"); grp.className = "pv-grp"; grp.append(cap, card);
+      return grp;
+    });
+    if (!cards.length) { const none = document.createElement("p"); none.className = "pv-none"; none.textContent = "Nothing added yet"; cards.push(none); }
+    $("pvCards").replaceChildren(...cards);
+  }
+  function openPreview(id) {                                           // its swipe's Preview, its touch and hold, a missed workout's "…"
+    const t = trainings.get(id); if (!t || isTemplateClient(t.clientId) || pv || S.asking) return false;   // (another question up: it waits for that one)
+    paintPreview(t);
+    const bg = $("pvSheet"); pv = { id, at: performance.now(), back: document.activeElement, behind: [...document.body.children].filter((el) => el !== bg && !el.inert) };   // (what was inert already, as #ctxLift, stays so)
+    for (const el of pv.behind) el.inert = true;                       // the page behind is out of reach until the sheet goes, as every sheet's
+    S.asking = true; bg.hidden = false; $("pvCards").scrollTop = 0;
+    setTimeout(() => { if (pv) $("pvBox").focus({ preventScroll: true }); }, 0);   // into the sheet (a keyboard or VoiceOver reads it from its title), no ring on a button nobody chose
+    return true;
+  }
+  function closePreview(refocus) {                                    // refocus: closed by a keyboard or VoiceOver (Escape, the cross's Enter): its place goes back where it was (the "…" it came from, else the row), as the menus and the day picker give it back; a tap leaves focus where WebKit put it (no ring on a row nobody chose)
+    if (!pv) return false; const p = pv; pv = null; $("pvSheet").hidden = true; for (const el of p.behind) el.inert = false; S.asking = false;
+    if (refocus) { const b = p.back, ok = b && b !== document.body && b.isConnected !== false && !(b.closest && b.closest(".swipe-acts")); const to = ok ? b : $("vClient").querySelector('li[data-tid="' + CSS.escape(p.id) + '"] > button'); if (to && typeof to.focus === "function") to.focus({ preventScroll: true }); }
+    return true;
+  }
+  const pvSettled = (e) => !!pv && (performance.now() - pv.at >= 350 || (!!e && e.detail === 0));   // the second tap of a double tap (on Preview in a menu or on the row) lands on nothing in its first 350 ms, as askFirst's buttons; a keyboard's Enter (detail 0) acts at once
+  $("pvGo").addEventListener("click", (e) => { if (!pvSettled(e)) return; const id = pv.id; closePreview(); if (trainings.has(id)) go({ name: "training", id }); });
+  $("pvX").addEventListener("click", (e) => { if (pvSettled(e)) closePreview(e.detail === 0); });   // the close cross (his ask, 10 Nov: no Cancel, Apple's cross as in Calendar's event sheet); its Enter or VoiceOver (detail 0) gives the keyboard its place back
+  $("pvSheet").addEventListener("click", (e) => { if (e.target === $("pvSheet") && pvSettled(e)) closePreview(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pv) closePreview(true); });   // Escape closes, as the other sheets take it
+  function doToday(id) {                                             // a missed workout comes to today (its "…" and its touch and hold): the client's by the server's own rule (client_move_training), the coach's an ordinary save. Not marked as decided: missed again, it files itself after a week like any other (his rule, 10 Nov)
     const t = trainings.get(id); if (!canSwipeRow(t) || !effDate(t) || effDate(t) >= today()) return false;   // asked again at the pick: a sync may have finished, skipped or moved it meanwhile
     t.date = today(); t.skippedAt = null; delete t.missed; touchState(id, "date", "skippedAt", "missed"); if (S.clientMode) pendingMove.add(id);   // (the coach's save then carries all three over a filing another device sent meanwhile)
     scheduleSave("trainings", id); S.renderedTraining = null; render(); return true;
@@ -4340,7 +4396,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },

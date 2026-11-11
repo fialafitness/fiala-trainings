@@ -113,14 +113,15 @@ function mkDrawn(tag) {
   n.appendChild = (c) => { n.append(c); return c; }; n.setAttribute = (k, v) => { n.attrs[k] = String(v); }; n.addEventListener = (t, f) => { (n.on[t] ||= []).push(f); };
   return n;
 }
-function drawnRow(width = 368) {
+function drawnRow(width = 368, { real = false, mode = "next" } = {}) {   // real: the row whole (Preview, Skip, Reschedule); else its Preview left out, the two whose look was measured on Apple's
   const make = document.createElement; document.createElement = mkDrawn;
-  let li; try { li = fns.workoutRow(maps.trainings.get("w1"), "next", true); } finally { document.createElement = make; }
+  let li; try { li = fns.workoutRow(maps.trainings.get("w1"), mode, true); } finally { document.createElement = make; }
   const layer = li.children.find((c) => c.classList.contains("swipe-acts")); li._w = width;
+  if (!real) layer.children = layer.children.filter((a) => !a.classList.contains("sa-prev"));
   for (const a of layer.children) { a._ow = 61; a.children[0]._ow = 61; }
   const ul = mk("ul", ["list"]); ul.append(li); ul.parentElement = ROOT;
-  const b = li.children[0];
-  return { li, b, pri: b.children[2].children[0], skip: layer.children[0], resched: layer.children[1], drop() { ul.parentElement = null; } };
+  const b = li.children[0], by = (c) => layer.children.find((a) => a.classList.contains(c)) || null;
+  return { li, b, layer, pri: b.children[2].children[0], skip: by("sa-skip"), resched: by("sa-resched"), prev: by("sa-prev"), drop() { ul.parentElement = null; } };
 }
 async function tap(target, x, y, own) {                                  // a tap as WebKit delivers it: its click only if its touchend was not cancelled, and the control's own listeners only if the document let the click through
   touch("touchstart", x, y, target); await advance(60); const end = touch("touchend", x, y, target);
@@ -599,9 +600,9 @@ try { coachClient(); const r = drawnRow(); const p = await play([...FINGERS, ...
   out.coachRow.rightOverRow = { view: app.get().view.name, kept: p2.prevented, row: row() }; fns.forceSwipe(false); r2.drop();
 } catch (e) { out.coachRow = { error: String(e && e.message || e) }; fns.forceSwipe(false); if (fns.datePicker()) fns.closeDatePicker(); }   // (a row drawn with nothing behind it, or a throw: a failed check, not a lost run)
 
-// 34. a missed workout's row (his pick B, 10 Nov): three actions, Skip, Reschedule and outermost Today. A finger draws it out slowly: each
-//     grows as its own slot is uncovered (Today, then Reschedule, then Skip); past the open width the two inner ones fade alike and Today
-//     stretches; armed, both inner ones show at 30%; let go armed, the workout comes to today (the full swipe's Do it today, not the days)
+// 34. a missed workout's row as the app draws it (his ask, 10 Nov: every row's three, "to keep it clean"): Preview, Skip and outermost Reschedule.
+//     A finger draws it out slowly: each grows as its own slot is uncovered (Reschedule, then Skip, then Preview); past the open width the two
+//     inner ones fade alike and Reschedule stretches; armed, both inner ones show at 30%; let go armed, Reschedule's days (never Do it today)
 try {
   setup(); const t = maps.trainings.get("w1"); t.date = day(-2); fns.render();
   const make = document.createElement; document.createElement = mkDrawn;
@@ -609,14 +610,14 @@ try {
   const layer = li.children.find((c) => c.classList.contains("swipe-acts")); li._w = 368;
   for (const a of layer.children) { a._ow = 61; a.children[0]._ow = 61; }
   const ul = mk("ul", ["list"]); ul.append(li); ul.parentElement = ROOT;
-  const pri = li.children[0].children[2].children[0], [skip, resched, todayA] = layer.children, inner = [skip, resched];
-  const snap = () => ({ armed: li.classList.contains("armed"), ops: [skip, resched, todayA].map((a) => a.style.opacity), tfs: [skip, resched, todayA].map((a) => a.style.transform || ""), w: todayA.style.width || "", kids: inner.map((a) => a.children.map((c) => c.style.opacity)), parts: li.children.filter((c) => c !== layer).map((c) => c.style.transform || "") });
+  const pri = li.children[0].children[2].children[0], [prevA, skip, resched] = layer.children, inner = [prevA, skip];
+  const snap = () => ({ armed: li.classList.contains("armed"), ops: [prevA, skip, resched].map((a) => a.style.opacity), tfs: [prevA, skip, resched].map((a) => a.style.transform || ""), w: resched.style.width || "", kids: inner.map((a) => a.children.map((c) => c.style.opacity)), parts: li.children.filter((c) => c !== layer).map((c) => c.style.transform || "") });
   const look = {}; let x = 366; touch("touchstart", x, 100, pri);
   for (let k = 0; k < 400 && !(row() && row().x >= 300); k++) { await advance(16); x -= 2; touch("touchmove", x, 100, pri); const at = row() ? Math.round(row().x) : -1; if ([62, 134, 206, 256, 290].includes(at)) look[at] = snap(); }
   out.three = { classes: layer.children.map((a) => a.className), titles: layer.children.map((a) => a.children[1] && a.children[1].textContent), w: row() && row().w, look };
   touch("touchend", x, 100, pri); await advance(800);
   out.three.fired = { today: t.date === fns.today(), moved: maps.pendingMove.has("w1"), days: !!fns.datePicker(), closed: row() === null };
-  out.three.cleared = [skip, resched, todayA].map((a) => [a.style.opacity || "", a.style.transform || "", a.style.width || ""]).concat(inner.flatMap((a) => a.children.map((c) => [c.style.opacity || "", "", ""])));
+  out.three.cleared = [prevA, skip, resched].map((a) => [a.style.opacity || "", a.style.transform || "", a.style.width || ""]).concat(inner.flatMap((a) => a.children.map((c) => [c.style.opacity || "", "", ""])));
   if (fns.datePicker()) fns.closeDatePicker(); ul.parentElement = null;
 } catch (e) { out.three = { error: String(e && e.stack || e) }; }
 // 35. a sync's redraw with a missed workout's row open: the Missed card's new row for it is open, as Today's and Up next's are
@@ -635,12 +636,27 @@ try {
   out.missRedraw = { openBefore, open: !!row() && row().open && row().tid === "w1" && b.li.classList.contains("swiped") };
   delete ml.replaceChildren; delete ml.appendChild; ml.children = []; fire("keydown", { key: "Escape" }); await advance(600); b.ul.parentElement = null;
 } catch (e) { out.missRedraw = { error: String(e && e.stack || e) }; }
-// 36. a tap on an open missed row's Reschedule: the days, never Do it today (only Today's button and the full swipe bring it to today)
+// 38. the rows the app draws, whole (his pick, 10 Nov: Preview on the same swipe as Skip and Reschedule): a workout's Preview, Skip and
+//     outermost Reschedule; a missed one's the same three (his ask: Do it today in its "…"). Open, each at its own width; a tap on Preview opens
+//     the preview as the row closes
+try {
+  out.real = {};
+  for (const mode of ["next", "missed"]) {
+    setup(); const t = maps.trainings.get("w1"); if (mode === "missed") t.date = day(-2); fns.render(); const d0 = t.date;
+    const r = drawnRow(368, { real: true, mode }); let x = 300; touch("touchstart", x, 100, r.pri);
+    for (let k = 1; k <= 18; k++) { await advance(16); x -= 10; touch("touchmove", x, 100, r.pri); } await advance(120); touch("touchend", x, 100, r.pri); await advance(800);
+    const o = { classes: r.layer.children.map((a) => a.className), titles: r.layer.children.map((a) => a.children[1].textContent), open: !!row() && row().open, w: row() && Math.round(row().w * 100) / 100 };
+    const t1 = await tap(r.prev.children[0], 60, 100, r.prev.on.click); await advance(600);
+    o.tap = { tap: t1, preview: fns.previewState(), row: row(), days: !!fns.datePicker(), moved: maps.trainings.get("w1").date !== d0 };   // the tap is Preview's alone: no days under it, nothing moved to today
+    if (fns.datePicker()) fns.closeDatePicker(); fns.closePreview(); r.drop(); out.real[mode] = o;
+  }
+} catch (e) { out.real = { error: String(e && e.stack || e) }; fns.closePreview(); }
+// 36. a tap on an open missed row's Reschedule: the days, never Do it today (only its "…" and touch and hold bring it to today)
 try {
   setup(); const t = maps.trainings.get("w1"); t.date = day(-2); fns.render(); const before = t.date;
   const make = document.createElement; document.createElement = mkDrawn; let li; try { li = fns.workoutRow(t, "missed", true); } finally { document.createElement = make; }
   const layer = li.children.find((c) => c.classList.contains("swipe-acts")); li._w = 368; for (const a of layer.children) { a._ow = 61; a.children[0]._ow = 61; }
-  const ul = mk("ul", ["list"]); ul.append(li); ul.parentElement = ROOT; const pri = li.children[0].children[2].children[0], resched = layer.children[1];
+  const ul = mk("ul", ["list"]); ul.append(li); ul.parentElement = ROOT; const pri = li.children[0].children[2].children[0], resched = layer.children.find((a) => a.classList.contains("sa-resched"));
   let x = 300; touch("touchstart", x, 100, pri); for (let k = 1; k <= 16; k++) { await advance(16); x -= 10; touch("touchmove", x, 100, pri); }
   await advance(120); touch("touchend", x, 100, pri); await advance(800);
   const open = !!row() && row().open;

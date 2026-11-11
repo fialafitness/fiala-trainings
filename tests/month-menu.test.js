@@ -13,14 +13,14 @@ const { fns } = await load();
 const probe = path.join(path.dirname(fileURLToPath(import.meta.url)), "month-menu-probe.mjs");
 const r = JSON.parse(execFileSync(process.execPath, [probe], { encoding: "utf8", timeout: 60000 }).trim().split("\n").pop());
 
-test("a missed workout's \u2026: Do it today, Reschedule, Skip; its Skip asks first (the sheet, nothing skipped yet), Skip workout files it as skipped, Cancel leaves it; its Do it today moves it to today", () => {
-  assert.deepStrictEqual(r.missed.rows, ["Do it today", "Reschedule", "Skip"], "the menu's three, Do it today first (his pick B, 10 Nov)");
+test("a missed workout's \u2026: Do it today, Reschedule, Skip, Preview; its Skip asks first (the sheet, nothing skipped yet), Skip workout files it as skipped, Cancel leaves it; its Do it today moves it to today", () => {
+  assert.deepStrictEqual(r.missed.rows, ["Do it today", "Reschedule", "Skip", "Preview"], "Do it today first (his pick B, 10 Nov; only here and in touch and hold, not on its swipe), then the swipe's three outermost first, Preview last (innermost on the swipe)");
   assert.strictEqual(r.missed.open, true, "the \u2026 opens it"); assert.strictEqual(r.missed.menuClosed, true, "a pick closes it");
   assert.deepStrictEqual({ asked: r.missed.asked, asking: r.missed.asking }, { asked: true, asking: true }, "the same question as the row's swipe and the workout page");
   assert.strictEqual(r.missed.skippedAtOnce, false, "not skipped by the tap itself");
   assert.deepStrictEqual(r.missed.after, { skipped: true, missed: false, pending: true, closed: true }, "Skip workout: skipped, no longer missed, on its way to the server");
   assert.deepStrictEqual(r.missed.keep, { skipped: false, closed: true }, "Cancel: still missed");
-  assert.deepStrictEqual(r.skipAll, { asked: true, title: "Skip 2 missed workouts?", cancelled: { skipped: [], closed: true }, done: ["w1", "w2"] }, "the Missed card's Skip all button: asked first, Cancel skips nothing, Skip all both");
+  assert.deepStrictEqual(r.skipAll, { asked: true, title: "Skip 2 missed workouts?", held: { lift: true, main: true, sheet: false }, cancelled: { skipped: [], closed: true, given: { lift: true, main: false, sheet: false } }, done: ["w1", "w2"] }, "the Missed card's Skip all button: asked first, Cancel skips nothing, Skip all both; the page held while it asks and given back after, the touch and hold's lifted copy (inert in the markup) inert throughout");
   assert.deepStrictEqual(r.missed.today, { date: true, moved: true, decided: false, closed: true }, "Do it today: today, through the server's own rule, never marked as decided (missed again, it files itself after a week)");
 });
 
@@ -86,7 +86,7 @@ test("two fingers over the day picker's months: they follow, settle on the neare
 test("a right-click on a workout row: Reschedule and Skip at the pointer, the row ringed while it is open, in the client's view and the coach's", () => {
   for (const k of ["client", "coach"]) {
     const m = r.row[k];
-    assert.deepStrictEqual({ press: m.pressKept, menu: m.menuKept, open: m.open, labels: m.labels }, { press: true, menu: true, open: true, labels: ["Reschedule", "Skip"] }, k);
+    assert.deepStrictEqual({ press: m.pressKept, menu: m.menuKept, open: m.open, labels: m.labels }, { press: true, menu: true, open: true, labels: ["Reschedule", "Skip", "Preview"] }, k);
   }
   assert.deepStrictEqual([r.row.client.left, r.row.client.top], ["300px", "200px"], "its corner at the pointer");
   assert.deepStrictEqual([r.row.coach.left, r.row.coach.top], ["657px", "550px"], "near the window's corner it opens to the left of the pointer and above it");
@@ -146,10 +146,20 @@ test("where a right-click's menu goes: its corner at the pointer, turned left or
 
 test("a workout row's menu: Reschedule (the calendar) then Skip (the skip glyph in outline, as a menu has it); the let-go rule both months share", () => {
   const m = fns.rowMenu("w1");
-  assert.deepStrictEqual(m.map((x) => x.label), ["Reschedule", "Skip"]);
-  assert.deepStrictEqual(m.map((x) => x.icon), [fns.menuIcons().calendar, fns.menuIcons().skip]);
+  assert.deepStrictEqual(m.map((x) => x.label), ["Reschedule", "Skip", "Preview"], "the swipe's, outermost first: Preview last (innermost on the swipe, his pick 10 Nov)");
+  assert.deepStrictEqual(m.map((x) => x.icon), [fns.menuIcons().calendar, fns.menuIcons().skip, fns.menuIcons().eye]);
+  assert.ok(/fill="none"/.test(fns.menuIcons().eye) && /stroke-width="1.5"/.test(fns.menuIcons().eye), "the eye in outline, of the same weight");
   assert.ok(/fill="none"/.test(fns.menuIcons().skip) && /stroke-width="1.5"/.test(fns.menuIcons().skip), "drawn as the calendar beside it is: an outline of the same weight");
   assert.ok(m.every((x) => !x.danger), "nothing red: neither deletes anything");
   assert.deepStrictEqual([fns.monthLetGo("cal", -49, 350), fns.monthLetGo("cal", -48, 350), fns.monthLetGo("cal", 49, 350)], [1, 0, -1], "the client page's month: past 48 px");
   assert.deepStrictEqual([fns.monthLetGo("dp", -176, 350), fns.monthLetGo("dp", -175, 350), fns.monthLetGo("dp", 176, 350)], [1, 0, -1], "the day picker's: past half");
+});
+
+test("the workout preview's own buttons: nothing in its first 350 ms (a double tap's second tap), a keyboard's Enter at once; Start workout opens the workout's page; the close cross, a tap on the dimmed page and Escape close it, a tap inside the sheet does not", () => {
+  const up = { up: true, sheet: true, view: "client" }, gone = { up: false, sheet: false, view: "client" };
+  assert.deepStrictEqual(r.pv.early, up, "Start workout, the cross and the dimmed page all wait 350 ms");
+  assert.deepStrictEqual([r.pv.inside, r.pv.cancel, r.pv.backdrop, r.pv.escape], [up, gone, gone, gone]);
+  assert.deepStrictEqual([r.pv.go, r.pv.keyboard], [{ up: false, sheet: false, view: "training", id: "w1" }, { up: false, sheet: false, view: "training", id: "w1" }], "Start workout: its page (a keyboard's Enter at once)");
+  assert.deepStrictEqual(r.pv.at300, up, "still waiting at 300 ms (the guard is 350)");
+  assert.deepStrictEqual(r.pv.refocus, { close: 0, closeKey: 1, backdrop: 0, escape: 1, go: 0 }, "the keyboard's place given back where it was (the \u2026 it came from) only when a keyboard closed it (Escape, the cross's Enter); a tap on the cross or the dimmed page leaves focus where it is (no ring on a row nobody chose); Start workout leaves the page");
 });

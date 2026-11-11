@@ -51,6 +51,7 @@ pop.querySelector = (sel) => (sel === ".wopt" ? pop.children.find((c) => /\bwopt
 const bg = recorder("whenBg"); bg.hidden = true;
 const sheet = recorder("skipSheet"); sheet.hidden = true; const skGo = recorder("skGo"), skKeep = recorder("skKeep"); recorder("skReasons");
 const skipAllBtn = recorder("skipAll"), askSheet = recorder("askSheet"), askYes = recorder("askYes"), askNo = recorder("askNo"); askSheet.hidden = true;   // the Missed card's Skip all and the question it asks
+const pvSheet = recorder("pvSheet"), pvGo = recorder("pvGo"), pvX = recorder("pvX"); pvSheet.hidden = true;   // the workout preview, its Start workout and its close cross
 const make = document.createElement; document.createElement = (t) => listens(kids(make(t)));
 globalThis.getComputedStyle = (node) => {                                // the day picker's track stands at its last written transform
   const m = /translate3d\(([-\d.e]+)px/.exec((node && node.style && node.style.transform) || "");
@@ -304,12 +305,31 @@ const label = (b) => (b.children.find((c) => c.tagName === "SPAN") || {}).textCo
 { clientPage(true); const t = maps.trainings.get("w1"); t.date = day(-2);
   const { more } = missRow(t); more.fire("click", { stopPropagation() {}, detail: 1 }); pop.children.find((b) => label(b) === "Do it today").fire("click", { stopPropagation() {} });
   out.missed.today = { date: t.date === fns.today(), moved: maps.pendingMove.has("w1"), decided: maps.pendingMiss.has("w1") || t.missed !== undefined, closed: bg.hidden === true }; }
+// ---------- the workout preview's own buttons (his ask, 10 Nov): nothing in its first 350 ms (the second tap of a double tap), a keyboard's
+// Enter at once; Start workout opens the workout's page, Cancel, a tap on the dimmed page and Escape close it ----------
+{ const st = () => ({ up: !!fns.previewState(), sheet: pvSheet.hidden === false, view: app.get().view.name });
+  clientPage(false); fns.openPreview("w1");
+  pvGo.fire("click", { detail: 1 }); pvX.fire("click", { detail: 1 }); pvSheet.fire("click", { target: pvSheet, detail: 1 });
+  out.pv = { early: st() };
+  await advance(400); pvSheet.fire("click", { target: pvX, detail: 1 }); out.pv.inside = st();   // a tap inside the sheet is not the dimmed page
+  pvX.fire("click", { detail: 1 }); out.pv.cancel = st();
+  fns.openPreview("w1"); await advance(400); pvSheet.fire("click", { target: pvSheet, detail: 1 }); out.pv.backdrop = st();
+  fns.openPreview("w1"); fire("keydown", { key: "Escape" }); out.pv.escape = st();
+  try { fns.openPreview("w1"); await advance(400); pvGo.fire("click", { detail: 1 }); await advance(600); out.pv.go = { ...st(), id: app.get().view.id }; } catch (e) { out.pv.go = { error: String(e && e.message || e) }; }
+  try { clientPage(false); fns.openPreview("w1"); pvGo.fire("click", { detail: 0 }); await advance(600); out.pv.keyboard = { ...st(), id: app.get().view.id }; } catch (e) { out.pv.keyboard = { error: String(e && e.message || e) }; }
+  clientPage(false); fns.openPreview("w1"); await advance(300); pvX.fire("click", { detail: 1 }); pvSheet.fire("click", { target: pvSheet, detail: 1 }); pvGo.fire("click", { detail: 1 }); out.pv.at300 = st(); fns.closePreview();   // still waiting at 300 ms
+  const back = { isConnected: true, n: 0, focus() { this.n++; }, closest: () => null }; out.pv.refocus = {};   // the keyboard's place (the "…" it came from): given back on Cancel, the dimmed page and Escape; Start workout leaves the page
+  for (const [k, act] of [["close", () => pvX.fire("click", { detail: 1 })], ["closeKey", () => pvX.fire("click", { detail: 0 })], ["backdrop", () => pvSheet.fire("click", { target: pvSheet, detail: 1 })], ["escape", () => fire("keydown", { key: "Escape" })], ["go", () => pvGo.fire("click", { detail: 1 })]]) {
+    clientPage(false); back.n = 0; document.activeElement = back; fns.openPreview("w1"); await advance(400); act(); await advance(600); out.pv.refocus[k] = back.n; }
+  document.activeElement = null; fns.closePreview(); }
+
 // ---------- the Missed card's Skip all: its own button asks first; Cancel skips nothing, Skip all both ----------
 { clientPage(false); maps.trainings.get("w1").date = day(-2); maps.trainings.set("w2", { ...maps.trainings.get("w1"), id: "w2", title: "Push", date: day(-4) }); fns.render();
+  const lift = { inert: true }, main = { inert: false }; askSheet.inert = false; document.body.children = [lift, main, askSheet];   // #ctxLift is inert in the markup: a question gives back only what it held
   skipAllBtn.fire("click", {}); await flush();
-  out.skipAll = { asked: askSheet.hidden === false, title: document.getElementById("askTitle").textContent };
+  out.skipAll = { asked: askSheet.hidden === false, title: document.getElementById("askTitle").textContent, held: { lift: lift.inert, main: main.inert, sheet: askSheet.inert } };
   askNo.fire("click", {}); await flush();
-  out.skipAll.cancelled = { skipped: ["w1", "w2"].filter((id) => !!maps.trainings.get(id).skippedAt), closed: askSheet.hidden === true };
+  out.skipAll.cancelled = { skipped: ["w1", "w2"].filter((id) => !!maps.trainings.get(id).skippedAt), closed: askSheet.hidden === true, given: { lift: lift.inert, main: main.inert, sheet: askSheet.inert } }; document.body.children = [];
   skipAllBtn.fire("click", {}); await advance(400); askYes.fire("click", {}); await flush();
   out.skipAll.done = ["w1", "w2"].filter((id) => !!maps.trainings.get(id).skippedAt); }
 
