@@ -432,7 +432,6 @@
   .ttl { display: grid; grid-template-columns: 1fr; gap: 8px; align-items: start; margin-top: 20px; }
   .ttl .ttl-row { display: flex; align-items: flex-start; gap: 12px; }                 /* the title, and for the client the Messages disc beside it, as on the Workouts page */
   .ttl .ttl-row .title { flex: 1 1 auto; min-width: 0; }
-  .ttl .ttl-row .msg-disc { margin-top: -9px; }                                        /* the disc's centre on the title's first line */
   .ttl .datefield { justify-self: start; }
   .ttl .date-row { justify-self: stretch; }
   .ttl .title { font-size: 1.625rem; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; background: transparent; padding: 0; border-radius: var(--r-field); resize: none; overflow: hidden; min-height: 32px; }
@@ -1145,16 +1144,14 @@
   .list button > .avatar { margin-right: 2px; }
   .list button > .avatar + .nm, .list button > .avatar + .pn, .list .rowline > .avatar + .pn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .list button:has(> .avatar) { padding-top: 10px; padding-bottom: 10px; }    /* the circle fits the row's 56 points */
-  .msg-disc { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--disc-fill); color: var(--disc-ink); display: inline-flex; align-items: center; justify-content: center; text-decoration: none; transition: opacity 300ms ease, transform 300ms ease; }   /* Messages' bubble beside the name: black in the light, white in the dark, a size up from the person disc in the bar */
-  .msg-disc svg { width: 26px; height: 26px; }
-  .msg-disc:active { transform: scale(0.96); }
-  .msg-disc[hidden] { display: none !important; }
   .disc { position: relative; flex: none; width: 36px; height: 36px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
     background: var(--field); color: var(--text-primary); transition: transform 220ms ease, opacity 300ms ease; }   /* a disclosure, not the page's primary action */
   .disc:hover { opacity: 0.85; }
   .hdr-disc { width: 44px; height: 44px; margin-left: 10px; }   /* 44 points: Apple Fitness's photo in that corner, measured */   /* the person in the bar, where Apple keeps the account: Settings for the client, the client's card for the coach */
   .hdr-disc svg { width: 22px; height: 22px; }
   .hdr-disc[hidden] { display: none; }
+  .bar-msg { background: var(--disc-fill); color: var(--disc-ink); text-decoration: none; }   /* the Messages disc in the bar, beside the person's photo or the workout's "…" (his pick, 10 Nov: A, separate circles 12 apart, as Apple's Fitness keeps its two; measured 44 and 12) */
+  #barMsg:not([hidden]) ~ .hdr-disc { margin-left: 0; }   /* the bar's own 12 between the two circles */
   .bar-more { background: var(--disc-fill); color: var(--disc-ink); }   /* the workout's "…" in the bar (the client's view): Apple's 44-point grey circle with the ellipsis, three 3.9-point dots 7.9 apart (measured off his Files screenshot, 8 Nov); its menu is the frosted glass of every other menu */
   .dp-pager { overflow: hidden; touch-action: pan-y; }   /* the day picker's months side by side on a track the finger moves sideways (main.js); up and down still scroll the sheet (a phone on its side), as the client page's month calendar does */
   .dp-track { display: flex; will-change: transform; }
@@ -1209,7 +1206,7 @@
   .tpl-stage { font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 14px 4px 8px; }
   .pick-note { margin: 12px 2px 0; font-size: 0.9375rem; color: var(--text-secondary); }
   .pick-note b { font-weight: 500; color: var(--text-primary); }
-  #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl .msg-disc, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #todayHead, #vClient.tpl #todayList, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
+  #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #todayHead, #vClient.tpl #todayList, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
   #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #histCard, #vClient.tpl #trainingEmpty { display: none; }   /* the library is not a client: no history card either */
   #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
@@ -1358,7 +1355,7 @@
   <div class="bar">
     <button class="back" id="back" hidden><svg viewBox="0 0 10.7 17.9" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 1.2 1.2 8.95 9.5 16.7"/></svg><span id="backLabel"></span></button>
     <div class="brand" id="brand"><img class="logo-light" src="brand/mark-black.svg" alt="Fiala Fitness"><img class="logo-dark" src="brand/mark-white.svg" alt="Fiala Fitness"></div>
-    <div id="status" role="status" aria-live="polite"></div><button class="disc hdr-disc bar-more" id="tMore" type="button" aria-label="More" aria-haspopup="menu" hidden><svg viewBox="0 0 22 22" aria-hidden="true" fill="currentColor"><circle cx="3.13" cy="11" r="1.97"/><circle cx="11" cy="11" r="1.97"/><circle cx="18.87" cy="11" r="1.97"/></svg></button><button class="disc hdr-disc" id="meDisc" type="button" aria-label="Settings" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-3.8 4-5.6 7.5-5.6s6.5 1.8 7.5 5.6"/></svg><span class="avatar" aria-hidden="true"></span></button><button class="nav-action" id="navDone" type="button" hidden>Done</button>
+    <div id="status" role="status" aria-live="polite"></div><a class="disc hdr-disc bar-msg" id="barMsg" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh" id="barMsgText">Message</span></a><button class="disc hdr-disc bar-more" id="tMore" type="button" aria-label="More" aria-haspopup="menu" hidden><svg viewBox="0 0 22 22" aria-hidden="true" fill="currentColor"><circle cx="3.13" cy="11" r="1.97"/><circle cx="11" cy="11" r="1.97"/><circle cx="18.87" cy="11" r="1.97"/></svg></button><button class="disc hdr-disc" id="meDisc" type="button" aria-label="Settings" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-3.8 4-5.6 7.5-5.6s6.5 1.8 7.5 5.6"/></svg><span class="avatar" aria-hidden="true"></span></button><button class="nav-action" id="navDone" type="button" hidden>Done</button>
   </div>
 </header>
 <div id="topEdge" aria-hidden="true"></div>
@@ -1555,8 +1552,6 @@
     <div class="kicker trainer-only" id="pausedKicker" hidden>Access paused</div>
     <div class="name-row">
       <h1 id="cName" class="pagetitle"></h1>
-      <a class="msg-disc client-only" id="trainerBtn" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh">Message Michal</span></a>
-      <a class="msg-disc trainer-only" id="msgBtn" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh" id="msgText">Message</span></a>
     </div>
     <div class="trainer-only notif" id="notifWrap" data-tab="workouts" hidden><ul class="list notif-list" id="notifList" hidden></ul></div>
     <div class="paused-card client-only" id="pausedCard" hidden><b>Access paused</b><span id="pausedText"></span></div>
@@ -1597,7 +1592,7 @@
 
   <section id="vTraining" hidden>
     <div class="ttl">
-      <div class="ttl-row"><textarea id="tTitle" class="title" rows="1" placeholder="Focus, e.g. Bench-press and back" autocapitalize="sentences"></textarea><a class="msg-disc client-only" id="trainerBtn2" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.48 3 2 6.58 2 11c0 2.37 1.28 4.5 3.32 5.97-.1 1.44-.62 2.8-1.52 3.93-.13.17-.01.42.2.4 2.06-.2 3.94-1.05 5.4-2.33.84.18 1.71.28 2.6.28 5.52 0 10-3.58 10-8S17.52 3 12 3z"/></svg><span class="vh">Message Michal</span></a></div>
+      <div class="ttl-row"><textarea id="tTitle" class="title" rows="1" placeholder="Focus, e.g. Bench-press and back" autocapitalize="sentences"></textarea></div>
       <div class="date-row"><button class="datefield" id="tDate" type="button"></button></div>
       <div class="session-row" id="sessionRow" hidden><button class="session-pill" id="sessionPill" type="button" hidden></button></div>
       <button class="tpl-pill trainer-only" id="fromTpl" type="button" hidden><span id="fromTplText"></span><span class="chev">&rsaquo;</span></button>
@@ -1685,7 +1680,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=254";
+  import { boot } from "./app/main.js?v=255";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

@@ -593,15 +593,14 @@ test("Up next always shows the next workout after today's, however far off it is
   assert.deepStrictEqual([todayHead.hidden, nextHead.hidden], [false, false], "today's card, and Up next with the one twelve days out");
 });
 
-test("the client's Messages disc is wired on the Workouts page and on the workout page alike, for the client with a number to reach", () => {
+test("the client's Messages disc (in the bar, his pick 10 Nov) is wired on the Workouts page and on the workout page alike, for the client with a number to reach", () => {
   app.reset(); app.set({ signedIn: true, clientMode: true, myClientId: "c1" });
   const c = { id: "c1", name: "Jane", unit: "lb", trainerPhone: "3105550199" }; maps.clients.set("c1", c);
-  const a = document.getElementById("trainerBtn"), b = document.getElementById("trainerBtn2"); a.hidden = b.hidden = true;
-  fns.paintTrainerMsg(c);
-  assert.deepStrictEqual([a.hidden, b.hidden, a.href, b.href], [false, false, "sms:+13105550199", "sms:+13105550199"], "both discs, the same Messages link");
-  fns.paintTrainerMsg({ ...c, chat: "whatsapp" }); assert.strictEqual(b.href, "https://wa.me/13105550199", "WhatsApp when the client chose it");
-  app.set({ clientMode: false, myClientId: null }); fns.paintTrainerMsg(c); assert.deepStrictEqual([a.hidden, b.hidden], [true, true], "never for the coach");
-  app.set({ clientMode: true, myClientId: "c1" }); fns.paintTrainerMsg({ ...c, trainerPhone: "" }); assert.deepStrictEqual([a.hidden, b.hidden], [true, true], "nor without a number");
+  maps.trainings.set("w1", { id: "w1", clientId: "c1", title: "Legs", date: fns.today(), createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [] });
+  const a = document.getElementById("barMsg"), at = (view) => { a.hidden = true; app.set({ view }); fns.paintBarMsg(); return [a.hidden, a.href]; };
+  assert.deepStrictEqual([at({ name: "client", id: "c1" }), at({ name: "training", id: "w1" })], [[false, "sms:+13105550199"], [false, "sms:+13105550199"]], "both pages, the same Messages link");
+  c.chat = "whatsapp"; assert.deepStrictEqual(at({ name: "training", id: "w1" }), [false, "https://wa.me/13105550199"], "WhatsApp when the client chose it"); delete c.chat;
+  c.trainerPhone = ""; assert.strictEqual(at({ name: "client", id: "c1" })[0], true, "nor without a number");
 });
 test("Start this exercise: the card goes ahead of the ones not yet done, they slide down behind it in their order, the numbers run 1, 2, 3 again", () => {
   app.reset(); app.set({ clientMode: true, myClientId: "c1", backend: fns.localBackend });
