@@ -24,7 +24,7 @@ export const initial = () => ({
 });
 export const S = initial();
 export const ui = {};                       // the screen functions the sync layer may call ($, setStatus, render, showProblem, …), filled in by main.js
-export function resetState() { Object.assign(S, initial()); for (const m of [clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, planTouched, deletedNotes, deletedPackages, fromFile]) m.clear(); }
+export function resetState() { Object.assign(S, initial()); for (const m of [clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, planTouched, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile]) m.clear(); }
 
 export const clients = new Map();            // id -> { id, name, notes, createdAt, … }
 export const trainings = new Map();          // id -> { id, clientId, title, date, createdAt, rows: [...] }
@@ -50,4 +50,6 @@ export const pendingOrder = new Set();       // client mode: trainings whose exe
 export const pendingNoteRows = new Map();   // client mode: trainingId -> Set(rowId) with a note to send
 export const deletedNotes = new Map();       // noteId -> clientId: notes removed on this device and not yet saved to the server; a merge must not bring them back
 export const deletedPackages = new Map();    // packageId -> clientId (the Templates record): packages removed on this device and not yet saved; a merge must not bring them back
+export const folderTouched = new Map();      // node id -> clientId (the Templates record): a template folder or slide this device made, renamed or moved and not yet saved; a merge keeps this device's copy of it
+export const deletedFolders = new Map();     // node id -> clientId (the Templates record): template folders and slides removed on this device and not yet saved; a merge must not bring them back
 export const fromFile = new Map();           // "kind/id" -> the save version that carries a backup's copy: written as the file has it, nothing merged in, until a write at or after that version lands

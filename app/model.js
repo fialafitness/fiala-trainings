@@ -138,7 +138,7 @@ export function validateBackup(d, knownClient) {                  // the whole f
   const optUnit = (v) => v == null || v === "lb" || v === "kg";                           // anything else would be rescaled as if it were one of these
   const isUuid = (v) => typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);   // the server's id columns take nothing else, and would refuse the record for good
   const optList = (v, max) => v == null || (Array.isArray(v) && v.length <= max);   // a list where a list is read with .map / .find: an object here throws on the screen
-  const LIMIT = { rows: 300, sets: 60, alts: 60, history: 200, packages: 200 };
+  const LIMIT = { rows: 300, sets: 60, alts: 60, history: 200, packages: 200, folders: 1000 };
   if (!isObj(d) || d.app !== "fiala-trainings") throw new Error("not a backup");
   if (d.format != null) { const f = Number(d.format); if (!(f >= 1)) throw new Error("not a backup"); if (f > 1) throw new Error("newer backup"); }   // written by a later app: it may use words this one does not know
   const cs = Object.values(isObj(d.clients) ? d.clients : {}), ts = Object.values(isObj(d.trainings) ? d.trainings : {});
@@ -151,12 +151,13 @@ export function validateBackup(d, knownClient) {                  // the whole f
     if (c.plan != null && !(isObj(c.plan) && optStr(c.plan.id) && optStr(c.plan.name) && optStr(c.plan.kind) && optNum(c.plan.size) && optNum(c.plan.adjust) && optStr(c.plan.startedOn) && optStr(c.plan.until))) throw new Error("bad client");
     if (!optList(c.planHistory, LIMIT.history) || (c.planHistory || []).some((h) => !isObj(h))) throw new Error("bad client");
     if (!optList(c.packages, LIMIT.packages) || (c.packages || []).some((pk) => !isObj(pk) || typeof pk.id !== "string" || !pk.id || typeof pk.name !== "string" || !pk.name.trim() || !optStr(pk.kind) || !optNum(pk.size) || !optBool(pk.inPerson) || (pk.kind !== "monthly" && !(Number(pk.size) >= 1)))) throw new Error("bad client");   // a package is shown by its name and counted by its size
+    if (!optList(c.folders, LIMIT.folders) || (c.folders || []).some((x) => !isObj(x))) throw new Error("bad client");   // the coach's template folders (12 Nov): a list the Templates pages read with .filter
     ids.add(c.id);
   }
   const tids = new Set();
   for (const t of ts) {
     if (!isObj(t) || !isUuid(t.id) || tids.has(t.id) || !isUuid(t.clientId) || !Array.isArray(t.rows) || t.rows.length > LIMIT.rows) throw new Error("bad training");
-    if (t.template != null && !(isObj(t.template) && optStr(t.template.program) && optStr(t.template.phaseName) && optNum(t.template.phase) && optNum(t.template.stage) && optNum(t.template.n))) throw new Error("bad training");
+    if (t.template != null && !(isObj(t.template) && optStr(t.template.program) && optStr(t.template.phaseName) && optNum(t.template.phase) && optNum(t.template.stage) && optNum(t.template.n) && optStr(t.template.folder))) throw new Error("bad training");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(t.date || ""))) throw new Error("bad date");   // every workout has a day (the app's own backups always carry one)
     if (!optStr(t.title) || !optStr(t.createdAt) || !optWhen(t.completedAt) || !optStr(t.completedBy) || !optWhen(t.skippedAt) || !optStr(t.skipReason) || !optBool(t.missed) || !optBool(t.inPerson)) throw new Error("bad training");
     if (!ids.has(t.clientId) && !knownClient(t.clientId)) throw new Error("orphan training");

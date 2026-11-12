@@ -84,7 +84,7 @@ test("the swipe back around the Messages circle: in the same place on both bars 
   for (const k of ["clientFinished", "clientSkipped"]) assert.deepStrictEqual(swipes[k], { workout: "back barMsg", goesOut: ["back", "barMsg"], comesIn: ["barMsg", "meDisc"], landed: "client: brand barMsg meDisc" }, k + ": the circle at the edge goes, her page's beside her photo comes (never the photo over it, then a jump)");
   assert.deepStrictEqual(swipes.previewFinished, { workout: "back barMsg", goesOut: ["barMsg"], comesIn: ["barMsg", "meDisc"], landed: "client: back barMsg meDisc" }, "his Client view of a finished workout: the same, Back stays");
   assert.deepStrictEqual(swipes.coachFinished, { workout: "back barMsg tMore", goesOut: ["tMore"], comesIn: ["meDisc"], landed: "client: back barMsg meDisc" }, "his own view: the \u2026 (Delete) keeps the circle in its place");
-  assert.deepStrictEqual(swipes.template, { workout: "back tMore", goesOut: ["tMore"], comesIn: [], landed: "client: back" }, "a template back to the library: Back stays");
+  assert.deepStrictEqual(swipes.template, { workout: "back tMore", goesOut: [], comesIn: [], landed: "client: back tMore" }, "a template back to the library: Back stays, and so does the \u2026 (the library has its own since 12 Nov: New folder), in the same place on both bars");
   assert.deepStrictEqual(swipes.cardNumber, { card: "back", goesOut: [], comesIn: ["barMsg", "meDisc"], landed: "client: back barMsg meDisc" }, "her number typed on her card since her page's picture: the circle comes in with her page");
 });
 

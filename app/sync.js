@@ -3,7 +3,7 @@
 import { lsGet, lsSet, norm, clamp, today } from "./util.js";
 import { isTemplateClient, planActive, repairTimed, timedPlan, cmpLabel } from "./model.js";
 import { mergeNotes } from "./notes.js";
-import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, planTouched, confirmedAt, deletedNotes, deletedPackages, fromFile, pendingNoteRows } from "./state.js";
+import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, planTouched, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows } from "./state.js";
 
 // ---------- persistence ----------
 const isNetwork = (error) => /load failed|failed to fetch|network|fetch/i.test((error && error.message) || "");
@@ -24,7 +24,7 @@ function persistPending() {
   lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]), rownotes: [...pendingNoteRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]),
     finish: [...pendingFinish], skip: [...pendingSkip], move: [...pendingMove], miss: [...pendingMiss], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]), order: [...pendingOrder],
     touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]), noted: [...trainerNoted].map(([id, r]) => [id, [...r]]), state: [...trainerState].map(([id, f]) => [id, [...f]]),
-    plans: [...planTouched], notesGone: [...deletedNotes], packagesGone: [...deletedPackages], fromFile: [...fromFile],   // the coach's intent about a client record: a plan changed, a note or package removed, a backup restored
+    plans: [...planTouched], notesGone: [...deletedNotes], packagesGone: [...deletedPackages], foldersGone: [...deletedFolders], foldersTouched: [...folderTouched], fromFile: [...fromFile],   // the coach's intent about a client record: a plan changed, a note or package removed, a backup restored
     stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), docs: [...dirty.keys()].filter((k) => seenDoc.has(k)).map((k) => [k, seenDoc.get(k)]),   // the stamp and the copy it describes: a save sent after a relaunch still merges against what this device last read
     owner: S.sessionEmail || S.pendingOwner || "" });
   if (S.sessionEmail) S.pendingOwner = S.sessionEmail;
@@ -52,6 +52,8 @@ function restorePending() {
   for (const id of p.plans || []) planTouched.add(id);
   for (const [n, cid] of p.notesGone || []) deletedNotes.set(n, cid);
   for (const [pk, cid] of p.packagesGone || []) deletedPackages.set(pk, cid);
+  for (const [n, cid] of p.foldersGone || []) deletedFolders.set(n, cid);
+  for (const [n, cid] of p.foldersTouched || []) folderTouched.set(n, cid);
   for (const e of p.fromFile || []) { if (Array.isArray(e)) fromFile.set(e[0], Number(e[1]) || 0); else if (typeof e === "string") fromFile.set(e, 0); }   // older devices wrote the key alone
   for (const [k, v] of [...fromFile]) { if (!dirty.has(k)) fromFile.delete(k); else if (v > dirty.get(k)) fromFile.set(k, dirty.get(k)); }   // a relaunch numbers a pending edit 1 again: the marker follows it, so the save that carries the file's copy clears it; a marker with no edit behind it would hand a later edit the restore's rights — dropped
   S.pendingOwner = p.owner || "";
@@ -65,7 +67,7 @@ function scheduleSave(kind, id, delay = 500) {
   ui.setStatus();
 }
 
-const dropIntent = (id) => { planTouched.delete(id); for (const [n, cid] of [...deletedNotes]) if (cid === id) deletedNotes.delete(n); for (const [pk, cid] of [...deletedPackages]) if (cid === id) deletedPackages.delete(pk); };   // the save that carried them is on the server: the markers have done their work
+const dropIntent = (id) => { planTouched.delete(id); for (const [n, cid] of [...deletedNotes]) if (cid === id) deletedNotes.delete(n); for (const [pk, cid] of [...deletedPackages]) if (cid === id) deletedPackages.delete(pk); for (const [n, cid] of [...deletedFolders]) if (cid === id) deletedFolders.delete(n); for (const [n, cid] of [...folderTouched]) if (cid === id) folderTouched.delete(n); };   // the save that carried them is on the server: the markers have done their work
 function flushAll() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); flushOne(kind, id); } }
 function flushOne(kind, id) {
   const k = key(kind, id);
@@ -126,7 +128,7 @@ const cloudBackend = {
     let base = seenDoc.get(k) ? JSON.parse(seenDoc.get(k)) : null; const map = kind === "clients" ? clients : trainings;
     const takeFields = (serverData) => {                      // two of his own devices: a field this one did not change since it last read the record takes the other device's value
       if (!base || !serverData) return;
-      const skip = kind === "clients" ? ["id", "notes", "packages", "plan", "planHistory"] : ["id", "rows", "completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"];   // the fields with their own merge rules
+      const skip = kind === "clients" ? ["id", "notes", "packages", "folders", "plan", "planHistory"] : ["id", "rows", "completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"];   // the fields with their own merge rules
       for (const target of [data, map.get(id)]) {
         if (!target) continue;
         for (const f of new Set([...Object.keys(serverData), ...Object.keys(base)])) {
@@ -163,12 +165,17 @@ const cloudBackend = {
         for (const f of ["completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"]) { if (mine.has(f)) continue; for (const target of [data, trainings.get(id)]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; } }
         for (const target of [data, trainings.get(id)]) if (target && target.completedAt && (target.skippedAt || target.missed === true)) { delete target.skippedAt; delete target.skipReason; target.missed = false; }   // finished on one side, skipped on the other: finished stands, and the card and the session pill count the same workouts
       };
-      const takeNotes = (serverData) => {                      // another device may have written notes: keep both
+      const takeNotes = (serverData, against = base) => {      // another device may have written notes: keep both (against: the copy this device last read, for the folders)
         if (kind !== "clients" || !serverData) return;
         data.notes = mergeNotes(data.notes, serverData.notes, deletedNotes); const live = clients.get(id); if (live) live.notes = mergeNotes(live.notes, serverData.notes, deletedNotes);   // each copy merged from its own list: a note written while this save was out is not undone
         if (Array.isArray(serverData.packages) || Array.isArray(data.packages)) {                  // packages added on two devices: keep both
           const union = (mine) => { const have = new Set((mine || []).map((x) => x && x.id)); return [...(mine || []), ...(serverData.packages || []).filter((x) => x && x.id && !have.has(x.id) && !deletedPackages.has(x.id))]; };   // one removed here stays removed
           data.packages = union(data.packages); if (live) live.packages = union(live.packages);
+        }
+        if (Array.isArray(serverData.folders) || Array.isArray(data.folders)) {                    // his template folders and slides (12 Nov), changed on two devices: each kept by its id; the server's copy of one wins unless this device changed that one; one removed here stays removed; one removed on the other device (in the copy last read, gone from the server's, not changed here) goes here too
+          const was = new Set(((against && against.folders) || []).map((x) => x && x.id)), theirs = new Map((serverData.folders || []).filter((x) => x && x.id).map((x) => [x.id, x]));
+          const merge = (mine) => { const have = new Set((mine || []).map((x) => x && x.id)); return [...(mine || []).filter((x) => x && x.id && (theirs.has(x.id) || folderTouched.has(x.id) || !was.has(x.id))).map((x) => (theirs.has(x.id) && !folderTouched.has(x.id) ? theirs.get(x.id) : x)), ...[...theirs.values()].filter((x) => !have.has(x.id) && !deletedFolders.has(x.id))]; };
+          data.folders = merge(data.folders); if (live) live.folders = merge(live.folders);
         }
         if (!planTouched.has(id)) for (const f of ["plan", "planHistory"]) for (const target of [data, live]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; }   // a plan set on another device stands, unless this one changed it
       };
@@ -204,7 +211,7 @@ const cloudBackend = {
       if (verbatim()) { if (kind === "trainings") liftSeq(fresh.data.data); continue; }
       takeFields(fresh.data.data); const against = base; base = JSON.parse(JSON.stringify(fresh.data.data)); seenDoc.set(k, JSON.stringify(fresh.data.data));   // the next conflict measures against this copy
       if (kind === "trainings" && !isTemplateClient(data.clientId)) { mergeServerRows(fresh.data.data, against); takeState(fresh.data.data); }
-      takeNotes(fresh.data.data);
+      takeNotes(fresh.data.data, against);
     }
     throw new Error("save conflict");
   },
@@ -390,6 +397,7 @@ async function syncDownNow() {
     for (const id of [...trainerNamed.keys()]) if (!dirty.has(key("trainings", id))) trainerNamed.delete(id);
     for (const id of [...trainerNoted.keys()]) if (!dirty.has(key("trainings", id))) trainerNoted.delete(id);
     for (const id of [...planTouched]) if (!dirty.has(key("clients", id))) planTouched.delete(id);
+    for (const [n, cid] of [...folderTouched]) if (!dirty.has(key("clients", cid))) folderTouched.delete(n);
   }
   const migrated = lsGet("fiala.trainings.migrated");
   if (!S.clientMode && !migrated && c.data.length === 0 && t.data.length === 0 && (clients.size || trainings.size)) {
