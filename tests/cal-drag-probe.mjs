@@ -128,15 +128,15 @@ seed();
   const lift = { lifted: st().lifted, ghost: !!g, cls: g ? g.className : "", words: g ? g.children[0].textContent : "", width: g ? g.style.width : "", body: body.classList.contains("cal-drag"), lit: lit(), past: past(), ticks, transform: g ? g.style.transform : "" };
   const held = move(x + 4, y).defaultPrevented; await advance(16);
   await glide(x, y, x + 53, y); const over = { lit: lit(), key: st().key, transform: g ? g.style.transform : "", pre, held };
-  const end = up(); const clk = click(dayOf(day(3)));   // (the click iOS sends at the release lands on what is under the finger: the day it moved to)
-  out.strip = { early, lift, over, upPrevented: end.defaultPrevented, clickEaten: !!clk.stoppedAll, date: maps.trainings.get("a").date, preview: preview(), dirty: maps.dirty.has("trainings/a") || [...maps.dirty.keys()].some((k) => /a$/.test(k)), coachDate: (maps.trainerState.get("a") || new Set()).has ? maps.trainerState.get("a").has("date") : !!(maps.trainerState.get("a") || {}).date };
+  const t0 = ticks; const end = up(); const landTicks = ticks - t0; const clk = click(dayOf(day(3)));   // (the click iOS sends at the release lands on what is under the finger: the day it moved to)
+  out.strip = { early, lift, over, landTicks, upPrevented: end.defaultPrevented, clickEaten: !!clk.stoppedAll, date: maps.trainings.get("a").date, preview: preview(), dirty: maps.dirty.has("trainings/a") || [...maps.dirty.keys()].some((k) => /a$/.test(k)), coachDate: (maps.trainerState.get("a") || new Set()).has ? maps.trainerState.get("a").has("date") : !!(maps.trainerState.get("a") || {}).date };
   await advance(300); out.strip.after = { ghost: !!ghost(), body: body.classList.contains("cal-drag"), lit: lit(), on: st().on, chipDay: (chipOf("a") && chipOf("a").parentElement.parentElement.dataset.day) || null };
 }
 // 2. held and let go where it was: it settles back, nothing moves and nothing opens (his pick); a tap still opens the preview
 seed();
 { const chip = chipOf("a"), [x, y] = mid(chip);
-  down(chip, x, y); await advance(450); const lifted = st().lifted; up(); const clk = click(chip); await advance(300);
-  out.inPlace = { lifted, date: maps.trainings.get("a").date, preview: preview(), clickEaten: !!clk.stoppedAll, ghost: !!ghost() };
+  down(chip, x, y); await advance(450); const lifted = st().lifted; const t0 = ticks; up(); const clk = click(chip); await advance(300);
+  out.inPlace = { ticked: ticks !== t0, lifted, date: maps.trainings.get("a").date, preview: preview(), clickEaten: !!clk.stoppedAll, ghost: !!ghost() };
   const c2 = chipOf("a"), [x2, y2] = mid(c2); down(c2, x2, y2); await advance(120); up(); const tap = click(c2); await advance(50);
   out.tap = { lifted: st().lifted, preview: preview(), eaten: !!tap.stoppedAll };
   fns.closePreview && fns.closePreview(); await advance(400);
@@ -145,7 +145,7 @@ seed();
 seed();
 { const chip = chipOf("a"), [x, y] = mid(chip), [px] = mid(dayOf(day(-1)));
   down(chip, x, y); await advance(410); await glide(x, y, px, y); const over = { lit: lit(), key: st().key };
-  up(); await advance(300); out.pastDay = { over, date: maps.trainings.get("a").date };
+  const t0 = ticks; up(); await advance(300); out.pastDay = { over, ticked: ticks !== t0, date: maps.trainings.get("a").date };
 }
 // 4. a finger that wanders 8 points before the lift is a scroll or the months' slide: nothing lifts; a finished workout and one missed past its week never lift
 seed();

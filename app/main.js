@@ -2434,13 +2434,16 @@ import { reportRange, buildReport } from "./report.js";
     if (!chip || !host || !cdUp(chip, (e) => e === host)) return null;
     return cdCan(trainings.get(chip.dataset.tid)) ? chip : null;
   }
-  function cdTick() {                                                 // the lift's tick: Android's vibration; on iPhone a switch flipped through its label, the one way a web page has to the Taptic Engine (whether it ticks for a flip the page makes 0.4 s into a hold, with no tap of its own, only his phone can tell)
+  let cdTicking = false;                                              // the tick's own click under way: no eater takes it
+  function cdTick() {                                                 // the tick as a moved workout lands (his pick, 12 Nov: no tick came at the lift on his iPhone; a web app may tick only while a finger's touch is landing or lifting, never mid-hold): Android's vibration; on iPhone a switch flipped through its label inside the release's own touchend, the one way a web page has to the Taptic Engine
     haptic();
     try {
       const l = document.createElement("label"), s = document.createElement("input"); s.type = "checkbox"; s.setAttribute("switch", ""); s.tabIndex = -1;
       l.setAttribute("aria-hidden", "true"); l.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden";
-      l.appendChild(s); l.addEventListener("click", (e) => e.stopPropagation()); document.body.appendChild(l); l.click(); if (s.blur) s.blur(); l.remove();
-    } catch (_) {}
+      l.appendChild(s); l.addEventListener("click", (e) => e.stopPropagation()); document.body.appendChild(l);
+      cdTicking = true; try { l.click(); } finally { cdTicking = false; }
+      if (s.blur) s.blur(); l.remove();
+    } catch (_) { cdTicking = false; }
   }
   function cdStart(chip, x, y, id, mouse) {
     const day = cdDayOf(chip);
@@ -2456,7 +2459,7 @@ import { reportRange, buildReport } from "./report.js";
     const t = trainings.get(g.tid);
     if (!cdLive(g.chip)) { const c = cdChip(g.tid), d = c && cdDayOf(c); if (d && d.dataset.day === g.from) g.chip = c; }   // a redraw during the hold (a sync's) drew the chip anew: the same workout in the same day is the one held
     if (!cdLive(g.chip) || !cdCan(t) || held() || calSliding || calBusy() || (S.view.name !== "client")) { cdOff(); return; }
-    g.lifted = true; cdTick(); if (calOpen) calForget();
+    g.lifted = true; if (calOpen) calForget();
     const r = g.chip.getBoundingClientRect(), day = cdDayOf(g.chip), dr = day ? day.getBoundingClientRect() : r;
     const w = Math.round(Math.max(r.width || 0, (dr.width || r.width || 0) * CD_WIDE)), box = document.createElement("div"), n = document.createElement("span");
     box.id = "calDrag"; box.className = cdHas(g.chip, "miss") ? "miss" : "plan"; box.setAttribute("aria-hidden", "true");
@@ -2533,6 +2536,7 @@ import { reportRange, buildReport } from "./report.js";
     const key = g.key, t = trainings.get(g.tid);
     let moved = false;
     if (key && key !== g.from && key >= today() && cdCan(t)) moved = canReschedule(t) ? applyReschedule(g.tid, key) : moveWorkout(g.tid, key);
+    if (moved) cdTick();                                               // it has landed in its new day: the tick (inside the release's own event, as iOS asks)
     cdLand(g, moved ? cdChip(g.tid) : g.chip);
   }
   const cdBack = (down) => { const g = cd; if (!g) return; if (down) cdSpent = { mouse: g.mouse, id: g.id }; cdLand(g, g.chip); };   // a cancelled drag (Escape, a second finger, the system's own gesture): back into its chip; down: the finger or the button is still on it, and its release will click nothing
@@ -2588,7 +2592,7 @@ import { reportRange, buildReport } from "./report.js";
     cdEatUntil = performance.now() + 400; cdDrop();                    // a mouse's click follows its release at once
   }, true);
   document.addEventListener("pointercancel", (e) => { const g = cd; if (g && g.mouse && e.pointerId === g.id) { if (g.lifted) cdBack(); else cdOff(); } }, true);
-  document.addEventListener("click", (e) => { if (performance.now() < cdEatUntil) { cdEatUntil = 0; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+  document.addEventListener("click", (e) => { if (cdTicking) return; if (performance.now() < cdEatUntil) { cdEatUntil = 0; e.preventDefault(); e.stopImmediatePropagation(); } }, true);   // (the tick's own click goes through: eaten, its switch would not flip)
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && cd && cd.lifted) { e.preventDefault(); e.stopImmediatePropagation(); cdBack(true); } }, true);
   window.addEventListener("scroll", () => { if (!cd) return; if (!cd.lifted) { cdOff(); return; } if (!calOpen && cd.wr) { const q = $("week").getBoundingClientRect(); cd.wr = { left: cd.wr.left, right: cd.wr.right, width: cd.wr.width, top: q.top, bottom: q.top + cd.wr.height, height: cd.wr.height }; } cdHover(cd.x, cd.y); }, { capture: true, passive: true });   // a scroll before the lift was the finger's; after it (a Mac's wheel) the day under the pointer is found again
 
