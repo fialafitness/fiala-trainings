@@ -80,6 +80,7 @@ test("only the month shown takes focus, and the pager never stays scrolled off i
   assert.strictEqual(r.afterNext.idx, 13, "Next went on a month");
 });
 
-test("the coach's own \"…\" (his ask, 10 Nov), tapped: Reschedule and the red Delete workout; a finish takes the open menu away and leaves only Delete; a template, Delete template; his Client view, the client's Reschedule", () => {
-  assert.deepStrictEqual(r.coach, { toDo: ["Reschedule", "red Delete workout"], finishedClosed: true, finished: ["red Delete workout"], template: ["red Delete template"], preview: ["Reschedule"] });
+test("the coach's own \"…\" (his ask, 10 Nov), tapped: Reschedule, Copy workout and Save as template (his ask, 12 Nov) and the red Delete workout; a finish takes the open menu away and leaves no Reschedule; a template, Delete template; his Client view, the client's Reschedule", () => {
+  const MID = ["Copy workout", "Save as template"];
+  assert.deepStrictEqual(r.coach, { toDo: ["Reschedule", ...MID, "red Delete workout"], finishedClosed: true, finished: [...MID, "red Delete workout"], template: ["red Delete template"], preview: ["Reschedule"] });
 });

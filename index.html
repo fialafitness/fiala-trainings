@@ -336,9 +336,10 @@
   .btn.tint:hover, .btn.tint:active { opacity: 0.8; }
   .btn.tint svg { width: 16px; height: 16px; flex: none; }
   .btn.tint.addname { min-height: 32px; padding: 0 12px; font-size: 0.8125rem; }
-  .start-row { display: flex; gap: 10px; margin-top: 16px; align-items: stretch; }   /* an empty workout: From template across the whole width; exercises come from the round + in the bar at the foot (his pick, 10 Nov) */
+  .start-row { display: flex; gap: 10px; margin-top: 16px; align-items: stretch; }   /* the coach's + Add exercise (white in the dark, black in the light) under the last exercise, across the whole width; an empty workout pairs it with From template, half and half (his ask, 12 Nov: "back where it was right bellow the last exercise with full width and also at the beginning next to template split half and half"); the + in the bar stays */
   .start-row[hidden] { display: none; }
-  .start-row #tplFill { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 16px; font-size: 1rem; font-weight: 600; margin: 0; white-space: nowrap; }
+  .start-row #addRow, .start-row #tplFill { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 0 16px; font-size: 1rem; font-weight: 600; margin: 0; white-space: nowrap; }
+  .start-row #addRow, .start-row #tplFill { min-width: 0; white-space: normal; line-height: 1.2; text-align: center; }   /* the halves stay equal with the phone's larger Text Size: a label too long for its half wraps inside it, never past the screen's edge (a review's catch, 12 Nov) */
   .btn:disabled { opacity: 0.5; cursor: default; }
   .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible, .view-seg button:focus-visible, .datefield:focus-visible, .dock-add:focus-visible, .month > button:focus-visible, .tracker .tr-chips button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   .tracker .tr-chips button:focus-visible { outline-offset: -2px; }
@@ -388,9 +389,6 @@
   .list .chev { color: var(--text-tertiary); margin-left: 8px; }
   .btn.soft, .btn.tint.wide.soft { font-weight: 400; }        /* the quiet pills under Finish workout: regular weight, the way an alert stacks its buttons */
   .foot.stack { display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin-top: 32px; padding-top: 24px; max-width: none; }   /* not the login form's narrow .stack: this one spans the page */
-  .foot.stack .pair { display: flex; gap: 12px; }
-  .foot.stack .pair .btn { flex: 1 1 0; width: auto; min-width: 0; }
-  #vTraining.tpl .foot.stack .pair { display: none; }
   .list.form li { padding: 0; }                                                /* a form: a label and its field in each cell */
   .list.form .cell { display: flex; flex-direction: column; gap: 3px; padding: 11px 20px 12px; cursor: text; }
   .list.form .cap { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
@@ -1310,7 +1308,7 @@
   .pick-note b { font-weight: 500; color: var(--text-primary); }
   #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #missHead, #vClient.tpl #missList, #vClient.tpl #todayHead, #vClient.tpl #todayList, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
   #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #histCard, #vClient.tpl #trainingEmpty { display: none; }   /* the library is not a client: no history card either */
-  #vTraining.tpl #finishWrap, #vTraining.tpl #copyTraining, #vTraining.tpl #saveTemplate, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
+  #vTraining.tpl #finishWrap, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
   .tpl-pill { justify-self: stretch; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; border: 0; cursor: pointer; padding: 0 12px 0 14px; min-height: 36px; border-radius: 50px;
     font-size: 0.875rem; font-weight: 500; letter-spacing: 0; color: var(--text-primary); background: var(--field); transition: opacity 300ms ease; }   /* a link to the template: the same quiet bar as In person above it; the chevron says it opens */
@@ -1399,6 +1397,9 @@
   @media (prefers-reduced-motion: reduce) { .cele-check { animation: none; } .cal-view, .cal-track { transition: none !important; } }
   @media (prefers-reduced-motion: reduce) { .week.wk-in-r, .week.wk-in-l { animation: none; } #calDrag { transition: none !important; } }   /* Reduce Motion: a dragged workout and the turned week move at once */
   .finish .finished { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin-top: 12px; font-size: 1.0625rem; }   /* Skip / Undo under Finish workout: air between a capsule and the button. Scoped: a finished day in the week strip carries the same class */
+  .finish.split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }   /* an exercise still open, in either view: Finish early and Skip workout side by side, half and half, alike (his ask, 12 Nov); every exercise done, Finish workout takes the whole width again, Skip under it */
+  .finish.split #skipLine { margin-top: 0; min-height: 0; }
+  .finish.split .btn { min-width: 0; white-space: normal; line-height: 1.2; text-align: center; }   /* equal halves with the phone's larger Text Size too: a label wraps inside its half, never past the screen's edge (a review's catch, 12 Nov) */
   .finished span { color: var(--done); font-weight: 500; }
   .notes .entry .ref { appearance: none; border: 0; background: none; width: auto; display: inline-flex; align-items: center; gap: 4px; padding: 0; margin-top: 2px; min-height: 24px; font-size: 0.8125rem; letter-spacing: 0; color: var(--text-tertiary); cursor: pointer; }   /* "Back · Wed, Oct 7 ›": the session the note came with */
   .foot { margin-top: 40px; border-top: 1px solid var(--card-border); padding-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -1445,11 +1446,10 @@
     .setlog .chip.stack .valrow { font-size: 1.25rem; }                      /* "Bodyweight" fits the box whole */
     .chip .suffix { font-size: 0.8125rem; }
     .alt-menu .alt-foot { flex-wrap: wrap; }
-    .foot.stack .pair .btn { font-size: 0.9375rem; padding-left: 10px; padding-right: 10px; }
     .field-row { flex-wrap: wrap; }
     .sum-val { flex-wrap: wrap; white-space: normal; }
     .setlog .chip.stack.editing .valrow input { font-size: 1.25rem; }       /* the number does not pop when the box is tapped */
-    .start-row #tplFill { font-size: 0.9375rem; padding-left: 10px; padding-right: 10px; }
+    .start-row #addRow, .start-row #tplFill { font-size: 0.9375rem; padding-left: 10px; padding-right: 10px; }
     .row .top { grid-template-columns: 52px 1fr; }
     .row { --numw: 60px; }
     .row .sum { margin-left: 60px; }
@@ -1716,7 +1716,7 @@
     </div>
     <input type="checkbox" switch id="hapticSwitch" class="vh" tabindex="-1" aria-hidden="true">
     <div class="rows" id="rows"></div>
-    <div class="start-row" id="startRow" hidden><button class="btn outline trainer-only" id="tplFill" type="button" hidden>From template</button></div>
+    <div class="start-row" id="startRow" hidden><button class="btn ink trainer-only" id="addRow" type="button">+ Add exercise</button><button class="btn outline trainer-only" id="tplFill" type="button" hidden>From template</button></div>
     <div class="finish" id="finishWrap" hidden>
       <button class="btn wide" id="finishBtn">Finish workout</button>
       <div class="finished" id="finishedLine" hidden><span id="finishedText"></span><button class="btn tint" id="unfinishBtn" type="button">Undo</button></div>
@@ -1728,7 +1728,6 @@
       <ul class="list" id="usePick" hidden style="margin-top:12px"></ul>
     </div>
     <div class="foot stack trainer-only">
-      <div class="pair"><button class="btn tint wide soft" id="copyTraining" type="button">Copy workout</button><button class="btn tint wide soft" id="saveTemplate" type="button">Save as template</button></div>
       <button class="btn tint wide soft danger" id="delTraining" type="button">Delete workout</button>
     </div>
   </section>
@@ -1797,7 +1796,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=272";
+  import { boot } from "./app/main.js?v=273";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

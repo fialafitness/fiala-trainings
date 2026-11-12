@@ -3,6 +3,8 @@
 // name; the black "+ Add exercise" button is gone, from an empty workout too ("Remove it, template full width"), where From template has the
 // row to itself. The switch stays while he previews the client's look (the + goes); a template has the + alone; the client's own view has
 // neither. On the swipe back a page's bar goes with its page, unless the page underneath has the same bar.
+// His ask, 12 Nov: the + Add exercise button comes back (white in the dark, black in the light) "where it was right bellow the last
+// exercise with full width and also at the beginning next to template split half and half", and the bar's + stays.
 // (This stand-in page draws no exercise cards, so the workouts drawn here are empty; the + is checked up to its draw, and its page move through followRow.
 // Typing, a double click and the swipe back's pictures run in their own processes, as a phone and as a computer: workout-bar-probe.mjs.)
 import fs from "node:fs";
@@ -60,13 +62,17 @@ test("a settings page opened over the workout takes the bar away; Back brings it
   page({ name: "client", id: "c1" }, { clientMode: true, myClientId: "c1" }); assert.deepStrictEqual(bar(), { ...NONE, tabs: true }, "the client's own page: their tabs, no + and no switch");
 });
 
-test("an empty workout: From template alone, across the row; finished, or in the client's look, the row is gone; once it has exercises too", () => {
-  page({ name: "training", id: "w1" }); assert.deepStrictEqual([$("startRow").hidden, $("tplFill").hidden], [false, false], "empty: From template");
-  maps.trainings.get("w1").completedAt = "2026-11-10T18:00:00.000Z"; redraw(); assert.strictEqual($("startRow").hidden, true, "finished: no row");
+test("the start row (his ask, 12 Nov): + Add exercise beside From template on an empty workout; alone under the exercises, on a finished one and on a template; none in the client's look", () => {
+  const row = () => [$("startRow").hidden, $("addRow").hidden, $("tplFill").hidden];
+  page({ name: "training", id: "w1" }); assert.deepStrictEqual(row(), [false, false, false], "empty: + Add exercise and From template, half and half");
+  maps.trainings.get("w1").completedAt = "2026-11-10T18:00:00.000Z"; redraw(); assert.deepStrictEqual(row(), [false, false, true], "finished: no template; + Add exercise stays, as the bar's + does");
   page({ name: "training", id: "w1" }); fns.setPreview(true); redraw(); assert.strictEqual($("startRow").hidden, true, "the client's look: no row"); fns.setPreview(false);
+  page({ name: "training", id: "tp" }); assert.deepStrictEqual(row(), [false, false, true], "a template: + Add exercise alone");
+  fns.setPreview(true); redraw(); assert.deepStrictEqual(row(), [false, false, true], "a template has no client's look: it stays, as the bar's + does"); fns.setPreview(false);
   page({ name: "training", id: "w1" }); maps.trainings.get("w1").rows = [{ id: "r1", label: "1", name: "Squat", sets: 3, reps: "8", tempo: "", rest: "", weights: [], repsDone: [], setsDone: 0, note: "" }];
   try { redraw(); } catch (_) {}                                         // (this stand-in page cannot draw the exercise's card: the row is decided before it)
-  assert.deepStrictEqual([$("startRow").hidden, $("tplFill").hidden], [true, true], "with exercises: no template offered, so the row goes too (exercises come from the +)");
+  assert.deepStrictEqual(row(), [false, false, true], "with exercises: + Add exercise alone, across the row under the last one");
+  page({ name: "training", id: "w1" }, { clientMode: true, myClientId: "c1" }); assert.strictEqual($("startRow").hidden, true, "the client's own view: no row");
 });
 
 test("the + on the coach's workout: a new exercise at the end, numbered next, saved; on a template too", () => {
@@ -106,10 +112,12 @@ test("the + puts its new exercise under the header at once, before asking for th
   assert.ok(src.includes("const r = newRow(nextLabel(t)); t.rows.push(r); scheduleSave(\"trainings\", t.id);"), "the new exercise: the next number, at the end, saved");
 });
 
-test("the page: no black + Add exercise; From template alone in its row; the bar's switch in the tab bar's glass and its + with its name", () => {
-  assert.ok(!html.includes('id="addRow"'), "the + Add exercise button is gone");
-  assert.ok(html.includes('<div class="start-row" id="startRow" hidden><button class="btn outline trainer-only" id="tplFill" type="button" hidden>From template</button></div>'), "From template alone in the row");
-  assert.match(html, /\.start-row #tplFill \{ flex: 1 1 0;/, "across the row");
+test("the page: + Add exercise in ink beside From template outlined; the bar's switch in the tab bar's glass and its + with its name", () => {
+  assert.ok(html.includes('<div class="start-row" id="startRow" hidden><button class="btn ink trainer-only" id="addRow" type="button">+ Add exercise</button><button class="btn outline trainer-only" id="tplFill" type="button" hidden>From template</button></div>'), "+ Add exercise first, then From template; never in the client's look (trainer-only)");
+  assert.ok(html.includes(".btn.ink { background: var(--ink); color: var(--ink-on); }"), "ink: white on the dark page, black on the light one (his ask: \"in white\")");
+  assert.match(html, /\.start-row #addRow, \.start-row #tplFill \{ flex: 1 1 0;/, "half and half, or one across the row");
+  assert.ok(html.includes("  .start-row #addRow, .start-row #tplFill { min-width: 0; white-space: normal; line-height: 1.2; text-align: center; }"), "with the phone's larger Text Size a label wraps inside its half, never past the screen's edge");
+  assert.ok(src.includes('$("addRow").addEventListener("click", addExercise);'), "it adds as the bar's + does");
   const seg = (html.match(/<div id="dock">\s*(<div class="view-seg" id="viewSeg"[\s\S]*?<\/button><\/div>)/) || [])[1] || "";
   assert.strictEqual(seg.replace(/<svg[\s\S]*?<\/svg>/g, "<svg/>"), '<div class="view-seg" id="viewSeg" role="radiogroup" aria-label="See it as" hidden><button type="button" role="radio" data-view="coach" class="on" aria-checked="true"><svg/><span>Coach</span></button><button type="button" role="radio" data-view="client" aria-checked="false"><svg/><span>Client</span></button></div>', "Coach | Client lives in the bar at the foot, first, each a symbol over its word");
   const [coachIcon, clientIcon] = [...seg.matchAll(/<svg[\s\S]*?<\/svg>/g)].map((m) => m[0]);
@@ -159,6 +167,10 @@ test("typing on a computer (his Mac): the bar stays, so the + is under the point
 test("a double click on the + is one exercise (on a computer the + stays under the pointer)", () => {
   assert.strictEqual(phone.doubleClick.added, 2, "the one before, and one for the double click");
   assert.strictEqual(desk.doubleClick.added, 2);
+});
+
+test("a double click on + Add exercise under the exercises adds one; its second click, landing on the new card in the button's place, is eaten; a single click right after, and a double click later, are not", () => {
+  for (const r of [phone, desk]) assert.deepStrictEqual(r.addRow, { added: 3, secondEaten: true, singleKept: true, lateKept: true }, r.mode);
 });
 
 test("the swipe back: each picture keeps its own page's bar, laid out as that page lays it out", () => {
