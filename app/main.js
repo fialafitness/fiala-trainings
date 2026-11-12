@@ -195,7 +195,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   function showLogin(msg) {
     dropWake();
-    S.signedIn = false; S.clientMode = false; S.myClientId = null; reordering = false; document.body.classList.remove("client");
+    S.signedIn = false; S.clientMode = false; S.myClientId = null; reordering = false; tplOrdering = null; document.body.classList.remove("client");
     $("localFoot").hidden = true; $("myExercises").hidden = true; $("packagesBtn").hidden = true; $("settingsBtn").hidden = true; $("catalogBtn").hidden = true; $("dataBtn").hidden = true; settingsOpen = false; fromSettings = false;
     hideAllViews(); $("vLogin").hidden = false;
     $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
@@ -563,7 +563,7 @@ import { reportRange, buildReport } from "./report.js";
     if (problem) { exCurrent = { name: cur, key: nk2 }; $("status").textContent = problem; return; }   // the rename stood: the page now shows the new name, the complaint stays in the bar
     exCurrent = { name: cur, key: nk2 }; navWillChange("back"); showExercises(true); setStatus();
   }
-  $("navDone").addEventListener("click", () => { if (settingsOpen === "exercise") saveExercise(); });
+  $("navDone").addEventListener("click", () => { if (settingsOpen === "exercise") saveExercise(); else if (tplOrderOn()) doneTplOrder(); });   // (and Done after Reorder folders)
   $("exDelete").addEventListener("click", async () => {
     if (!exCurrent) return; const { name, key } = exCurrent;
     if (!(await askFirst({ title: "Delete \u201c" + name + "\u201d from the database?", text: (videoForName(name) ? "Its video goes with it. " : "") + "Workouts that use it keep the name.", yes: "Delete" }))) return;
@@ -933,7 +933,7 @@ import { reportRange, buildReport } from "./report.js";
     notesFresh = null;
     if (newsShown && !(next.name === "client" && next.id === newsShown)) { const c = clients.get(newsShown); newsShown = null; if (c) markWorkoutsSeen(c); }   // leaving the client: the New list he saw counts as looked at
     for (const f of document.querySelectorAll("#rows .player iframe, #exPlayer iframe")) f.remove();   // a video left playing does not follow to the next page
-    reordering = false; S.view = next; lsSet("fiala.trainings.view", S.view); render(); setStatus(); window.scrollTo(0, back ? (scrollMemo.get(viewKey(next)) || 0) : 0);   // forward: the top; back: where that page was (the header shows this page's save state, not the last page's complaint)
+    reordering = false; tplOrdering = null; S.view = next; lsSet("fiala.trainings.view", S.view); render(); setStatus(); window.scrollTo(0, back ? (scrollMemo.get(viewKey(next)) || 0) : 0);   // forward: the top; back: where that page was (the header shows this page's save state, not the last page's complaint)
     if (next.name === "training") holdWake(true); else dropWake(); }
   async function runBack() {                                       // where Back goes, from every page: the Back circle, Safari's swipe and the edge swipe all come here
     if (settingsOpen === "exercise") { if (exDirty() && !(await askFirst({ title: "Discard the changes?", text: "The exercise stays as it was.", yes: "Discard" }))) return; showExercises(true); return; }
@@ -1772,7 +1772,8 @@ import { reportRange, buildReport } from "./report.js";
     return all.filter((f) => f.kind === "folder" || folders.has(f.parent)).map((f) => (f.kind === "folder" && f.parent && (top(f) || !top(folders.get(f.parent))) ? { ...f, parent: null } : f));   // a folder whose folder went (deleted on another device), or one that would sit deeper than two (or in a ring, two devices' moves crossing), stands at the top; a slide whose folder went goes with it
   };
   const tplNode = (id) => (id ? tplNodes().find((f) => f.id === id) || null : null);
-  const tplKids = (pid, kind) => tplNodes().filter((f) => (f.parent || null) === (pid || null) && f.kind === kind).sort((x, y) => String(x.at || "").localeCompare(String(y.at || "")) || String(x.id).localeCompare(String(y.id)));   // in the order made, the same on every device (a merge may list another device's new one first)
+  const ordOf = (f) => (typeof f.sort === "number" && isFinite(f.sort) ? f.sort : Infinity);
+  const tplKids = (pid, kind) => tplNodes().filter((f) => (f.parent || null) === (pid || null) && f.kind === kind).sort((x, y) => (ordOf(x) === ordOf(y) ? 0 : ordOf(x) < ordOf(y) ? -1 : 1) || String(x.at || "").localeCompare(String(y.at || "")) || String(x.id).localeCompare(String(y.id)));   // in the order he put them in (Reorder folders: sort), then the order made (a new one last), the same on every device (a merge may list another device's new one first)
   const tplHome = (t) => tplNode(templateMeta(t).folder);   // the folder or slide a template is in, if it is in one of his
   const tplTree = (fid) => { const ids = new Set([fid]); for (const f of tplNodes()) if (f.kind === "folder" && f.parent === fid) ids.add(f.id); for (const f of tplNodes()) if (f.kind === "slide" && ids.has(f.parent)) ids.add(f.id); return ids; };   // a folder, its folders and their slides
   const tplIn = (ids) => [...trainings.values()].filter((t) => isTemplateClient(t.clientId) && ids.has((tplHome(t) || {}).id));
@@ -1831,14 +1832,29 @@ import { reportRange, buildReport } from "./report.js";
     if (!tplPageOn()) return [];
     const f = tplNode(S.view.folder), items = [];
     if (!f || !f.parent) items.push({ label: "New folder", icon: MI.folderPlus, onPick: () => newFolder(f ? f.id : null) });
-    if (!f) return items;
+    const reorder = tplKids(f ? f.id : null, "folder").length > 1 ? { label: "Reorder folders", icon: MI.reorder, onPick: () => { tplOrdering = f ? f.id : ""; render(); } } : null;   // two folders or more on this page (his pick, 12 Nov: his folders only)
+    if (!f) return reorder ? [...items, reorder] : items;
     items.push({ label: "New slide", icon: MI.slidePlus, onPick: () => newSlide(f.id) });
+    if (reorder) items.push(reorder);
     const sl = tplSlide(f);
     if (sl) items.push({ label: "Rename slide", icon: MI.pencil, onPick: () => renameNode(sl.id) });
     items.push({ label: "Rename folder", icon: MI.pencil, onPick: () => renameNode(f.id) });
     if (sl) items.push({ label: "Delete slide", icon: MI.trash, danger: true, onPick: () => deleteNode(sl.id) });
     items.push({ label: "Delete folder", icon: MI.trash, danger: true, onPick: () => deleteNode(f.id) });
     return items;
+  }
+  let tplOrdering = null;                                             // the page whose folders he is putting in order: "" the Templates page, else the folder's id (Reorder folders, his pick 12 Nov: like the Clients list's Reorder, his folders only)
+  const tplOrderOn = () => tplOrdering !== null && tplPageOn() && tplOrdering === (S.view.folder || "");   // grips on his folders, Done at the top right, no "…" and no +
+  const doneTplOrder = () => { tplOrdering = null; render(); };      // Done: the page as it was, in the new order
+  function moveFolderTo(id, j) {                                      // a folder of his let go in a new place among its own: the order kept on the folders, each one that moved marked as this device's for a merge
+    const n = tplNode(id), list = n ? tplKids(n.parent, "folder") : [], i = list.findIndex((x) => x.id === id);
+    if (i >= 0 && j >= 0 && j < list.length && i !== j) {
+      const [m] = list.splice(i, 1); list.splice(j, 0, m);
+      const pos = new Map(list.map((x, k) => [x.id, k])), tc = tplClient();
+      tc.folders = (tc.folders || []).map((x) => { if (!x || !pos.has(x.id) || x.sort === pos.get(x.id)) return x; folderTouched.set(x.id, TEMPLATES_ID); return { ...x, sort: pos.get(x.id) }; });
+      saveFolders();
+    }
+    render();
   }
   const pageMoreItems = () => (S.view.name === "training" ? moreItems(trainings.get(S.view.id)) : tplMoreItems());   // the "…" at the top right, whichever page has one
   function newTemplateHere() {                                        // the round glass + on the Templates pages (his ask, 12 Nov: "for the actual workout keep the plus button as we have for adding workouts in clients view"): a new template where he is, opened
@@ -2164,6 +2180,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   const h2 = (text) => { const e = document.createElement("h2"); e.textContent = text; e.style.marginTop = "24px"; return e; };
   function renderTemplates(c) {
+    if (dragging) return;                                    // a folder of his under the finger (Reorder folders): the list is drawn again once it is put down
     const all = clientTrainings(c.id);
     const wrap = $("tplList"); wrap.replaceChildren(); wrap.hidden = false;
     const prog = S.view.program || null, ph = S.view.phase || null;
@@ -2174,6 +2191,17 @@ import { reportRange, buildReport } from "./report.js";
     for (const t of all) { if (tplHome(t)) continue; const m = templateMeta(t); if (!byProg.has(m.program)) byProg.set(m.program, []); byProg.get(m.program).push(t); }   // (a template in a folder of his counts there, not under its program)
     const wn = (n) => n + (n === 1 ? " workout" : " workouts");
     const f = !prog && tplNode(S.view.folder);
+    if (tplOrderOn()) {                                      // Reorder folders: only the list being put in order, as the Clients list's (his pick, 12 Nov): his folders with the grip, the built-in programs below as they are (no grip, no way in)
+      const rowOf = (name, x) => {                          // a row with its name; one of his folders also gets the grip (the three lines) and is dragged by it
+        const li = document.createElement("li"), row = document.createElement("div"), nm = document.createElement("span"); row.className = "rowline"; nm.className = "pn"; nm.textContent = name; row.append(nm);
+        if (x) { const g = document.createElement("span"); g.className = "grip"; g.textContent = "\u2261"; g.setAttribute("aria-hidden", "true"); row.append(g); li.className = "drag-row"; dragRow(li, x.id, moveFolderTo); }
+        li.appendChild(row); return li;
+      };
+      const progs = f ? [] : [...byProg.keys()].filter((p) => p !== MY_TEMPLATES).sort((x, y) => progRank(x) - progRank(y) || String(x).localeCompare(String(y)));
+      $("tplKicker").textContent = f ? (tplNode(f.parent) || {}).name || "Templates" : "Workout library"; $("cName").textContent = f ? f.name : "Templates";
+      wrap.appendChild(h2(f ? "Folders" : "Programs")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...tplKids(f ? f.id : null, "folder").map((x) => rowOf(x.name, x)), ...progs.map((p) => rowOf(p))); wrap.appendChild(ul);
+      return;
+    }
     if (f) {                                                 // a folder of his, drawn as a program is (his ask: "should look exactly like templates I already have"): its folders as phases, its slides as the week slider
       const up = tplNode(f.parent), subs = tplKids(f.id, "folder"), slides = tplKids(f.id, "slide"), cur = tplSlide(f);
       $("tplKicker").textContent = up ? up.name : "Templates"; $("cName").textContent = f.name;
@@ -2249,7 +2277,7 @@ import { reportRange, buildReport } from "./report.js";
     $("vClients").hidden = S.view.name !== "clients";
     $("vClient").hidden = S.view.name !== "client";
     const tabs = S.view.name === "client" && !isTemplateClient(S.view.id); $("tabbar").hidden = !tabs; $("addBtn").hidden = !tabs || S.clientMode; document.body.classList.toggle("tabs", tabs);   // the coach's +: beside the bar on a client's page, on every tab
-    const tplPlus = tplPageOn(); if (tplPlus) $("addBtn").hidden = false; $("addBtn").setAttribute("aria-label", tplPlus ? "New template" : "New workout"); document.body.classList.toggle("tplus", tplPlus); $("dock").classList.toggle("tp", tplPlus);   // the Templates page and his folders: the same glass + alone at the bar's trailing edge, a new template where he is (his ask, 12 Nov)
+    const tplPlus = tplPageOn() && !tplOrderOn(); if (tplPlus) $("addBtn").hidden = false; $("addBtn").setAttribute("aria-label", tplPlus ? "New template" : "New workout"); document.body.classList.toggle("tplus", tplPlus); $("dock").classList.toggle("tp", tplPlus);   // the Templates page and his folders: the same glass + alone at the bar's trailing edge, a new template where he is (his ask, 12 Nov)
     const wsDock = S.view.name === "training" && !S.clientMode;     // the coach's workout page: Coach | Client and the + in the bar at the foot, as Photos' (his pick, 10 Nov); the + is not in the client's look
     $("addExBtn").hidden = !wsDock || previewing(); if (!wsDock) $("viewSeg").hidden = true; document.body.classList.toggle("wsdock", wsDock); $("dock").classList.toggle("ws", wsDock);   // its layout marked on the bar itself: a picture's copy of the bar keeps it
     for (const b of $("tabbar").querySelectorAll("button")) { const on = b.dataset.tab === S.tab; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
@@ -2257,7 +2285,7 @@ import { reportRange, buildReport } from "./report.js";
     $("back").hidden = S.view.name === "clients" || (S.clientMode && S.view.name === "client");
     $("brand").hidden = !(S.view.name === "clients" || (S.clientMode && S.view.name === "client"));
     $("meDisc").hidden = !(S.view.name === "client" && !isTemplateClient(S.view.id));   // the person disc: on a client's page, every tab, nowhere else — Settings for the client, the card for the coach
-    $("tMore").hidden = !((S.view.name === "training" && moreOn(trainings.get(S.view.id))) || tplPageOn()); closeMoreMenu();   // the workout's "…": the client's view (and the coach's Client view) of a workout still to do, Reschedule; the coach's own view of any workout or template, Delete (and Reschedule while it is still to do)
+    $("tMore").hidden = !((S.view.name === "training" && moreOn(trainings.get(S.view.id))) || (tplPageOn() && !tplOrderOn())); $("navDone").hidden = !tplOrderOn(); closeMoreMenu();   // the workout's "…": the client's view (and the coach's Client view) of a workout still to do, Reschedule; the coach's own view of any workout or template, Delete (and Reschedule while it is still to do)
     $("meDisc").setAttribute("aria-label", S.clientMode ? "Settings" : "Client card");
     paintMeDisc(); paintBarMsg();
     if (S.clientMode && S.tab === "notes") setTab("workouts");   // Notes is the coach's tab
@@ -2278,19 +2306,19 @@ import { reportRange, buildReport } from "./report.js";
   let reordering = false;
   function moveClientTo(id, j) {
     const list = activeList(); const i = list.findIndex((c) => c.id === id);
-    if (i < 0 || j < 0 || j >= list.length || i === j) { renderClients(); return; }
+    if (i < 0 || j < 0 || j >= list.length || i === j) { render(); return; }
     const [c] = list.splice(i, 1); list.splice(j, 0, c);
     list.forEach((x, k) => { if (x.sort !== k) { x.sort = k; scheduleSave("clients", x.id); } });
-    renderClients();
+    render();                                                          // whatever page is up now (a page that came up mid-drag waited for the drop: renderTemplates holds while a row is under the finger)
   }
   // drag a row by its grip (the three lines, like Apple's reorder handle); the others slide out of the way; the order is saved on release.
   // Only the grip starts a drag, so a finger anywhere else on the card still scrolls the list.
-  function dragRow(li, id) {
+  function dragRow(li, id, drop = moveClientTo) {                    // (drop: where the row's new place goes: a client's order, or his template folders' (v279))
     li.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 && e.pointerType === "mouse") return;
       if (!e.target.closest(".grip")) return;
       dragging = true;
-      const ul = li.parentElement, rows = [...ul.children], i = rows.indexOf(li);
+      const ul = li.parentElement, rows = [...ul.children].filter((r) => r.classList.contains("drag-row")), i = rows.indexOf(li);   // (only the rows that move: his folders above the built-in programs, which stay)
       const rect = rows.map((r) => r.getBoundingClientRect()), h0 = rect[i].height, c0 = rect[i].top + h0 / 2;
       const minDy = rect[0].top - rect[i].top, maxDy = rect[rows.length - 1].bottom - rect[i].bottom;
       let dy = 0, target = i;
@@ -2314,7 +2342,7 @@ import { reportRange, buildReport } from "./report.js";
         dragging = false;
         li.removeEventListener("pointermove", move); li.removeEventListener("pointerup", end); li.removeEventListener("pointercancel", end);
         li.classList.remove("dragging"); rows.forEach((r) => { r.style.transform = ""; });
-        moveClientTo(id, target);
+        drop(id, target);
       };
       li.addEventListener("pointermove", move); li.addEventListener("pointerup", end); li.addEventListener("pointercancel", end);
     });
@@ -3506,6 +3534,7 @@ import { reportRange, buildReport } from "./report.js";
     folderPlus: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M1.6 4.1C1.6 3.3 2.2 2.7 3 2.7H6.05C6.47 2.7 6.87 2.89 7.13 3.22L7.9 4.2H13C13.8 4.2 14.4 4.8 14.4 5.6V11.9C14.4 12.7 13.8 13.3 13 13.3H3C2.2 13.3 1.6 12.7 1.6 11.9ZM7.4 6.6H8.6V8.3H10.3V9.5H8.6V11.2H7.4V9.5H5.7V8.3H7.4Z"/></svg>',   // New folder (his template folders, 12 Nov): our own, a filled folder with its tab, a plus cut through it
     slidePlus: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M4.2 3.6H11.8C13.24 3.6 14.4 4.76 14.4 6.2V9.8C14.4 11.24 13.24 12.4 11.8 12.4H4.2C2.76 12.4 1.6 11.24 1.6 9.8V6.2C1.6 4.76 2.76 3.6 4.2 3.6ZM7.4 5.7H8.6V7.4H10.3V8.6H8.6V10.3H7.4V8.6H5.7V7.4H7.4Z"/></svg>',   // New slide: our own, a filled rounded tab (a slide of the week slider) with a plus cut through it
   };
+  MI.reorder = MI.swap.replace("<path ", '<path transform="rotate(90 21.88 10)" ');   // Reorder folders (his ask, 12 Nov): the swap arrows a quarter turn round, up beside down, as Apple's arrow.up.arrow.down
   function exerciseMenu(r, on) {                                    // the coach's "…" on an exercise: swap it, its instructions, and last and red, delete it, as Apple ends a menu with its destructive row (his ask, 9 Nov: Delete was hidden in Alternate exercise); the video is the play disc's own business
     return [
       { label: "Alternate exercise", icon: MI.swap, onPick: on.swap },   // no ellipsis on any menu row (his pick, 10 Nov: "I don't see the … in any apples design so drop it")
@@ -5084,7 +5113,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; } },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, tplOrderOn, moveFolderTo, doneTplOrder },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
