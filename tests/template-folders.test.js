@@ -428,6 +428,69 @@ test("Reorder ends when its page goes from under it: a folder being reordered, d
   quiet();
 });
 
+// v281: the built-in programs become folders like his own (his ask, 12 Nov: "all the functions need to work on every single template including the ones I already have")
+const BUILT = [T("b1", { program: "Fat Burn", phase: 1, stage: 1, n: 1, phaseName: "Base" }), T("b2", { program: "Fat Burn", phase: 1, stage: 2, n: 1, phaseName: "Base" }), T("b3", { program: "Hypertrophy", phase: 2, stage: 1, n: 3 })];
+const BTPLS = [...TPLS.filter((t) => t.id !== "b1"), ...BUILT];
+test("the built-in programs become folders: a folder for each program, one in it for each phase (named as its page was), a slide for each week; the same ids and words on every device; no template rewritten; the Programs list in the order he saw it; a second run changes nothing", () => {
+  setup(FOLDERS, BTPLS);
+  const before = fns.tplRootList().map((e) => e.key);
+  assert.deepStrictEqual(before, ["H", "A", "p:Fat Burn", "p:Hypertrophy"]);
+  assert.strictEqual(fns.adoptBuiltins(), true);
+  const nodes = fns.tplNodes().filter((f) => f.id.startsWith("b:")).map((f) => [f.id, f.name, f.parent, f.kind]);
+  assert.deepStrictEqual(nodes, [["b:Fat Burn", "Fat Burn", null, "folder"], ["b:Fat Burn/1", "Phase 1 · Base", "b:Fat Burn", "folder"], ["b:Fat Burn/1/1", "Week 1", "b:Fat Burn/1", "slide"], ["b:Fat Burn/1/2", "Week 2", "b:Fat Burn/1", "slide"], ["b:Hypertrophy", "Hypertrophy", null, "folder"], ["b:Hypertrophy/2", "Phase 2", "b:Hypertrophy", "folder"], ["b:Hypertrophy/2/1", "Week 1", "b:Hypertrophy/2", "slide"]]);
+  assert.deepStrictEqual([fns.templateHome(maps.trainings.get("b2")), maps.trainings.get("b2").template.folder, maps.dirty.has("trainings/b2"), maps.dirty.has("clients/" + TPL)], [{ name: "client", id: TPL, folder: "b:Fat Burn/1", slide: "b:Fat Burn/1/2" }, undefined, false, true], "each template finds its week by its program, phase and week: none rewritten; the folders saved");
+  assert.deepStrictEqual([maps.clients.get(TPL).rootOrder, fns.tplRootList().map((e) => e.key), maps.clients.get(TPL).builtinsAdopted], [undefined, ["H", "A", "b:Fat Burn", "b:Hypertrophy"], 1], "the Programs list as it was (his folders, then the programs), no order written; the account marked as done");
+  assert.ok(!maps.folderTouched.has("b:Fat Burn/1/2") && !maps.folderTouched.has(":rootOrder"), "claiming nothing: another device's renames, reorders and deletes win a merge");
+  maps.clients.get(TPL).folders.push(node("N", "New one", null, "folder", 30)); assert.deepStrictEqual(fns.tplRootList().map((e) => e.key), ["H", "A", "N", "b:Fat Burn", "b:Hypertrophy"], "a folder made after it joins his, above the programs (as before)");
+  maps.clients.get(TPL).folders.pop();
+  const mine = JSON.stringify(maps.clients.get(TPL).folders.filter((f) => f.id.startsWith("b:")));
+  assert.strictEqual(fns.adoptBuiltins(), false, "once for the account is enough");
+  setup(FOLDERS, BTPLS); maps.deletedFolders.set("b:Fat Burn/1/2", TPL); fns.adoptBuiltins();
+  assert.deepStrictEqual([fns.tplNode("b:Fat Burn/1/1") && fns.tplNode("b:Fat Burn/1/1").name, fns.tplNode("b:Fat Burn/1/2")], ["Week 1", null], "a week deleted here and not yet saved is not made again");
+  setup(FOLDERS, BTPLS); app.set({ clientMode: true }); assert.strictEqual(fns.adoptBuiltins(), false, "never on a client's phone"); app.set({ clientMode: false });
+  setup(FOLDERS, BTPLS); maps.dirty.set("clients/" + TPL, 1); assert.deepStrictEqual([fns.adoptBuiltins(), fns.tplNode("b:Fat Burn")], [false, null], "not while a change of this device's to the Templates record waits: the merge first brings in the other device's");
+  setup(FOLDERS, BTPLS); fns.adoptBuiltins();
+  assert.strictEqual(JSON.stringify(maps.clients.get(TPL).folders.filter((f) => f.id.startsWith("b:"))), mine, "another device makes the very same folders, word for word (their times too)");
+  quiet();
+});
+
+test("a built-in program, as a folder, looks as it did and does what his folders do: its phases under Folders, its weeks as the slider, the pill's path; Rename, Delete (its templates to My templates), New template into a week; a page kept from before opens in the same place", async () => {
+  setup(FOLDERS, BTPLS, { name: "client", id: TPL, program: "Fat Burn", phase: 1, stage: 2 });   // he had Fat Burn's Phase 1, Week 2 open
+  fns.adoptBuiltins();
+  assert.deepStrictEqual(app.get().view, { name: "client", id: TPL, folder: "b:Fat Burn/1", slide: "b:Fat Burn/1/2" }, "the page kept from before: the same place, as a folder");
+  drawing((got) => {
+    fns.go({ name: "client", id: TPL }); assert.deepStrictEqual(read(got()).slice(2), ["# Programs", "> Rehab · 0 workouts", "> Summer block · 4 workouts", "> Fat Burn · 2 workouts", "> Hypertrophy · 1 workout"]);
+    fns.go(fns.tplPage("b:Fat Burn")); assert.deepStrictEqual([pageNow(), read(got())], [["Templates", "Fat Burn"], ["# Phases", "> Phase 1 · Base · 2 workouts"]], "its phases under Phases, as its page always had them");
+    fns.go(fns.tplPage("b:Fat Burn/1")); assert.deepStrictEqual([pageNow(), read(got())], [["Fat Burn", "Phase 1 · Base"], ["tabs [Week 1] Week 2", "tpl b1"]]);
+  });
+  assert.strictEqual(fns.templatePath(maps.trainings.get("b1")), "Fat Burn · Phase 1 · Base · Week 1 · Workout 1");
+  fns.go(fns.tplPage("b:Fat Burn")); assert.deepStrictEqual([adds(), menu()], [["New template", "New folder", "New slide"], ["Rename folder", "red Delete folder"]], "every folder action, as on his own");
+  fns.go({ name: "client", id: TPL, folder: "b:Fat Burn/1", slide: "b:Fat Burn/1/2" }); fns.newWorkoutHere();
+  assert.deepStrictEqual(maps.trainings.get(app.get().view.id).template, { program: "My templates", phase: 0, stage: 0, n: 2, folder: "b:Fat Burn/1/2" }, "New template into Week 2: after its Workout 1");
+  const ask = asking();
+  try {
+    fns.go(fns.tplPage("b:Fat Burn")); const p = fns.tplMoreItems().find((it) => it.label === "Delete folder").onPick();
+    assert.strictEqual(sheet().text, "Its folder and slides go too, and its 2 templates move to My templates.", "(the empty one the + made went when its page was left)");
+    await tick(400); ask.yes(); await p;
+    assert.deepStrictEqual([meta("b1"), meta("b2"), fns.tplNode("b:Fat Burn"), app.get().view], [["My templates", 2, null], ["My templates", 3, null], null, { name: "client", id: TPL }], "after My templates' Workout 1, in the order shown; Fat Burn gone");
+    assert.strictEqual(fns.adoptBuiltins(), false, "its templates are his own now: Fat Burn is not made again");
+  } finally { ask.done(); quiet(); }
+});
+
+test("the programs become folders once the server's copy is in (seedTemplates), after a reorder of the programs keeps that order; a built-in template moved into his folder stays there, and finds its week again if that folder goes", async () => {
+  setup(FOLDERS, BTPLS); maps.clients.get(TPL).templatesVersion = 99; maps.clients.get(TPL).rootOrder = ["p:Hypertrophy", "A", "p:Fat Burn", "H"];   // an order from before (v280)
+  maps.trainings.get("b3").template = { ...maps.trainings.get("b3").template, folder: "A" };   // Hypertrophy's workout put in Summer block
+  await fns.seedTemplates();
+  assert.deepStrictEqual([fns.tplRootList().map((e) => e.key), fns.tplNode("b:Hypertrophy")], [["A", "b:Fat Burn", "H"], null], "his order, Fat Burn as a folder; Hypertrophy's only workout is in his folder, so no Hypertrophy folder");
+  assert.strictEqual(fns.templateHome(maps.trainings.get("b3")).folder, "A");
+  maps.clients.get(TPL).folders = maps.clients.get(TPL).folders.filter((f) => f.id !== "A" && f.parent !== "A" && !["S1", "S2"].includes(f.id));   // Summer block deleted on another device (its templates not yet back)
+  for (const t of maps.timers.values()) clearTimeout(t); maps.timers.clear(); maps.dirty.clear();   // its save landed: only the account's mark stops another adoption
+  assert.deepStrictEqual([fns.adoptBuiltins(), fns.templateHome(maps.trainings.get("b3"))], [false, { name: "client", id: TPL, program: "Hypertrophy", phase: 2, stage: 1 }], "after the account's one adoption nothing is made again on its own (a delete still landing must not bring folders back): it shows on its program's page");
+  assert.deepStrictEqual([fns.adoptBuiltins("all"), fns.templateHome(maps.trainings.get("b3"))], [true, { name: "client", id: TPL, folder: "b:Hypertrophy/2", slide: "b:Hypertrophy/2/1" }], "a restore's call files it in its week again");
+  assert.ok(maps.folderTouched.has("b:Hypertrophy/2/1"), "and those it makes are this device's, kept by a merge");
+  quiet();
+});
+
 const coach = (sb) => { quiet(); app.reset(); app.set({ sb, signedIn: true, clientMode: false, backend: fns.cloudBackend }); };
 const settle = async () => { const until = Date.now() + 15000; do await tick(5); while ((app.get().inflight > 0 || maps.timers.size) && Date.now() < until); assert.strictEqual(maps.timers.size, 0); };
 const F = (id, name, m) => node(id, name, null, "folder", m);
@@ -481,6 +544,30 @@ test("the Programs order across two devices: one reordered there survives a save
   assert.deepStrictEqual(await run({ ...base, rootOrder: there }, { read: true }, renameA), [there, ["A:Summer block 2", "H:Rehab"]], "with a copy read before: the same");
   assert.deepStrictEqual(await run({ ...base, folders: [F("A", "Summer block", 5), F("H", "Knee rehab", 1)] }, { read: true }, () => { fns.moveRootTo("p:Fat Burn", 0); }), [["p:Fat Burn", "H", "A"], ["A:Summer block", "H:Knee rehab"]], "reordered here, renamed there: both");
   assert.deepStrictEqual(await run({ ...base, rootOrder: there }, {}, () => { fns.moveRootTo("p:Fat Burn", 0); }), [["p:Fat Burn", "H", "A"], ["A:Summer block", "H:Rehab"]], "reordered here with no copy read before: this device's order lands");
+  quiet();
+});
+
+test("two devices: one that made the programs into folders from a copy with a change of its own waiting does not undo the other's rename or bring back a program deleted there", async () => {
+  const sb = makeSupabase(); coach(sb);
+  for (const t of BUILT) maps.trainings.set(t.id, JSON.parse(JSON.stringify(t)));
+  const base = { id: TPL, name: "Templates", kind: "templates", folders: [] };
+  maps.clients.set(TPL, JSON.parse(JSON.stringify(base))); fns.adoptBuiltins();   // this device's adoption, its save not out (no signal)
+  const mine = JSON.parse(JSON.stringify(maps.clients.get(TPL))), theirs = JSON.parse(JSON.stringify(mine));
+  theirs.folders = theirs.folders.filter((f) => !f.id.startsWith("b:Hypertrophy")).map((f) => (f.id === "b:Fat Burn" ? { ...f, name: "Fat Loss" } : f));   // the other device: adopted too, renamed Fat Burn, deleted Hypertrophy
+  sb.seed("ft_clients", TPL, theirs); maps.seenAt.set("clients/" + TPL, "S0"); maps.seenDoc.set("clients/" + TPL, JSON.stringify(base));
+  for (const t of maps.timers.values()) clearTimeout(t); maps.timers.clear();
+  await fns.cloudBackend.set("clients", TPL, mine);
+  const saved = sb.tables.ft_clients.get(TPL).data.folders;
+  assert.deepStrictEqual([saved.find((f) => f.id === "b:Fat Burn").name, saved.some((f) => f.id.startsWith("b:Hypertrophy"))], ["Fat Loss", false], "the rename kept, Hypertrophy stays deleted");
+  quiet();
+});
+
+test("a reseed's new built-in templates go into their weeks even after the account's adoption, made as this device's", () => {
+  setup(FOLDERS, BTPLS); fns.adoptBuiltins();
+  maps.trainings.set("b9", T("b9", { program: "Fat Burn", phase: 2, stage: 1, n: 1 }));   // a new week the next templates.json brings
+  maps.dirty.set("clients/" + TPL, 1);
+  assert.deepStrictEqual([fns.adoptBuiltins(), fns.adoptBuiltins(new Set(["b9"]))], [false, true], "nothing on its own; the reseed's own template, though a change waits");
+  assert.deepStrictEqual([fns.templateHome(maps.trainings.get("b9")), maps.folderTouched.has("b:Fat Burn/2/1")], [{ name: "client", id: TPL, folder: "b:Fat Burn/2", slide: "b:Fat Burn/2/1" }, true]);
   quiet();
 });
 

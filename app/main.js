@@ -1724,15 +1724,16 @@ import { reportRange, buildReport } from "./report.js";
   async function seedTemplates() {
     if (S.clientMode || S.seeding) return;
     let tc = clients.get(TEMPLATES_ID);
-    if (tc && (tc.templatesVersion || 0) >= TEMPLATES_VERSION) return;
-    S.seeding = true;
-    try { await seedTemplatesNow(tc); } finally { S.seeding = false; }
+    if (tc && (tc.templatesVersion || 0) >= TEMPLATES_VERSION) { adoptBuiltins(); return; }   // the built-in programs as his folders (v281), once per account
+    S.seeding = true; let added = [];
+    try { added = (await seedTemplatesNow(tc)) || []; } finally { S.seeding = false; }
+    const now2 = clients.get(TEMPLATES_ID); if (now2 && now2.builtinsAdopted && added.length) adoptBuiltins(new Set(added));   // after it: only the templates a reseed has just added, into their weeks
   }
   async function seedTemplatesNow(tc) {
     let list;
     try { const res = await fetch("templates.json", { cache: "no-store" }); if (!res.ok) return; list = await res.json(); } catch { return; }
     if (!tc) { tc = { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }; clients.set(tc.id, tc); }
-    const fresh = [];
+    const fresh = [], added = [];
     for (const T of list) {
       const have = trainings.get(T.id);
       if (have) {                                   // version 3 repair: reps that were wrongly given a "sec" unit
@@ -1744,7 +1745,7 @@ import { reportRange, buildReport } from "./report.js";
       const t = { id: T.id, clientId: TEMPLATES_ID, date: "2026-01-01", createdAt: now(), title: T.sub || "", completedAt: null, skippedAt: null,
         template: { program: T.program, phase: T.phase, stage: T.stage, n: T.n, phaseName: T.phaseName || "" },
         rows: T.rows.map((r) => ({ id: uid(), label: r.label, name: r.name, sets: r.sets, reps: r.reps || "", tempo: r.tempo || "", rest: r.rest || "", weights: [], note: r.note || "", done: false, alts: r.alts || [] })) };
-      trainings.set(t.id, t); fresh.push(t);
+      trainings.set(t.id, t); fresh.push(t); added.push(t.id);
     }
     tc.templatesVersion = TEMPLATES_VERSION;
     localBackend.save();
@@ -1759,6 +1760,7 @@ import { reportRange, buildReport } from "./report.js";
     } else { for (const t of fresh) scheduleSave("trainings", t.id, 0); }
     scheduleSave("clients", TEMPLATES_ID, 0);
     render(); setStatus();
+    return added;                                               // the templates it added: adoptBuiltins files them in their weeks
   }
   function templateMeta(t) { return t.template || { program: MY_TEMPLATES, phase: 0, stage: 0, n: 0, phaseName: "" }; }
   function templateTitle(t) { const m = templateMeta(t); return (m.n ? "Workout " + m.n : "") + (t.title ? (m.n ? " \u00b7 " : "") + t.title : "") || "Template"; }
@@ -1767,15 +1769,21 @@ import { reportRange, buildReport } from "./report.js";
   // look exactly like templates I already have"): one list of nodes on the Templates record. A folder sits at the top, or inside a top folder
   // (two deep at most, as a program and its phases); a slide, named by him ("instead of automatically new week"), belongs to a folder, as a
   // week to a phase. A template lives in a folder or a slide by its template.folder; one whose folder or slide is gone is loose again.
+  let nodesMemo = null;                                              // the list read once per change of it (a new list, or a longer one): every row of the Templates pages asks for its folder
   const tplNodes = () => {
-    const all = ((clients.get(TEMPLATES_ID) || {}).folders || []).filter((f) => f && f.id && typeof f.name === "string" && (f.kind === "folder" || f.kind === "slide"));
+    const raw = (clients.get(TEMPLATES_ID) || {}).folders || [];
+    if (nodesMemo && nodesMemo.raw === raw && nodesMemo.len === raw.length) return nodesMemo.list;
+    const list = readNodes(raw); nodesMemo = { raw, len: raw.length, list, byId: new Map(list.map((f) => [f.id, f])) }; return list;
+  };
+  const readNodes = (raw) => {
+    const all = raw.filter((f) => f && f.id && typeof f.name === "string" && (f.kind === "folder" || f.kind === "slide"));
     const folders = new Map(all.filter((f) => f.kind === "folder").map((f) => [f.id, f])), top = (f) => !f.parent || f.parent === f.id || !folders.has(f.parent);
     return all.filter((f) => f.kind === "folder" || folders.has(f.parent)).map((f) => (f.kind === "folder" && f.parent && (top(f) || !top(folders.get(f.parent))) ? { ...f, parent: null } : f));   // a folder whose folder went (deleted on another device), or one that would sit deeper than two (or in a ring, two devices' moves crossing), stands at the top; a slide whose folder went goes with it
   };
-  const tplNode = (id) => (id ? tplNodes().find((f) => f.id === id) || null : null);
+  const tplNode = (id) => { if (!id) return null; tplNodes(); return nodesMemo.byId.get(id) || null; };
   const ordOf = (f) => (typeof f.sort === "number" && isFinite(f.sort) ? f.sort : Infinity);
   const tplKids = (pid, kind) => tplNodes().filter((f) => (f.parent || null) === (pid || null) && f.kind === kind).sort((x, y) => (ordOf(x) === ordOf(y) ? 0 : ordOf(x) < ordOf(y) ? -1 : 1) || String(x.at || "").localeCompare(String(y.at || "")) || String(x.id).localeCompare(String(y.id)));   // in the order he put them in (Reorder folders: sort), then the order made (a new one last), the same on every device (a merge may list another device's new one first)
-  const tplHome = (t) => tplNode(templateMeta(t).folder);   // the folder or slide a template is in, if it is in one of his
+  const tplHome = (t) => { const m = templateMeta(t); return tplNode(m.folder) || (m.program && m.program !== MY_TEMPLATES ? tplNode("b:" + m.program + "/" + m.phase + "/" + m.stage) : null); };   // the folder or slide a template is in: the one it names, else, for a built-in program's template, its week's slide once the programs are folders (adoptBuiltins: his ask, 12 Nov, "all the functions need to work on every single template including the ones I already have")
   const tplTree = (fid) => { const ids = new Set([fid]); for (const f of tplNodes()) if (f.kind === "folder" && f.parent === fid) ids.add(f.id); for (const f of tplNodes()) if (f.kind === "slide" && ids.has(f.parent)) ids.add(f.id); return ids; };   // a folder, its folders and their slides
   const tplIn = (ids) => [...trainings.values()].filter((t) => isTemplateClient(t.clientId) && ids.has((tplHome(t) || {}).id));
   const byN = (x, y) => (Number(templateMeta(x).n) || 0) - (Number(templateMeta(y).n) || 0) || byMade(x, y);   // a place's templates in their order: Workout 1, 2 …
@@ -1851,11 +1859,33 @@ import { reportRange, buildReport } from "./report.js";
   let tplOrdering = null;                                             // the page whose folders he is putting in order: "" the Templates page, else the folder's id (Reorder folders, his pick 12 Nov: like the Clients list's Reorder, his folders only)
   const tplOrderOn = () => tplOrdering !== null && tplPageOn() && tplOrdering === (S.view.folder || "");   // grips on his folders, Done at the top right, no "…" and no +
   const doneTplOrder = () => { tplOrdering = null; render(); };      // Done: the page as it was, in the new order
+  function adoptBuiltins(which) {                                     // which: none = the account's one adoption (on a copy the sync refreshed, claiming nothing: another device's renames, reorders and deletes win a merge; the v281 review's catch); a Set of template ids = those a reseed just added; "all" = every built-in template with no week (after a restore). The built-in programs as folders like his own (his ask, 12 Nov: "all the functions need to work on every single template including the ones I already have"): a folder for each program, one in it for each phase, a slide for each week. Their ids are made from their names ("b:Fat Burn/1/2"), so every device makes the very same folders; the templates are not touched (each finds its week: tplHome). Run once the server's copy is in (seedTemplates)
+    if (S.clientMode) return false;
+    const tc = clients.get(TEMPLATES_ID); if (!tc) return false;
+    if (!which && (tc.builtinsAdopted || dirty.has(key("clients", TEMPLATES_ID)))) return false;   // once per account, and only on a copy with nothing of this device's waiting (the merge first brings in what another device did)
+    const need = clientTrainings(TEMPLATES_ID).filter((t) => { const m = templateMeta(t); return m.program && m.program !== MY_TEMPLATES && !tplHome(t) && (!which || which === "all" || which.has(t.id)); });
+    if (!need.length) { if (!which && !tc.builtinsAdopted) { tc.builtinsAdopted = 1; scheduleSave("clients", TEMPLATES_ID); } return false; }
+    const have = new Set((tc.folders || []).filter((x) => x && x.id).map((x) => x.id)), add = [];
+    const stamp = (k) => new Date(Date.UTC(2000, 0, 1) + k * 1000).toISOString();   // made, by the clock of no device: the programs in their usual order, phases and weeks by their numbers
+    const put = (n) => { if (!have.has(n.id) && !deletedFolders.has(n.id)) { have.add(n.id); add.push(n); } };
+    for (const t of need) {
+      const m = templateMeta(t), P = "b:" + m.program, F = P + "/" + m.phase;
+      const pn = (need.find((x) => templateMeta(x).program === m.program && templateMeta(x).phase === m.phase && templateMeta(x).phaseName) || { template: {} }).template.phaseName || "";
+      put({ id: P, name: String(m.program), parent: null, kind: "folder", at: stamp(progRank(m.program)) });
+      put({ id: F, name: "Phase " + m.phase + (pn ? " \u00b7 " + pn : ""), parent: P, kind: "folder", at: stamp(1000 + (Number(m.phase) || 0)) });
+      put({ id: F + "/" + m.stage, name: "Week " + m.stage, parent: F, kind: "slide", at: stamp(2000 + (Number(m.stage) || 0)) });
+    }
+    if (!add.length) return false;
+    tc.folders = [...(tc.folders || []), ...add]; tc.builtinsAdopted = 1;
+    if (which) for (const n of add) folderTouched.set(n.id, TEMPLATES_ID);   // a reseed's or a restore's: new here, kept by a merge (the account's one adoption claims nothing)
+    saveFolders(); renderUnlessSwiping(); return true;                   // (from inside a sync: never the row under a finger rebuilt)
+  }
   const tplRootList = () => {                                        // the Programs list on the Templates page: his top folders and the built-in programs, in the order he put them (Reorder: rootOrder on the Templates record), else his folders first, then the programs; one not in that order yet (a folder made since, a new program) after those that are
     const progs = [...new Set(clientTrainings(TEMPLATES_ID).filter((t) => !tplHome(t)).map((t) => templateMeta(t).program))].filter((p) => p !== MY_TEMPLATES).sort((x, y) => progRank(x) - progRank(y) || String(x).localeCompare(String(y)));
-    const all = [...tplKids(null, "folder").map((x) => ({ key: x.id, folder: x })), ...progs.map((p) => ({ key: "p:" + p, prog: p }))];
+    const tops = tplKids(null, "folder"), isB = (x) => String(x.id).startsWith("b:");
+    const all = [...tops.filter((x) => !isB(x)).map((x) => ({ key: x.id, folder: x })), ...tops.filter(isB).map((x) => ({ key: x.id, folder: x })), ...progs.map((p) => ({ key: "p:" + p, prog: p }))];   // his own folders, then the programs (made folders: their fixed times keep the usual order), then any not yet
     const ord = (clients.get(TEMPLATES_ID) || {}).rootOrder; if (!Array.isArray(ord)) return all;
-    const at = new Map(ord.map((k, i) => [k, i]));
+    const at = new Map(ord.map((k, i) => [k, i])); for (const [k, i] of [...at]) if (String(k).startsWith("p:") && !at.has("b:" + String(k).slice(2))) at.set("b:" + String(k).slice(2), i);   // an order from before the programs were folders names each "p:": the same place as a folder
     return all.map((e, i) => [e, at.has(e.key) ? at.get(e.key) : ord.length + i]).sort((a, b) => a[1] - b[1]).map((x) => x[0]);
   };
   function moveRootTo(key, j) {                                       // a program or a folder of his let go in a new place in the Programs list: the whole order kept on the Templates record (a field of it, merged as its other fields are)
@@ -2220,7 +2250,7 @@ import { reportRange, buildReport } from "./report.js";
     if (f) {                                                 // a folder of his, drawn as a program is (his ask: "should look exactly like templates I already have"): its folders as phases, its slides as the week slider
       const up = tplNode(f.parent), subs = tplKids(f.id, "folder"), slides = tplKids(f.id, "slide"), cur = tplSlide(f);
       $("tplKicker").textContent = up ? up.name : "Templates"; $("cName").textContent = f.name;
-      if (subs.length) { wrap.appendChild(h2("Folders")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...subs.map((x) => navRow(x.name, wn(tplIn(tplTree(x.id)).length), () => go(tplPage(x.id))))); wrap.appendChild(ul); }
+      if (subs.length) { wrap.appendChild(h2(!f.parent && String(f.id).startsWith("b:") ? "Phases" : "Folders")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...subs.map((x) => navRow(x.name, wn(tplIn(tplTree(x.id)).length), () => go(tplPage(x.id))))); wrap.appendChild(ul); }   // (a built-in program keeps its word for them: Phases)
       if (slides.length) {
         const seg = document.createElement("div"); seg.className = "seg stages"; seg.setAttribute("role", "tablist"); if (subs.length) seg.style.marginTop = "24px";
         for (const x of slides) { const b = document.createElement("button"); b.type = "button"; const nm = document.createElement("span"); nm.textContent = x.name; b.appendChild(nm); b.classList.toggle("on", x === cur); b.addEventListener("click", () => { S.view = { ...S.view, slide: x.id }; lsSet("fiala.trainings.view", S.view); renderTemplates(c); nav.curKey = screenKey(); }); seg.appendChild(b); }   // (in place, as a week tab: the screen's picture is filed under this slide)
@@ -2286,6 +2316,7 @@ import { reportRange, buildReport } from "./report.js";
     if (S.clientMode && effPaused(clients.get(S.myClientId))) S.view = { name: "client", id: S.myClientId };
     if (S.view.name === "client" && !clients.has(S.view.id)) S.view = S.clientMode ? { name: "client", id: S.myClientId } : { name: "clients" };
     if (S.view.name === "training" && !trainings.has(S.view.id)) S.view = S.clientMode ? { name: "client", id: S.myClientId } : { name: "clients" };
+    if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.program && tplNode("b:" + S.view.program)) { const P = "b:" + S.view.program, F = S.view.phase ? P + "/" + S.view.phase : null, W = F && S.view.stage ? F + "/" + S.view.stage : null; S.view = F && tplNode(F) ? { name: "client", id: TEMPLATES_ID, folder: F, ...(W && tplNode(W) ? { slide: W } : {}) } : { name: "client", id: TEMPLATES_ID, folder: P }; }   // a built-in program's page kept from before the programs became folders (v281): the same place, as a folder
     if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.folder && !tplNode(S.view.folder)) S.view = { name: "client", id: TEMPLATES_ID };   // a folder of his deleted on another device: the Templates page
     if (S.view.name !== "training" && previewClient) { previewClient = false; rememberPreview(); }
     if (!S.clientMode) document.body.classList.toggle("client", previewing());
@@ -5061,7 +5092,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!plan) return;
     if (!plan.cs.length && !plan.ts.length) { $("status").textContent = "Everything in that backup is already here"; return; }
     if (!(await askFirst({ title: "Restore this backup?", text: plan.text, yes: "Restore" }))) return;
-    applyRestore(plan); render();
+    applyRestore(plan); adoptBuiltins("all"); render();   // (built-in templates the file brings back, into their weeks)
   });
 
   // ---------- boot ----------
@@ -5133,7 +5164,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
