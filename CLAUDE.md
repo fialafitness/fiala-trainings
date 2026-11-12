@@ -57,7 +57,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (280 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (281 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -179,10 +179,11 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 - The coach's own template folders (v278) are a flat list `folders: [{ id, name, parent, kind: "folder" | "slide", at }]` on that record:
   - a folder sits at the top or inside a top folder, never deeper (`tplNodes()` puts a deeper one, or one in a ring, at the top);
   - a slide (a "week" the coach names) belongs to a folder;
-  - a template is in one by its `template.folder` id; one whose node is gone shows loose, in My templates;
+  - a template is in one by its `template.folder` id. A built-in program's template with none (or a gone one) is in its week's slide `b:<program>/<phase>/<stage>` once that exists (`tplHome`), else it shows loose or on its program's old page;
+  - the built-in programs become folders once per account (v281): `adoptBuiltins`, run from `seedTemplates` after a sync and only on a Templates record with nothing of this device's waiting, makes `b:<program>`, `b:<program>/<phase>` ("Phase N · name") and the week slides with fixed `at` times, claims none of them (no `folderTouched`) and marks `builtinsAdopted`. After that only a reseed's new templates or a restore make nodes (`adoptBuiltins(Set)` or `("all")`). `takeNotes` drops an untouched `b:` node that a server copy holding `b:` nodes lacks (deleted there). A built-in program's page keeps the word Phases;
   - `takeNotes` in `sync.js` merges the list by id, and a folder this device changed field by field (its `sort` from Reorder folders, its name), judged against the copy last read;
   - change a template's place with `placeTemplate()`, which saves through `tidySave` (never into an open template draft);
-  - the Templates page's Programs list (the coach's top folders and the built-in programs) keeps its Reorder as `rootOrder` on that record: keys, a folder's id or `"p:" + program`; `tplRootList()` reads it, and anything not in it comes after. `takeNotes` takes the server's order unless this device changed it (`folderTouched` key `":rootOrder"`);
+  - the Templates page's Programs list (the coach's top folders and the built-in programs) keeps its Reorder as `rootOrder` on that record: keys, a folder's id or `"p:" + program` (read as `"b:" + program` once that is a folder); `tplRootList()` reads it, and anything not in it comes after. With no `rootOrder`, the coach's own folders come first, then the programs. `takeNotes` takes the server's order unless this device changed it (`folderTouched` key `":rootOrder"`);
   - the Templates pages' top bar has a `+` (`#tAdd`, `tplAddItems`) and the `…` (`tplMoreItems`) in one capsule (CSS on `#tAdd`).
 - `templates.json` reaches an existing coach account only when its Templates record's `templatesVersion` is below `TEMPLATES_VERSION` in `main.js`: after a raise, or after restoring an older backup. Ask the owner before raising it. Each time, the app:
   - adds every built-in template the account lacks, so templates the coach deleted come back;
@@ -193,7 +194,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v280 it ends "478 passed, 0 failed" after about 45 s.
+- At v281 it ends "483 passed, 0 failed" after about 45 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
