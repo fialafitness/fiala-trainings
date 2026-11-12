@@ -160,5 +160,17 @@ document.activeElement = null; more.fire("click", { detail: 1, stopPropagation()
   app.set({ view: { name: "training", id: "tp" }, renderedTraining: null }); fns.render(); out.coach.template = tap();
   fns.setPreview(true); workout(false); out.coach.preview = tap(); fns.setPreview(false); }
 
+// ---------- the month's chips in the picker (his ask, 12 Nov: every calendar as the new one): names, states, the workout being moved outlined (his pick) ----------
+{ const chipsOn = (iso) => { const dp = fns.datePicker(), b = dayBtn(Number(iso.slice(8)), dp.months.indexOf(iso.slice(0, 7))), box = b && b.children[1]; return box ? box.children.map((c) => c.className + ":" + (c.children && c.children[0] ? c.children[0].textContent : c.textContent)) : null; };
+  const seed = () => {
+    workout(false); picked = [];
+    maps.trainings.set("d1", { id: "d1", clientId: "c1", title: "Arms", date: day(1), createdAt: "2026-11-01T09:00:00.000Z", completedAt: null, skippedAt: null, rows: [] });
+    for (const k of [1, 2, 3, 4]) maps.trainings.set("x" + k, { id: "x" + k, clientId: "c1", title: "X" + k, date: day(3), createdAt: "2026-11-01T1" + k + ":00:00.000Z", completedAt: null, skippedAt: null, rows: [] });
+  };
+  out.chips = {};
+  seed(); fns.openDatePicker({ clientId: "c1", moving: "w1", title: "Reschedule", selected: day(1), onPick: () => {} }); out.chips.moving = chipsOn(day(1)); fns.closeDatePicker();
+  seed(); fns.openDatePicker({ clientId: "c1", moving: "x4", title: "Reschedule", selected: day(3), onPick: () => {} }); out.chips.inMore = chipsOn(day(3)); fns.closeDatePicker();
+  seed(); fns.openDatePicker({ clientId: "c1", title: "Add to Jane", onPick: () => {} }); out.chips.addTo = chipsOn(day(1)); out.chips.today = dayBtn(new Date().getDate(), fns.datePicker().months.indexOf(fns.today().slice(0, 7))).classes.has("today"); fns.closeDatePicker(); }
+
 console.log(JSON.stringify(out));
 process.exit(0);

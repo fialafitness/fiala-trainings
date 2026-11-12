@@ -84,3 +84,10 @@ test("the coach's own \"…\" (his ask, 10 Nov), tapped: Reschedule, Copy workou
   const MID = ["Copy workout", "Save as template"];
   assert.deepStrictEqual(r.coach, { toDo: ["Reschedule", ...MID, "red Delete workout"], finishedClosed: true, finished: [...MID, "red Delete workout"], template: ["red Delete template"], preview: ["Reschedule"] });
 });
+
+test("the picker's days carry the month's chips (his ask, 12 Nov: every calendar as the new one): each workout's name, the one being moved outlined in purple (his pick), never hidden in the \"+N\"; nothing outlined when nothing moves (Add to a client); today marked as the month marks it", () => {
+  assert.deepStrictEqual(r.chips.moving, ["day-ev plan:Arms", "day-ev plan moving:Legs"], "Reschedule: the day the workout is on, its chip outlined, as made");
+  assert.deepStrictEqual(r.chips.inMore, ["day-ev plan:X1", "day-ev plan moving:X4", "day-ev-more:+2"], "four on a day: two and +2, the one being moved always among the two");
+  assert.deepStrictEqual(r.chips.addTo, ["day-ev plan:Arms", "day-ev plan:Legs"], "Add to a client: nothing is being moved");
+  assert.strictEqual(r.chips.today, true);
+});

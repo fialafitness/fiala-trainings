@@ -465,9 +465,6 @@
   @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
   .sheet-head { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin-bottom: 2px; }
   .sheet-title { font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; }
-  .sheet .cal button.today .dn { background: none; color: var(--brand-text); font-weight: 600; }   /* in the picker: today is purple text, the chosen day is the filled one */
-  .sheet .cal button.sel .dn { background: var(--brand-fill); color: #fff; box-shadow: none; }
-  .sheet .cal button.today.sel .dn { box-shadow: none; }
   /* "Finish early" asks first: what's done stays, the rest stays open, and they can say why */
   .sheet.ask { padding-top: 18px; }
   .sheet.ask h3 { margin: 6px 0 6px; font-size: 1.625rem; line-height: 1.875rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
@@ -1113,6 +1110,7 @@
   .day-ev.plan { background: var(--chip-plan); color: var(--chip-plan-ink); }
   .day-ev.done { background: var(--chip-done); color: var(--chip-done-ink); }
   .day-ev.miss { background: var(--chip-miss); color: var(--chip-miss-ink); }
+  .day-ev.moving { box-shadow: inset 0 0 0 1.5px var(--brand-text); }   /* in the day picker, the workout being moved: its chip outlined in purple (his pick, 12 Nov) */
   .day-ev-more { display: block; height: 16px; font-size: 10px; line-height: 16px; color: var(--text-tertiary); text-align: center; }   /* the count of the rest, plain, as Calendar's "+2" */
   .week[hidden] { display: none; }
   .week { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }   /* a day of the strip is pressed, never selected: a finger held on a workout lifts it, with no loupe and no callout, as on the month */
@@ -1160,17 +1158,10 @@
   .cal button:hover { background: var(--field); }
   .dragged .cal button:hover { background: transparent; }          /* once the finger slides the months, the day it landed on lets go (iOS keeps a touch's hover until the next touch; Apple's day lets go as the slide starts) */
   .cal button.out { visibility: hidden; }
-  .cal-panel .cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; }
-  .cal-panel .cal button { min-width: 0; border-radius: 0; padding: 6px 0 6px; box-shadow: inset 0 1px 0 var(--cal-line); }   /* a 1-point line over each week, across its days only, as Calendar's */
+  .cal-panel .cal, .dp-track > .cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; }
+  .cal-panel .cal button, .dp-track > .cal button { min-width: 0; border-radius: 0; padding: 6px 0 6px; box-shadow: inset 0 1px 0 var(--cal-line); }   /* a 1-point line over each week, across its days only, as Calendar's; the day picker's months alike (his ask, 12 Nov: every calendar as the month) */
   .cal .dn { font-size: 1.125rem; font-weight: 500; color: var(--text-primary); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .cal button.today .dn { background: var(--ink); color: var(--ink-on); }
-  .cal .dots { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; height: 11px; }   /* the bar and the padding it had (6 + 4), one more for three */
-  .cal .dot { width: 22px; height: 6px; border-radius: 50px; }
-  .cal .dots:has(> :nth-child(2)) .dot { height: 4px; }            /* 4 + 2 + 4 = 10 */
-  .cal .dots:has(> :nth-child(3)) { gap: 1px; }
-  .cal .dots:has(> :nth-child(3)) .dot { height: 3px; }            /* 3 + 1 + 3 + 1 + 3 = 11 */
-  .cal .dot.planned { border: 1px solid var(--text-tertiary); }
-  .cal .dot.finished { background: var(--done); border-color: var(--done); }
   .month { margin-top: 12px; }
   .month > button { appearance: none; border: 1px solid var(--card-edge); background: var(--card); border-radius: var(--r-card); width: 100%; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 56px; padding: 0 16px 0 20px; font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary); }   /* a group's title row is the top of its card */
   .month > button .sub { display: inline-flex; align-items: center; gap: 6px; flex: none; white-space: nowrap; color: var(--text-tertiary); font-size: 0.8125rem; font-weight: 400; letter-spacing: 0; }
@@ -1256,7 +1247,7 @@
   .dp-pager { overflow: hidden; touch-action: pan-y; }   /* the day picker's months side by side on a track the finger moves sideways (main.js); up and down still scroll the sheet (a phone on its side), as the client page's month calendar does */
   .dp-track { display: flex; will-change: transform; }
   .dp-track > .cal { flex: 0 0 100%; min-width: 0; align-content: start; }   /* one month a page, all as tall as the tallest */
-  .cal button.off { cursor: default; } .cal button.off:hover { background: transparent; } .cal button.off .dn { color: var(--text-tertiary); opacity: 0.6; }   /* a day that cannot be picked (before today, for a reschedule) */
+  .cal button.off { cursor: default; opacity: 0.35; } .cal button.off:hover { background: transparent; }   /* a day that cannot be picked (before today, for a client's reschedule): grey, as the days gone by are while a workout is dragged in the month (his ask, 12 Nov: every calendar as the month) */
   .mnav:disabled { opacity: 0.3; cursor: default; }
   .disc.open { transform: rotate(180deg); }
   .disc.needs::after { content: ""; position: absolute; top: -1px; right: -1px; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); border: 2px solid var(--surface); }   /* needs attention: red, like a badge */
@@ -1796,7 +1787,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=274";
+  import { boot } from "./app/main.js?v=275";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
