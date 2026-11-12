@@ -15,10 +15,11 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const r = JSON.parse(execFileSync(process.execPath, [path.join(here, "cal-drag-probe.mjs")], { encoding: "utf8", timeout: 60000 }).trim().split("\n").pop());
 const html = fs.readFileSync(path.join(here, "../index.html"), "utf8"), js = fs.readFileSync(path.join(here, "../app/main.js"), "utf8");
 
-test("held on a workout in the week strip, nothing shows for 0.4 s; then it lifts (a tick), a copy of its name over the finger in its colour, the days gone by grey and its own day filled; dragged a day on, that day is filled; let go there, it has moved (the coach's an ordinary save), nothing opens and the release clicks nothing", () => {
+test("held on a workout in the week strip, nothing shows for 0.4 s; then it lifts, a copy of its name over the finger in its colour, the days gone by grey and its own day filled; dragged a day on, that day is filled; let go there, it has moved (the coach's an ordinary save), nothing opens and the release clicks nothing", () => {
   assert.deepStrictEqual(r.strip.early, { lifted: false, ghost: false, body: false }, "0.39 s: nothing yet, as Calendar");
   const l = r.strip.lift;
-  assert.deepStrictEqual([l.lifted, l.ghost, l.cls, l.words, l.body, l.ticks], [true, true, "plan", "Push day", true, 1]);
+  assert.deepStrictEqual([l.lifted, l.ghost, l.cls, l.words, l.body, l.ticks], [true, true, "plan", "Push day", true, 0], "no tick at the lift: on his iPhone none came (a web app may tick only as a touch lands or lifts)");
+  assert.strictEqual(r.strip.landTicks, 1, "one tick as it lands in its new day (his pick, 12 Nov), inside the release's own touchend");
   assert.strictEqual(l.width, "85px", "1.6 of the day's 53 points, as Calendar's (92 of 57)");
   assert.deepStrictEqual(l.lit, ["2026-11-13"], "its own day filled at the lift, as Calendar's");
   assert.deepStrictEqual(l.past, ["2026-11-09", "2026-11-10"], "Monday and Tuesday gone by");
@@ -32,12 +33,12 @@ test("held on a workout in the week strip, nothing shows for 0.4 s; then it lift
 });
 
 test("held and let go where it was, it settles back: nothing moves and nothing opens (his pick); a tap still opens the preview", () => {
-  assert.deepStrictEqual(r.inPlace, { lifted: true, date: "2026-11-13", preview: null, clickEaten: true, ghost: false });
+  assert.deepStrictEqual(r.inPlace, { ticked: false, lifted: true, date: "2026-11-13", preview: null, clickEaten: true, ghost: false }, "settled back: no tick");
   assert.deepStrictEqual(r.tap, { lifted: false, preview: "a", eaten: false });
 });
 
 test("a day gone by takes nothing: no fill over it, and let go there the workout stays where it was (in the coach's view too: his rule for the drag)", () => {
-  assert.deepStrictEqual(r.pastDay, { over: { lit: [], key: null }, date: "2026-11-13" });
+  assert.deepStrictEqual(r.pastDay, { over: { lit: [], key: null }, ticked: false, date: "2026-11-13" });
 });
 
 test("a finger that wanders before the lift (a scroll, the months' slide) lifts nothing; a finished workout never lifts", () => {
@@ -81,7 +82,7 @@ test("Escape, a second finger and the system's own cancel take it back: nothing 
 test("a sync's redraw waits while a workout is lifted (the chip stays in the page) and comes once it is down; a week turned under the finger takes its chip out of the page, its touch still drops it, and its listeners go with the drag", () => {
   assert.deepStrictEqual(r.redraw, { held: true, after: false, title: "Done 2" });
   assert.deepStrictEqual(r.detached, { gone: true, date: "2026-11-20", listening: 0 }, "aimed at Friday's column of the week turned in: the strip's days are its columns, wherever its sliding buttons are");
-  assert.ok(r.ticks >= 10, "a tick at each lift");
+  assert.ok(js.includes("    if (moved) cdTick();") && js.includes('document.addEventListener("click", (e) => { if (cdTicking) return; if (performance.now() < cdEatUntil) {'), "the tick when it has moved, and its own click let through the release's eater (eaten, its switch would not flip)");
 });
 
 test("the look, measured on Apple Calendar (iOS 27): the copy 20 tall, its words a size up (15 for 11) and white on its solid colour, a soft shadow, over the page and under nothing; the day under it filled as Calendar's; the days gone by grey; no loupe on the strip; Reduce Motion moves it at once", () => {
