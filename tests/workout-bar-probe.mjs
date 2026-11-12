@@ -23,6 +23,7 @@ const dock = el("div"); dock.id = "dock"; dock.children = items; byId.set("dock"
 const moves = []; dock.style = new Proxy({ setProperty() {}, removeProperty() {} }, { set(t, k, v) { t[k] = v; if (k === "transform") moves.push(v); return true; } });
 dock.cloneNode = () => { const c = el("div"); c.id = dock.id; c.style = {}; for (const k of dock.classes) c.classList.add(k); c.children = items.map((k) => ({ id: k.id, hidden: k.hidden })); c.isCopy = true; return c; };
 const tplFill = listens(el("button")); byId.set("tplFill", tplFill);
+const addRow = listens(el("button")); byId.set("addRow", addRow);   // + Add exercise under the exercises (his ask, 12 Nov)
 byId.set("whenBg", Object.assign(el("div"), { hidden: true }));
 // a picture's box keeps what is put in it; the page's sections, for the picture to copy
 const make = document.createElement; document.createElement = (t) => { const e = make(t); e.kids = []; e._land = undefined; e._bar = null; e.parentNode = null; e.appendChild = (c) => { e.kids.push(c); return c; }; e.querySelectorAll = (s) => (s === ".shot-dock" ? e.kids.filter((k) => k.classList && k.classList.contains("shot-dock")) : []); e.remove = () => {}; return e; };
@@ -62,6 +63,11 @@ if (MODE !== "swipe") {
   name.focus(); await wait(120); out.backToName = look();
   name.blur(); await wait(120); out.letGo = look();
   plus.fire("click", { detail: 1 }); plus.fire("click", { detail: 2 }); out.doubleClick = { added: added.length };
+  // + Add exercise under the exercises, double clicked: the new card takes the button's place, so the second click lands on the card
+  const click = (detail) => { const e = { detail, prevented: false, stopped: false }; e.preventDefault = () => { e.prevented = true; }; e.stopImmediatePropagation = () => { e.stopped = true; }; return e; };
+  addRow.fire("click", { detail: 1 }); const second = click(2), single = click(1); fire("click", second); fire("click", single);
+  await wait(600); const late = click(2); fire("click", late);
+  out.addRow = { added: added.length, secondEaten: second.prevented && second.stopped, singleKept: !single.prevented && !single.stopped, lateKept: !late.prevented && !late.stopped };
   for (const t of maps.timers.values()) clearTimeout(t);
 }
 

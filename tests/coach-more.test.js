@@ -3,6 +3,7 @@
 // workout shows only Delete, a template only Delete template; the red Delete workout at the page's foot stays. The client's "…" (and the
 // coach's Client view of a workout) keeps the client's Reschedule, from today on. And the client page's tabs are filled (his pick: B, a
 // dumbbell, bars, a page; traced to Apple's dumbbell.fill, chart.bar.fill and doc.text.fill).
+// His ask, 12 Nov: "copy workout and save as template will go to "..." button only for coaches view": between Reschedule and Delete.
 import fs from "node:fs";
 import { test, assert, tick } from "./assert.js";
 import { load } from "./load.js";
@@ -29,13 +30,41 @@ const agree = (id) => assert.strictEqual(fns.barFor("training/" + id).tMore, sho
 const DONE = "2026-11-02T18:00:00.000Z";
 const quiet = () => { for (const t of maps.timers.values()) clearTimeout(t); maps.timers.clear(); fns.setPreview(false); };   // no save left to run into a later test
 
-test("the coach's own view: the \"…\" on every workout and template; Reschedule while it is still to do; last and red, Delete", () => {
-  page("w1"); assert.deepStrictEqual([shown(), menu("w1")], [true, ["Reschedule", "red Delete workout"]], "still to do"); agree("w1");
-  page("w1", { completedAt: DONE }); assert.deepStrictEqual([shown(), menu("w1")], [true, ["red Delete workout"]], "finished: nothing to reschedule"); agree("w1");
-  page("w1", { skippedAt: DONE }); assert.deepStrictEqual([shown(), menu("w1")], [true, ["red Delete workout"]], "skipped"); agree("w1");
-  page("tp"); assert.deepStrictEqual([shown(), menu("tp")], [true, ["red Delete template"]], "a template: no day to move"); agree("tp");
-  assert.ok(fns.moreItems(maps.trainings.get("tp")).every((it) => it.icon), "each with its symbol, as every menu of his");
+test("the coach's own view: the \"…\" on every workout and template; Reschedule while it is still to do; Copy workout and Save as template; last and red, Delete", () => {
+  const MID = ["Copy workout", "Save as template"];
+  page("w1"); assert.deepStrictEqual([shown(), menu("w1")], [true, ["Reschedule", ...MID, "red Delete workout"]], "still to do"); agree("w1");
+  page("w1", { completedAt: DONE }); assert.deepStrictEqual([shown(), menu("w1")], [true, [...MID, "red Delete workout"]], "finished: nothing to reschedule"); agree("w1");
+  page("w1", { skippedAt: DONE }); assert.deepStrictEqual([shown(), menu("w1")], [true, [...MID, "red Delete workout"]], "skipped"); agree("w1");
+  page("tp"); assert.deepStrictEqual([shown(), menu("tp")], [true, ["red Delete template"]], "a template: no day to move, and Use for a client is its copy"); agree("tp");
+  for (const id of ["w1", "tp"]) assert.ok(fns.moreItems(maps.trainings.get(id)).every((it) => it.icon), "each with its symbol, as every menu of his");
   quiet();
+});
+
+test("Copy workout from the \"…\": which client gets it (this one first), then a copy of the workout as it is now opens; Save as template opens the new template; nothing from a page left behind; the page's foot keeps only Delete workout", async () => {
+  let onRow = null; const pl = $("pickList"); pl.addEventListener = (t, f) => { if (t === "click") onRow = f; };
+  const bob = () => maps.clients.set("c2", { id: "c2", name: "Bob", unit: "lb" }), pickBob = () => onRow({ target: { closest: () => ({ dataset: { id: "c2" } }) } });
+  const item = (label) => fns.moreItems(maps.trainings.get("w1")).find((it) => it.label === label);
+  try {
+    page("w1"); bob();
+    assert.deepStrictEqual([item("Copy workout").icon, item("Save as template").icon], [fns.menuIcons().copy, fns.menuIcons().save], "Copy workout's page over a page; an arrow down into a tray for Save as template");
+    $("pickSheet").hidden = true; const p = item("Copy workout").onPick();
+    assert.deepStrictEqual([$("pickSheet").hidden, $("pickTitle").textContent], [false, "Copy workout to"], "which client gets it");
+    await tick(400);
+    maps.trainings.set("w1", { ...maps.trainings.get("w1"), title: "Legs and calves" });   // a sync brings a newer copy of the workout while the clients are up
+    pickBob(); await p;
+    const made = [...maps.trainings.values()].filter((t) => t.clientId === "c2"), v = app.get().view;
+    assert.deepStrictEqual([made.length, made[0] && made[0].title, v.name, v.id], [1, "Legs and calves", "training", made[0] && made[0].id], "a copy for Bob, of the workout as it is now, and it opens");
+    page("w1"); const save = item("Save as template"); app.set({ view: { name: "client", id: "c1" } }); save.onPick();
+    assert.strictEqual([...maps.trainings.values()].filter((t) => t.clientId === TEMPLATES_ID && t.id !== "tp").length, 0, "a menu from a page left behind saves nothing");
+    page("w1"); item("Save as template").onPick();
+    const tpl = [...maps.trainings.values()].filter((t) => t.clientId === TEMPLATES_ID && t.id !== "tp"), w = app.get().view;
+    assert.deepStrictEqual([tpl.length, tpl[0] && tpl[0].title, w.name, w.id], [1, "Legs", "training", tpl[0] && tpl[0].id], "a new template, and it opens");
+    page("w1"); bob(); $("pickSheet").hidden = true; const q = item("Copy workout").onPick();
+    await tick(400); app.set({ view: { name: "client", id: "c1" } }); const before = maps.trainings.size; pickBob(); await q;
+    assert.strictEqual(maps.trainings.size, before, "Back while the clients were up: nothing copied");
+  } finally { delete pl.addEventListener; quiet(); }
+  assert.ok(!html.includes('id="copyTraining"') && !html.includes('id="saveTemplate"'), "no longer at the page's foot");
+  assert.ok(html.includes('<div class="foot stack trainer-only">\n      <button class="btn tint wide soft danger" id="delTraining" type="button">Delete workout</button>\n    </div>'), "the foot keeps the red Delete workout alone");
 });
 
 test("the client's \"…\", and the coach's Client view of a workout: the client's Reschedule only, none once it is finished; never Delete", () => {
