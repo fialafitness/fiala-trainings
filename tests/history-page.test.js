@@ -19,7 +19,7 @@ const scroller = () => {                                            // the page'
   s.done = () => { globalThis.scrollTo = real; globalThis.scrollY = 0; fns.leaveSettings(); };   // off History, so the tests after these draw their own pages
   return s;
 };
-const histKey = "client/c1///|history|", clientKey = "client/c1///||";
+const histKey = "client/c1/////|history|", clientKey = "client/c1/////||";   // (the view's fields: name, id, program, phase, stage, and since v278 his template folder and slide)
 const page = () => { try { return JSON.parse(localStorage.getItem("fiala.trainings.page")); } catch (_) { return null; } };
 
 test("a workout tapped on History opens; Back goes to History where it was, and Back again to the client's page where it was", async () => {

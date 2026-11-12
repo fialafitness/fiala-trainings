@@ -70,7 +70,7 @@ await fromClientPage("clientFinished", true, { completedAt: DONE });
 await fromClientPage("clientSkipped", true, { skippedAt: DONE });
 await fromClientPage("previewFinished", false, { completedAt: DONE }, { preview: true });
 await fromClientPage("coachFinished", false, { completedAt: DONE });
-// a template back to the library: Back stays where it is
+// a template back to the library: Back stays where it is, and the … (the template's Delete; the library's New folder)
 setup(false); app.set({ view: { name: "client", id: TEMPLATES_ID }, renderedTraining: null }); fns.render(); await wait(5);
 fns.go({ name: "training", id: "tp" }); await wait(5);
 out.template = { workout: shows(), ...(await swipe()) };

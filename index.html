@@ -475,6 +475,8 @@
   /* the confirm sheet: nothing is deleted or discarded by accident; only its red button does it */
   .sheet.confirm-sheet h3 { font-size: 1.375rem; line-height: 1.75rem; }
   .sheet.confirm-sheet .lead[hidden] { display: none; }
+  .sheet.confirm-sheet .ask-input { display: block; width: 100%; box-sizing: border-box; margin: 4px 0 0; min-height: 48px; padding: 0 14px; border: 0; border-radius: var(--r-field); background: var(--field); color: var(--text-primary); font: inherit; font-size: 1.0625rem; letter-spacing: 0; }   /* a name for his folder or slide (12 Nov): one field, as the sheet's other fields; 17 px, so the phone does not zoom into it */
+  .sheet.confirm-sheet .ask-input[hidden] { display: none; }
   .pick-sheet .list { margin-top: 14px; max-height: 50vh; overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }   /* "Copy workout to": a grouped list of clients inside the sheet */
   .pick-sheet .list { background: var(--sheet-list); border-color: transparent; }
   .pick-sheet .ask-actions { margin-top: 10px; }
@@ -917,8 +919,10 @@
   #tabbar button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* a squeezed tab (narrow phone, large Text Size) clips its word rather than running into the next */
   #tabbar button.on { background: var(--tab-on); color: var(--brand-text); box-shadow: var(--tab-on-shadow); }
   body.tabs #vClient { padding-bottom: 100px; }                                   /* the last thing on the page clears the bar */
+  body.tplus #vClient { padding-bottom: 100px; }                                  /* the Templates pages: the last template clears the + (main.js) */
   body.typing #dock, body.kb #dock { display: none; }                            /* the keyboard has the bottom (a phone's: a computer's keyboard is on the desk, main.js), and so has the keyboard's own bar of keys above it (on a computer too: there it sits at the window's foot) */
   #dock.ws { justify-content: space-between; padding: 0 21px; max-width: 680px; margin: 0 auto; }   /* the coach's workout page: Coach | Client at the leading edge, the + at the trailing one, 21 in from the screen's edges (measured on Photos, his reference); on a wide screen the row keeps to the page's column. Marked on the bar itself, not the page, so the swipe back's picture of a page keeps that page's own bar (main.js captureScreen) */
+  #dock.tp { justify-content: flex-end; padding: 0 21px; max-width: 680px; margin: 0 auto; }   /* the Templates pages and his folders (12 Nov): the + alone at the trailing edge, where the workout page's sits */
   #dock.ws #addExBtn { margin-left: auto; }                                      /* the + stays at the trailing edge when it is alone (a template has no Coach | Client) */
   body.wsdock #vTraining { padding-bottom: 100px; }                              /* the last thing on the page clears the bar */
   body.draft #dock { bottom: calc(79px + env(safe-area-inset-bottom, 0px)); }    /* a template's Unsaved changes bar has the very bottom (measured: 65 tall above the home-indicator inset): the + floats 14 above it */
@@ -1294,6 +1298,8 @@
   .list[hidden], .listbar[hidden] { display: none; }
   .seg.stages { display: flex; width: 100%; }
   .seg.stages button { flex: 1; padding: 0 8px; }
+  .seg.stages button { min-width: 0; }
+  .seg.stages button > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* his own slides carry his names (12 Nov): a long one is cut short inside its key, as iOS cuts a segment's title; cut in a span, so the key keeps its 44 pt halo (a clip on the key would cut that too) */
   .tpl-stage { font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 14px 4px 8px; }
   .pick-note { margin: 12px 2px 0; font-size: 0.9375rem; color: var(--text-secondary); }
   .pick-note b { font-weight: 500; color: var(--text-primary); }
@@ -1746,7 +1752,7 @@
 <div id="ctxDim" hidden></div><div id="ctxLift" hidden aria-hidden="true" inert></div><div id="whenBg" hidden><div id="whenPop" role="dialog" aria-live="polite"></div></div>
 <input type="file" id="photoInput" accept="image/*" hidden>
 <div class="sheet-bg" id="pvSheet" hidden><div class="sheet pv-sheet" id="pvBox" role="dialog" aria-modal="true" aria-labelledby="pvTitle" tabindex="-1"><div class="pv-bar" id="pvBar"><button class="pv-x" id="pvX" type="button" aria-label="Close"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M1.7 1.7 16.3 16.3M16.3 1.7 1.7 16.3"/></svg></button><p class="pv-bar-title" id="pvBarTitle" aria-hidden="true"></p><div class="pv-tools"><button class="pv-x pv-more" id="pvMore" type="button" aria-label="More" aria-haspopup="menu"><svg viewBox="0 0 22 22" aria-hidden="true" fill="currentColor"><circle cx="3.13" cy="11" r="1.97"/><circle cx="11" cy="11" r="1.97"/><circle cx="18.87" cy="11" r="1.97"/></svg></button><div class="pv-pager" role="group" aria-label="Workouts"><button id="pvPrev" type="button" aria-label="Previous workout"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 3.2 5.7 9l5.8 5.8"/></svg></button><button id="pvNext" type="button" aria-label="Next workout"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.2 12.3 9l-5.8 5.8"/></svg></button></div></div></div><div class="pv-scroll" id="pvScroll" tabindex="0" role="group" aria-labelledby="pvTitle"><h3 id="pvTitle"></h3><p class="pv-day" id="pvDay"></p><div class="pv-cards" id="pvCards" role="group" aria-label="Exercises"></div></div><div class="ask-actions"><button class="btn" id="pvGo" type="button">Start workout</button></div><p class="vh" id="pvSay" aria-live="polite"></p></div></div>
-<div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
+<div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><input class="ask-input" id="askInput" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" aria-labelledby="askTitle" hidden><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="pickSheet" hidden><div class="sheet ask confirm-sheet pick-sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle"><h3 id="pickTitle"></h3><ul class="list" id="pickList"></ul><div class="ask-actions"><button class="btn quiet" id="pickNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="skipSheet" hidden>
   <div class="sheet ask" role="dialog" aria-modal="true" aria-labelledby="skTitle">
@@ -1787,7 +1793,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=277";
+  import { boot } from "./app/main.js?v=278";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

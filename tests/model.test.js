@@ -212,6 +212,7 @@ test("a backup is refused when a field a screen reads as a list or an object is 
   const base = () => ({ app: "fiala-trainings", format: 1, clients: { c1: { id: U(1), name: "A", unit: "lb", paused: false, seenNotes: ["x"], seenDoneAt: "2026-10-01T10:00:00.000Z", packages: [{ id: "p1", name: "10 sessions", kind: "sessions", size: 10, inPerson: true }], plan: { id: "p1", kind: "sessions", size: 10, adjust: 0, startedOn: "2026-10-01" }, planHistory: [], notes: { log: [] } } },
     trainings: { t1: { id: U(2), clientId: U(1), date: "2026-10-01", title: "A", completedAt: null, skippedAt: null, missed: false, inPerson: true, rows: [{ id: "r1", name: "Squat", label: "1", sets: "3", setsDone: 2, reps: "5", rest: "", tempo: "", note: "", weights: ["100", 100, null], repsDone: ["5"], alts: ["Lunge"], unit: "lb", done: false }] } } });
   assert.doesNotThrow(() => fns.validateBackup(base(), () => false), "the app's own shape, counts as strings or numbers, nulls where the app writes nulls");
+  assert.doesNotThrow(() => { const d = base(); d.clients.c1.folders = [{ id: "f1", name: "Summer", parent: null, kind: "folder", at: "2026-11-12T10:00:00.000Z" }]; d.trainings.t1.template = { program: "My templates", phase: 0, stage: 0, n: 1, folder: "f1" }; fns.validateBackup(d, () => false); }, "his template folders (12 Nov), and a template's place in one");
   const bad = [
     ["weights as an object", (d) => { d.trainings.t1.rows[0].weights = { 0: "100" }; }],
     ["alternatives as a string", (d) => { d.trainings.t1.rows[0].alts = "Lunge"; }],
@@ -222,6 +223,9 @@ test("a backup is refused when a field a screen reads as a list or an object is 
     ["a finish stamp that is a number", (d) => { d.trainings.t1.completedAt = 5; }],
     ["a flag that is a word", (d) => { d.trainings.t1.missed = "yes"; }],
     ["packages as an object", (d) => { d.clients.c1.packages = { p1: {} }; }],
+    ["template folders as an object", (d) => { d.clients.c1.folders = { a: 1 }; }],
+    ["a template folder that is not an object", (d) => { d.clients.c1.folders = ["Summer"]; }],
+    ["a template's folder that is not a word", (d) => { d.trainings.t1.template = { program: "My templates", phase: 0, stage: 0, n: 1, folder: 7 }; }],
     ["a package without an id", (d) => { d.clients.c1.packages = [{ name: "no id" }]; }],
     ["a plan as a string", (d) => { d.clients.c1.plan = "10 sessions"; }],
     ["notes as a list", (d) => { d.clients.c1.notes = ["a"]; }],

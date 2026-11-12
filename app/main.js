@@ -1,6 +1,6 @@
 // Fiala Trainings — the app. Loaded by index.html as an ES module; boot() starts it.
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
-import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, fromFile, pendingNoteRows, ui, planTouched } from "./state.js";
+import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, fmtDayLong, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
 import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, labelKey, cmpLabel, validateBackup, doneCount, timedPlan, measurePlan, convertWeight, stampUnit, toUnit, toTimeUnit, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
@@ -188,7 +188,7 @@ import { reportRange, buildReport } from "./report.js";
     const dy = calFold(); if (dy && backScroll != null) backScroll = Math.max(0, backScroll + dy);   // the card, History or Settings opened over a client's month: the week comes back under it, and Back's place moves with the list
     navWillChange(); $("meDisc").hidden = true; $("tMore").hidden = true; $("barMsg").hidden = true; closeMoreMenu();
     rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
-    $("tabbar").hidden = true; $("addBtn").hidden = true; document.body.classList.remove("tabs");
+    $("tabbar").hidden = true; $("addBtn").hidden = true; document.body.classList.remove("tabs", "tplus"); $("dock").classList.remove("tp");
     $("viewSeg").hidden = true; $("addExBtn").hidden = true; document.body.classList.remove("wsdock"); $("dock").classList.remove("ws");   // the workout page's bar too: Coach | Client and its +
     for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vClientCard", "vHistory", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
     $("navDone").hidden = true;
@@ -206,7 +206,7 @@ import { reportRange, buildReport } from "./report.js";
     $("suMsg").textContent = ""; $("suEmail").value = $("loginEmail").value.trim(); setTimeout(() => $("suName").focus(), 50);
   }
   const scrollMemo = new Map();          // page key -> how far it was scrolled when it was left: Back lands there (his rule: never at the top)
-  const viewKey = (v) => [v.name, v.id || "", v.program || "", v.phase || "", v.stage || ""].join("/");
+  const viewKey = (v) => [v.name, v.id || "", v.program || "", v.phase || "", v.stage || "", v.folder || "", (v.folder ? shownSlide(v) : v.slide) || ""].join("/");   // (his template folders and their slides too, 12 Nov: each its own page for Back, its place and its picture; a folder's page by the slide it shows, named or not, so the key it is left under is the key Back and the swipe look for)
   const setTab = (v) => { S.tab = v; lsSet("fiala.trainings.tab", v); };   // the client page's tab, remembered across a reload
   let dragging = false;                  // a client row is under the finger: no redraw of the list until it is put down
   let kbSwitching = false;               // the keyboard bar's Aa/123 switch is re-focusing the box: that blur is not a leave
@@ -665,7 +665,7 @@ import { reportRange, buildReport } from "./report.js";
     if (quiet && S.clientMode !== (trainer !== true)) { quiet = false; settingsOpen = false; }   // painted as the other role: start the pages over
     if (S.pendingOwner && S.pendingOwner !== S.sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
       resetPhotos();                                                 // the photos queued and kept by the last account go too
-      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); fromFile.clear();
+      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); folderTouched.clear(); deletedFolders.clear(); fromFile.clear();
     }
     S.pendingOwner = S.sessionEmail; persistPending();
     S.clientMode = trainer !== true;
@@ -814,7 +814,7 @@ import { reportRange, buildReport } from "./report.js";
     if (dirty.size) { $("status").textContent = "Some changes are not saved yet \u00b7 try again when online"; return; }
     const finish = () => {
       for (const tm of timers.values()) clearTimeout(tm);
-      timers.clear(); chains.clear(); dirty.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); fromFile.clear(); S.failed = false;
+      timers.clear(); chains.clear(); dirty.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); folderTouched.clear(); deletedFolders.clear(); fromFile.clear(); S.failed = false;
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
       S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar();
@@ -855,13 +855,13 @@ import { reportRange, buildReport } from "./report.js";
     trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
     go({ name: "training", id: t.id });
   }
-  function newWorkoutHere() { setTab("workouts"); addTraining(S.view.id, null, today()); }   // the round + beside the bar, on any tab: a new workout for this client, today — and Back lands on Workouts, where it shows
+  function newWorkoutHere() { if (S.view.name === "client" && isTemplateClient(S.view.id)) { newTemplateHere(); return; } setTab("workouts"); addTraining(S.view.id, null, today()); }   // the round + beside the bar, on any tab: a new workout for this client, today — and Back lands on Workouts, where it shows
   function deleteTraining(id) {
     const t = trainings.get(id); if (!t) return;
     if (S.templateDraft && S.templateDraft.id === id) { S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); }
     const toHistory = fromHistory(t);
     trainings.delete(id); scheduleSave("trainings", id, 0);
-    if (toHistory) backToHistory(t); else go({ name: "client", id: t.clientId }, true);   // up to where Back goes (the client, or History it was opened from): its step goes
+    if (toHistory) backToHistory(t); else go(isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }, true);   // up to where Back goes (the client, or History it was opened from; a template: its folder, slide or phase page): its step goes
   }
   function deleteClient(id) {
     if (!clients.has(id)) return;                                      // a second tap on Delete finds nobody
@@ -923,10 +923,12 @@ import { reportRange, buildReport } from "./report.js";
     if (!(next.name === "client" && isTemplateClient(next.id))) { pickFor = null; fillFor = null; }
     if (viewKey(next) !== viewKey(S.view)) calFold();               // a client's page being left: its month folds back into the week before the page's picture and place are taken
     navWillChange(back ? "back" : "");                               // the screen as it was: Safari's (and the edge swipe's) page to come back to
+    if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.folder) lastSlide.set(S.view.folder, shownSlide(S.view));   // a folder of his left for a folder inside it (or anything): Back finds the slide it was on
     scrollMemo.set(viewKey(S.view), window.scrollY);                                              // the page being left: Back brings it back here
     if (S.view.name === "training" && !(next.name === "training" && next.id === S.view.id)) for (const k of [...cardNoteDraft.keys()]) if (k.startsWith(S.view.id + "/")) cardNoteDraft.delete(k);   // a card note left half-written goes with the page
     if (!S.clientMode && (!S.sb || S.syncedOnce) && S.view.name === "training" && !(next.name === "training" && next.id === S.view.id) && fillFor !== S.view.id) {   // leaving an empty workout behind discards it, like an empty note (not while it waits for a template, not before the first sync)
-      const t = trainings.get(S.view.id); if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
+      const t = trainings.get(S.view.id), fresh = !!t && t.id === tplFresh && !(t.rows || []).length && !String(t.title || "").trim(); if (fresh) tplFresh = null;
+      if (isEmptyWorkout(t) || fresh) { if (S.templateDraft && S.templateDraft.id === t.id) { S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); } trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }   // (and a template the round + made, left with no name and no exercise: back out of it, or Discard it, and it goes)
     }
     notesFresh = null;
     if (newsShown && !(next.name === "client" && next.id === newsShown)) { const c = clients.get(newsShown); newsShown = null; if (c) markWorkoutsSeen(c); }   // leaving the client: the New list he saw counts as looked at
@@ -942,6 +944,7 @@ import { reportRange, buildReport } from "./report.js";
       backScroll = null; return;
     }
     if (S.view.name === "training") { const t = trainings.get(S.view.id); if (fromHistory(t)) { backToHistory(t); return; } go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }, true); }
+    else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.folder) { const f = tplNode(S.view.folder); go(tplUp(f && f.parent), true); }   // a folder of his: up to its folder (on the slide it was left on), or the Templates page
     else if (S.view.name === "client" && isTemplateClient(S.view.id) && !S.view.program && pickFor) go(fillFor ? { name: "training", id: fillFor } : { name: "client", id: pickFor }, true);   // choosing a template for someone: Back is back to them
     else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.phase) go({ name: "client", id: TEMPLATES_ID, program: S.view.program }, true);
     else if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.program) go({ name: "client", id: TEMPLATES_ID }, true);
@@ -976,7 +979,7 @@ import { reportRange, buildReport } from "./report.js";
   const menuRows = (items) => items.map((it) => (it.danger ? "!" : "") + it.label).join("|");
   let liftClick = null, liftLate = 0;                               // a touch and hold's menu: what the dimmed page's click does, and the close that comes if that click never does
   let rs = null, rsT = null, wg = null, rsEat = 0, lpHoldAt = 0;    // a workout row swiped to its actions (below the swipe back): the row out or open, the finger or mouse on one, the trackpad's swipe under way, a tap's click to drop; when a touch and hold's menu came under a finger not yet let go (see lpOpen)
-  const closeMoreMenu = () => { if (popClose && popAnchor === $("tMore") && ($("tMore").hidden || menuRows(moreItems(trainings.get(S.view.id))) !== popRows)) popClose(); };   // a redraw that takes the workout's "…" away (a sync brought a client's finish, skip or delete), or changes what it offers (the coach's: a finish or skip takes Reschedule out), takes its menu with it
+  const closeMoreMenu = () => { if (popClose && popAnchor === $("tMore") && ($("tMore").hidden || menuRows(pageMoreItems()) !== popRows)) popClose(); };   // a redraw that takes the workout's "…" away (a sync brought a client's finish, skip or delete), or changes what it offers (the coach's: a finish or skip takes Reschedule out), takes its menu with it
   const stateDepth = () => { try { const st = hasState() && history.state; return st && typeof st.fiala === "number" ? st.fiala : 0; } catch (_) { return 0; } };
   nav.depth = stateDepth();
   try { if (hasState() && !(history.state && typeof history.state.fiala === "number")) history.replaceState({ fiala: nav.depth }, ""); } catch (_) {}   // the page's own first step carries its number, so going back to it is never mistaken for anything else
@@ -1067,6 +1070,7 @@ import { reportRange, buildReport } from "./report.js";
     if (settingsOpen === "exercise") return k(S.view, "exercises");
     if (settingsOpen) return fromSettings ? k(S.view, fromSettings === "catalog" ? "catalog" : "settings") : k(S.view, "");
     if (S.view.name === "training") { const t = trainings.get(S.view.id); if (fromHistory(t)) return k({ name: "client", id: t.clientId }, "history"); return k(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }, ""); }
+    if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.folder) { const f = tplNode(S.view.folder); return k(tplUp(f && f.parent), ""); }
     if (S.view.name === "client" && isTemplateClient(S.view.id) && !S.view.program && pickFor) return k(fillFor ? { name: "training", id: fillFor } : { name: "client", id: pickFor }, "");
     if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.phase) return k({ name: "client", id: TEMPLATES_ID, program: S.view.program }, "");
     if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.program) return k({ name: "client", id: TEMPLATES_ID }, "");
@@ -1130,8 +1134,9 @@ import { reportRange, buildReport } from "./report.js";
   }
   const lookNow = () => (document.body.classList.contains("client") ? "client" : "coach") + "@" + (Number(window.innerWidth) || 0);
   function barFor(key) {                                            // the bar's buttons on the screen with this key (keep in step with render() and the settings pages)
-    const [vk, sub] = String(key).split("|"), [name, id] = vk.split("/"), home = !sub && (name === "clients" || (S.clientMode && name === "client"));
-    return { back: !home, brand: home, meDisc: !sub && name === "client" && !isTemplateClient(id), navDone: sub === "exercise", tMore: !sub && name === "training" && moreOn(trainings.get(id)), barMsg: !sub && (name === "client" || name === "training") && !!msgTarget(name, id), id };
+    const [vk, sub] = String(key).split("|"), [name, id, prog] = vk.split("/"), home = !sub && (name === "clients" || (S.clientMode && name === "client"));
+    const tplMore = !sub && name === "client" && isTemplateClient(id) && !prog && !S.clientMode && !pickFor;   // the Templates page and his folders: his "…" (keep in step with tplPageOn)
+    return { back: !home, brand: home, meDisc: !sub && name === "client" && !isTemplateClient(id), navDone: sub === "exercise", tMore: (!sub && name === "training" && moreOn(trainings.get(id))) || tplMore, barMsg: !sub && (name === "client" || name === "training") && !!msgTarget(name, id), id };
   }
   function barCopy(key) {                                           // the bar as the screen Back goes to will show it, when there is no copy of that screen
     const live = document.querySelector("header .bar"); if (!live) return null;
@@ -1756,7 +1761,92 @@ import { reportRange, buildReport } from "./report.js";
   }
   function templateMeta(t) { return t.template || { program: MY_TEMPLATES, phase: 0, stage: 0, n: 0, phaseName: "" }; }
   function templateTitle(t) { const m = templateMeta(t); return (m.n ? "Workout " + m.n : "") + (t.title ? (m.n ? " \u00b7 " : "") + t.title : "") || "Template"; }
-  function templatePath(T) { const m = templateMeta(T); return [m.program, m.phase ? "Phase " + m.phase : "", m.stage ? "Week " + m.stage : "", m.n ? "Workout " + m.n : (T.title || "")].filter(Boolean).join(" \u00b7 "); }   // a phase's stages read as weeks (his ask, 12 Nov: "rename every stage to week"); the data keeps its "stage"
+  function templatePath(T) { const m = templateMeta(T), h = tplHome(T); if (h) { const names = []; for (let x = h, i = 0; x && i < 3; x = tplNode(x.parent), i++) names.unshift(x.name); return [...names, m.n ? "Workout " + m.n : (T.title || "")].filter(Boolean).join(" \u00b7 "); } return [m.program, m.phase ? "Phase " + m.phase : "", m.stage ? "Week " + m.stage : "", m.n ? "Workout " + m.n : (T.title || "")].filter(Boolean).join(" \u00b7 "); }   // a phase's stages read as weeks (his ask, 12 Nov: "rename every stage to week"); the data keeps its "stage"; one in his own folders reads its folder, subfolder and slide names, as a program's path reads its phase and week (12 Nov)
+  // ---- his own template folders (his ask, 12 Nov: "folders and subfolders and the week slider ... how I can create those myself", "should
+  // look exactly like templates I already have"): one list of nodes on the Templates record. A folder sits at the top, or inside a top folder
+  // (two deep at most, as a program and its phases); a slide, named by him ("instead of automatically new week"), belongs to a folder, as a
+  // week to a phase. A template lives in a folder or a slide by its template.folder; one whose folder or slide is gone is loose again.
+  const tplNodes = () => {
+    const all = ((clients.get(TEMPLATES_ID) || {}).folders || []).filter((f) => f && f.id && typeof f.name === "string" && (f.kind === "folder" || f.kind === "slide"));
+    const folders = new Map(all.filter((f) => f.kind === "folder").map((f) => [f.id, f])), top = (f) => !f.parent || f.parent === f.id || !folders.has(f.parent);
+    return all.filter((f) => f.kind === "folder" || folders.has(f.parent)).map((f) => (f.kind === "folder" && f.parent && (top(f) || !top(folders.get(f.parent))) ? { ...f, parent: null } : f));   // a folder whose folder went (deleted on another device), or one that would sit deeper than two (or in a ring, two devices' moves crossing), stands at the top; a slide whose folder went goes with it
+  };
+  const tplNode = (id) => (id ? tplNodes().find((f) => f.id === id) || null : null);
+  const tplKids = (pid, kind) => tplNodes().filter((f) => (f.parent || null) === (pid || null) && f.kind === kind).sort((x, y) => String(x.at || "").localeCompare(String(y.at || "")) || String(x.id).localeCompare(String(y.id)));   // in the order made, the same on every device (a merge may list another device's new one first)
+  const tplHome = (t) => tplNode(templateMeta(t).folder);   // the folder or slide a template is in, if it is in one of his
+  const tplTree = (fid) => { const ids = new Set([fid]); for (const f of tplNodes()) if (f.kind === "folder" && f.parent === fid) ids.add(f.id); for (const f of tplNodes()) if (f.kind === "slide" && ids.has(f.parent)) ids.add(f.id); return ids; };   // a folder, its folders and their slides
+  const tplIn = (ids) => [...trainings.values()].filter((t) => isTemplateClient(t.clientId) && ids.has((tplHome(t) || {}).id));
+  const byN = (x, y) => (Number(templateMeta(x).n) || 0) - (Number(templateMeta(y).n) || 0) || byMade(x, y);   // a place's templates in their order: Workout 1, 2 …
+  const tplPlaces = (fid) => [fid, ...tplKids(fid, "slide").map((x) => x.id), ...tplKids(fid, "folder").flatMap((x) => tplPlaces(x.id))];   // a folder's own, its slides, then its folders', in the order shown
+  const shownSlide = (v) => { const sl = tplKids(v.folder, "slide"); return ((sl.find((x) => x.id === v.slide) || sl[0]) || {}).id || ""; };   // the slide a folder's page shows: the one named, else its first
+  const lastSlide = new Map();                                         // folder id -> the slide its page was left on: Back from a folder inside it lands there again
+  const tplUp = (fid) => { const p = tplPage(fid), s = p.folder && lastSlide.get(p.folder); return s && tplKids(p.folder, "slide").some((x) => x.id === s) ? { ...p, slide: s } : p; };   // up to a folder, on the slide it was left on (keep runBack and backKey in step)
+  const tplSlide = (f) => { const sl = tplKids(f.id, "slide"); return sl.find((x) => x.id === S.view.slide) || sl[0] || null; };   // the slide shown on a folder's page
+  const nextN = (place) => 1 + Math.max(0, ...[...trainings.values()].filter((t) => isTemplateClient(t.clientId) && ((tplHome(t) || {}).id || null) === (place || null) && (place || templateMeta(t).program === MY_TEMPLATES)).map((t) => Number(templateMeta(t).n) || 0));   // the next "Workout N" in a place (loose: among My templates)
+  const saveFolders = () => { tplClient(); scheduleSave("clients", TEMPLATES_ID); };
+  const placeTemplate = (t, place) => {                                // a template into a folder or a slide, or loose again (place null), numbered next there; saved past a clean template draft, never into it
+    const m = { ...templateMeta(t) }; if (place) m.folder = place; else delete m.folder;
+    if (!place && m.program !== MY_TEMPLATES) { m.program = MY_TEMPLATES; m.phase = 0; m.stage = 0; delete m.phaseName; }
+    m.n = nextN(place); t.template = m; tidySave(t);
+  };
+  async function newFolder(parent) {
+    const name = await askName("New folder"); if (!name) return;
+    const tc = tplClient(), f = { id: uid(), name, parent: parent || null, kind: "folder", at: now() };
+    tc.folders = [...(tc.folders || []), f]; folderTouched.set(f.id, TEMPLATES_ID); saveFolders(); render();
+  }
+  async function newSlide(fid) {
+    const name = await askName("New slide"); if (!name || !tplNode(fid)) return;
+    const tc = tplClient(), sl = { id: uid(), name, parent: fid, kind: "slide", at: now() }, first = !tplKids(fid, "slide").length;
+    tc.folders = [...(tc.folders || []), sl]; folderTouched.set(sl.id, TEMPLATES_ID);
+    if (first) for (const t of tplIn(new Set([fid])).sort(byN)) placeTemplate(t, sl.id);   // the folder's first slide takes the templates that were in the folder itself, in their order
+    saveFolders();
+    if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.folder === fid) { S.view = { ...S.view, slide: sl.id }; lsSet("fiala.trainings.view", S.view); nav.curKey = screenKey(); }   // the new slide is the one shown
+    render();
+  }
+  async function renameNode(id) {
+    const f = tplNode(id); if (!f) return;
+    const name = await askName(f.kind === "slide" ? "Rename slide" : "Rename folder", f.name, "Save"); if (!name || name === f.name || !tplNode(id)) return;
+    const tc = tplClient(); tc.folders = (tc.folders || []).map((x) => (x && x.id === id ? { ...x, name } : x)); folderTouched.set(id, TEMPLATES_ID); saveFolders(); render();
+  }
+  async function deleteNode(id) {                                     // asked first; what was in it goes loose to My templates (his pick, 12 Nov), nothing is lost
+    const f = tplNode(id); if (!f) return;
+    let gone = f.kind === "slide" ? new Set([id]) : tplTree(id); const inside = tplIn(gone).length, what = f.kind === "slide" ? "slide" : "folder";
+    const within = [...gone].map(tplNode).filter((x) => x && x.id !== id), subs = within.filter((x) => x.kind === "folder").length, sls = within.length - subs;
+    const kinds = [subs && (subs === 1 ? "folder" : "folders"), sls && (sls === 1 ? "slide" : "slides")].filter(Boolean).join(" and "), too = kinds ? "Its " + kinds + (within.length === 1 ? " goes" : " go") + " too" : "";
+    const moves = inside ? (inside === 1 ? "its template moves to My templates" : "its " + inside + " templates move to My templates") : "";
+    const text = too && moves ? too + ", and " + moves + "." : too ? too + "." : moves ? "I" + moves.slice(1) + "." : "The " + what + " is empty.";   // what goes with it, and where its templates go
+    if (!(await askFirst({ title: "Delete \u201c" + f.name + "\u201d?", text }))) return;
+    if (!tplNode(id)) return;                                         // a sync took it away while the question was up
+    gone = f.kind === "slide" ? new Set([id]) : tplTree(id); const up = tplNode(id).parent || null;   // read again: a sync may have brought a folder or a slide into it while the question was up
+    for (const pl of f.kind === "slide" ? [id] : tplPlaces(id)) for (const t of tplIn(new Set([pl])).sort(byN)) placeTemplate(t, null);   // after the loose ones, in the order they were shown
+    const tc = tplClient(); tc.folders = (tc.folders || []).filter((x) => !(x && gone.has(x.id))); for (const g of gone) { deletedFolders.set(g, TEMPLATES_ID); folderTouched.delete(g); }
+    saveFolders();
+    if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.folder && gone.has(S.view.folder)) { go(tplUp(up), true); return; }   // its own page went: up to where it was
+    if (S.view.slide && gone.has(S.view.slide)) { S.view = { ...S.view, slide: null }; lsSet("fiala.trainings.view", S.view); nav.curKey = screenKey(); }
+    render();
+  }
+  const tplPage = (fid) => (fid && tplNode(fid) ? { name: "client", id: TEMPLATES_ID, folder: fid } : { name: "client", id: TEMPLATES_ID });
+  const tplPageOn = () => S.view.name === "client" && isTemplateClient(S.view.id) && !S.clientMode && !pickFor && !S.view.program;   // the Templates page or a folder of his: his "…" and his +
+  function tplMoreItems() {                                           // the "…" on the Templates pages (his ask, 12 Nov: "a button in a right top corner that opens up options to add folder and ..."): a new folder (at the top, and inside a top folder), a new slide in a folder; the slide shown, its Rename and Delete; the folder's Rename and, last and red, Delete
+    if (!tplPageOn()) return [];
+    const f = tplNode(S.view.folder), items = [];
+    if (!f || !f.parent) items.push({ label: "New folder", icon: MI.folderPlus, onPick: () => newFolder(f ? f.id : null) });
+    if (!f) return items;
+    items.push({ label: "New slide", icon: MI.slidePlus, onPick: () => newSlide(f.id) });
+    const sl = tplSlide(f);
+    if (sl) items.push({ label: "Rename slide", icon: MI.pencil, onPick: () => renameNode(sl.id) });
+    items.push({ label: "Rename folder", icon: MI.pencil, onPick: () => renameNode(f.id) });
+    if (sl) items.push({ label: "Delete slide", icon: MI.trash, danger: true, onPick: () => deleteNode(sl.id) });
+    items.push({ label: "Delete folder", icon: MI.trash, danger: true, onPick: () => deleteNode(f.id) });
+    return items;
+  }
+  const pageMoreItems = () => (S.view.name === "training" ? moreItems(trainings.get(S.view.id)) : tplMoreItems());   // the "…" at the top right, whichever page has one
+  function newTemplateHere() {                                        // the round glass + on the Templates pages (his ask, 12 Nov: "for the actual workout keep the plus button as we have for adding workouts in clients view"): a new template where he is, opened
+    const f = tplNode(S.view.folder), place = f ? (tplSlide(f) || f).id : null;
+    const t = { id: uid(), clientId: TEMPLATES_ID, date: "2026-01-01", createdAt: now(), title: "", completedAt: null, skippedAt: null, template: { program: MY_TEMPLATES, phase: 0, stage: 0, n: nextN(place), ...(place ? { folder: place } : {}) }, rows: [] };
+    tplClient(); trainings.set(t.id, t); scheduleSave("trainings", t.id, 0); tplFresh = t.id; go({ name: "training", id: t.id });
+  }
+  let tplFresh = null;                                                // the template the round + just made: left empty, it goes (go())
   // ---- our own day picker (Monday first, the client's workouts marked), used wherever a date is chosen
   let dp = null;                          // { clientId, title, selected, month, onPick }
   // "Finish early" asks first. What's logged stays, the remaining sets stay open, and the reason (if any) lands on the card.
@@ -1868,21 +1958,27 @@ import { reportRange, buildReport } from "./report.js";
   }
   function closeFinishEarly() { $("earlySheet").hidden = true; es = null; S.asking = false; }
   let askOpen = null;                                               // the sheet that is up, if any: a second ask closes it as "no" first
-  function askFirst({ title, text, yes = "Delete", red = true }) {   // nothing is deleted or discarded by accident: a sheet asks, and only its red button does it; red: false for an act that loses nothing (Finish early, his ask, 12 Nov), its button then the sheets' purple
-    return new Promise((resolve) => {
+  function askFirst({ title, text, yes = "Delete", red = true, input = null }) {   // nothing is deleted or discarded by accident: a sheet asks, and only its red button does it; red: false for an act that loses nothing (Finish early, his ask, 12 Nov), its button then the sheets' purple
+    return new Promise((resolve) => {                                // input: { value, placeholder, max }: a name typed in the sheet (New folder, New slide, Rename: his ask, 12 Nov, "let me name it"); it resolves with the name, or false
       if (askOpen) askOpen(false);
-      const bg = $("askSheet"), y = $("askYes"), n = $("askNo"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert);   // (what was inert already, as #ctxLift in the markup, stays so: only what the sheet held is given back)
+      const bg = $("askSheet"), y = $("askYes"), n = $("askNo"), f = $("askInput"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert);   // (what was inert already, as #ctxLift in the markup, stays so: only what the sheet held is given back)
       $("askTitle").textContent = title; $("askText").textContent = text || ""; $("askText").hidden = !text; y.textContent = yes; y.classList.toggle("danger", red);
+      f.hidden = !input; if (input) { f.value = input.value || ""; f.placeholder = input.placeholder || ""; f.maxLength = input.max || 40; }
+      const named = () => String(f.value || "").replace(/\s+/g, " ").trim();
       let armed = false; y.disabled = true;                                                  // the second tap of a double tap must not land on the red button
-      const settle = setTimeout(() => { armed = true; y.disabled = false; }, 350);
-      const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = !!pv; bg.hidden = true; y.disabled = false; for (const el of behind) el.inert = false; y.removeEventListener("click", onYes); n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); document.removeEventListener("keydown", onKey); resolve(v); };
-      const onYes = () => { if (armed) done(true); }, onNo = () => done(false), onBg = (e) => { if (armed && e.target === bg) done(false); }, onKey = (e) => { if (e.key === "Escape") done(false); };
+      const settle = setTimeout(() => { armed = true; y.disabled = !!input && !named(); }, 350);   // a name to type: its button waits for one
+      const vv = window.visualViewport, sh = bg.firstElementChild, lift = () => { const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0; sh.style.paddingBottom = kb ? kb + 16 + "px" : ""; };   // the phone's keyboard up: what the sheet holds sits above it, and the sheet itself runs on down behind it, as an iPhone sheet does (measured on the simulator, iOS 27: the keyboard's bar of arrows floats over the page, which showed round it while the sheet stopped at the keys)
+      const onInput = () => { if (armed) y.disabled = !named(); };
+      const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = !!pv; bg.hidden = true; y.disabled = false; for (const el of behind) el.inert = false; y.removeEventListener("click", onYes); n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); document.removeEventListener("keydown", onKey); f.removeEventListener("input", onInput); if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); } sh.style.paddingBottom = ""; if (input && document.activeElement === f) f.blur(); resolve(input ? (v && named()) || false : v); };
+      const onYes = () => { if (armed && (!input || named())) done(true); }, onNo = () => done(false), onBg = (e) => { if (armed && e.target === bg) done(false); }, onKey = (e) => { if (e.key === "Escape") done(false); else if (input && e.key === "Enter" && e.target === f) { e.preventDefault(); onYes(); } };
       askOpen = done; S.asking = true;
       y.addEventListener("click", onYes); n.addEventListener("click", onNo); bg.addEventListener("click", onBg); document.addEventListener("keydown", onKey);
+      if (input) { f.addEventListener("input", onInput); if (vv) { vv.addEventListener("resize", lift); vv.addEventListener("scroll", lift); } }
       for (const el of behind) el.inert = true;                                              // the page behind is out of reach until the question is answered
-      bg.hidden = false; n.focus({ preventScroll: true });
+      bg.hidden = false; if (input) f.focus({ preventScroll: true }); else n.focus({ preventScroll: true });   // (the name field takes the focus in the tap that opened the sheet, so the phone gives the keyboard)
     });
   }
+  const askName = (title, value, yes) => askFirst({ title, yes: yes || "Add", red: false, input: { value: value || "", placeholder: "Name", max: 40 } });
   // a list in a sheet, in the same language as askFirst: rows are <li> with a button[data-id]; resolves with the tapped id, or null for Cancel / tap outside / Escape
   function sheetList({ title, rows }) {
     return new Promise((resolve) => {
@@ -2040,9 +2136,8 @@ import { reportRange, buildReport } from "./report.js";
   }
   $("fromTpl").addEventListener("click", () => { const t = trainings.get(S.view.id); if (t && t.fromTemplate) backToTemplates(t.fromTemplate); });
   function saveAsTemplate(src) {
-    const mine = [...trainings.values()].filter((t) => isTemplateClient(t.clientId) && templateMeta(t).program === MY_TEMPLATES);
     const t = { id: uid(), clientId: TEMPLATES_ID, date: "2026-01-01", createdAt: now(), title: src.title || "", completedAt: null, skippedAt: null,
-      template: { program: MY_TEMPLATES, phase: 0, stage: 0, n: mine.length + 1 },
+      template: { program: MY_TEMPLATES, phase: 0, stage: 0, n: nextN(null) },   // the next number among My templates (those in his folders count in theirs, 12 Nov)
       rows: src.rows.map((r) => freshRow(r)) };
     if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); }
     trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
@@ -2074,17 +2169,34 @@ import { reportRange, buildReport } from "./report.js";
     const prog = S.view.program || null, ph = S.view.phase || null;
     $("pickNote").hidden = !pickFor;
     if (pickFor) { const pc = clients.get(pickFor); $("pickNote").innerHTML = "Choose a workout for <b></b> · <button class=\"btn quiet\" type=\"button\" id=\"pickCancel\">Cancel</button>"; $("pickNote").querySelector("b").textContent = pc ? pc.name : "the client"; $("pickCancel").addEventListener("click", () => { pickFor = null; fillFor = null; render(); }); }
-    $("newTraining").hidden = !!prog;
+    $("newTraining").hidden = true;                          // a new template comes from the round glass + at the bar's foot now, where he is (his ask, 12 Nov)
     const byProg = new Map();
-    for (const t of all) { const m = templateMeta(t); if (!byProg.has(m.program)) byProg.set(m.program, []); byProg.get(m.program).push(t); }
+    for (const t of all) { if (tplHome(t)) continue; const m = templateMeta(t); if (!byProg.has(m.program)) byProg.set(m.program, []); byProg.get(m.program).push(t); }   // (a template in a folder of his counts there, not under its program)
     const wn = (n) => n + (n === 1 ? " workout" : " workouts");
+    const f = !prog && tplNode(S.view.folder);
+    if (f) {                                                 // a folder of his, drawn as a program is (his ask: "should look exactly like templates I already have"): its folders as phases, its slides as the week slider
+      const up = tplNode(f.parent), subs = tplKids(f.id, "folder"), slides = tplKids(f.id, "slide"), cur = tplSlide(f);
+      $("tplKicker").textContent = up ? up.name : "Templates"; $("cName").textContent = f.name;
+      if (subs.length) { wrap.appendChild(h2("Folders")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...subs.map((x) => navRow(x.name, wn(tplIn(tplTree(x.id)).length), () => go(tplPage(x.id))))); wrap.appendChild(ul); }
+      if (slides.length) {
+        const seg = document.createElement("div"); seg.className = "seg stages"; seg.setAttribute("role", "tablist"); if (subs.length) seg.style.marginTop = "24px";
+        for (const x of slides) { const b = document.createElement("button"); b.type = "button"; const nm = document.createElement("span"); nm.textContent = x.name; b.appendChild(nm); b.classList.toggle("on", x === cur); b.addEventListener("click", () => { S.view = { ...S.view, slide: x.id }; lsSet("fiala.trainings.view", S.view); renderTemplates(c); nav.curKey = screenKey(); }); seg.appendChild(b); }   // (in place, as a week tab: the screen's picture is filed under this slide)
+        wrap.appendChild(seg);
+      }
+      const here = cur ? [...tplIn(new Set([cur.id])), ...(cur === slides[0] ? tplIn(new Set([f.id])) : [])] : tplIn(new Set([f.id]));   // the slide shown (the first also has what is in the folder itself), or the folder's own
+      here.sort(byN);
+      if (here.length) { if (subs.length && !slides.length) wrap.appendChild(h2("Templates")); const ul = document.createElement("ul"); ul.className = "list"; if (slides.length) ul.style.marginTop = "16px"; ul.replaceChildren(...here.map((t) => tplRow(t, !!pickFor))); wrap.appendChild(ul); }
+      if (!subs.length && !slides.length && !here.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = !tplPageOn() ? "Nothing here yet." : f.parent ? "Nothing here yet. Tap + for a template, or \u2026 for a slide." : "Nothing here yet. Tap + for a template, or \u2026 for a folder or a slide."; wrap.appendChild(e); }   // (choosing a template for a client: no + and no \u2026 on screen, so no word of them)
+      else if (slides.length && !here.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = !tplPageOn() ? "Nothing here yet." : "Nothing here yet. Tap + for a template."; wrap.appendChild(e); }   // a new slide of his, still empty (a built-in week never is)
+      return;
+    }
     if (!prog) {                                             // level 1: programs
       $("tplKicker").textContent = "Workout library"; $("cName").textContent = "Templates";
       const mine = (byProg.get(MY_TEMPLATES) || []).sort((x, y) => templateMeta(x).n - templateMeta(y).n);
       if (mine.length) { wrap.appendChild(h2("My templates")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...mine.map((t) => tplRow(t, !!pickFor))); wrap.appendChild(ul); }
-      const progs = [...byProg.keys()].filter((p) => p !== MY_TEMPLATES).sort((x, y) => progRank(x) - progRank(y) || String(x).localeCompare(String(y)));
-      if (progs.length) { wrap.appendChild(h2("Programs")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...progs.map((p) => navRow(p, wn(byProg.get(p).length), () => go({ ...S.view, program: p, phase: null, stage: null })))); wrap.appendChild(ul); }
-      if (!all.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "No templates yet. Open a workout and tap Save as template."; wrap.appendChild(e); }
+      const progs = [...byProg.keys()].filter((p) => p !== MY_TEMPLATES).sort((x, y) => progRank(x) - progRank(y) || String(x).localeCompare(String(y))), tops = tplKids(null, "folder");
+      if (progs.length || tops.length) { wrap.appendChild(h2("Programs")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...tops.map((x) => navRow(x.name, wn(tplIn(tplTree(x.id)).length), () => go(tplPage(x.id)))), ...progs.map((p) => navRow(p, wn(byProg.get(p).length), () => go({ ...S.view, program: p, phase: null, stage: null })))); wrap.appendChild(ul); }
+      if (!all.length && !tops.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "No templates yet. Open a workout and tap Save as template."; wrap.appendChild(e); }
       return;
     }
     const items = byProg.get(prog) || [];
@@ -2111,7 +2223,7 @@ import { reportRange, buildReport } from "./report.js";
     ul.replaceChildren(...pitems.filter((t) => templateMeta(t).stage === cur).sort((x, y) => templateMeta(x).n - templateMeta(y).n).map((t) => tplRow(t, !!pickFor)));
     wrap.appendChild(ul);
   }
-  const templateHome = (t) => { const m = templateMeta(t); return m.program === MY_TEMPLATES ? { name: "client", id: TEMPLATES_ID } : { name: "client", id: TEMPLATES_ID, program: m.program, phase: m.phase, stage: m.stage }; };
+  const templateHome = (t) => { const h = tplHome(t); if (h) return h.kind === "slide" ? { name: "client", id: TEMPLATES_ID, folder: h.parent, slide: h.id } : { name: "client", id: TEMPLATES_ID, folder: h.id }; const m = templateMeta(t); return m.program === MY_TEMPLATES ? { name: "client", id: TEMPLATES_ID } : { name: "client", id: TEMPLATES_ID, program: m.program, phase: m.phase, stage: m.stage }; };   // a template in a folder or slide of his: back to that folder, on that slide
   function render() {
     if (S.recovering) { showRecovery(); return; }
     if (pendingPage && S.signedIn && !(S.clientMode && !S.myClientId)) {   // a refresh on a settings page lands back on it at the first paint: no glimpse of the Clients page on the way
@@ -2131,11 +2243,13 @@ import { reportRange, buildReport } from "./report.js";
     if (S.clientMode && effPaused(clients.get(S.myClientId))) S.view = { name: "client", id: S.myClientId };
     if (S.view.name === "client" && !clients.has(S.view.id)) S.view = S.clientMode ? { name: "client", id: S.myClientId } : { name: "clients" };
     if (S.view.name === "training" && !trainings.has(S.view.id)) S.view = S.clientMode ? { name: "client", id: S.myClientId } : { name: "clients" };
+    if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.folder && !tplNode(S.view.folder)) S.view = { name: "client", id: TEMPLATES_ID };   // a folder of his deleted on another device: the Templates page
     if (S.view.name !== "training" && previewClient) { previewClient = false; rememberPreview(); }
     if (!S.clientMode) document.body.classList.toggle("client", previewing());
     $("vClients").hidden = S.view.name !== "clients";
     $("vClient").hidden = S.view.name !== "client";
     const tabs = S.view.name === "client" && !isTemplateClient(S.view.id); $("tabbar").hidden = !tabs; $("addBtn").hidden = !tabs || S.clientMode; document.body.classList.toggle("tabs", tabs);   // the coach's +: beside the bar on a client's page, on every tab
+    const tplPlus = tplPageOn(); if (tplPlus) $("addBtn").hidden = false; $("addBtn").setAttribute("aria-label", tplPlus ? "New template" : "New workout"); document.body.classList.toggle("tplus", tplPlus); $("dock").classList.toggle("tp", tplPlus);   // the Templates page and his folders: the same glass + alone at the bar's trailing edge, a new template where he is (his ask, 12 Nov)
     const wsDock = S.view.name === "training" && !S.clientMode;     // the coach's workout page: Coach | Client and the + in the bar at the foot, as Photos' (his pick, 10 Nov); the + is not in the client's look
     $("addExBtn").hidden = !wsDock || previewing(); if (!wsDock) $("viewSeg").hidden = true; document.body.classList.toggle("wsdock", wsDock); $("dock").classList.toggle("ws", wsDock);   // its layout marked on the bar itself: a picture's copy of the bar keeps it
     for (const b of $("tabbar").querySelectorAll("button")) { const on = b.dataset.tab === S.tab; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
@@ -2143,13 +2257,13 @@ import { reportRange, buildReport } from "./report.js";
     $("back").hidden = S.view.name === "clients" || (S.clientMode && S.view.name === "client");
     $("brand").hidden = !(S.view.name === "clients" || (S.clientMode && S.view.name === "client"));
     $("meDisc").hidden = !(S.view.name === "client" && !isTemplateClient(S.view.id));   // the person disc: on a client's page, every tab, nowhere else — Settings for the client, the card for the coach
-    $("tMore").hidden = !(S.view.name === "training" && moreOn(trainings.get(S.view.id))); closeMoreMenu();   // the workout's "…": the client's view (and the coach's Client view) of a workout still to do, Reschedule; the coach's own view of any workout or template, Delete (and Reschedule while it is still to do)
+    $("tMore").hidden = !((S.view.name === "training" && moreOn(trainings.get(S.view.id))) || tplPageOn()); closeMoreMenu();   // the workout's "…": the client's view (and the coach's Client view) of a workout still to do, Reschedule; the coach's own view of any workout or template, Delete (and Reschedule while it is still to do)
     $("meDisc").setAttribute("aria-label", S.clientMode ? "Settings" : "Client card");
     paintMeDisc(); paintBarMsg();
     if (S.clientMode && S.tab === "notes") setTab("workouts");   // Notes is the coach's tab
     if (!(S.view.name === "client" && S.tab === "workouts" && !isTemplateClient(S.view.id))) calOpen = false;   // the month lasts only while its page is up: another page or tab and it is the week again (go() and the settings pages fold it already, before their picture)
     if (S.view.name === "clients") { S.renderedTraining = null; renderClients(); }
-    else if (S.view.name === "client") { S.renderedTraining = null; $("backLabel").textContent = isTemplateClient(S.view.id) && S.view.phase ? S.view.program : (isTemplateClient(S.view.id) && S.view.program ? "Templates" : "Clients"); renderClient(); }
+    else if (S.view.name === "client") { S.renderedTraining = null; const tf = isTemplateClient(S.view.id) ? tplNode(S.view.folder) : null, up = tf && tplNode(tf.parent); $("backLabel").textContent = tf ? (up ? up.name : "Templates") : isTemplateClient(S.view.id) && S.view.phase ? S.view.program : (isTemplateClient(S.view.id) && S.view.program ? "Templates" : "Clients"); renderClient(); }
     else { const t = trainings.get(S.view.id); $("backLabel").textContent = fromHistory(t) ? "History" : S.clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
     syncRadios();
     paintDraftBar();
@@ -3389,6 +3503,8 @@ import { reportRange, buildReport } from "./report.js";
     save: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M7.25 1.9A.75.75 0 0 1 8.75 1.9V7.59L10.17 6.17A.75.75 0 0 1 11.23 7.23L8.53 9.93A.75.75 0 0 1 7.47 9.93L4.77 7.23A.75.75 0 0 1 5.83 6.17L7.25 7.59Z"/><path d="M5.6 3.95H4.5A2.85 2.85 0 0 0 1.65 6.8V12.3A2.85 2.85 0 0 0 4.5 15.15H11.5A2.85 2.85 0 0 0 14.35 12.3V6.8A2.85 2.85 0 0 0 11.5 3.95H10.4A.75.75 0 0 0 10.4 5.45H11.5A1.35 1.35 0 0 1 12.85 6.8V12.3A1.35 1.35 0 0 1 11.5 13.65H4.5A1.35 1.35 0 0 1 3.15 12.3V6.8A1.35 1.35 0 0 1 4.5 5.45H5.6A.75.75 0 0 0 5.6 3.95Z"/></svg>',   // Save as template: an arrow down into a tray, Apple's sign for saving, drawn as filled shapes at the menu's weight (12 Nov)
     eye: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M1.6 8C2.9 5.6 5.2 3.9 8 3.9s5.1 1.7 6.4 4.1C13.1 10.4 10.8 12.1 8 12.1S2.9 10.4 1.6 8z"/><circle cx="8" cy="8" r="2.1"/></svg>',   // Preview in a menu: the swipe's eye in outline, as the menus take the outline of what a swipe shows filled
     trash: '<svg class="mi" viewBox="-7.3 -3.3 62.6 62.6" aria-hidden="true" fill="currentColor"><path d="M5 13.5H43L41.25 50.5A5 5 0 0 1 36.25 55.5H11.75A5 5 0 0 1 6.75 50.5ZM8.6 13.5L10.35 50.5A1.4 1.4 0 0 0 11.75 51.9H36.25A1.4 1.4 0 0 0 37.65 50.5L39.4 13.5ZM17.75 0.5H30.25A4.5 4.5 0 0 1 34.75 5V6.25A4.5 4.5 0 0 1 30.25 10.75H17.75A4.5 4.5 0 0 1 13.25 6.25V5A4.5 4.5 0 0 1 17.75 0.5ZM19.5 4A2.5 2.5 0 0 0 17 6.5V10.25A2.5 2.5 0 0 0 19.5 12.75H28.5A2.5 2.5 0 0 0 31 10.25V6.5A2.5 2.5 0 0 0 28.5 4ZM1.45 10.25H46.55A1.45 1.45 0 0 1 48 11.7V12.2A1.45 1.45 0 0 1 46.55 13.65H1.45A1.45 1.45 0 0 1 0 12.2V11.7A1.45 1.45 0 0 1 1.45 10.25ZM14.5 19.78L15 46.28A1.5 1.5 0 0 0 18 46.22L17.5 19.72A1.5 1.5 0 0 0 14.5 19.78ZM22.5 19.75L22.5 46.25A1.5 1.5 0 0 0 25.5 46.25L25.5 19.75A1.5 1.5 0 0 0 22.5 19.75ZM30.5 19.72L30 46.22A1.5 1.5 0 0 0 33 46.28L33.5 19.78A1.5 1.5 0 0 0 30.5 19.72Z"/></svg>',   // Apple's trash, traced from its Delete in the Files and Reminders menus (iOS 27.2, 3x): lid, handle, a can narrowing to rounded corners, three lines leaning in; filled shapes, 93% overlap; 1.10 em tall as Apple's at 17 pt
+    folderPlus: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M1.6 4.1C1.6 3.3 2.2 2.7 3 2.7H6.05C6.47 2.7 6.87 2.89 7.13 3.22L7.9 4.2H13C13.8 4.2 14.4 4.8 14.4 5.6V11.9C14.4 12.7 13.8 13.3 13 13.3H3C2.2 13.3 1.6 12.7 1.6 11.9ZM7.4 6.6H8.6V8.3H10.3V9.5H8.6V11.2H7.4V9.5H5.7V8.3H7.4Z"/></svg>',   // New folder (his template folders, 12 Nov): our own, a filled folder with its tab, a plus cut through it
+    slidePlus: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M4.2 3.6H11.8C13.24 3.6 14.4 4.76 14.4 6.2V9.8C14.4 11.24 13.24 12.4 11.8 12.4H4.2C2.76 12.4 1.6 11.24 1.6 9.8V6.2C1.6 4.76 2.76 3.6 4.2 3.6ZM7.4 5.7H8.6V7.4H10.3V8.6H8.6V10.3H7.4V8.6H5.7V7.4H7.4Z"/></svg>',   // New slide: our own, a filled rounded tab (a slide of the week slider) with a plus cut through it
   };
   function exerciseMenu(r, on) {                                    // the coach's "…" on an exercise: swap it, its instructions, and last and red, delete it, as Apple ends a menu with its destructive row (his ask, 9 Nov: Delete was hidden in Alternate exercise); the video is the play disc's own business
     return [
@@ -4746,7 +4862,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   $("skipAll").addEventListener("click", () => { skipAllMissed(); });
   $("tMore").addEventListener("click", (e) => {
-    e.stopPropagation(); const items = moreItems(trainings.get(S.view.id)); if (!items.length) return;
+    e.stopPropagation(); const items = pageMoreItems(); if (!items.length) return;
     showMenu($("tMore"), items, { align: "right", focus: e.detail === 0 });   // a keyboard's Enter or VoiceOver's activation (detail 0) goes into the menu
   });
   $("tDate").addEventListener("click", () => {
@@ -4861,17 +4977,18 @@ import { reportRange, buildReport } from "./report.js";
   const canon = (v) => JSON.stringify(v, (_, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x));   // the same record in another key order is the same record
   function planRestore(d) {                                          // the file checked whole, then held against what is here: what the sheet says is exactly what applyRestore does
     const { cs, ts } = validateBackup(d, (id) => clients.has(id));
+    for (const c of cs) { const here = clients.get(c.id); if (isTemplateClient(c.id) && !Array.isArray(c.folders) && here && Array.isArray(here.folders)) c.folders = JSON.parse(JSON.stringify(here.folders)); }   // a backup from before his template folders (12 Nov) knows nothing of them: they stay as they are here, never wiped by a restore
     for (const t of ts) repairTimed(t);                                // compared, and later written, in the shape the app keeps: a backup from before the Time box carries a hold's seconds as a weight
     const changed = (map, kind, r) => { const here = map.get(r.id); return !here || dirty.has(key(kind, r.id)) || !seenAt.has(key(kind, r.id)) || canon(here) !== canon(r); };   // already here, the same, and known to the server: nothing to do, nothing to send
     const cs2 = cs.filter((c) => changed(clients, "clients", c)), ts2 = ts.filter((t) => changed(trainings, "trainings", t));
     const nC = cs2.filter((c) => !isTemplateClient(c.id)).length, nT = ts2.filter((t) => !isTemplateClient(t.clientId)).length, nTpl = ts2.length - nT, packs = cs2.some((c) => isTemplateClient(c.id));
-    const parts = []; if (nC) parts.push(nC + (nC === 1 ? " client" : " clients")); if (nT) parts.push(nT + (nT === 1 ? " workout" : " workouts")); if (nTpl) parts.push(nTpl + (nTpl === 1 ? " template" : " templates")); if (packs) parts.push("the packages list");
+    const parts = []; if (nC) parts.push(nC + (nC === 1 ? " client" : " clients")); if (nT) parts.push(nT + (nT === 1 ? " workout" : " workouts")); if (nTpl) parts.push(nTpl + (nTpl === 1 ? " template" : " templates")); if (packs) parts.push(cs2.some((c) => isTemplateClient(c.id) && canon(c.folders || []) !== canon((clients.get(c.id) || {}).folders || [])) ? "the packages list and the template folders" : "the packages list");
     const rC = cs2.filter((c) => clients.has(c.id) && !isTemplateClient(c.id)).length, rT = ts2.filter((t) => trainings.has(t.id)).length, rP = cs2.some((c) => clients.has(c.id) && isTemplateClient(c.id)) ? 1 : 0;
     const total = cs2.length + ts2.length, replaces = rC + rT + rP;
     const what = parts.length > 1 ? parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1] : parts[0] || "";
     const who = replaces === total ? (total === 1 ? "It replaces" : "They replace") : replaces === 1 ? "1 of them replaces" : replaces + " of them replace";
     const incl = rT && rC ? ", logged sets, notes and plans included" : rT ? ", logged sets and all" : rC ? (rC === 1 ? ", notes and plan included" : ", notes and plans included") : "";   // what a replaced copy loses, by kind
-    const text = total ? what + " from the file " + (total === 1 ? "goes" : "go") + " into the app." + (replaces ? " " + who + " a copy already here" + incl + "." : "") + " Everything else stays as it is." : "";
+    const text = total ? what + " from the file " + (total === 1 && !what.includes(" and ") ? "goes" : "go") + " into the app." + (replaces ? " " + who + " a copy already here" + incl + "." : "") + " Everything else stays as it is." : "";
     return { cs: cs2, ts: ts2, text };
   }
   function applyRestore({ cs, ts }) {                               // the file's copy, as it is: a record already here is replaced whole (the save carries a marker so nothing of the server's is merged in); one this device never had joins the usual way, keeping what a client logged on the server meanwhile
@@ -4967,8 +5084,8 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
-      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; } },
+      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
       reset: () => { resetState(); seenDoc.clear(); moveOut.clear(); localStorage.clear(); },
