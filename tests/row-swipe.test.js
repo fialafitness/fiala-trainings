@@ -393,6 +393,15 @@ test("a workout with nothing added yet: the client's page offers Skip workout as
   assert.deepStrictEqual(k.skipped, { page: { ...skippedPage, more: true }, text: "Skipped · Sick" }, "one the client skipped: its Skipped line with Undo, and his \"…\" (Delete workout)");
 });
 
+test("the client's Undo, 24 hours from the finish or the skip: a tap within them undoes; a tap after them (the button still up from before) only takes the Undo away", () => {
+  for (const k of ["finish", "skip"]) {
+    const u = g.undoLate[k];
+    assert.strictEqual(u.up, true, k + ": 23 hours on, the Undo is up");
+    assert.deepStrictEqual(u.late, { kept: true, up: false, view: "training" }, k + ": tapped after the 24 hours: the workout stays " + (k === "finish" ? "finished" : "skipped") + ", the Undo goes, the page stays");
+    assert.deepStrictEqual(u.inTime, { kept: false }, k + ": tapped within them: undone");
+  }
+});
+
 test("a row taken up again while it still closes, after a touch moved another row, is that same row: taken up where it is, its actions behind it", () => {
   assert.strictEqual(g.backToFirst.caught, 30, "taken up where its closing spring has it on the screen, not from closed");
   assert.strictEqual(g.backToFirst.swipedMid, true, "its actions stay behind it while the finger drags it (its earlier close never takes them away)");
