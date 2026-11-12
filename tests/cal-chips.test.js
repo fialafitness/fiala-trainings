@@ -28,7 +28,7 @@ test("the week strip shows the very same chips as the month, day for day (his as
   const days = Object.keys(r.week); assert.ok(days.includes("0"), "today is in the strip");
   for (const n of days) assert.deepStrictEqual(r.week[n].chips, r.month[n].chips, "day " + n);
   assert.ok(/day-evs/.test(js) && /b\.append\(dn, dayChips\(dayWorkouts\)\)/.test(js), "one builder for both");
-  assert.ok(/\.week \{ display: grid; grid-template-columns: repeat\(7, minmax\(0, 1fr\)\); gap: 0;/.test(html) && html.includes(".cal-panel .cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; }"), "the strip's columns are the month's, so its chips are the same size");
+  assert.ok(/\.week \{ display: grid; grid-template-columns: repeat\(7, minmax\(0, 1fr\)\); gap: 0;/.test(html) && html.includes(".cal-panel .cal, .dp-track > .cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; }"), "the strip's columns are the month's (and the day picker's), so its chips are the same size");
 });
 
 test("VoiceOver hears each day's workouts by name, finished or missed, after the date; a workout in the calendar opens its preview first (his ask, 11 Nov), the week's and the month's: the day with one workout, the chip tapped on a busy day, a busy day itself (or its \"+N\") opening the day's list whose row opens the preview; the page stays the client's", () => {
@@ -58,12 +58,17 @@ test("the colours, by Apple Calendar's own recipe (measured: the colour at 25% o
   assert.ok(html.includes(".day-ev.plan { background: var(--chip-plan); color: var(--chip-plan-ink); }") && html.includes(".day-ev.done { background: var(--chip-done); color: var(--chip-done-ink); }") && html.includes(".day-ev.miss { background: var(--chip-miss); color: var(--chip-miss-ink); }"));
 });
 
-test("the month's 1-point line over each week, across its days only, as Calendar's (measured: #e8e8e8 on white, #2a2a2b on black); the day picker keeps its own small bars and lines-free grid", () => {
+test("the month's 1-point line over each week, across its days only, as Calendar's (measured: #e8e8e8 on white, #2a2a2b on black); the day picker's months alike, with the month's chips, its white today and no purple day of its own (his ask, 12 Nov: every calendar as the new one)", () => {
   assert.ok(html.includes("--cal-line: rgba(0,0,0,0.09);") && (html.match(/--cal-line: rgba\(255,255,255,0\.165\);/g) || []).length === 2);
-  assert.ok(html.includes(".cal-panel .cal button { min-width: 0; border-radius: 0; padding: 6px 0 6px; box-shadow: inset 0 1px 0 var(--cal-line); }"));
+  assert.ok(html.includes(".cal-panel .cal, .dp-track > .cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; }"), "the picker's columns and rows as the month's");
+  assert.ok(html.includes(".cal-panel .cal button, .dp-track > .cal button { min-width: 0; border-radius: 0; padding: 6px 0 6px; box-shadow: inset 0 1px 0 var(--cal-line); }"), "the line over each week, in the picker too");
   const picker = js.slice(js.indexOf("function renderDatePicker"), js.indexOf("function renderDatePicker") + 3000);
-  assert.ok(/dayDots\(/.test(picker) && !/dayChips\(/.test(picker), "the picker draws its bars, not chips");
-  assert.ok(html.includes(".cal .dot { width: 22px; height: 6px; border-radius: 50px; }"), "the picker's bars still styled");
+  assert.ok(picker.includes("b.append(dn, dayChips(dayWorkouts, dp.moving));") && !/dayDots|dayWords/.test(js), "the picker draws the month's chips; its old bars and counts are gone");
+  assert.ok(picker.includes('b.setAttribute("aria-label", fmt.format(d) + (dayWorkouts.length ? ": " + dayNames(dayWorkouts) : ""));'), "VoiceOver hears a day's workouts by name, as in the month");
+  assert.ok(!/\.sheet \.cal button\.(today|sel)/.test(html) && !/\.cal \.dots?\b/.test(html), "no purple today or chosen day of its own, and no bars left: today is the month's white circle");
+  assert.ok(html.includes("  .day-ev.moving { box-shadow: inset 0 0 0 1.5px var(--brand-text); }"), "the workout being moved: its chip outlined in purple (his pick)");
+  assert.strictEqual((js.match(/openDatePicker\(\{ clientId: [^,]+, moving: /g) || []).length, 4, "the four that move a workout say which (a row's Reschedule, the page's two, Move to); Add to a client moves none");
+  assert.ok(html.includes("  .cal button.off { cursor: default; opacity: 0.35; }"), "a day it cannot go to: grey, as the days gone by in the month's drag");
 });
 
 test("a keyboard's ring on a day of the week strip is whole, as the month's: the days touch (gap 0, the month's columns) and a day's chips sit 2 in from its edges, so the ring is drawn inside the day (WebKit paints the next day's chips over a ring drawn outside it, measured)", () => {

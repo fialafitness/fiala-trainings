@@ -591,7 +591,7 @@ test("a day's workouts: planned and finished count, a skipped one does not, a fi
   const ids = (l) => l.sort(fns.byMade).map((t) => t.id);
   assert.deepStrictEqual(ids(fns.dayList("c1", "2026-11-04")), ["f", "a", "b"], "the finished one under the day it was finished, the skipped one not at all, the morning one before the evening one");
   assert.deepStrictEqual(fns.dayList("c1", "2026-11-03"), [], "nothing left on the planned day once it was finished elsewhere");
-  assert.strictEqual(fns.dayWords(fns.dayList("c1", "2026-11-04")), ", 3 workouts, 1 finished"); assert.strictEqual(fns.dayWords([maps.trainings.get("a")]), ", 1 workout"); assert.strictEqual(fns.dayWords([maps.trainings.get("f")]), ", 1 workout, finished"); assert.strictEqual(fns.dayWords([]), "");
+  assert.strictEqual(fns.dayNames(fns.dayList("c1", "2026-11-04")), "Moved, finished; Morning, missed; Evening, missed"); assert.strictEqual(fns.dayNames([maps.trainings.get("f")]), "Moved, finished"); assert.strictEqual(fns.dayNames([]), "");   // what VoiceOver hears of a day, in the month and the day picker alike (his ask, 12 Nov)
 });
 
 test("Up next always shows the next workout after today's, however far off it is", () => {
