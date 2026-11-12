@@ -57,7 +57,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (273 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (274 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -184,7 +184,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v273 it ends "439 passed, 0 failed" after about 40 s.
+- At v274 it ends "439 passed, 0 failed" after about 40 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
