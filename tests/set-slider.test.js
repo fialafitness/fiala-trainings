@@ -1,13 +1,18 @@
 // The set slider, squared (his ask, 11 Nov: "it should be more squared … the squares that are not 1 of 10 can have dynamic size based on
 // number of set … smallest square should not be smaller that current size of the circle"; his pick: the sets to come stay plain numbers on
 // the track, no tile; then "something more frosted glass apple like elegant for set 1/10", his pick of three: the frosted lens; then, asked
-// "Are those colors Apple would use?", his pick of Apple's own, measured off its segmented control on iOS 27):
-// the track has the Weight and Reps boxes' corner; each set is a square of 10 that shares the track with the others,
-// never narrower than the old 40-point disc; the set you are on keeps its words' width; one done is a fern square of its share. How it
-// works is unchanged (tapping a set, the scroll past the width). Measured in WebKit on the test iPhone (the widths are the browser's).
+// "Are those colors Apple would use?", his pick of Apple's own, measured off its segmented control on iOS 27; then "make the set 2 of 2
+// also dynamic … should look 50:50 but make sure the set card does not get smaller than current size"):
+// the track has the Weight and Reps boxes' corner; each set is a square of 10 and every set, the one you are on included, takes an equal
+// share of the track: never narrower than the old 40-point disc, the one you are on never narrower than its words with 16 either side
+// (so with many sets it keeps its words' width and the others share the rest, as before); one done is a fern square of its share. How
+// it works is unchanged (tapping a set, the scroll past the width). Measured in WebKit on the test iPhone (the widths are the browser's):
+// 335-point track, two sets 161 + 161; three 104 / 109 (Set 2 of 3, its narrowest) / 104; four 109 / 68 / 68 / 68; six and twelve scroll
+// as before (109 or 120, then 40s); a lone set the whole track; 613 points (landscape): two 300 + 300, three 198 each, four 148 each.
 import fs from "node:fs";
 import { test, assert } from "./assert.js";
 const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const main = fs.readFileSync(new URL("../app/main.js", import.meta.url), "utf8");
 const rule = (sel) => { const i = html.indexOf("\n  " + sel + " {"); if (i < 0) return ""; const a = html.indexOf("{", i) + 1, b = html.indexOf("}", a); return html.slice(a, b).trim(); };   // a rule's declarations, by its selector at a line's start
 
 test("the set slider's track takes the corner of the Weight and Reps boxes under it (14), no longer a capsule; its 4-point inset stays", () => {
@@ -17,14 +22,18 @@ test("the set slider's track takes the corner of the Weight and Reps boxes under
   assert.ok(/(^|; )padding: 4px;/.test(track), "the inset the sets' corner is the track's less");
 });
 
-test("each set a square of 10 (the track's 14 less its 4 inset: the corners run parallel), the sets sharing the track's width, never narrower than the old 40-point disc; the set you are on keeps its words' width; one done is a fern square of its share; one to come is its number, no tile (his pick)", () => {
+test("each set a square of 10 (the track's 14 less its 4 inset: the corners run parallel), every set an equal share of the track, the one you are on included (two sets: half each, his ask: \"should look 50:50\"), never narrower than the old 40-point disc; the one you are on never narrower than its words with 16 either side (\"the set card does not get smaller than current size\"); one done is a fern square of its share; one to come is its number, no tile (his pick)", () => {
   const base = rule(".tracker .tr-chips button"), cur = rule(".tracker .tr-chips button.cur"), done = rule(".tracker .tr-chips button.done"), both = rule(".tracker .tr-chips button.cur.done");
-  for (const p of ["flex: 1 0 40px;", "width: auto;", "min-width: 40px;", "height: 40px;", "border-radius: 10px;", "background: transparent;"]) assert.ok(base.includes(p), p + " in: " + base);
-  assert.ok(cur.startsWith("flex: none;") && cur.includes("width: auto;") && !/border-radius/.test(cur), "the set you are on: its words' width, the square's corner: " + cur);
+  const room = rule(".tracker .tr-chips button.cur::before, .tracker .tr-chips button.cur::after");
+  for (const p of ["flex: 1 0 0px;", "min-width: 40px;", "height: 40px;", "padding: 0;", "border-radius: 10px;", "background: transparent;"]) assert.ok(base.includes(p), p + " in: " + base);
+  assert.ok(!/(^|; )width:/.test(base), "no width of its own: an equal share of what the track has (a basis of 0 for every set): " + base);
+  assert.ok(cur.startsWith("flex: 1 0 0px;") && cur.includes("min-width: max-content;") && !/padding|border-radius|(^|; )width:/.test(cur), "the set you are on: the same share, never narrower than its words, no padding of its own (a padding counts in the basis: two sets came out 145 / 177): " + cur);
+  assert.ok(cur.includes("gap: 0;"), "no gap between its words and the room either side (the button's gap of 2 made its narrowest 4 wider than before): " + cur);
+  assert.strictEqual(room, 'content: ""; flex: none; width: 16px;', "the room either side of its words: 16, as the padding it had");
   assert.ok(!/width|border-radius|flex/.test(done) && done.includes("background: var(--done);"), "a set done: the shared square, in fern: " + done);
-  assert.ok(both.startsWith("flex: none;") && !/border-radius/.test(both), "back on a set done: worded, squared: " + both);
+  assert.ok(both.startsWith("flex: 1 0 0px;") && both.includes("min-width: max-content;") && !/padding|border-radius/.test(both), "back on a set done: worded, the same share, squared: " + both);
   assert.ok(!/50px|50%/.test([rule(".tracker .tr-chips"), base, cur, done, both].join(" ")), "no capsule or disc left in the slider");
-  assert.ok(rule(".tracker .tr-chips.fits") === "justify-content: space-evenly;", "a lone set, worded, still sits in the track's middle");
+  assert.ok(rule(".tracker .tr-chips.fits") === "" && !main.includes("fitsTrack") && !main.includes('classList.add("fits")'), "no spread for a track whose sets fit: the shares fill it, a lone set the whole track");
 });
 
 test("the set you are on wears Apple's own colours for a chosen segment, flat (his pick, 11 Nov, \"Are those colors Apple would use?\", measured off Apple's segmented control on iOS 27): pure white with black words in light, a medium grey with white words in dark (both dark blocks); the sets to come keep their grey numbers; back on a set done it stays a plain fern square", () => {
