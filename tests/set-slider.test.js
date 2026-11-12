@@ -26,13 +26,13 @@ test("each set a square of 10 (the track's 14 less its 4 inset: the corners run 
   assert.ok(rule(".tracker .tr-chips.fits") === "justify-content: space-evenly;", "a lone set, worded, still sits in the track's middle");
 });
 
-test("the set you are on is a frosted lens lifted off the track (his pick, 11 Nov, over the black key): a white frost with a lit top edge and a soft shadow in light, a lighter frosted grey in dark (both dark blocks); back on a set done it stays a plain fern square", () => {
+test("the set you are on is frosted and lifted off the track (his picks, 11 Nov, over the black key: \"light mode with frosted C but color of A\", \"dark mode C as is\"): a matte frosted white with a soft lit edge and a soft shadow in light, a smoky frosted white in dark (both dark blocks), dark words in both; back on a set done it stays a plain fern square", () => {
   const cur = rule(".tracker .tr-chips button.cur"), both = rule(".tracker .tr-chips button.cur.done");
-  for (const p of ["background: var(--set-glass);", "color: var(--text-primary);", "box-shadow: var(--set-glass-shadow);"]) assert.ok(cur.includes(p), p + " in: " + cur);
+  for (const p of ["background: var(--set-glass);", "color: var(--set-glass-ink);", "box-shadow: var(--set-glass-shadow);"]) assert.ok(cur.includes(p), p + " in: " + cur);
   assert.ok(!/var\(--ink\)|var\(--ink-on\)/.test(cur), "the black key gone: " + cur);
-  assert.ok(html.includes("    --set-glass: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.78)); --set-glass-shadow: inset 0 0.5px 0 #fff, inset 0 0 0 0.5px rgba(255,255,255,0.6), 0 0 0 0.5px rgba(0,0,0,0.05), 0 2px 6px rgba(0,0,0,0.10), 0 6px 16px rgba(0,0,0,0.06);"), "light: the white frost, its lit edge and its shadow");
-  const dark = "--set-glass: linear-gradient(180deg, rgba(255,255,255,0.26), rgba(255,255,255,0.13)); --set-glass-shadow: inset 0 0.5px 0 rgba(255,255,255,0.5), inset 0 0 0 0.5px rgba(255,255,255,0.12), 0 2px 8px rgba(0,0,0,0.4);";
-  assert.strictEqual(html.split(dark).length - 1, 2, "dark: the lighter frost, in the system's dark block and in the chosen dark theme's");
-  assert.ok(both.includes("background: var(--done);") && both.includes("box-shadow: none;"), "back on a set done: the fern, no lens: " + both);
+  assert.ok(html.includes("    --set-glass: rgba(255,255,255,0.74); --set-glass-shadow: inset 0 1px 0 rgba(255,255,255,0.12), inset 0 0 0 0.5px rgba(255,255,255,0.06), 0 1px 3px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.08); --set-glass-ink: #1d1d1f;"), "light: A's matte white with C's frost (its lit edge, its shadow), dark words");
+  const dark = "--set-glass: rgba(255,255,255,0.62); --set-glass-shadow: 0 2px 8px rgba(0,0,0,0.35);";
+  assert.strictEqual(html.split(dark).length - 1, 2, "dark: C as it was, in the system's dark block and in the chosen dark theme's");
+  assert.strictEqual(html.split("--set-glass-ink:").length - 1, 1, "the words dark in both modes (no dark block lightens them)");
+  assert.ok(both.includes("background: var(--done);") && both.includes("box-shadow: none;"), "back on a set done: the fern, not the frost: " + both);
 });
-
