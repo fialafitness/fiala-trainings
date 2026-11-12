@@ -80,6 +80,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 
 - Run `node --check app/main.js` and the tests. Gate the commit on the tests' exit code, never on a piped `tail`.
 - Add only the files you changed, never `git add -A`.
+- Commits carry GitHub's private address for the account (`<id>+fialafitness@users.noreply.github.com`), set in this repo's git config at the owner's choice (12 Nov 2026). Keep it, and in a fresh clone set it again (`gh api user --jq .id` gives the id).
 - Commit on `main` and push:
 
 ```bash
