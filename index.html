@@ -71,6 +71,7 @@
     --chip-done: color-mix(in srgb, var(--done) 25%, var(--surface)); --chip-done-ink: color-mix(in srgb, var(--done), #000 50%);   /* finished: the fern, by the same recipe */
     --chip-miss: color-mix(in srgb, var(--danger) 25%, var(--surface)); --chip-miss-ink: color-mix(in srgb, var(--danger), #000 50%);   /* missed (its day gone, still to do): the crimson, by the same recipe (his pick, 11 Nov) */
     --cal-line: rgba(0,0,0,0.09);       /* the month's line over each week: Apple Calendar's, measured (#e8e8e8 on white) */
+    --drop-on: rgba(0,0,0,0.05);        /* the day under a dragged workout: Apple Calendar's fill, measured (#f2f2f2 on white, 5% black) */
     --danger: #a63a46;                  /* Crimson deep — red text on light */
     --gold: #7f621a;                    /* the best lift: a quiet gold, deep enough to read as small bold text (5:1 on a field) */
     --ink: #1d1d1f;                     /* the strong mark: black on light, white on dark */
@@ -124,6 +125,7 @@
       --done-ink: #1d1d1f;
       --chip-plan-ink: var(--chip-grey); --chip-done-ink: var(--done); --chip-miss-ink: var(--danger);   /* dark: the words in the colour itself, as Calendar's */
       --cal-line: rgba(255,255,255,0.165);   /* #2a2a2b on black, measured on his screenshot */
+      --drop-on: rgba(255,255,255,0.098);   /* #191919 on black, measured on Apple Calendar */
       --danger: #e06470;                /* Crimson */
       --gold: #e0c268;
       --ink: #ffffff;
@@ -177,6 +179,7 @@
     --done-ink: #1d1d1f;
     --chip-plan-ink: var(--chip-grey); --chip-done-ink: var(--done); --chip-miss-ink: var(--danger);
     --cal-line: rgba(255,255,255,0.165);
+    --drop-on: rgba(255,255,255,0.098);
     --danger: #e06470;
     --gold: #e0c268;
     --ink: #ffffff;
@@ -1114,6 +1117,19 @@
   .day-ev.miss { background: var(--chip-miss); color: var(--chip-miss-ink); }
   .day-ev-more { display: block; height: 16px; font-size: 10px; line-height: 16px; color: var(--text-tertiary); text-align: center; }   /* the count of the rest, plain, as Calendar's "+2" */
   .week[hidden] { display: none; }
+  .week { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }   /* a day of the strip is pressed, never selected: a finger held on a workout lifts it, with no loupe and no callout, as on the month */
+  .week.wk-in-r { animation: wkInR 260ms cubic-bezier(0.22, 1, 0.36, 1); }   /* a dragged workout held at the strip's edge turned it: the next week comes in from that side (and this week from the other once it is down) */
+  .week.wk-in-l { animation: wkInL 260ms cubic-bezier(0.22, 1, 0.36, 1); }
+  @keyframes wkInR { from { transform: translateX(30%); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes wkInL { from { transform: translateX(-30%); opacity: 0; } to { transform: none; opacity: 1; } }
+  #calDrag { position: fixed; left: 0; top: 0; z-index: 56; height: 20px; box-sizing: border-box; border-radius: 5px; padding: 0 6px; overflow: hidden; white-space: nowrap; font-size: 15px; line-height: 20px; font-weight: 600; letter-spacing: 0; color: #fff; pointer-events: none; transform-origin: 0 0; box-shadow: 0 3px 12px rgba(0, 0, 0, 0.22); will-change: transform; }   /* a workout lifted out of its chip to drag it (his ask, 11 Nov), as Apple Calendar lifts an event (measured, iOS 27): 20 tall, its width 1.6 of the day's (main.js), its words a size up (15 for 11), its colour solid with white words */
+  #calDrag span { display: block; overflow: hidden; }
+  #calDrag.plan { background: var(--chip-grey); }
+  #calDrag.miss { background: var(--danger); }
+  body.cal-drag .week button:hover, body.cal-drag .cal button:hover { background: transparent; }   /* while one is dragged, only the day under it is filled */
+  body.cal-drag .week button.past, body.cal-drag .cal button.past { opacity: 0.35; }   /* the days gone by go grey: nothing lands there (his ask) */
+  body.cal-drag .week button.drop-on, body.cal-drag .cal button.drop-on { background: var(--drop-on); }   /* the day it would land on, filled across its cell, as Calendar's */
+  body.cal-drag, body.cal-drag * { cursor: grabbing !important; }   /* (over the month's own pointing days too)  */
   /* month view: the week strip opened out to a whole month */
   .week-bar { margin: 28px 0 0; min-height: 36px; }   /* the calendar breathes: 28 above its title row, the strip right under it, 28 below */
   .week-bar h2 { margin: 0; font-size: 1.0625rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; text-transform: none; color: var(--text-primary); }   /* the month the week is in — "November", or "Nov – Dec" when the week straddles — where Calendar writes it; nothing else needs saying */
@@ -1381,6 +1397,7 @@
   .cele-check { width: 96px; height: 96px; border-radius: 50%; background: var(--done); color: var(--done-ink); font-size: 3rem; display: flex; align-items: center; justify-content: center; animation: pop 600ms cubic-bezier(0.22, 1, 0.36, 1); }
   @keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .cele-check { animation: none; } .cal-view, .cal-track { transition: none !important; } }
+  @media (prefers-reduced-motion: reduce) { .week.wk-in-r, .week.wk-in-l { animation: none; } #calDrag { transition: none !important; } }   /* Reduce Motion: a dragged workout and the turned week move at once */
   .finish .finished { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin-top: 12px; font-size: 1.0625rem; }   /* Skip / Undo under Finish workout: air between a capsule and the button. Scoped: a finished day in the week strip carries the same class */
   .finished span { color: var(--done); font-weight: 500; }
   .notes .entry .ref { appearance: none; border: 0; background: none; width: auto; display: inline-flex; align-items: center; gap: 4px; padding: 0; margin-top: 2px; min-height: 24px; font-size: 0.8125rem; letter-spacing: 0; color: var(--text-tertiary); cursor: pointer; }   /* "Back · Wed, Oct 7 ›": the session the note came with */
@@ -1780,7 +1797,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=269";
+  import { boot } from "./app/main.js?v=270";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
