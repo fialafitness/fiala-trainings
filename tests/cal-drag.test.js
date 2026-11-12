@@ -19,7 +19,7 @@ test("held on a workout in the week strip, nothing shows for 0.4 s; then it lift
   assert.deepStrictEqual(r.strip.early, { lifted: false, ghost: false, body: false }, "0.39 s: nothing yet, as Calendar");
   const l = r.strip.lift;
   assert.deepStrictEqual([l.lifted, l.ghost, l.cls, l.words, l.body, l.ticks], [true, true, "plan", "Push day", true, 0], "no tick at the lift: on his iPhone none came (a web app may tick only as a touch lands or lifts)");
-  assert.strictEqual(r.strip.landTicks, 1, "one tick as it lands in its new day (his pick, 12 Nov), inside the release's own touchend");
+  assert.strictEqual(r.strip.landTicks, 1, "one buzz as it lands in its new day (Android's; an iPhone gives a web page no tick in a drag)");
   assert.strictEqual(l.width, "85px", "1.6 of the day's 53 points, as Calendar's (92 of 57)");
   assert.deepStrictEqual(l.lit, ["2026-11-13"], "its own day filled at the lift, as Calendar's");
   assert.deepStrictEqual(l.past, ["2026-11-09", "2026-11-10"], "Monday and Tuesday gone by");
@@ -82,7 +82,8 @@ test("Escape, a second finger and the system's own cancel take it back: nothing 
 test("a sync's redraw waits while a workout is lifted (the chip stays in the page) and comes once it is down; a week turned under the finger takes its chip out of the page, its touch still drops it, and its listeners go with the drag", () => {
   assert.deepStrictEqual(r.redraw, { held: true, after: false, title: "Done 2" });
   assert.deepStrictEqual(r.detached, { gone: true, date: "2026-11-20", listening: 0 }, "aimed at Friday's column of the week turned in: the strip's days are its columns, wherever its sliding buttons are");
-  assert.ok(js.includes("    if (moved) cdTick();") && js.includes('document.addEventListener("click", (e) => { if (cdTicking) return; if (performance.now() < cdEatUntil) {'), "the tick when it has moved, and its own click let through the release's eater (eaten, its switch would not flip)");
+  assert.ok(js.includes("    if (moved) cdTick();") && js.includes("  const cdTick = () => haptic();"), "a buzz (Android's) as a moved workout lands");
+  assert.ok(!/cdTicking|setAttribute\("switch"/.test(js.slice(js.indexOf("drag a workout to another day"), js.indexOf("drag a workout to another day") + 40000)), "no switch flipped for an iPhone tick in the drag: his phone gave none (12 Nov), so nothing is clicked or focused behind a drop");
 });
 
 test("the look, measured on Apple Calendar (iOS 27): the copy 20 tall, its words a size up (15 for 11) and white on its solid colour, a soft shadow, over the page and under nothing; the day under it filled as Calendar's; the days gone by grey; no loupe on the strip; Reduce Motion moves it at once", () => {
