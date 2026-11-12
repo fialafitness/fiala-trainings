@@ -51,9 +51,9 @@ test("two quick taps go two workouts (the first lands at once, as the month's ar
 
 test("the finger: 8 points sideways within 30 degrees of level is a slide, refused at once (so iOS starts no scroll of the list), from the list or the header; it follows from there with no jump; let go past 48 points it goes on (either way), else back; a cancelled touch goes back; with nothing that way a third of the way, and back; steeper is nobody's; a move that can no longer be refused (iOS scrolling the list) is never a slide", () => {
   assert.deepStrictEqual([r.fling.p, r.fling.during.slide, r.fling.landed], [[true, true, true], { dir: 1, to: "b", x: -52, settling: false }, at("b", false, false)]);
-  assert.deepStrictEqual([r.short.during.slide.x, r.short.landed], [-22, at("a", false, false)]);
+  assert.deepStrictEqual([r.short.during.slide.x, r.short.landed, r.short.listTr], [-22, at("a", false, false), ""]);
   assert.deepStrictEqual([r.right.during.slide, r.right.landed], [{ dir: -1, to: "m1", x: 62, settling: false }, at("m1", false, false)]);
-  assert.deepStrictEqual([r.cancelled.during.slide.x, r.cancelled.landed], [-92, at("a", false, false)]);
+  assert.deepStrictEqual([r.cancelled.during.slide.x, r.cancelled.landed, r.cancelled.listTr], [-92, at("a", false, false), ""]);
   assert.deepStrictEqual([r.band.during.slide, r.band.landed], [{ dir: -1, to: null, x: 20, settling: false }, at("f", true, false)]);
   assert.deepStrictEqual([r.steep.p, r.steep.during.slide, r.steep.landed], [[false], null, at("a", false, false)]);
   assert.deepStrictEqual([r.header.during.slide.x, r.header.landed], [-62, at("b", false, false)]);
@@ -74,8 +74,9 @@ test("a sync's redraw waits for a slide (the list takes the workout it went to o
   assert.deepStrictEqual(r.g19, { h0: "3 workouts", mid: "3 workouts", landed: "4 workouts" });
 });
 
-test("the sheet's height eases toward the incoming workout's with the share slid, as the month view's does, settles on the slide's curve, and is the sheet's own again when it lands", () => {
-  assert.deepStrictEqual(r.height, { at200: "488px", tr: "none", settling: { h: "374px", tr: "height " + CURVE }, landed: "", trAfter: "" });   // 600 tall now, 0 + 94 + 200 + 80 with the next one: 200 of 402 slid is 49.75%
+test("the sheet keeps its one height through a finger's slide, its let-go and its landing (his ask, 11 Nov: \"make sure the card is always the same height … short card just looks weird\"): no height and no height transition is written on it, however long the workout coming in", () => {
+  assert.deepStrictEqual(r.height, { slid: true, writes: [], mid: "", landed: "b" });
+  assert.deepStrictEqual(r.sizedAll, [], "nothing in the whole run (fingers, arrows, keys, a wheel, Skip and Delete, a close mid-slide, syncs) writes a height, a min or max height or a height transition on the sheet");
 });
 
 test("the keys: right and left go to the next and the one before (as Quick Look steps through files), never with Command; Escape closes it, but not while a menu or a sheet is up over it; two fingers on a Mac's trackpad slide it, a workout at most, by the finger's rule, never under its menu", () => {
@@ -145,11 +146,9 @@ test("a finger landing while a slide is still landing lands on the list, which a
   assert.deepStrictEqual(r.flingCopy, ["translate3d(402px,0,0)", "translate3d(-52px,0,0)"], "a finger's let-go: the copy going out starts where the finger left the list (no jump)");
 });
 
-test("the sheet's height on an arrow's slide (a key's, the one after Skip or Delete): from its own height in points, read, then eased (WebKit eases nothing from height auto), as the finger's; its cap as laid out (its max-height reads back as calc(), not in points), measured once with the foot under the list as the slide began", () => {
-  assert.deepStrictEqual(r.arrowHeight, ["read", "read", "height=100000px", "read", "height=", "transition=none", "height=600px", "read", "transition=height " + CURVE, "height=374px"]);
-  assert.deepStrictEqual(r.fraction, ["", "788px", "630.984375px", ""], "to the fraction, as laid out (measured on the test iPhone: whole points added up came to 630, and the sheet jumped a point as it landed)");
-  assert.deepStrictEqual(r.capped, { half: "500px", settling: "700px", landed: "" });   // 300 tall, the next one 2,094 capped at 700: half slid is 500
-  assert.deepStrictEqual(r.foot, { toward: "544px", bottom: "80px", h: "528px" });   // toward a shorter one (374) by 100, then back past the start: the other page's foot still 80
+test("an arrow's slide (a key's, the one after Skip or Delete) writes no height either; the page coming in is placed where the list is, its foot under the list measured once as the slide began (back past the start, the other side's page has the same foot)", () => {
+  assert.deepStrictEqual(r.arrowHeight, { mid: true, log: [], landed: "b" });
+  assert.deepStrictEqual(r.foot, { bottom: "80px", h: "" });
 });
 
 test("a sync that takes the workout away while a question is up over the preview: the question goes with it (as UIKit dismisses what is above a sheet it takes away), nothing held or asking; the menu goes with the preview; one that only changes what the \"…\" offers closes its menu; the next preview opened is not left held", () => {
@@ -228,12 +227,12 @@ test("a sync that takes away the workout going out while the fingers hold a slid
   assert.deepStrictEqual(r.fromGone, { finger: landed, wheel: landed });
 });
 
-test("the sheet to the fraction of a point, as WebKit lays it out (402 x 874, 9 exercises to 1): the pages that slide cover the list exactly (from its padding edge, under the sheet's 1-point top border), and the sheet eases from its own height to the incoming workout's own, so nothing jumps as it lands", () => {
-  assert.deepStrictEqual(r.fracPlace, { writes: ["", "850px", "356.046875px", ""], pages: ["0px 84.34375px", "0px 84.34375px"] });
+test("the sheet to the fraction of a point, as WebKit lays it out (402 x 874, 9 exercises to 1): the pages that slide cover the list exactly (from its padding edge, under the sheet's 1-point top border), and the sheet keeps its height, so nothing jumps as it lands", () => {
+  assert.deepStrictEqual(r.fracPlace, { writes: [], pages: ["0px 84.34375px", "0px 84.34375px"] });
 });
 
-test("the \"…\"'s menu and the sheet's own moves: a sync's redraw that moves the \"…\" (the sheet sits at the screen's foot, as tall as its workout) closes the menu placed under it, one that moves nothing keeps it; the \"…\" tapped while the sheet springs back opens nothing (its menu would hang below it once home), and once home it opens", () => {
-  assert.deepStrictEqual(r.menuMoved, { was: true, same: true, moved: false, open: "a" });
+test("the \"…\"'s menu and the sheet's own moves: a sync's redraw keeps the menu open (the sheet keeps its one height, so the \"…\" stays where it is, two exercises added or not); one that did move the \"…\" would close the menu placed under it; the \"…\" tapped while the sheet springs back opens nothing (its menu would hang below it once home), and once home it opens", () => {
+  assert.deepStrictEqual(r.menuMoved, { was: true, same: true, stays: true, moved: false, open: "a" });
   assert.deepStrictEqual(r.moreSpring, { springing: true, menu: false, home: true });
 });
 

@@ -486,7 +486,7 @@
      chevrons in it): the page's own grey; the title and day as the workout page writes them (26 semibold, 17 Steel); the cards as Apple draws an
      inset grouped list (17 semibold names in ink, 15 under them in Steel, the number quiet, a hairline from the name to the card's edge) */
   .pv-sheet:focus { outline: none; }
-  .sheet.pv-sheet { background: var(--pv-bg); display: flex; flex-direction: column; padding-top: 0; position: relative; overflow: hidden; will-change: transform; }   /* the base sheet's height: 24 below the status bar, as every sheet; its own layer all the while it is up, so the pull putting it back at its place never rebuilds the layers under iOS's own scroll of its list (measured: that stopped the list mid-touch) */
+  .sheet.pv-sheet { background: var(--pv-bg); display: flex; flex-direction: column; padding-top: 0; position: relative; overflow: hidden; will-change: transform; height: calc(100% - env(safe-area-inset-top, 0px) - 24px); }   /* always the base sheet's full height, 24 below the status bar, however few its exercises (his ask, 11 Nov: "make sure the card is always the same height … its ok to have an empty space bellow in the card … short card just looks weird"): a short workout leaves room under its cards, Start workout stays at the foot, and a slide to another workout changes no height; its own layer all the while it is up, so the pull putting it back at its place never rebuilds the layers under iOS's own scroll of its list (measured: that stopped the list mid-touch) */
   .pv-x {                                                   /* the close cross, as Apple's sheets (his ask, 10 Nov, from Calendar's event sheet: measured there, a 44-point circle 16 in from the sheet's top and left edges): the app's round-button grey, as the back button's */
     appearance: none; border: 0; padding: 0; border-radius: 50%; flex: none; align-self: flex-start; margin: 0;
     background: var(--disc-fill); color: var(--disc-ink); font: inherit; cursor: pointer;
@@ -1780,7 +1780,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=268";
+  import { boot } from "./app/main.js?v=269";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
