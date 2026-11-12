@@ -152,6 +152,7 @@ export function validateBackup(d, knownClient) {                  // the whole f
     if (!optList(c.planHistory, LIMIT.history) || (c.planHistory || []).some((h) => !isObj(h))) throw new Error("bad client");
     if (!optList(c.packages, LIMIT.packages) || (c.packages || []).some((pk) => !isObj(pk) || typeof pk.id !== "string" || !pk.id || typeof pk.name !== "string" || !pk.name.trim() || !optStr(pk.kind) || !optNum(pk.size) || !optBool(pk.inPerson) || (pk.kind !== "monthly" && !(Number(pk.size) >= 1)))) throw new Error("bad client");   // a package is shown by its name and counted by its size
     if (!optList(c.folders, LIMIT.folders) || (c.folders || []).some((x) => !isObj(x))) throw new Error("bad client");   // the coach's template folders (12 Nov): a list the Templates pages read with .filter
+    if (!optList(c.rootOrder, LIMIT.folders + 100) || (c.rootOrder || []).some((k) => typeof k !== "string")) throw new Error("bad client");   // the Programs list's order (Reorder, 12 Nov): keys read with .map
     ids.add(c.id);
   }
   const tids = new Set();

@@ -128,7 +128,7 @@ const cloudBackend = {
     let base = seenDoc.get(k) ? JSON.parse(seenDoc.get(k)) : null; const map = kind === "clients" ? clients : trainings;
     const takeFields = (serverData) => {                      // two of his own devices: a field this one did not change since it last read the record takes the other device's value
       if (!base || !serverData) return;
-      const skip = kind === "clients" ? ["id", "notes", "packages", "folders", "plan", "planHistory"] : ["id", "rows", "completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"];   // the fields with their own merge rules
+      const skip = kind === "clients" ? ["id", "notes", "packages", "folders", "rootOrder", "plan", "planHistory"] : ["id", "rows", "completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"];   // the fields with their own merge rules
       for (const target of [data, map.get(id)]) {
         if (!target) continue;
         for (const f of new Set([...Object.keys(serverData), ...Object.keys(base)])) {
@@ -180,6 +180,7 @@ const cloudBackend = {
           const merge = (mine) => { const have = new Set((mine || []).map((x) => x && x.id)); return [...(mine || []).filter((x) => x && x.id && kept(x)).map((x) => (folderTouched.has(x.id) ? ours(x) : theirs.has(x.id) ? theirs.get(x.id) : x)), ...[...theirs.values()].filter((x) => !have.has(x.id) && !deletedFolders.has(x.id))]; };
           data.folders = merge(data.folders); if (live) live.folders = merge(live.folders);
         }
+        if (isTemplateClient(id) && !folderTouched.has(":rootOrder")) for (const target of [data, live]) { if (!target) continue; if (serverData.rootOrder === undefined) delete target.rootOrder; else target.rootOrder = serverData.rootOrder; }   // the Templates page's Programs order (Reorder, v280): the server's, unless this device changed it (marked ":rootOrder"; a save with no copy read before must not wipe another device's order: the v280 review's catch)
         if (!planTouched.has(id)) for (const f of ["plan", "planHistory"]) for (const target of [data, live]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; }   // a plan set on another device stands, unless this one changed it
       };
       if (!seen && attempt === 0) {                               // no stamp (edited offline, app relaunched): read first, never write over the other side blind

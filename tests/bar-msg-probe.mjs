@@ -10,7 +10,7 @@ document.removeEventListener = (t, fn) => { const a = L[t] || []; const i = a.fi
 const fire = (type, ev = {}) => { ev.type = type; ev.preventDefault ||= () => {}; ev.stopPropagation ||= () => {}; const ls = L[type] || []; for (const l of [...ls.filter((x) => x.capture), ...ls.filter((x) => !x.capture)]) l.fn(ev); };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // the bar: the real elements in the page's order, a copy that keeps ids and hidden flags (as cloneNode(true) does)
-const IDS = ["back", "brand", "status", "barMsg", "tMore", "meDisc", "navDone"];
+const IDS = ["back", "brand", "status", "barMsg", "tAdd", "tMore", "meDisc", "navDone"];
 const animFn = () => () => ({ cancel() {} });
 const mkBar = (kids) => {
   const b = { children: kids, style: {}, attrs: {}, removed: false };

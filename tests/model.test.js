@@ -226,6 +226,8 @@ test("a backup is refused when a field a screen reads as a list or an object is 
     ["template folders as an object", (d) => { d.clients.c1.folders = { a: 1 }; }],
     ["a template folder that is not an object", (d) => { d.clients.c1.folders = ["Summer"]; }],
     ["a template's folder that is not a word", (d) => { d.trainings.t1.template = { program: "My templates", phase: 0, stage: 0, n: 1, folder: 7 }; }],
+    ["the Programs order as a word", (d) => { d.clients.c1.rootOrder = "p:Fat Burn"; }],
+    ["a Programs order key that is not a word", (d) => { d.clients.c1.rootOrder = [{ key: "p:Fat Burn" }]; }],
     ["a package without an id", (d) => { d.clients.c1.packages = [{ name: "no id" }]; }],
     ["a plan as a string", (d) => { d.clients.c1.plan = "10 sessions"; }],
     ["notes as a list", (d) => { d.clients.c1.notes = ["a"]; }],
