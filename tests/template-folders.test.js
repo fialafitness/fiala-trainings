@@ -32,6 +32,8 @@ const setup = (folders = FOLDERS, tpls = TPLS, view = { name: "client", id: TPL 
   app.set({ view, renderedTraining: null }); fns.render();
 };
 const menu = () => fns.tplMoreItems().map((it) => (it.danger ? "red " : "") + it.label);
+const adds = () => fns.tplAddItems().map((it) => it.label);
+const add = (label) => fns.tplAddItems().find((it) => it.label === label).onPick();
 const meta = (id) => { const m = maps.trainings.get(id).template; return [m.program, m.n, m.folder || null]; };
 // the ask sheet's buttons and field, keeping the listeners they are given (the shared stand-in drops them)
 function asking() {
@@ -102,37 +104,37 @@ test("his folder looks as a program does: its folders as phases; a folder's slid
   quiet();
 });
 
-test("an empty folder says what to do: + for a template, … for a folder or a slide (a folder inside a folder: a slide only); an empty slide: + for a template", () => {
+test("an empty folder says what to do: + for a template, a folder or a slide (a folder inside a folder: a template or a slide); an empty slide: + for a template", () => {
   setup([node("A", "New program", null, "folder", 1), node("B", "Inner", "A", "folder", 2), node("E", "Empty", null, "folder", 3), node("S", "Week 1", "A", "slide", 4)], [], { name: "client", id: TPL, folder: "E" });
   drawing((got) => {
-    fns.render(); assert.deepStrictEqual(read(got()), ["empty: Nothing here yet. Tap + for a template, or … for a folder or a slide."]);
-    fns.go(fns.tplPage("B")); assert.deepStrictEqual(read(got()), ["empty: Nothing here yet. Tap + for a template, or … for a slide."]);
+    fns.render(); assert.deepStrictEqual(read(got()), ["empty: Nothing here yet. Tap + for a template, a folder or a slide."]);
+    fns.go(fns.tplPage("B")); assert.deepStrictEqual(read(got()), ["empty: Nothing here yet. Tap + for a template or a slide."]);
     fns.go(fns.tplPage("A")); assert.deepStrictEqual(read(got()), ["# Folders", "> Inner · 0 workouts", "tabs [Week 1]", "empty: Nothing here yet. Tap + for a template."], "a new slide, still empty");
   });
   quiet();
 });
 
-test("the … : New folder on the Templates page and in a top folder; in any folder New slide, the slide shown's Rename and Delete, the folder's Rename and, last and red, Delete; none on a built-in program's pages", () => {
+test("the two buttons (his ask, 12 Nov: \"split it in 2 buttons\"): the + has everything he can add there (New template, New folder at the top and in a top folder, New slide in any folder); the … the rest (Reorder; in a folder the slide shown's Rename and Delete, the folder's Rename and, last and red, Delete); neither on a built-in program's pages", () => {
   setup();
-  assert.deepStrictEqual(menu(), ["New folder", "Reorder folders"], "the Templates page: a slide needs a folder; two folders of his, so Reorder");
-  fns.go(fns.tplPage("A")); assert.deepStrictEqual(menu(), ["New folder", "New slide", "Rename folder", "red Delete folder"], "a top folder with no slides");
-  fns.go(fns.tplPage("B")); assert.deepStrictEqual(menu(), ["New slide", "Rename slide", "Rename folder", "red Delete slide", "red Delete folder"], "a folder inside a folder: no deeper folder");
-  const icons = fns.tplMoreItems().map((it) => it.icon), MI = fns.menuIcons();
-  assert.deepStrictEqual(icons, [MI.slidePlus, MI.pencil, MI.pencil, MI.trash, MI.trash]);
-  fns.go({ name: "client", id: TPL }); assert.deepStrictEqual(fns.tplMoreItems().map((it) => it.icon), [MI.folderPlus, MI.reorder]);
+  assert.deepStrictEqual([adds(), menu()], [["New template", "New folder"], ["Reorder"]], "the Templates page");
+  fns.go(fns.tplPage("A")); assert.deepStrictEqual([adds(), menu()], [["New template", "New folder", "New slide"], ["Rename folder", "red Delete folder"]], "a top folder with no slides and one folder inside");
+  fns.go(fns.tplPage("B")); assert.deepStrictEqual([adds(), menu()], [["New template", "New slide"], ["Rename slide", "Rename folder", "red Delete slide", "red Delete folder"]], "a folder inside a folder: no deeper folder");
+  const MI = fns.menuIcons();
+  assert.deepStrictEqual([fns.tplAddItems().map((it) => it.icon), fns.tplMoreItems().map((it) => it.icon)], [[MI.docPlus, MI.slidePlus], [MI.pencil, MI.pencil, MI.trash, MI.trash]]);
+  fns.go({ name: "client", id: TPL }); assert.deepStrictEqual([fns.tplAddItems().map((it) => it.icon), fns.tplMoreItems().map((it) => it.icon)], [[MI.docPlus, MI.folderPlus], [MI.reorder]]);
   assert.strictEqual(MI.reorder, MI.swap.replace("<path ", '<path transform="rotate(90 21.88 10)" '), "Reorder: the swap arrows a quarter turn round (up beside down)");
-  for (const k of ["folderPlus", "slidePlus"]) assert.ok(/^<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M[^"]+Z"\/><\/svg>$/.test(MI[k]) && !MI[k].includes("stroke"), k + ": our own filled glyph, its plus cut through it");
-  fns.go({ name: "client", id: TPL, program: "Fat Burn", phase: null, stage: null }); assert.deepStrictEqual(menu(), [], "a built-in program: as it was");
-  fns.go({ name: "client", id: TPL, program: "Fat Burn", phase: 1, stage: 1 }); assert.deepStrictEqual(menu(), []);
+  for (const k of ["folderPlus", "slidePlus", "docPlus"]) assert.ok(/^<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M[^"]+Z"\/><\/svg>$/.test(MI[k]) && !MI[k].includes("stroke"), k + ": our own filled glyph, its plus cut through it");
+  fns.tplAddItems()[0].onPick(); assert.deepStrictEqual(maps.trainings.get(app.get().view.id).template, { program: "My templates", phase: 0, stage: 0, n: 2 }, "New template: as the round + at the foot");
+  fns.go({ name: "client", id: TPL, program: "Fat Burn", phase: null, stage: null }); assert.deepStrictEqual([adds(), menu()], [[], []], "a built-in program: as it was");
+  fns.go({ name: "client", id: TPL, program: "Fat Burn", phase: 1, stage: 1 }); assert.deepStrictEqual([adds(), menu()], [[], []]);
   quiet();
 });
-
-test("the bar on the Templates pages: the … and the round glass + (New template) at the foot's trailing edge; neither on a program's pages nor while picking a template for a client; the swipe back's bar agrees", () => {
+test("the bar on the Templates pages: the + and the … at the top, and the round glass + (New template) at the foot's trailing edge; neither on a program's pages nor while picking a template for a client; the swipe back's bar agrees", () => {
   const add = el("button"); add.attrs = {}; add.setAttribute = (k, v) => { add.attrs[k] = String(v); }; byId.set("addBtn", add);
   try {
-    const bar = () => ({ more: !$("tMore").hidden, plus: !$("addBtn").hidden, label: add.attrs["aria-label"], foot: $("dock").classList.contains("tp"), pad: document.body.classList.contains("tplus") });
-    const agree = (what) => assert.strictEqual(fns.barFor(fns.viewKey(app.get().view)).tMore, !$("tMore").hidden, what + ": the swipe back's bar agrees with the page");
-    const ON = { more: true, plus: true, label: "New template", foot: true, pad: true }, OFF = { more: false, plus: false, label: "New workout", foot: false, pad: false };
+    const bar = () => ({ more: !$("tMore").hidden, top: !$("tAdd").hidden, plus: !$("addBtn").hidden, label: add.attrs["aria-label"], foot: $("dock").classList.contains("tp"), pad: document.body.classList.contains("tplus") });
+    const agree = (what) => { const b = fns.barFor(fns.viewKey(app.get().view)); assert.deepStrictEqual([b.tMore, b.tAdd], [!$("tMore").hidden, !$("tAdd").hidden], what + ": the swipe back's bar agrees with the page"); };
+    const ON = { more: true, top: true, plus: true, label: "New template", foot: true, pad: true }, OFF = { more: false, top: false, plus: false, label: "New workout", foot: false, pad: false };
     setup(); assert.deepStrictEqual(bar(), ON, "the Templates page"); agree("the Templates page");
     fns.go(fns.tplPage("A")); assert.deepStrictEqual(bar(), ON, "his folder"); agree("his folder");
     fns.go({ name: "client", id: TPL, folder: "B", slide: "S2" }); assert.deepStrictEqual(bar(), ON, "a slide of his"); agree("a slide");
@@ -147,20 +149,20 @@ test("the bar on the Templates pages: the … and the round glass + (New templat
 test("New folder asks its name in the sheet: the field, a purple Add that waits for a name, Cancel makes nothing; the name, tidied, makes the folder where he is, kept for the save", async () => {
   setup([], [T("t5", MINE(1))]); const ask = asking();
   try {
-    const no = fns.tplMoreItems()[0].onPick();
+    const no = add("New folder");
     assert.deepStrictEqual(sheet(), { up: true, title: "New folder", text: null, field: "", yes: "Add", red: false });
     assert.deepStrictEqual([$("askInput").placeholder, $("askInput").maxLength], ["Name", 40]);
     await tick(400); assert.strictEqual($("askYes").disabled, true, "no name yet: Add waits");
     ask.type("   "); assert.strictEqual($("askYes").disabled, true, "spaces are no name");
     ask.no(); await no; assert.deepStrictEqual([fns.tplNodes().length, $("askSheet").hidden, maps.dirty.size], [0, true, 0], "Cancel: nothing made, nothing to save");
-    const yes = fns.tplMoreItems()[0].onPick(); await tick(400);
+    const yes = add("New folder"); await tick(400);
     ask.yes(); assert.strictEqual($("askSheet").hidden, false, "Add with no name does nothing");
     ask.type("  Summer   block "); assert.strictEqual($("askYes").disabled, false);
     ask.yes(); await yes;
     const [f] = fns.tplNodes();
     assert.deepStrictEqual([f.name, f.parent, f.kind, typeof f.at], ["Summer block", null, "folder", "string"], "at the top, his name with its spaces tidied");
     assert.deepStrictEqual([maps.folderTouched.get(f.id), maps.dirty.has("clients/" + TPL)], [TPL, true], "marked as this device's for a merge, and saved");
-    fns.go(fns.tplPage(f.id)); const inner = fns.tplMoreItems()[0].onPick(); await tick(400); ask.type("Phase 1"); ask.yes(); await inner;
+    fns.go(fns.tplPage(f.id)); const inner = add("New folder"); await tick(400); ask.type("Phase 1"); ask.yes(); await inner;
     assert.deepStrictEqual(fns.tplKids(f.id, "folder").map((x) => x.name), ["Phase 1"], "in a top folder: inside it");
   } finally { ask.done(); quiet(); }
 });
@@ -168,13 +170,13 @@ test("New folder asks its name in the sheet: the field, a purple Add that waits 
 test("New slide: named by him; the folder's first takes the templates in the folder itself, in their order; each new one is the slide shown, where the + puts the next template", async () => {
   setup([node("A", "Summer block", null, "folder", 1)], [T("t1", MINE(5, "A")), T("t2", MINE(2, "A")), T("t5", MINE(1))], { name: "client", id: TPL, folder: "A" }); const ask = asking();
   try {
-    const one = fns.tplMoreItems().find((it) => it.label === "New slide").onPick();
+    const one = add("New slide");
     assert.deepStrictEqual(sheet(), { up: true, title: "New slide", text: null, field: "", yes: "Add", red: false });
     await tick(400); ask.type("Week 1"); ask.yes(); await one;
     const [s1] = fns.tplKids("A", "slide");
     assert.deepStrictEqual([s1.name, meta("t2"), meta("t1"), meta("t5")], ["Week 1", ["My templates", 1, s1.id], ["My templates", 2, s1.id], ["My templates", 1, null]], "Workout 2 and Workout 5 become Week 1's Workout 1 and 2; the loose one stays loose");
     assert.strictEqual(app.get().view.slide, s1.id);
-    const two = fns.tplMoreItems().find((it) => it.label === "New slide").onPick(); await tick(400); ask.type("Week 2"); ask.yes(); await two;
+    const two = add("New slide"); await tick(400); ask.type("Week 2"); ask.yes(); await two;
     const s2 = fns.tplKids("A", "slide")[1]; assert.deepStrictEqual([s2.name, app.get().view.slide], ["Week 2", s2.id], "the new slide is the one shown");
     fns.newWorkoutHere();
     const v = app.get().view, made = maps.trainings.get(v.id);
@@ -347,40 +349,42 @@ test("choosing a template for a client: an empty folder or slide says only that 
 
 test("a restore never wipes his folders: a backup from before them leaves them as they are (nothing to restore for the Templates record); one with other folders says so", () => {
   setup(FOLDERS, TPLS);
-  maps.seenAt.set("clients/" + TPL, "S1");
-  const tc = maps.clients.get(TPL), copy = { id: TPL, name: "Templates", kind: "templates" };   // the record as an old backup has it: no folders
-  for (const k of Object.keys(tc)) if (k !== "folders") copy[k] = JSON.parse(JSON.stringify(tc[k]));
+  maps.seenAt.set("clients/" + TPL, "S1"); maps.clients.get(TPL).rootOrder = ["p:Fat Burn", "H", "A"];   // his Programs order too (Reorder, v280)
+  const tc = maps.clients.get(TPL), copy = { id: TPL, name: "Templates", kind: "templates" };   // the record as an old backup has it: no folders, no order
+  for (const k of Object.keys(tc)) if (k !== "folders" && k !== "rootOrder") copy[k] = JSON.parse(JSON.stringify(tc[k]));
   const old = fns.planRestore({ app: "fiala-trainings", format: 1, clients: { [TPL]: copy }, trainings: {} });
-  assert.deepStrictEqual([old.cs.length, old.text], [0, ""], "the same record but for the folders: nothing to do");
+  assert.deepStrictEqual([old.cs.length, old.text], [0, ""], "the same record but for the folders and the order: nothing to do");
   const other = fns.planRestore({ app: "fiala-trainings", format: 1, clients: { [TPL]: { ...copy, folders: [node("Z", "Winter", null, "folder", 1)] } }, trainings: {} });
   assert.strictEqual(other.text, "the packages list and the template folders from the file go into the app. It replaces a copy already here. Everything else stays as it is.");
+  const order = fns.planRestore({ app: "fiala-trainings", format: 1, clients: { [TPL]: { ...copy, folders: JSON.parse(JSON.stringify(maps.clients.get(TPL).folders)), rootOrder: ["A", "H", "p:Fat Burn"] } }, trainings: {} });
+  assert.strictEqual(order.text, "the packages list and the order of the programs from the file go into the app. It replaces a copy already here. Everything else stays as it is.", "another Programs order in the file: said so");
   assert.deepStrictEqual(fns.tplNodes().map((f) => f.id), ["A", "H", "B", "S1", "S2"], "planning changed nothing here");
   quiet();
 });
 
-test("Reorder folders (his pick, 12 Nov: his folders only, like the Clients list's Reorder): grips on his folders, the built-in programs below without; Done at the top right, no … and no +; a folder let go in a new place keeps it, marked for the save; a new one comes last; Done or another page ends it", () => {
+test("Reorder on the Templates page (his ask, 12 Nov: \"in this slide I should have already been able to see reorder\"): the whole Programs list, the built-in programs too, each with the grip; Done at the top right, no …, no + and no + beside it; a row let go in a new place keeps it, saved with the Templates record; one added since comes after; Done or another page ends it", () => {
   setup();
   drawing((got) => {
-    fns.tplMoreItems().find((it) => it.label === "Reorder folders").onPick();
-    assert.deepStrictEqual([fns.tplOrderOn(), $("tMore").hidden, $("navDone").hidden, $("addBtn").hidden], [true, true, false, true], "Done instead of the …, and no +");
-    assert.deepStrictEqual(read(got()), ["# Programs", "≡ Rehab", "≡ Summer block", "· Fat Burn"], "his folders with the grip (Rehab first: made first), Fat Burn below as it is; My templates out of the way");
-    const rows = got()[1].kids; assert.deepStrictEqual([!!(rows[0].on.pointerdown || []).length, !!(rows[2].on.pointerdown || []).length], [true, false], "his are dragged by the grip; a built-in program is not");
-    fns.moveFolderTo("A", 0);
-    assert.deepStrictEqual([fns.tplKids(null, "folder").map((x) => x.id), [...maps.folderTouched.keys()].sort(), maps.dirty.has("clients/" + TPL)], [["A", "H"], ["A", "H"], true], "Summer block first now, both marked as this device's, the order saved");
-    assert.deepStrictEqual(read(got()), ["# Programs", "≡ Summer block", "≡ Rehab", "· Fat Burn"]);
-    maps.folderTouched.clear(); fns.moveFolderTo("A", 0); assert.strictEqual(maps.folderTouched.size, 0, "let go where it was: nothing changed");
+    fns.tplMoreItems().find((it) => it.label === "Reorder").onPick();
+    assert.deepStrictEqual([fns.tplOrderOn(), $("tMore").hidden, $("tAdd").hidden, $("navDone").hidden, $("addBtn").hidden], [true, true, true, false, true], "Done instead of the two buttons, and no + at the foot");
+    assert.deepStrictEqual(read(got()), ["# Programs", "≡ Rehab", "≡ Summer block", "≡ Fat Burn"], "his folders and Fat Burn, each with the grip; My templates out of the way");
+    assert.ok(got()[1].kids.every((li) => (li.on.pointerdown || []).length === 1), "every row is dragged by its grip");
+    fns.moveRootTo("p:Fat Burn", 0);
+    assert.deepStrictEqual([maps.clients.get(TPL).rootOrder, maps.dirty.has("clients/" + TPL), read(got())], [["p:Fat Burn", "H", "A"], true, ["# Programs", "≡ Fat Burn", "≡ Rehab", "≡ Summer block"]], "Fat Burn first now, the order saved with the Templates record");
+    maps.dirty.clear(); fns.moveRootTo("p:Fat Burn", 0); assert.strictEqual(maps.dirty.size, 0, "let go where it was: nothing to save");
     fns.doneTplOrder();
-    assert.deepStrictEqual([fns.tplOrderOn(), $("tMore").hidden, $("navDone").hidden, read(got()).slice(-4)], [false, false, true, ["# Programs", "> Summer block · 4 workouts", "> Rehab · 0 workouts", "> Fat Burn · 1 workout"]], "Done: the page as it was, in the new order");
-    maps.clients.get(TPL).folders.push(node("N", "New one", null, "folder", 30)); assert.deepStrictEqual(fns.tplKids(null, "folder").map((x) => x.id), ["A", "H", "N"], "a folder made after a reorder comes last");
-    fns.tplMoreItems().find((it) => it.label === "Reorder folders").onPick(); fns.go(fns.tplPage("A")); assert.strictEqual(fns.tplOrderOn(), false, "another page ends it");
+    assert.deepStrictEqual([fns.tplOrderOn(), $("tMore").hidden, $("tAdd").hidden, $("navDone").hidden, read(got()).slice(-4)], [false, false, false, true, ["# Programs", "> Fat Burn · 1 workout", "> Rehab · 0 workouts", "> Summer block · 4 workouts"]], "Done: the page as it was, in the new order");
+    maps.clients.get(TPL).folders.push(node("N", "New one", null, "folder", 30)); assert.deepStrictEqual(fns.tplRootList().map((e) => e.key), ["p:Fat Burn", "H", "A", "N"], "a folder made after a reorder comes after");
+    fns.tplMoreItems().find((it) => it.label === "Reorder").onPick(); fns.go(fns.tplPage("A")); assert.strictEqual(fns.tplOrderOn(), false, "another page ends it");
     fns.go({ name: "client", id: TPL }, true); assert.strictEqual(fns.tplOrderOn(), false, "and coming back does not start it again");
   });
+  setup(FOLDERS.filter((f) => f.id !== "H"), TPLS); assert.deepStrictEqual(menu(), ["Reorder"], "one folder of his and Fat Burn: two to put in order");
+  setup([], [T("t5", MINE(1))]); assert.deepStrictEqual(menu(), [], "nothing to put in order: no Reorder");
   quiet();
 });
-
-test("Reorder folders inside a folder: offered where two folders or more stand in it (after New slide), puts them in order under Folders; one folder alone offers none", () => {
+test("Reorder folders inside a folder: offered first in the … where two folders or more stand in it, puts them in order under Folders; one folder alone offers none", () => {
   setup([...FOLDERS, node("B2", "Phase 2", "A", "folder", 9)], TPLS, { name: "client", id: TPL, folder: "A" });
-  assert.deepStrictEqual(menu(), ["New folder", "New slide", "Reorder folders", "Rename folder", "red Delete folder"]);
+  assert.deepStrictEqual(menu(), ["Reorder folders", "Rename folder", "red Delete folder"]);
   drawing((got) => {
     fns.tplMoreItems().find((it) => it.label === "Reorder folders").onPick();
     assert.deepStrictEqual([pageNow(), read(got())], [["Templates", "Summer block"], ["# Folders", "≡ Phase 1", "≡ Phase 2"]]);
@@ -391,30 +395,31 @@ test("Reorder folders inside a folder: offered where two folders or more stand i
   quiet();
 });
 
-test("Reorder by the finger: the grip lifts the folder and the others slide out of its way; let go, it lands among his folders only, however far it went (never among the built-in programs); a sync's redraw waits while it is held; a second move marks only what moved", () => {
-  setup([...FOLDERS.slice(0, 2), node("P", "Pre-season", null, "folder", 7), ...FOLDERS.slice(2)], TPLS);   // his top folders in the order made: Rehab, Summer block, Pre-season
+test("Reorder by the finger: the grip lifts the row and the others slide out of its way; let go, it lands where the finger left it (however far it went, within the list); a sync's redraw waits while it is held; a second move marks only the folders that moved; on the Templates page a built-in program moves too", () => {
+  setup([...FOLDERS, node("B2", "Phase 2", "A", "folder", 9), node("B3", "Phase 3", "A", "folder", 10)], TPLS, { name: "client", id: TPL, folder: "A" });   // inside Summer block: Phase 1, Phase 2, Phase 3
   drawing((got) => {
     fns.tplMoreItems().find((it) => it.label === "Reorder folders").onPick();
     const lay = () => { const ul = got()[1]; ul.children = ul.kids; ul.kids.forEach((li, k) => { li.parentElement = ul; li.getBoundingClientRect = () => ({ top: 100 + k * 56, bottom: 156 + k * 56, height: 56 }); li.setPointerCapture = () => {}; }); return ul; };   // the rows as a page lays them out: 56 tall, one under the other
     const press = (li, y) => li.on.pointerdown[0]({ button: 0, pointerType: "touch", pointerId: 1, clientY: y, target: { closest: (sel) => (sel === ".grip" ? {} : null) } });
-    let ul = lay(); const [rehab, summer, pre] = ul.kids;
-    press(pre, 240); pre.on.pointermove[0]({ clientY: 240 - 112 });  // Pre-season up two rows
-    assert.deepStrictEqual([pre.style.transform, rehab.style.transform, summer.style.transform, ul.kids[3].style.transform || ""], ["translateY(-112px)", "translateY(56px)", "translateY(56px)", ""], "it follows the finger, the two above slide down a row, Fat Burn stays");
+    let ul = lay(); const [p1, p2, p3] = ul.kids;
+    press(p3, 240); p3.on.pointermove[0]({ clientY: 240 - 112 });   // Phase 3 up two rows
+    assert.deepStrictEqual([p3.style.transform, p1.style.transform, p2.style.transform], ["translateY(-112px)", "translateY(56px)", "translateY(56px)"], "it follows the finger, the two above slide down a row");
     fns.render(); assert.strictEqual(got()[1], ul, "a sync's redraw while it is held leaves the list under the finger alone");
-    pre.on.pointerup[0]({});
-    assert.deepStrictEqual([fns.tplKids(null, "folder").map((x) => x.id), read(got()).slice(1, 4)], [["P", "H", "A"], ["≡ Pre-season", "≡ Rehab", "≡ Summer block"]], "let go at the top: first");
+    p3.on.pointerup[0]({});
+    assert.deepStrictEqual([fns.tplKids("A", "folder").map((x) => x.id), read(got())], [["B3", "B", "B2"], ["# Folders", "≡ Phase 3", "≡ Phase 1", "≡ Phase 2"]], "let go at the top: first");
     ul = lay(); const first = ul.kids[0];
-    press(first, 128); first.on.pointermove[0]({ clientY: 128 + 2000 });   // dragged far down, past the built-in programs
-    assert.strictEqual(ul.kids[3].style.transform || "", "", "Fat Burn never moves");
-    maps.folderTouched.clear(); first.on.pointerup[0]({});
-    assert.deepStrictEqual([fns.tplKids(null, "folder").map((x) => x.id), [...maps.folderTouched.keys()].sort()], [["H", "A", "P"], ["A", "H", "P"]], "it lands last among his folders, above Fat Burn");
+    press(first, 128); first.on.pointermove[0]({ clientY: 128 + 2000 }); maps.folderTouched.clear(); first.on.pointerup[0]({});
+    assert.deepStrictEqual([fns.tplKids("A", "folder").map((x) => x.id), [...maps.folderTouched.keys()].sort()], [["B", "B2", "B3"], ["B", "B2", "B3"]], "dragged far down: last, never past the list");
     ul = lay(); const second = ul.kids[1];
     maps.folderTouched.clear(); press(second, 184); second.on.pointermove[0]({ clientY: 184 + 56 }); second.on.pointerup[0]({});
-    assert.deepStrictEqual([fns.tplKids(null, "folder").map((x) => x.id), [...maps.folderTouched.keys()].sort()], [["H", "P", "A"], ["A", "P"]], "Summer block one down: only the two that moved are marked (Rehab kept its place)");
+    assert.deepStrictEqual([fns.tplKids("A", "folder").map((x) => x.id), [...maps.folderTouched.keys()].sort()], [["B", "B3", "B2"], ["B2", "B3"]], "Phase 2 one down: only the two that moved are marked (Phase 1 kept its place)");
+    fns.doneTplOrder(); fns.go({ name: "client", id: TPL }, true); fns.tplMoreItems().find((it) => it.label === "Reorder").onPick();
+    ul = lay(); const fat = ul.kids[2];                                // the Templates page: Rehab, Summer block, Fat Burn
+    press(fat, 240); fat.on.pointermove[0]({ clientY: 240 - 120 }); fat.on.pointerup[0]({});
+    assert.deepStrictEqual([maps.clients.get(TPL).rootOrder, read(got()).slice(1, 4)], [["p:Fat Burn", "H", "A"], ["≡ Fat Burn", "≡ Rehab", "≡ Summer block"]], "Fat Burn dragged to the top");
   });
   quiet();
 });
-
 test("Reorder ends when its page goes from under it: a folder being reordered, deleted on another device, leaves the Templates page as it is (no grips there)", () => {
   setup([...FOLDERS, node("B2", "Phase 2", "A", "folder", 9)], TPLS, { name: "client", id: TPL, folder: "A" });
   fns.tplMoreItems().find((it) => it.label === "Reorder folders").onPick(); assert.strictEqual(fns.tplOrderOn(), true);
@@ -460,6 +465,25 @@ test("two devices, a Reorder on one: a rename made on the other keeps its new na
   quiet();
 });
 
+test("the Programs order across two devices: one reordered there survives a save from here, even one with no copy read before (opened offline), and a rename here; one reordered here lands with a rename made there", async () => {
+  const base = { id: TPL, name: "Templates", kind: "templates", folders: [F("A", "Summer block", 5), F("H", "Rehab", 1)] };
+  const there = ["A", "p:Fat Burn", "H"];
+  const run = async (server, opts, here) => {
+    const sb = makeSupabase(); coach(sb); sb.seed("ft_clients", TPL, server); maps.trainings.set("b1", T("b1", { program: "Fat Burn", phase: 1, stage: 1, n: 1 }));   // Fat Burn in the Programs list
+    if (opts.read) { maps.seenAt.set("clients/" + TPL, "S0"); maps.seenDoc.set("clients/" + TPL, JSON.stringify(base)); }   // a copy read before (older than the server's), or none at all
+    maps.clients.set(TPL, JSON.parse(JSON.stringify(base))); here();
+    for (const t of maps.timers.values()) clearTimeout(t); maps.timers.clear();
+    await fns.cloudBackend.set("clients", TPL, JSON.parse(JSON.stringify(maps.clients.get(TPL))));
+    const saved = sb.tables.ft_clients.get(TPL).data; return [saved.rootOrder || null, saved.folders.map((f) => f.id + ":" + f.name).sort()];
+  };
+  const renameA = () => { const tc = maps.clients.get(TPL); tc.folders = tc.folders.map((f) => (f.id === "A" ? { ...f, name: "Summer block 2" } : f)); maps.folderTouched.set("A", TPL); };
+  assert.deepStrictEqual(await run({ ...base, rootOrder: there }, {}, renameA), [there, ["A:Summer block 2", "H:Rehab"]], "no copy read before, renamed here: the order made there stays");
+  assert.deepStrictEqual(await run({ ...base, rootOrder: there }, { read: true }, renameA), [there, ["A:Summer block 2", "H:Rehab"]], "with a copy read before: the same");
+  assert.deepStrictEqual(await run({ ...base, folders: [F("A", "Summer block", 5), F("H", "Knee rehab", 1)] }, { read: true }, () => { fns.moveRootTo("p:Fat Burn", 0); }), [["p:Fat Burn", "H", "A"], ["A:Summer block", "H:Knee rehab"]], "reordered here, renamed there: both");
+  assert.deepStrictEqual(await run({ ...base, rootOrder: there }, {}, () => { fns.moveRootTo("p:Fat Burn", 0); }), [["p:Fat Burn", "H", "A"], ["A:Summer block", "H:Rehab"]], "reordered here with no copy read before: this device's order lands");
+  quiet();
+});
+
 test("no copy read before (the app relaunched offline): both sides' folders kept, except those deleted here", async () => {
   const sb = makeSupabase(); coach(sb);
   sb.seed("ft_clients", TPL, { id: TPL, name: "Templates", kind: "templates", folders: [F("f1", "Push", 1), F("f3", "Pull", 3), F("f4", "Glutes", 4)] });
@@ -492,6 +516,8 @@ test("the page: the name field in the question sheet, the + alone at the foot's 
   assert.ok(html.includes("\n  .sheet.confirm-sheet .ask-input[hidden] { display: none; }\n"), "every other question has no field");
   assert.ok(html.includes("\n  #dock.tp { justify-content: flex-end; padding: 0 21px; max-width: 680px; margin: 0 auto; }"), "where the workout page's + sits when alone");
   assert.ok(html.includes("\n  body.tplus #vClient { padding-bottom: 100px; }"));
+  assert.ok(html.includes("\n  #tAdd:not([hidden]) { width: 51.5px; border-radius: 22px 0 0 22px; }") && html.includes("\n  #tAdd:not([hidden]) + #tMore { width: 51.5px; margin-left: -12px; border-radius: 0 22px 22px 0; }"), "the + and the … in one capsule, as Apple groups two symbol buttons (about 103 wide, 44 tall), the … outermost");
+  assert.ok(html.includes('<button class="disc hdr-disc bar-more" id="tAdd" type="button" aria-label="Add" aria-haspopup="menu" hidden>'), "the + at the top: the …'s grey circle, named for VoiceOver, opening a menu");
   assert.ok(html.includes("\n  .seg.stages button { min-width: 0; }\n  .seg.stages button > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }"), "cut in a span: the key keeps its 44 pt halo (a clip on the key would cut it)");
   assert.ok(src.includes('const nm = document.createElement("span"); nm.textContent = x.name; b.appendChild(nm);'), "his slide's name in that span");
   assert.ok(src.includes('if (input) f.focus({ preventScroll: true }); else n.focus({ preventScroll: true });'), "the field takes the focus in the tap that opened the sheet, so the phone gives its keyboard");

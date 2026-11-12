@@ -57,7 +57,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (279 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (280 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -160,7 +160,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - `touchState(id, field)` for `completedAt`, `completedBy`, `skippedAt`, `skipReason`, `missed`, `date` and `inPerson`;
   - `trainerTouched`/`trainerNamed`/`trainerNoted` for a row's log, name or note;
   - `planTouched`, `deletedNotes` and `deletedPackages` on a client;
-  - `folderTouched` and `deletedFolders` on the Templates record (the coach's own template folders).
+  - `folderTouched` and `deletedFolders` on the Templates record (the coach's own template folders); `folderTouched` also holds the key `":rootOrder"` when this device reordered the Programs list.
 - A new row field that clients write must also be copied in `mergeServerRows` (`sync.js`), or the coach's next save puts the old value back.
 - A new shared Map or Set (a new client queue, say) also goes into:
   - `resetState`;
@@ -181,7 +181,9 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - a slide (a "week" the coach names) belongs to a folder;
   - a template is in one by its `template.folder` id; one whose node is gone shows loose, in My templates;
   - `takeNotes` in `sync.js` merges the list by id, and a folder this device changed field by field (its `sort` from Reorder folders, its name), judged against the copy last read;
-  - change a template's place with `placeTemplate()`, which saves through `tidySave` (never into an open template draft).
+  - change a template's place with `placeTemplate()`, which saves through `tidySave` (never into an open template draft);
+  - the Templates page's Programs list (the coach's top folders and the built-in programs) keeps its Reorder as `rootOrder` on that record: keys, a folder's id or `"p:" + program`; `tplRootList()` reads it, and anything not in it comes after. `takeNotes` takes the server's order unless this device changed it (`folderTouched` key `":rootOrder"`);
+  - the Templates pages' top bar has a `+` (`#tAdd`, `tplAddItems`) and the `…` (`tplMoreItems`) in one capsule (CSS on `#tAdd`).
 - `templates.json` reaches an existing coach account only when its Templates record's `templatesVersion` is below `TEMPLATES_VERSION` in `main.js`: after a raise, or after restoring an older backup. Ask the owner before raising it. Each time, the app:
   - adds every built-in template the account lacks, so templates the coach deleted come back;
   - never replaces a template the account already holds. It only re-runs the old version-3 repair on them (reps saved as the built-in's plus " sec" get the built-in's reps back).
@@ -191,7 +193,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v279 it ends "477 passed, 0 failed" after about 45 s.
+- At v280 it ends "478 passed, 0 failed" after about 45 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
