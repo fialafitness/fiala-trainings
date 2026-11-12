@@ -57,7 +57,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (278 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (279 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -180,7 +180,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - a folder sits at the top or inside a top folder, never deeper (`tplNodes()` puts a deeper one, or one in a ring, at the top);
   - a slide (a "week" the coach names) belongs to a folder;
   - a template is in one by its `template.folder` id; one whose node is gone shows loose, in My templates;
-  - `takeNotes` in `sync.js` merges the list by id, judged against the copy last read;
+  - `takeNotes` in `sync.js` merges the list by id, and a folder this device changed field by field (its `sort` from Reorder folders, its name), judged against the copy last read;
   - change a template's place with `placeTemplate()`, which saves through `tidySave` (never into an open template draft).
 - `templates.json` reaches an existing coach account only when its Templates record's `templatesVersion` is below `TEMPLATES_VERSION` in `main.js`: after a raise, or after restoring an older backup. Ask the owner before raising it. Each time, the app:
   - adds every built-in template the account lacks, so templates the coach deleted come back;
@@ -191,7 +191,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v278 it ends "472 passed, 0 failed" after about 45 s.
+- At v279 it ends "477 passed, 0 failed" after about 45 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
