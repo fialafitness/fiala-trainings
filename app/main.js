@@ -2798,10 +2798,6 @@ import { reportRange, buildReport } from "./report.js";
   }
   let celeTimer = null, celebrating = false;   // the "Nice work" screen is a state, not just a visible panel: a sync's redraw can't knock it off
   $("celeBack").addEventListener("click", () => { clearTimeout(celeTimer); celebrating = false; const t = trainings.get(S.view.id); go({ name: "client", id: t ? t.clientId : S.myClientId }); });
-  // a set track whose sets all fit spreads them evenly across it, as a segmented control's segments; measured without the spread, and
-  // never kept on a track that has to scroll (a spread that overflows would push its first sets out of reach); again when the width changes
-  const fitsTrack = (chips) => { chips.classList.remove("fits"); if (chips.scrollWidth <= chips.clientWidth + 1) chips.classList.add("fits"); };
-  if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", () => { for (const c of document.querySelectorAll(".tracker .tr-chips")) fitsTrack(c); });
 
   function renderTraining(t) {
     if (document.activeElement !== $("tTitle")) { $("tTitle").value = t.title || ""; requestAnimationFrame(() => { const el = $("tTitle"); el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); }
@@ -2889,7 +2885,6 @@ import { reportRange, buildReport } from "./report.js";
         const fades = () => { const more = chips.scrollWidth - chips.clientWidth - chips.scrollLeft; chips.style.setProperty("--fr", more > 2 ? "20px" : "0px"); };   // more to the right: the capsule's last 20px dissolve, the next segment a shape under them, as iOS fades a title at a bar's edge
         chips.addEventListener("scroll", fades, { passive: true });
         requestAnimationFrame(() => {
-          fitsTrack(chips);                                  // all of them fit: spread evenly across the track (never while it scrolls: spread is for a track with room to spare)
           if (chips.scrollWidth > chips.clientWidth) {
             const starts = [...chips.children].map((b) => b.offsetLeft - 4), max = chips.scrollWidth - chips.clientWidth;
             const rest = starts.find((x) => x >= max); if (rest != null && rest > max) chips.style.paddingRight = (4 + rest - max) + "px";   // room at the end so that scrolled to the end, the left edge still rests on a whole segment
