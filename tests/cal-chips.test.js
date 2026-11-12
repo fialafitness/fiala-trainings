@@ -31,10 +31,14 @@ test("the week strip shows the very same chips as the month, day for day (his as
   assert.ok(/\.week \{ display: grid; grid-template-columns: repeat\(7, minmax\(0, 1fr\)\); gap: 0;/.test(html) && html.includes(".cal-panel .cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; }"), "the strip's columns are the month's, so its chips are the same size");
 });
 
-test("VoiceOver hears each day's workouts by name, finished or missed, after the date; a day's tap is still the day's (one workout opens it)", () => {
+test("VoiceOver hears each day's workouts by name, finished or missed, after the date; a workout in the calendar opens its preview first (his ask, 11 Nov), the week's and the month's: the day with one workout, the chip tapped on a busy day, a busy day itself (or its \"+N\") opening the day's list whose row opens the preview; the page stays the client's", () => {
   assert.strictEqual(r.labels.today, r.todayLabel + ": Workout; B");
   assert.ok(/: LATE, missed$/.test(r.labels.late) && /: DONE, finished$/.test(r.labels.done) && !/:/.test(r.labels.empty), JSON.stringify(r.labels));
-  assert.deepStrictEqual(r.tap, { view: "training", id: "late" });
+  assert.deepStrictEqual(r.tap, { view: "client", preview: "late" });
+  assert.deepStrictEqual(r.tapChip, { view: "client", preview: "t2" });
+  assert.deepStrictEqual(r.tapWeekChip, { view: "client", preview: "b" });
+  assert.deepStrictEqual(r.tapBusy, { sheet: true, view: "client", preview: "f3" });
+  assert.deepStrictEqual(r.alsoToday, { sheet: true, view: "training", preview: null, id: "f2" }, "only the calendar's: the workout page's \"Also today\" list still opens the workout itself");
 });
 
 test("the chip as measured on Apple Calendar (his screenshot, 3 px a point): 16 tall, 4 round, 2 in from the day's edges and 3 apart, the words 11 semibold on a 16 line (Inter's caps centred as Calendar's), fading over the last 12 points with no \"…\", in points not the Text Size (the grid is fixed, as Calendar's); the rest counted plain; a class of its own (the exercise page's .chip is another thing)", () => {
@@ -72,4 +76,14 @@ test("a keyboard's ring on a day of the week strip is whole, as the month's: the
     assert.ok(off + wide <= gap + inset, day + ": the ring (" + off + " out, " + wide + " wide) clear of the next day's chips, " + (gap + inset) + " from the day's edge");
     assert.ok(-off <= inset, day + ": and clear of the day's own chips, " + inset + " in");
   }
+});
+
+test("the keyboard's place: a preview opened from the calendar (Escape, the cross's Enter) gives it back to the day it came from, never to the page: through a busy day's list, whose row went with it, and after a redraw drew the day anew", () => {
+  assert.deepStrictEqual(r.keys, { busy: { id: "f3", place: "day" }, redraw: { id: "done", place: "new day" } });
+});
+
+test("a finished workout's green chip opens its preview too, whose foot shows it in History (his pick, 11 Nov: \"show in history or same thing apple would say\"), as Apple's \"Show in …\": History opens, the workout's row found, scrolled into the middle and lit a moment; one still to do (or missed) says Start workout", () => {
+  assert.deepStrictEqual(r.tapLate, { view: "client", preview: "late", go: "Start workout" });
+  assert.deepStrictEqual(r.tapDone, { view: "client", preview: "done", go: "Show in History" });
+  assert.deepStrictEqual(r.showInHistory, { history: true, view: "client", preview: null, row: true, lit: true, scrolled: true });
 });

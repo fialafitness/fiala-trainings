@@ -1913,7 +1913,7 @@ import { reportRange, buildReport } from "./report.js";
   function missedOf(cid) {                                           // a client's missed workouts: still to do, their day gone, the newest first (the Missed card's order, as a stack of notifications puts the newest on top)
     return clientTrainings(cid).filter((t) => canSwipeRow(t) && !!effDate(t) && effDate(t) < today()).sort((a, b) => effDate(b).localeCompare(effDate(a)) || byMade(b, a));
   }
-  async function showDay(c, key) {                                                           // a day with more than one workout: the day's rows, each its own workout; the coach can add another
+  async function showDay(c, key, preview) {                                                  // a day with more than one workout: the day's rows, each its own workout; the coach can add another (preview: from the calendar, a row opens the workout's preview first)
     const d = new Date(key + "T12:00:00"), list = dayList(c.id, key).sort(byMade);
     const rows = list.map((t) => {
       const li = workoutRow(t, t.completedAt || t.skippedAt ? "past" : key === today() ? "today" : "next");
@@ -1922,7 +1922,8 @@ import { reportRange, buildReport } from "./report.js";
     });
     if (!S.clientMode) { const li = document.createElement("li"); li.className = "more"; const box = document.createElement("div"); const b = document.createElement("button"); b.type = "button"; b.dataset.id = "+"; b.textContent = "Add a workout"; box.appendChild(b); li.appendChild(box); rows.push(li); }
     const id = await sheetList({ title: d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }), rows });
-    if (id === "+") addTraining(c.id, null, key); else if (id) go({ name: "training", id });
+    if (preview && preview.isConnected && $("pickSheet").contains(document.activeElement)) preview.focus({ preventScroll: true });   // a keyboard's or VoiceOver's place, left in the list that has gone: back on the day, so the preview gives it back there
+    if (id === "+") addTraining(c.id, null, key); else if (id) { if (preview) openPreview(id); else go({ name: "training", id }); }
   }
   function finishEarlyNow() {
     if (!es) return;
@@ -2521,7 +2522,7 @@ import { reportRange, buildReport } from "./report.js";
   const dayChips = (ws) => {                                                  // under a day, in the week and the month alike: each workout's name in a chip, as Apple Calendar's month view writes its events (his ask, 11 Nov: "bigger Apple like shape", "words in there", Apple grey while it waits, green once finished, "Workout" when it has no name; red once missed, his pick the same day); three at most, else two and "+N", as Calendar keeps its last slot for the count
     const box = document.createElement("span"); box.className = "day-evs";
     const all = ws.slice().sort(byMade), shown = all.length > 3 ? all.slice(0, 2) : all;
-    for (const t of shown) { const c = document.createElement("span"); c.className = "day-ev " + (t.completedAt ? "done" : pvMissed(t) ? "miss" : "plan"); const n = document.createElement("span"); n.className = "day-ev-t"; n.textContent = String(t.title || "").trim() || "Workout"; c.appendChild(n); box.appendChild(c); }
+    for (const t of shown) { const c = document.createElement("span"); c.className = "day-ev " + (t.completedAt ? "done" : pvMissed(t) ? "miss" : "plan"); c.dataset.tid = t.id; const n = document.createElement("span"); n.className = "day-ev-t"; n.textContent = String(t.title || "").trim() || "Workout"; c.appendChild(n); box.appendChild(c); }
     if (all.length > shown.length) { const m = document.createElement("span"); m.className = "day-ev-more"; m.textContent = "+" + (all.length - shown.length); box.appendChild(m); }
     return box;
   };
@@ -2634,15 +2635,17 @@ import { reportRange, buildReport } from "./report.js";
     const dayButton = (d, withWeekday) => {
       const key = iso(d);
       const dayWorkouts = list.filter((t) => effDate(t) === key && !(t.skippedAt && !t.completedAt));
-      const b = document.createElement("button"); b.type = "button";
+      const b = document.createElement("button"); b.type = "button"; b.dataset.day = key;   // (its day: a preview opened from it gives a keyboard's place back to it, drawn anew)
       if (key === today()) { b.classList.add("today"); b.setAttribute("aria-current", "date"); }
       if (withWeekday) { const wd = document.createElement("span"); wd.className = "wd"; wd.textContent = d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 3); b.appendChild(wd); }
       const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(d.getDate());
       b.append(dn, dayChips(dayWorkouts));
       b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + (dayWorkouts.length ? ": " + dayNames(dayWorkouts) : ""));
-      b.addEventListener("click", () => {
-        if (dayWorkouts.length > 1) showDay(c, key);                                           // two or more: the day's own list
-        else if (dayWorkouts.length) go({ name: "training", id: dayWorkouts[0].id });
+      b.addEventListener("click", (e) => {                                                    // a workout in the calendar opens its preview first (his ask, 11 Nov: "only from calendar view both week and month if I click on a workout it opens preview first instead of the actual workout"), as Calendar opens an event's sheet; its rows below still open the workout itself
+        const chip = e && e.target && e.target.closest ? e.target.closest(".day-ev") : null, tid = chip && chip.dataset ? chip.dataset.tid : "";
+        if (tid && dayWorkouts.some((t) => t.id === tid)) { openPreview(tid); return; }       // the chip tapped: that workout's
+        if (dayWorkouts.length > 1) showDay(c, key, b);                                        // two or more, the day itself (or its "+N"): the day's own list, each row opening its preview (b: the day, where a keyboard's place comes back)
+        else if (dayWorkouts.length) openPreview(dayWorkouts[0].id);
         else if (!S.clientMode) addTraining(c.id, null, key);
       });
       return b;
@@ -4152,6 +4155,7 @@ import { reportRange, buildReport } from "./report.js";
     cardsEl.replaceChildren(...cards);
   }
   function paintPreview(t) {
+    $("pvGo").textContent = canSwipeRow(t) ? "Start workout" : "Show in History";   // Start workout is a planned one's (Apple's Fitness word); a finished one, from its green chip in the calendar (v262), is shown in History (his pick, 11 Nov)
     pvFill(t, $("pvTitle"), $("pvDay"), $("pvCards")); $("pvBarTitle").textContent = pvName(t);
     const say = $("pvSay"); if (say.textContent && say.textContent !== pvLine(t)) say.textContent = "";   // VoiceOver's line never tells of another workout or an old day
     pvFit(); pvArrows(); pvTitleRoom();                               // (a sync's redraw: it may scroll now, or no longer; the workouts either side may have changed)
@@ -4167,12 +4171,19 @@ import { reportRange, buildReport } from "./report.js";
   }
   function closePreview(refocus) {                                    // refocus: closed by a keyboard or VoiceOver (Escape, the cross's Enter): its place goes back where it was (the "…" it came from, else the row), as the menus and the day picker give it back; a tap leaves focus where WebKit put it (no ring on a row nobody chose)
     if (!pv) return false; const p = pv; pv = null; if (askOpen) askOpen(false); if (sk) closeSkip(); if (dp) closeDatePicker(); pvReset(); pvSlideReset(); $("pvSay").textContent = ""; if (popClose && popAnchor === $("pvMore")) popClose(); $("pvSheet").hidden = true; $("pvSheet").inert = false; document.body.classList.remove("pv-up"); pvBarReset(); for (const el of p.behind) el.inert = false; S.asking = false;   // (a question up over it goes with it, as UIKit dismisses what is above a sheet it takes away)
-    if (refocus) { const b = p.back, ok = b && b !== document.body && b.isConnected !== false && !(b.closest && b.closest(".swipe-acts")); const to = ok ? b : $("vClient").querySelector('li[data-tid="' + CSS.escape(p.id) + '"] > button'); if (to && typeof to.focus === "function") to.focus({ preventScroll: true }); }
+    if (refocus) { const drawn = (el) => typeof el.getClientRects !== "function" || el.getClientRects().length > 0, b = p.back, ok = b && b !== document.body && b.isConnected !== false && drawn(b) && !(b.closest && b.closest(".swipe-acts")); const day = !ok && b && b.dataset && b.dataset.day ? [...$("vClient").querySelectorAll('button[data-day="' + b.dataset.day + '"]')].find((x) => x.tabIndex >= 0 && drawn(x)) : null; const to = ok ? b : day || $("vClient").querySelector('li[data-tid="' + CSS.escape(p.id) + '"] > button'); if (to && typeof to.focus === "function") to.focus({ preventScroll: true }); }   // (gone: off the page, or not drawn, as a row of a list that went with it; a calendar day a redraw drew anew: the same day, the week's or the month's shown, never a side month's; else the row)
     rsFlush();                                                        // what a sync brought while it was pulled or springing
     return true;
   }
   const pvSettled = (e) => !!pv && (performance.now() - pv.at >= 350 || (!!e && e.detail === 0));   // the second tap of a double tap (on Preview in a menu or on the row) lands on nothing in its first 350 ms, as askFirst's buttons; a keyboard's Enter (detail 0) acts at once
-  $("pvGo").addEventListener("click", (e) => { if (!pvSettled(e)) return; if (pg && pg.finish) pg.finish(); if (!pv || pg) return; const id = pv.id; closePreview(); if (trainings.has(id)) go({ name: "training", id }); });   // (a slide still landing lands first: a Mac's click or a key has no touch to land it)
+  $("pvGo").addEventListener("click", (e) => { if (!pvSettled(e)) return; if (pg && pg.finish) pg.finish(); if (!pv || pg) return; const id = pv.id, t = trainings.get(id); closePreview(); if (t && !canSwipeRow(t) && !isTemplateClient(t.clientId)) showInHistory(t); else if (t) go({ name: "training", id }); });   // (a slide still landing lands first: a Mac's click or a key has no touch to land it); a finished one (its green chip in the calendar, v262): its place in History
+  function showInHistory(t) {                                        // a finished (or skipped) workout's place in History, as Apple's "Show in …" (his pick, 11 Nov: "show in history or same thing apple would say"): History opens as its card opens it, the workout's group open and its row in the middle, lit a moment as a template's row is when Back to templates finds it
+    const e = effDate(t) || "";
+    if (e) for (const k of e >= weekStart() ? ["week"] : [e.slice(0, 4), e.slice(0, 7)]) openGroups.set(t.clientId + "/" + k, true);
+    openHistoryPage();
+    const row = $("histList").querySelector('[data-tid="' + String(t.id).replace(/["\\]/g, "") + '"]');
+    if (row && typeof row.getClientRects === "function" && row.getClientRects().length) { row.scrollIntoView({ block: "center" }); row.classList.add("flash"); setTimeout(() => row.classList.remove("flash"), 1300); }
+  }
   $("pvX").addEventListener("click", (e) => { if (pvSettled(e)) closePreview(e.detail === 0); });   // the close cross (his ask, 10 Nov: no Cancel, Apple's cross as in Calendar's event sheet); its Enter or VoiceOver (detail 0) gives the keyboard its place back
   $("pvSheet").addEventListener("click", (e) => { if (e.target === $("pvSheet") && pvSettled(e)) closePreview(); });
   document.addEventListener("keydown", (e) => {                     // Escape closes, as the other sheets take it; the left and right arrow keys go to the workout before or after, as Quick Look steps through files (heard first, so a menu or a sheet up over the preview takes its own keys: one Escape closes one thing)

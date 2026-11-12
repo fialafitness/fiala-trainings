@@ -34,7 +34,7 @@ const kids = (e) => {
 };
 const listens = (e) => { const H = {}; e.addEventListener = (type, fn) => { (H[type] ||= []).push(fn); }; e.removeEventListener = (type, fn) => { const a = H[type] || []; const i = a.indexOf(fn); if (i >= 0) a.splice(i, 1); }; e.fire = (type, ev) => { for (const fn of [...(H[type] || [])]) fn(ev); }; return e; };
 const recorder = (id, extra = {}) => { const e = listens(kids(el("div"))); Object.assign(e, extra); byId.set(id, e); return e; };
-for (const id of ["calView", "calTrack", "calTitle", "calToday", "calPrev", "calNext"]) recorder(id, { clientWidth: 350 });
+for (const id of ["calView", "calTrack", "calTitle", "calToday", "calPrev", "calNext", "pvGo"]) recorder(id, { clientWidth: 350 });   // (pvGo: the preview's Start workout, which a workout in the calendar opens first since v262)
 const calWrap = recorder("calWrap"), week = recorder("week"), weekHead = recorder("weekHead"), toggleText = recorder("calToggleText"), toggle = recorder("calToggle");
 recorder("tabbar"); recorder("meDisc");
 calWrap.hidden = true;
@@ -89,7 +89,7 @@ if (phase === "before") {
   app.fns.localBackend.save();
   toggle.fire("click", {}); out.opened = seen();                            // he taps Month
   if (arg === "leftAndBack") {
-    const b = todayInMonth(); out.found = !!b; if (b) b.fire("click", {}); await flush(); out.left = seen();
+    const b = todayInMonth(); out.found = !!b; if (b) { b.fire("click", {}); byId.get("pvGo").fire("click", { detail: 0 }); } await flush(); out.left = seen();
     app.fns.goBackNow(); await flush(); await advance(50); out.back = seen();
   }
   out.storage = [...storage.map];

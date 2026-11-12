@@ -31,7 +31,7 @@ const kids = (e) => {
 };
 const listens = (e) => { const H = {}; e.addEventListener = (type, fn) => { (H[type] ||= []).push(fn); }; e.removeEventListener = (type, fn) => { const a = H[type] || []; const i = a.indexOf(fn); if (i >= 0) a.splice(i, 1); }; e.fire = (type, ev) => { for (const fn of [...(H[type] || [])]) fn(ev); }; return e; };
 const recorder = (id, extra = {}) => { const e = listens(kids(el("div"))); Object.assign(e, extra); byId.set(id, e); return e; };
-for (const id of ["calView", "calTrack", "calTitle", "calToday", "calPrev", "calNext"]) recorder(id, { clientWidth: 350 });
+for (const id of ["calView", "calTrack", "calTitle", "calToday", "calPrev", "calNext", "pvGo"]) recorder(id, { clientWidth: 350 });   // (pvGo: the preview's Start workout, which a workout in the calendar opens first since v262)
 const calWrap = recorder("calWrap"), week = recorder("week"), weekHead = recorder("weekHead"), toggleText = recorder("calToggleText"), toggle = recorder("calToggle");
 const tabbar = recorder("tabbar"), meDisc = recorder("meDisc");
 calWrap.hidden = true;
@@ -83,7 +83,7 @@ const out = {};
 // the coach at the top of the page (the usual way: open a client, Month, a day): the picture and Back are the week; and the same over the
 // client card
 clientPage(); openMonth(); out.top = { before: seen() };
-{ const b = todayInMonth(); out.top.found = !!b; const n = pics.length; if (b) b.fire("click", {}); await flush(); out.top.left = seen(); out.top.pic = pics.slice(n); }
+{ const b = todayInMonth(); out.top.found = !!b; const n = pics.length; if (b) { b.fire("click", {}); byId.get("pvGo").fire("click", { detail: 0 }); } await flush(); out.top.left = seen(); out.top.pic = pics.slice(n); }
 await back(); out.top.back = seen();
 clientPage(); openMonth();
 { const n = pics.length; meDisc.fire("click", {}); await flush(); out.topCard = { left: seen(), pic: pics.slice(n) }; }
@@ -92,12 +92,12 @@ await back(); out.topCard.back = seen();
 // the coach, scrolled 600 down a month, taps today (one workout): the workout opens; the picture under the swipe back is the week, the list
 // where it was (600 less the month's 220); Back lands there, on the week
 clientPage(); openMonth(); scrollTo(0, 600); out.open = { before: seen() };
-{ const b = todayInMonth(); out.open.found = !!b; const n = pics.length; if (b) b.fire("click", {}); await flush(); out.open.left = seen(); out.open.pic = pics.slice(n); }
+{ const b = todayInMonth(); out.open.found = !!b; const n = pics.length; if (b) { b.fire("click", {}); byId.get("pvGo").fire("click", { detail: 0 }); } await flush(); out.open.left = seen(); out.open.pic = pics.slice(n); }
 await back(); out.open.back = seen();
 
 // scrolled only into the month (100 down): the week from the top
 clientPage(); openMonth(); scrollTo(0, 100);
-{ const n = pics.length; const b = todayInMonth(); if (b) b.fire("click", {}); await flush(); out.shallow = { pic: pics.slice(n) }; }
+{ const n = pics.length; const b = todayInMonth(); if (b) { b.fire("click", {}); byId.get("pvGo").fire("click", { detail: 0 }); } await flush(); out.shallow = { pic: pics.slice(n) }; }
 await back(); out.shallow.back = seen();
 
 // Back to Clients from the month, then another client's page: the week
@@ -125,7 +125,7 @@ byId.get("calNext").fire("click", {}); await advance(400); out.stay.paged = { ..
 
 // the client's own view: a workout opened from the month, and Back
 clientPage(true); openMonth(); scrollTo(0, 600);
-{ const n = pics.length; const b = todayInMonth(); if (b) b.fire("click", {}); await flush(); out.client = { found: !!b, left: seen(), pic: pics.slice(n) }; }
+{ const n = pics.length; const b = todayInMonth(); if (b) { b.fire("click", {}); byId.get("pvGo").fire("click", { detail: 0 }); } await flush(); out.client = { found: !!b, left: seen(), pic: pics.slice(n) }; }
 await back(); out.client.back = seen();
 
 // the Month button still opens and closes it, and writes nothing on the device either way
