@@ -54,7 +54,7 @@ test("the preview: the title and day as the workout page writes them; one card p
   quiet();
 });
 
-test("a finished card stays as plain as the others (no green, his ask) and says so in a quiet line: finished, finished early, or skipped with nothing logged, the same lines its folded card writes; nothing added: a line", () => {
+test("a finished card says so in a line (green on a finished workout's cards since his pick of 11 Nov, \"green just like in history\"; before, plain at his ask): finished, finished early, or skipped with nothing logged, the same lines its folded card writes; nothing added: a line", () => {
   const full = { done: true, setsDone: 3 };
   page(true, [row("a", "1a", "Bench press", 3, "8", full), row("b", "1b", "Row", 3, "8", full),
     row("c", "2", "Dip", 4, "12", { done: true, setsDone: 2, earlyReason: "Tired" }),
@@ -62,8 +62,8 @@ test("a finished card stays as plain as the others (no green, his ask) and says 
   seeing((got) => {
     fns.openPreview("w1");
     assert.deepStrictEqual(got.cards.map(card), [
-      { grp: "pv-grp", cap: "pv-cap:Exercise 1 \u00b7 Superset", cls: "pv-card", rows: [{ l: "1a", b: ["pv-n:Bench press", "sum:3 sets \u00b7 8 reps"] }, { l: "1b", b: ["pv-n:Row", "sum:3 sets \u00b7 8 reps"] }], foot: [["Finished \u00b7 3 of 3 sets"]] },
-      { grp: "pv-grp", cap: "pv-cap:Exercise 2", cls: "pv-card", rows: [{ l: "2", b: ["pv-n:Dip", "sum:4 sets \u00b7 12 reps"] }], foot: [["Finished early \u00b7 2 of 4 sets", "2 sets not completed \u00b7 Tired"]] },
+      { grp: "pv-grp", cap: "pv-cap:Exercise 1 \u00b7 Superset", cls: "pv-card done", rows: [{ l: "1a", b: ["pv-n:Bench press", "sum:3 sets \u00b7 8 reps"] }, { l: "1b", b: ["pv-n:Row", "sum:3 sets \u00b7 8 reps"] }], foot: [["Finished \u00b7 3 of 3 sets"]] },
+      { grp: "pv-grp", cap: "pv-cap:Exercise 2", cls: "pv-card done", rows: [{ l: "2", b: ["pv-n:Dip", "sum:4 sets \u00b7 12 reps"] }], foot: [["Finished early \u00b7 2 of 4 sets", "2 sets not completed \u00b7 Tired"]] },
       { grp: "pv-grp", cap: "pv-cap:Exercise 3", cls: "pv-card", rows: [{ l: "3", b: ["pv-n:Curl", "sum:3 sets \u00b7 10 reps"] }], foot: [["Skipped \u00b7 Pain"]] },
       { grp: "pv-grp", cap: "pv-cap:Exercise 4", cls: "pv-card", rows: [{ l: "4", b: ["pv-n:Shrug", "sum:3 sets \u00b7 10 reps"] }], foot: [] },
     ]);
@@ -71,6 +71,21 @@ test("a finished card stays as plain as the others (no green, his ask) and says 
   });
   page(false, []);
   seeing((got) => { fns.openPreview("w1"); assert.deepStrictEqual(got.cards.map((c) => [c.className, c.textContent]), [["pv-none", "Nothing added yet"]]); });
+  quiet();
+});
+
+test("a finished workout's preview greens only the cards that were done, as its page in History does: one skipped with nothing logged, or never started, stays plain (the review's catch, 11 Nov: every card of a finished workout had gone green)", () => {
+  for (const client of [true, false]) {
+    page(client, [row("a", "1", "Bench press", 3, "8", { done: true, setsDone: 3 }), row("b", "2", "Pull-up", 3, "8", { done: true, setsDone: 0, earlyReason: "Tired" }),
+      row("c", "3", "Dip", 4, "12", { done: true, setsDone: 2 }), row("d", "4", "Plank", 3, "30 sec")], { date: day(-1), completedAt: new Date().toISOString() });
+    seeing((got) => {
+      fns.openPreview("w1");
+      assert.strictEqual($("pvCards").className, "pv-cards st-done", "a finished workout");
+      assert.deepStrictEqual(got.cards.map((w) => [w.kids[1].className, (w.kids[1].kids.find((k) => k.className === "pv-foot") || { kids: [] }).kids.map((k) => k.textContent).join(" / ")]), [
+        ["pv-card done", "Finished \u00b7 3 of 3 sets"], ["pv-card", "Skipped \u00b7 Tired"], ["pv-card done", "Finished early \u00b7 2 of 4 sets / 2 sets not completed"], ["pv-card", ""]],
+        (client ? "client" : "coach") + ": the fern on the done (finished, finished early with sets logged), plain on the skipped with nothing logged and on the one never started");
+    });
+  }
   quiet();
 });
 
@@ -226,7 +241,7 @@ test("the page around the preview: every sheet's own height cap (24 below the st
   assert.ok(m && +m[1] + +m[2] === 30, "the 30 in calc(30px + 2rem): the row's 18 plus its 12");
 });
 
-test("the page: the sheet on the page's grey (in dark Apple's raised pair, so it has an edge on the dimmed black), its title and day in the workout page's type, the cards as Apple's inset grouped list (no green, no buttons or chevrons in them), Start workout at the foot and Apple's close cross in the corner (no Cancel); Preview's capsule his peacock teal (its one job)", () => {
+test("the page: the sheet on the page's grey (in dark Apple's raised pair, so it has an edge on the dimmed black), its title and day in the workout page's type, the cards as Apple's inset grouped list (green only on a finished workout's, no buttons or chevrons in them), Start workout at the foot and Apple's close cross in the corner (no Cancel); Preview's capsule his peacock teal (its one job)", () => {
   assert.ok(html.includes('<div class="sheet-bg" id="pvSheet" hidden><div class="sheet pv-sheet" id="pvBox" role="dialog" aria-modal="true" aria-labelledby="pvTitle" tabindex="-1"><div class="pv-bar" id="pvBar"><button class="pv-x" id="pvX" type="button" aria-label="Close"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M1.7 1.7 16.3 16.3M16.3 1.7 1.7 16.3"/></svg></button><p class="pv-bar-title" id="pvBarTitle" aria-hidden="true"></p><div class="pv-tools"><button class="pv-x pv-more" id="pvMore" type="button" aria-label="More" aria-haspopup="menu"><svg viewBox="0 0 22 22" aria-hidden="true" fill="currentColor"><circle cx="3.13" cy="11" r="1.97"/><circle cx="11" cy="11" r="1.97"/><circle cx="18.87" cy="11" r="1.97"/></svg></button><div class="pv-pager" role="group" aria-label="Workouts"><button id="pvPrev" type="button" aria-label="Previous workout"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 3.2 5.7 9l5.8 5.8"/></svg></button><button id="pvNext" type="button" aria-label="Next workout"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.2 12.3 9l-5.8 5.8"/></svg></button></div></div></div><div class="pv-scroll" id="pvScroll" tabindex="0" role="group" aria-labelledby="pvTitle"><h3 id="pvTitle"></h3><p class="pv-day" id="pvDay"></p><div class="pv-cards" id="pvCards" role="group" aria-label="Exercises"></div></div><div class="ask-actions"><button class="btn" id="pvGo" type="button">Start workout</button></div><p class="vh" id="pvSay" aria-live="polite"></p></div></div>'), "a dialog named by its title; its header first (the close cross, named Close, the name it shows once the big title is under it, not read twice, then the \u2026 named More and the arrows' pill, Previous workout and Next workout), then the list a keyboard can reach and scroll (named by the workout), the title, the day and the cards in it; Start workout filled (Apple's Fitness word), alone (no Cancel, his ask)");
   assert.ok(/\.pv-x \{[^}]*border-radius: 50%;[^}]*margin: 0;[^}]*background: var\(--disc-fill\); color: var\(--disc-ink\);[^}]*width: 44px; height: 44px;/.test(html) && html.includes(".pv-x svg { width: 18px; height: 18px; flex: none; }") && html.includes(".pv-x:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }"), "the cross: a 44-point circle in the app's round-button grey (as the back button), its 18-point mark, a keyboard's ring");
   assert.ok(html.includes(".sheet.pv-sheet { background: var(--pv-bg); display: flex; flex-direction: column; padding-top: 0; position: relative; overflow: hidden; will-change: transform; }"), "a column (the list, the button) at the base sheet's height, 24 below the status bar (no cap of its own); its header floats over the list; its own layer while it is up (put back at its place mid-touch, iOS's scroll of its list goes on: measured)");
@@ -241,7 +256,7 @@ test("the page: the sheet on the page's grey (in dark Apple's raised pair, so it
   assert.ok(html.includes("    --pv-bg: var(--surface); --pv-card: var(--card); --pv-strip: rgba(255,255,255,0.64);") && (html.match(/--pv-bg: #1c1c1e; --pv-card: #2c2c2e; --pv-strip: rgba\(44,44,46,0\.55\);/g) || []).length === 2, "light: the page's grey and white cards; dark (both blocks): Apple's raised #1c1c1e and #2c2c2e");
   assert.ok(html.includes(".pv-sheet h3 { margin: 0 4px 2px; font-size: 1.625rem; line-height: 1.15; font-weight: 600;") && html.includes(".pv-day { margin: 0 4px 16px; font-size: 1.0625rem; color: var(--text-secondary); }"), "the workout page's title (26, semibold) and its day (17, Steel)");
   const pvCss = html.slice(html.indexOf("/* the workout preview (his asks"), html.indexOf(".pv-sheet .ask-actions")); assert.ok(pvCss.length > 500, "the preview's own rules");
-  assert.ok(html.includes(".pv-card { background: var(--pv-card); border: 1px solid var(--card-edge); border-radius: var(--r-card); }") && !/pv-card\.done|--done|#3c7a4e|#bfe8c2/i.test(pvCss), "every card as the page's, nothing green (by token or by value)");
+  assert.ok(html.includes(".pv-card { background: var(--pv-card); border: 1px solid var(--card-edge); border-radius: var(--r-card); }") && pvCss.split("\n").filter((l) => /--done|#3c7a4e|#bfe8c2/i.test(l)).every((l) => /\.st-done/.test(l)) && /\.st-done/.test(pvCss), "a workout still to do: every card as the page's; green only on a finished workout's (his pick, 11 Nov: \"green just like in history\"), never by value");
   assert.ok(html.includes(".pv-row + .pv-row::before { content: \"\"; position: absolute; top: 0; right: 0; left: calc(30px + 2rem); border-top: 1px solid var(--card-border); }") && html.includes(".pv-foot { padding: 0 16px 13px calc(30px + 2rem);"), "Apple's inset hairline, from the name to the card's edge, and the finished line under the name: both move with the number's column");
   assert.ok(html.includes(".pv-l { flex: none; width: 2rem; font-size: 1.0625rem; font-weight: 500; color: var(--text-tertiary);") && /\.pv-n \{[^}]*font-size: 1\.0625rem;[^}]*font-weight: 600;[^}]*color: var\(--text-primary\);/.test(html) && /\.pv-sum \{[^}]*font-size: 0\.9375rem;[^}]*color: var\(--text-secondary\);/.test(html), "the number quiet in a column that grows with Text Size (\"12b\" stays clear of the name), the name 17 semibold in ink, sets and reps 15 in Steel (what a client acts on is never tertiary)");
   assert.ok(html.includes(".pv-sum .si + .si::before { content: \"\\00b7\"; margin: 0 6px; }"), "sets \u00b7 reps");

@@ -499,8 +499,7 @@
   .pv-bar::before { transform: translate3d(var(--pv-veil-x, 0px), 0, 0); transition: var(--pv-veil-tr, none); }   /* in a slide the veil leaves with the page under it (main.js pvSlideTo): the page going out keeps its blur until it has gone, the one coming in, at its top, has none */
   .pv-bar > .pv-x { position: relative; }
   .pv-tools { position: relative; margin-left: auto; display: flex; gap: 12px; }   /* top right (his picks, 11 Nov): the "…", then the arrows' shared pill in the corner; as Apple lays them out (WWDC25's trip page, measured: a 44 circle and a 100 x 44 capsule, 12 apart, 16 in) */
-  .pv-more svg { width: 22px; height: 22px; }
-  .pv-more:disabled { opacity: 0.3; cursor: default; }   /* nothing to offer (a workout finished or skipped meanwhile): dimmed, as the arrows at their ends */   /* the "…": Apple's ellipsis, as the workout page's */
+  .pv-more svg { width: 22px; height: 22px; }   /* the "…": Apple's ellipsis, as the workout page's; not there at all on History's workouts (main.js pvArrows, his rule 11 Nov) */
   .pv-pager { display: flex; height: 44px; border-radius: 22px; background: var(--disc-fill); }   /* the previous and the next workout in one capsule, as Apple pairs them (Mail's message arrows, the WWDC25 demo) */
   .pv-pager button { appearance: none; border: 0; padding: 0; margin: 0; width: 50px; height: 44px; border-radius: 22px; background: none; color: var(--disc-ink); font: inherit; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: opacity 300ms ease; }
   .pv-pager svg { width: 18px; height: 18px; flex: none; }   /* chevrons left and right: the way the workouts slide (as Apple steps through time and files: Calendar on the Mac, Quick Look) */
@@ -520,7 +519,12 @@
   .pv-sheet h3 { margin: 0 4px 2px; font-size: 1.625rem; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); }
   .pv-day { margin: 0 4px 16px; font-size: 1.0625rem; color: var(--text-secondary); }
   .pv-day:empty { display: none; }
-  .pv-day .missed { color: var(--danger); }   /* a missed workout (his ask, 11 Nov: "clearly show that you are on missed workout"): the one red word, as its row says it */
+  .pv-day .missed { color: var(--danger); }
+  .pv-day.st-done { color: var(--done); font-weight: 500; } .pv-day.st-skip { color: var(--chip-plan-ink); font-weight: 500; } .pv-day.st-miss { color: var(--danger); font-weight: 500; }   /* History's and the missed ones say what they are, the whole line in their colour (his picks, 11 Nov): "✓ Finished", "Skipped", "Missed" */
+  .pv-cards.st-done .pv-card.done { border-color: var(--done); background: linear-gradient(var(--done-tint), var(--done-tint)), var(--pv-card); }   /* a finished workout's cards as History's own page draws them (his pick A, without its number squares): the fern edge and wash on the ones done (.block.done); one skipped with nothing logged, or never started, plain, as its page keeps it (.block.done.skipped: no fern anywhere) */
+  .pv-cards.st-done .pv-card.done .pv-foot { color: var(--done); }
+  .pv-cards.st-skip .pv-card { border-color: var(--chip-grey); background: linear-gradient(color-mix(in srgb, var(--chip-grey) 10%, transparent), color-mix(in srgb, var(--chip-grey) 10%, transparent)), var(--pv-card); }   /* skipped: Apple grey (History's skipped are grey), so it never reads as one still to do (plain white) */
+  .pv-cards.st-miss .pv-card { border-color: var(--danger); background: linear-gradient(color-mix(in srgb, var(--danger) 8%, transparent), color-mix(in srgb, var(--danger) 8%, transparent)), var(--pv-card); }   /* missed: the crimson */   /* a missed workout (his ask, 11 Nov: "clearly show that you are on missed workout"): the one red word, as its row says it */
   .pv-cards { display: grid; gap: 18px; align-content: start; }
   .pv-grp { display: grid; gap: 7px; }                       /* a card under its caption */
   .pv-cap { margin: 0 0 0 18px; font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.10em; line-height: 1.25rem; text-transform: uppercase; color: var(--text-secondary); }   /* "EXERCISE 2 · SUPERSET": the client's workout page's caption (his pick B, 10 Nov), over the number's column */
@@ -534,7 +538,7 @@
   .pv-sub { display: block; margin-top: 1px; font-size: 0.8125rem; font-weight: 500; color: var(--text-secondary); }
   .pv-sum { display: flex; flex-wrap: wrap; margin-top: 3px; font-size: 0.9375rem; line-height: 1.35; color: var(--text-secondary); }
   .pv-sum .si + .si::before { content: "\00b7"; margin: 0 6px; }
-  .pv-foot { padding: 0 16px 13px calc(30px + 2rem); font-size: 0.8125rem; color: var(--text-tertiary); }   /* a finished card: one quiet line, nothing green */
+  .pv-foot { padding: 0 16px 13px calc(30px + 2rem); font-size: 0.8125rem; color: var(--text-tertiary); }   /* a finished card: one line (green on a finished workout's cards: .st-done, his pick 11 Nov) */
   .pv-line { display: block; }
   .pv-none { margin: 4px 4px 0; font-size: 1.0625rem; color: var(--text-secondary); }
   .pv-sheet .ask-actions { margin-top: 18px; }
@@ -659,9 +663,11 @@
   .card-foot .sum-row .add-note > span:last-child { display: none; }
   .card-foot .sum-row .add-note .ico svg { width: 18px; height: 18px; }
   .block.done.open.summary .card-foot .foot-row:not(.sum-row) { display: none; }
-  .block.peek .card-foot .complete, .block.peek .card-foot .add-note, .block.peek .card-foot .exnote, .block.peek .card-foot .client-note { display: none !important; }   /* a card still to come, opened for a look: nothing to log, no note here */
+  .block.peek .card-foot .complete, #rows:not(.locked) .block.peek .card-foot .add-note, #rows:not(.locked) .block.peek .card-foot .exnote, #rows:not(.locked) .block.peek .card-foot .client-note { display: none !important; }   /* a card still to come, opened for a look: nothing to log, no note here (a finished workout's exercise not done keeps its note: #rows.locked below) */
   .block.peek .card-foot { padding-top: 4px; gap: 0; }
-  .block.peek .card-foot .foot-row { display: none; }   /* nothing to tap on a card still to come: it is decided when it is current */
+  #rows:not(.locked) .block.peek .card-foot .foot-row, #rows.locked .block.peek .card-foot .foot-row.center { display: none; }   /* nothing to tap on a card still to come: it is decided when it is current (on a finished workout only its note's row stays) */
+  #rows.locked .block.peek .tracker, #rows.locked .block.peek .row .setlog { display: none; }   /* a finished workout, as the client sees it: an exercise not done opens for a look, with nothing to log on it (no set chips, no weight or reps) */
+  #rows.locked .card-foot .complete, #rows.locked .card-foot .finish-early, #rows.locked .card-foot .resume { display: none !important; }   /* and none of its cards offers Complete set, Skip exercise, Finish early, Mark set as not done or Resume (his rule, 11 Nov: only a set's weight and reps fixed, and notes) */
   .card-foot .start-now { display: block; margin: 0 auto 4px; appearance: none; border: 0; background: none; box-shadow: none; padding: 0 12px; min-height: 40px; font: inherit; font-size: 0.9375rem; font-weight: 500; color: var(--brand-text); cursor: pointer; -webkit-tap-highlight-color: transparent; }   /* under the sentence: the one way round it */
   .card-foot .start-now:active { opacity: 0.6; }
   .card-foot .foot-wait { min-height: 34px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.9375rem; font-weight: 400; color: var(--text-secondary); }   /* where Complete set would be: the one line that says why it is not here, close over the Skip under it */
@@ -1735,7 +1741,7 @@
 <div class="sheet-bg" id="skipSheet" hidden>
   <div class="sheet ask" role="dialog" aria-modal="true" aria-labelledby="skTitle">
     <h3 id="skTitle">Skip this workout?</h3>
-    <p class="lead">It stays in the list as skipped, with the reason. Undo is on the workout.</p>
+    <p class="lead">It stays in the list as skipped, with the reason. Undo is on the workout<span id="skFor" hidden> for 24 hours</span>.</p>
     <hr>
     <p class="cap">Reason (optional)</p>
     <div class="reasons" id="skReasons" role="group" aria-label="Reason">
@@ -1771,7 +1777,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=262";
+  import { boot } from "./app/main.js?v=263";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

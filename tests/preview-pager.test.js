@@ -18,19 +18,19 @@ const r = JSON.parse(execFileSync(process.execPath, [probe], { encoding: "utf8",
 const CURVE = "280ms cubic-bezier(0.22, 1, 0.36, 1)";                     // the month view's own slide
 const at = (id, prev, next) => ({ id, slide: null, prev, next });         // landed on id, its arrows dimmed (true) or not
 
-test("the walk: every workout of the client still to do, by its day and then as made: the missed ones, today's (the morning one first), the ones to come; never a finished or skipped one (History), another client's; a workout no longer in it (finished meanwhile) has the ones either side of where it would sort", () => {
-  assert.deepStrictEqual(r.walk, ["m2", "m1", "a", "b", "c", "d"]);
-  assert.deepStrictEqual(r.near, { a: { prev: "m1", next: "b" }, m2: { prev: null, next: "m1" }, d: { prev: "c", next: null }, f: { prev: "m1", next: "a" }, gone: { prev: null, next: null } });
+test("the walk: every workout of the client by its day and then as made, History's too (his ask, 11 Nov: \"let the slider go even to the history\"): finished, skipped and the missed filed after a week, then the missed, today's (the morning one first), the ones to come; never another client's; a workout no longer in it (deleted meanwhile) has the ones either side of where it would sort", () => {
+  assert.deepStrictEqual(r.walk, ["f", "s", "om", "m2", "m1", "a", "b", "c", "d"]);
+  assert.deepStrictEqual(r.near, { a: { prev: "m1", next: "b" }, m2: { prev: "om", next: "m1" }, d: { prev: "c", next: null }, f: { prev: null, next: "s" }, gone: { prev: null, next: null } });
 });
 
-test("the \"…\": Reschedule and Skip on any workout still to do; Do it today first on a missed one; the coach's own view adds Copy workout and, last and red, Delete workout; a finished one offers the coach only Copy and Delete, the client nothing (the \"…\" dimmed)", () => {
-  assert.deepStrictEqual(r.items, { coach: ["Reschedule", "Skip", "Copy workout", "!Delete workout"], coachMissed: ["Do it today", "Reschedule", "Skip", "Copy workout", "!Delete workout"], coachFinished: ["Copy workout", "!Delete workout"],
+test("the \"…\": Reschedule and Skip on any workout still to do; Do it today first on a missed one; the coach's own view adds Copy workout and, last and red, Delete workout; History's (a finished one) offers nothing, the \"…\" not there at all (his rule, 11 Nov)", () => {
+  assert.deepStrictEqual(r.items, { coach: ["Reschedule", "Skip", "Copy workout", "!Delete workout"], coachMissed: ["Do it today", "Reschedule", "Skip", "Copy workout", "!Delete workout"], coachFinished: [],
     client: ["Reschedule", "Skip"], clientMissed: ["Do it today", "Reschedule", "Skip"], clientFinished: [] });
   assert.deepStrictEqual(r.menu, { rows: ["Reschedule", "Skip", "Copy workout", "!Delete workout"], bgHidden: false, closedOnSlide: true }, "the menu opens over the preview with those rows, and a slide closes it");
 });
 
 test("the arrows: dimmed at the first and the last workout; nothing in the sheet's first 350 ms (a double tap's second tap); a tap slides on the month view's curve: the workout it goes to is the preview's at once (its name, its list at its top, still, VoiceOver hears it), as the month view takes its month at the let-go; a copy of the page going out slides away over it and the incoming one comes in beside that (each from its top, out of reach of taps and VoiceOver), the header's veil leaving with the page under it; it lands at 360 ms at the latest (or on the page going out's own transitionend), the copies gone", () => {
-  assert.deepStrictEqual(r.ends, { first: at("m2", true, false), last: at("d", false, true), mid: at("a", false, false), more: false });
+  assert.deepStrictEqual(r.ends, { first: at("f", true, false), last: at("d", false, true), mid: at("a", false, false), more: false });
   assert.deepStrictEqual(r.guard, at("a", false, false));
   const { say: said, ...d } = r.tap.during, page = (tf) => ({ tr: "transform " + CURVE, tf, top: "0px", bottom: "80px", inert: true, aria: "true", cls: "pv-scroll pv-peek" });
   assert.deepStrictEqual(d, { id: "b", slide: { dir: 1, to: "b", x: 0, settling: true }, prev: false, next: false, list: { tr: "", tf: "" }, peek: page("translate3d(0px,0,0)"), out: page("translate3d(-402px,0,0)"), outScroll: 0, bar: "B", title: "B", top: true, veil: { on: "0", x: "-402px", tr: "transform " + CURVE, titled: false } });
@@ -45,7 +45,7 @@ test("the arrows: dimmed at the first and the last workout; nothing in the sheet
 
 test("two quick taps go two workouts (the first lands at once, as the month's arrows); back to the first, then nothing further; Reduce Motion lands at once with no slide", () => {
   assert.deepStrictEqual([r.twoTaps.mid.id, r.twoTaps.mid.slide.to, r.twoTaps.landed], ["c", "c", at("c", false, false)]);
-  assert.deepStrictEqual(r.back, { one: "m1", two: "m2", three: at("m2", true, false) });
+  assert.deepStrictEqual(r.back, { ids: ["m1", "m2", "om", "s", "f", "f"], last: at("f", true, false) }, "back through the missed into History, then nothing further");
   assert.deepStrictEqual(r.calm, { ...at("b", false, false), tr: "" });
 });
 
@@ -54,7 +54,7 @@ test("the finger: 8 points sideways within 30 degrees of level is a slide, refus
   assert.deepStrictEqual([r.short.during.slide.x, r.short.landed], [-22, at("a", false, false)]);
   assert.deepStrictEqual([r.right.during.slide, r.right.landed], [{ dir: -1, to: "m1", x: 62, settling: false }, at("m1", false, false)]);
   assert.deepStrictEqual([r.cancelled.during.slide.x, r.cancelled.landed], [-92, at("a", false, false)]);
-  assert.deepStrictEqual([r.band.during.slide, r.band.landed], [{ dir: -1, to: null, x: 20, settling: false }, at("m2", true, false)]);
+  assert.deepStrictEqual([r.band.during.slide, r.band.landed], [{ dir: -1, to: null, x: 20, settling: false }, at("f", true, false)]);
   assert.deepStrictEqual([r.steep.p, r.steep.during.slide, r.steep.landed], [[false], null, at("a", false, false)]);
   assert.deepStrictEqual([r.header.during.slide.x, r.header.landed], [-62, at("b", false, false)]);
   assert.deepStrictEqual([r.native.p, r.native.landed], [[false, false], at("a", false, false)]);
@@ -71,7 +71,7 @@ test("a sync's redraw waits for a slide (the list takes the workout it went to o
   assert.ok(r.redraw.after >= 1);
   assert.deepStrictEqual(r.goneMid, { id: null, slide: null, prev: false, next: false });
   assert.deepStrictEqual(r.g33, { mid: "a", landed: null });
-  assert.deepStrictEqual(r.g19, { h0: "2 workouts", mid: "2 workouts", landed: "3 workouts" });
+  assert.deepStrictEqual(r.g19, { h0: "3 workouts", mid: "3 workouts", landed: "4 workouts" });
 });
 
 test("the sheet's height eases toward the incoming workout's with the share slid, as the month view's does, settles on the slide's curve, and is the sheet's own again when it lands", () => {
@@ -183,11 +183,11 @@ test("a slide from a scrolled list: the header's veil stays over that list's car
   assert.deepStrictEqual(r.g30, { sheet: "", pull: null, slide: null, on: "a" }, "40 degrees: nobody's, no slide and no pull");
 });
 
-test("the \"…\" dims when it has nothing to offer (a sync finished the workout), as the arrows beside it; never under the slide after Skip (the slide starts before the skip's redraw); each of its rows its own glyph", async () => {
+test("the \"…\" is not there when it has nothing to offer (a sync finished the workout: History's now), and back the moment the slide after Skip begins on one still to do; each of its rows its own glyph", async () => {
   assert.deepStrictEqual(r.moreOff, { before: false, id: "a", off: true, underSlide: false, landed: { ...at("b", false, false), off: false } });
   assert.deepStrictEqual(r.g25, ["calendar", "skip", "copy", "trash"]);
   const fs = await import("node:fs"); const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.ok(html.includes(".pv-more:disabled { opacity: 0.3; cursor: default; }") && html.includes(".pv-x:hover:not(:disabled) { opacity: 0.85; }") && html.includes(".pv-x:active:not(:disabled) { transform: scale(0.97); }"));
+  assert.ok(!html.includes(".pv-more:disabled") && html.includes(".pv-x:hover:not(:disabled) { opacity: 0.85; }") && html.includes(".pv-x:active:not(:disabled) { transform: scale(0.97); }"), "hidden, never dimmed");
 });
 
 test("the page's part in it: the veil moves with the page under it (two variables, so a slide sets it on its own curve), the copies sliding over the list have the sheet's own grey (nothing under them shows through), the header's name centred in the room it has (else between the cross and the buttons), re-fitted after a rename and a turn", async () => {
@@ -198,10 +198,9 @@ test("the page's part in it: the veil moves with the page under it (two variable
 });
 
 // A second review of the slide as it now is (each finding checked by a skeptic, most measured in WebKit, frame by frame).
-test("after Skip or Delete moves on from the first or the last workout still to do, the arrow toward the one that went is dimmed as the slide begins and once it lands (nothing is that way any more), the coach's and the client's", () => {
-  const first = { mid: { ...at("m1", true, false), slide: { dir: 1, to: "m1", x: 0, settling: true } }, landed: at("m1", true, false) };
-  const last = { mid: { ...at("c", false, true), slide: { dir: -1, to: "c", x: 0, settling: true } }, landed: at("c", false, true) };
-  assert.deepStrictEqual(r.endsAfter, { delFirst: first, skipFirst: first, clientSkipFirst: first, skipLast: last, delLast: last });
+test("after Delete moves on from the first or the last workout, the arrow toward the one that went is dimmed as the slide begins and once it lands (nothing is that way any more); after Skip it is still that way, in History now (grey), so the arrow stays: the coach's and the client's", () => {
+  const go = (id, dir, prev, next) => ({ mid: { ...at(id, prev, next), slide: { dir, to: id, x: 0, settling: true } }, landed: at(id, prev, next) });
+  assert.deepStrictEqual(r.endsAfter, { delFirst: go("m1", 1, true, false), skipMid: go("m1", 1, false, false), clientSkipMid: go("m1", 1, false, false), skipLast: go("c", -1, false, false), delLast: go("c", -1, false, true) });
 });
 
 test("the two pages and the header's veil set off together, in one style change: nothing reads the layout between the page going out's move and the one coming in's (in WebKit a read there starts the page going out, and the veil, a frame before the one coming in, and the list shows between them: 26 of 40 clicks measured), by an arrow and by a finger's let-go, when no height eases", () => {
@@ -236,4 +235,48 @@ test("the sheet to the fraction of a point, as WebKit lays it out (402 x 874, 9 
 test("the \"…\"'s menu and the sheet's own moves: a sync's redraw that moves the \"…\" (the sheet sits at the screen's foot, as tall as its workout) closes the menu placed under it, one that moves nothing keeps it; the \"…\" tapped while the sheet springs back opens nothing (its menu would hang below it once home), and once home it opens", () => {
   assert.deepStrictEqual(r.menuMoved, { was: true, same: true, moved: false, open: "a" });
   assert.deepStrictEqual(r.moreSpring, { springing: true, menu: false, home: true });
+});
+
+// His asks, 11 Nov (v263): "Can the finished ones be green just like in history and can you let the slider go even to the history"; his picks:
+// A (the finished workout's page in History) without its number squares; skipped grey and missed red, each on its cards so a skipped one
+// never reads as one still to do; History's workouts say Show in History; nothing in History is moved from the preview (his "I don't think I
+// want to let people reschedule workout older than 7 days": its "…" is the coach's Copy and Delete; Copy puts a fresh one on any day).
+test("the slide into History: each workout says what it is first, in its colour on the whole day line and its cards, as History's own page draws a finished one: finished green (\"✓ Finished\"), skipped grey, missed red (filed after a week, or this week's), still to do plain; History's say Show in History, the ones still to do Start workout; VoiceOver hears which", () => {
+  const S = (id, st, word, go) => ({ id, day: "pv-day" + (st ? " st-" + st : ""), word, cards: "pv-cards" + (st ? " st-" + st : ""), go });
+  const want = [S("f", "done", "finished:✓ Finished", "Show in History"), S("s", "skip", "skipped:Skipped", "Show in History"), S("om", "miss", "missed:Missed", "Show in History"),
+    S("m2", "miss", "missed:Missed", "Start workout"), S("m1", "miss", "missed:Missed", "Start workout"), S("a", "", null, "Start workout")];
+  assert.deepStrictEqual(r.states.map(({ say, more, goCls, ...x }) => x), want);
+  assert.deepStrictEqual(r.states.map((x) => [x.id, x.goCls]), [["f", "soft tint wide"], ["s", "soft tint wide"], ["om", "soft tint wide"], ["m2", ""], ["m1", ""], ["a", ""]],
+    "Show in History in the grey capsule, as Skip workout's and Undo's (his ask, 11 Nov: \"not purple but our Apple transparent because it's not an action\"); Start workout keeps the purple of an act (sliding on out of History onto one still to do takes the grey off)");
+  const says = r.states.map((x) => x.say);
+  assert.ok(says[0] === "" && /^S, skipped, \w+day, \w{3} \d{1,2}(, \d{4})?$/.test(says[1]) && /^OM, missed, /.test(says[2]) && /^M2, missed, /.test(says[3]) && /^A, \w+day, /.test(says[5]), JSON.stringify(says));
+});
+
+test("History's workouts are not acted on from the preview (his rule, 11 Nov: \"missed and skipped workouts older than 7 days don't show the 3 dot button at all … finished workouts don't show the button either .. all 3 say show in history\"): a finished, a skipped and a missed one filed after a week have no \"…\" at all, in either view; their own page has the rest", () => {
+  assert.deepStrictEqual(r.histItems, { coachSkipped: [], coachOldMissed: [], clientSkipped: [], clientOldMissed: [] });
+  assert.deepStrictEqual(r.states.map((x) => [x.id, x.more]), [["f", false], ["s", false], ["om", false], ["m2", true], ["m1", true], ["a", true]], "the \"…\" there only on the ones still to do (this week's missed included)");
+});
+
+test("the colours of the states, from the app's own (one colour, one reason): the fern's edge and wash on a finished workout's cards (History's page), Apple grey on a skipped one's, the crimson on a missed one's; the day line in the same colour", async () => {
+  const fs = await import("node:fs"); const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes(".pv-day.st-done { color: var(--done); font-weight: 500; } .pv-day.st-skip { color: var(--chip-plan-ink); font-weight: 500; } .pv-day.st-miss { color: var(--danger); font-weight: 500; }"));
+  assert.ok(html.includes(".pv-cards.st-done .pv-card.done { border-color: var(--done); background: linear-gradient(var(--done-tint), var(--done-tint)), var(--pv-card); }") && html.includes(".pv-cards.st-done .pv-card.done .pv-foot { color: var(--done); }"), "the fern only on a finished workout's cards that are done, as its page");
+  assert.ok(!/\.pv-cards\.st-done \.pv-card \{|\.pv-cards\.st-done \.pv-foot \{/.test(html), "no rule left that greens every card of a finished workout");
+  assert.ok(html.includes(".pv-cards.st-skip .pv-card { border-color: var(--chip-grey); background: linear-gradient(color-mix(in srgb, var(--chip-grey) 10%, transparent), color-mix(in srgb, var(--chip-grey) 10%, transparent)), var(--pv-card); }"));
+  assert.ok(html.includes(".pv-cards.st-miss .pv-card { border-color: var(--danger); background: linear-gradient(color-mix(in srgb, var(--danger) 8%, transparent), color-mix(in srgb, var(--danger) 8%, transparent)), var(--pv-card); }"));
+  assert.ok(!/\.pv-cards\.st-done \.pv-l/.test(html), "his pick: no number squares");
+});
+
+test("a keyboard on the \"…\" as the slide goes into History (its \"…\" not there): the keyboard's place moves to the arrows, never lost with it", () => {
+  assert.deepStrictEqual(r.moreFocus, { on: "om", more: false, focus: "prev" });
+});
+
+test("the header's name gets its room back when the \"…\" goes (rule: \"the name in the header gets its room\"), also when a sync makes the workout History in the middle of a slide, where only the arrows are redrawn (nothing tested it: a review's catch)", () => {
+  assert.deepStrictEqual(r.titleRoom, { open: { id: "a", room: "68px 180px" }, mid: { id: "b", slide: true, room: "68px 180px" }, synced: { more: false, room: "68px 124px" } },
+    "a long name between the cross and the buttons: 180 points kept for the pill and the \"…\", 124 once the \"…\" is gone");
+});
+
+test("a sync that makes the previewed workout History while a keyboard is in its \"…\" menu, or among the days picked from it (Reschedule): the menu or the days go with the \"…\", and the keyboard lands on an arrow, never on the page (a review's catch: it fell to the page)", () => {
+  assert.deepStrictEqual(r.menuSync, { before: { menu: true, inMenu: true }, menu: false, more: false, focus: "prev" });
+  assert.deepStrictEqual(r.daysSync, { open: true, back: true, closed: true, more: false, focus: "prev" });
 });

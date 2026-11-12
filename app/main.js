@@ -1948,7 +1948,8 @@ import { reportRange, buildReport } from "./report.js";
   function closeDatePicker() {
     const back = dp && dp.back; $("datePick").hidden = true; dp = null; clearTimeout(dpLater);
     if (pv) $("pvSheet").inert = false; else for (const el of document.querySelectorAll("main, header")) el.inert = false;   // (over the preview: back to it; the page behind stays out of reach until it goes)
-    if (back && typeof back.focus === "function" && document.contains(back)) back.focus({ preventScroll: true });
+    const to = back && pv && back === $("pvMore") && back.hidden ? pvFocusTo() : back;   // the preview's "…" it came from gone meanwhile (a sync made the workout History): an arrow, else the sheet, never the page
+    if (to && typeof to.focus === "function" && document.contains(to)) to.focus({ preventScroll: true });
   }
   // The months sit side by side on a track (index.html .dp-pager): it follows the finger and, let go, settles on a month on UIKit's own spring,
   // as Apple's calendar does (measured 8 Nov in its picker, iOS 27.2: 1:1 under the finger; let go past half, or flicked, it goes on to the
@@ -2749,7 +2750,23 @@ import { reportRange, buildReport } from "./report.js";
     $("skipLine").hidden = done || skipped; $("skippedLine").hidden = !skipped;
     if (skipped) $("skippedText").textContent = (t.missed === true ? "Missed" : "Skipped") + (t.skipReason ? " \u00b7 " + t.skipReason : "");
     if (done) { const d = new Date(t.completedAt); $("finishedText").textContent = "\u2713 Finished \u00b7 " + d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); }
+    paintUndo(t);
   }
+  const UNDO_FOR = 24 * 3600 * 1000;                                   // his rule (11 Nov): "clients don't have the option to press undo in history for workouts older than 24 hours"
+  let undoTimer = null;
+  function undoLeft(t) {                                               // how long a workout's Undo still stays (ms): the coach's own view, always; the client's (and the coach looking as the client) for 24 hours from the finish or the skip, never on one the app filed as missed after a week
+    if (!(S.clientMode || previewing())) return Infinity;
+    if (!t.completedAt && t.missed === true) return 0;
+    const at = Date.parse(t.completedAt || t.skippedAt || "");
+    return isNaN(at) ? 0 : Math.max(0, at + UNDO_FOR - Date.now());
+  }
+  function paintUndo(t) {                                              // the Undo beside "\u2713 Finished" or "Skipped": taken away, never dimmed, once its 24 hours are over, at that moment if the page is open
+    clearTimeout(undoTimer); undoTimer = null;
+    const ms = t.completedAt || t.skippedAt ? undoLeft(t) : 0;
+    $("unfinishBtn").hidden = $("unskipBtn").hidden = !(ms > 0);
+    if (ms > 0 && ms < Infinity) undoTimer = setTimeout(() => { const x = trainings.get(t.id); if (x && S.view.name === "training" && S.view.id === x.id) paintUndo(x); }, Math.min(ms + 50, 2147483647));   // (a timer holds 24.8 days at most: a stamp further ahead of this clock waits in turns, never looping at once: a review's catch)
+  }
+  const undoTap = (act) => () => { const t = trainings.get(S.view.id); if (!t) return; if (undoLeft(t) > 0) act(); else paintUndo(t); };   // a tap that comes after the 24 hours (a phone asleep past the moment) only takes the Undo away
   const ordinal = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
   function setFinished(finished) {
     const t = trainings.get(S.view.id); if (!t) return;
@@ -2767,6 +2784,7 @@ import { reportRange, buildReport } from "./report.js";
     }
     if (S.clientMode) pendingFinish.add(t.id);
     scheduleSave("trainings", t.id); paintFinish(t);
+    if (!finished) { S.renderedTraining = null; render(); }           // Undo: the cards come out of a finished workout's lock at once (its exercises open again, Resume back), not at the next sync
     if (finished) {
       const count = clientTrainings(t.clientId).filter((x) => x.completedAt).length;
       const pc = clients.get(t.clientId), sn = pc && pc.plan ? sessionNo(pc.plan, clientTrainings(t.clientId), t) : null;
@@ -2817,7 +2835,9 @@ import { reportRange, buildReport } from "./report.js";
     const groups = groupsOf(t.rows);
     let numbered = 0;
     const unfinished = groups.filter((g) => !g.rows.every((r) => r.done));
-    const currentKey = asClient && !isTpl ? (unfinished[0] || {}).key : null;   // client: the first card not yet finished is the one open
+    const locked = asClient && !isTpl && !!t.completedAt;   // a finished workout, as the client sees it (his rule, 11 Nov: "They can only click the weight and rep and change that"): a set's weight and reps fixed, notes written, nothing else; Undo (24 hours) opens it all again; the coach's own view keeps everything
+    rowsEl.classList.toggle("locked", locked);
+    const currentKey = asClient && !isTpl ? (locked ? "" : (unfinished[0] || {}).key) : null;   // client: the first card not yet finished is the one open (a finished workout has none: its cards not done stay folded, a look and no more)
     groups.forEach((g) => {
       const block = document.createElement("div");
       const warm = g.key === "w";
@@ -3021,7 +3041,7 @@ import { reportRange, buildReport } from "./report.js";
         chev.setAttribute("aria-label", open ? "Hide sets" : "Show sets");
       };
       const paintSummary = () => {                                      // a finished card opened: the sets in rows, unless opened all the way
-        const summary = block.classList.contains("done") && block.classList.contains("open") && !fullBlocks.has(selKey); block.classList.toggle("summary", summary); if (openFull) openFull.hidden = !summary; if (placeFootRows) placeFootRows(summary);
+        const summary = block.classList.contains("done") && block.classList.contains("open") && (locked || !fullBlocks.has(selKey)); block.classList.toggle("summary", summary); if (openFull) openFull.hidden = !summary || locked; if (placeFootRows) placeFootRows(summary);   // a finished workout (the client's): no "Resume this exercise" (its note disc stays), and a card resumed before the finish opens as its sets
         const regrow = () => { for (const n of block.querySelectorAll("textarea.name")) { n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; } };   // the name field re-wraps when the card changes shape: show the whole name
         if (block.isConnected) regrow(); else setTimeout(regrow, 0);    // in the page already: at once, so the page does not change height a moment after it was drawn (the glide would chase it)
       };
@@ -3043,7 +3063,7 @@ import { reportRange, buildReport } from "./report.js";
         chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (peeking ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4") + '"/></svg>';
         if (peeking) { const cap = block.querySelector(".group-cap"); (cap || card).appendChild(chev); } else card.appendChild(chev);   // opened for a look: the fold chevron moves up onto the "Exercise N" heading, and the card keeps its whole width
         const unpeek = () => { peekBlocks.delete(selKey); S.renderedTraining = null; render(); };
-        if (peeking && waitFoot) {                                     // "Finish Exercise 1 first" when one unfinished card comes before this one, by the name on its card; "the previous exercises" when more do
+        if (peeking && waitFoot && !locked) {                                     // "Finish Exercise 1 first" when one unfinished card comes before this one, by the name on its card; "the previous exercises" when more do
           const gi = groups.indexOf(g), before = groups.filter((x, xi) => xi < gi && !x.rows.every((r) => r.done));
           const one = before.length === 1 ? before[0] : null;
           const canStart = /^\d+$/.test(String(g.key)) && unfinished[0] && unfinished[0].key !== "w";   // an exercise can go ahead of the exercises; the warmup stays a warmup, so with it unfinished there is nothing to offer
@@ -3547,6 +3567,7 @@ import { reportRange, buildReport } from "./report.js";
     q(".wunit").textContent = "Weights \u00b7 " + ((clients.get(t.clientId) || {}).unit || "lb");
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; };
     const asClient = S.clientMode || previewClient;        // what to show; what to save still follows clientMode
+    const locked = asClient && !!t.completedAt && !isTemplateClient(t.clientId);   // a finished workout, as the client sees it (renderTraining's lock): no swap disc, its room given back to the name
     const layoutIcons = () => { const w = asClient ? (q(".vid-btn").hidden ? 0 : 38) + (q(".alt-btn").hidden ? 0 : 46) : 0; /* the coach's name has the whole field: the discs are a row under it, and the stylesheet pins its padding */ for (const el of q(".exwrap").querySelectorAll(".name")) { const px = (w ? 4 + w + 8 : 16) + "px"; el.style.paddingRight = px; el.style.setProperty("--iconpad", px); } growName(); };   // the name wraps before the icons: their real footprint (the client's swap disc is 36px with a 10px gap, the others 38px, all 4px in from the edge) plus a breath
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
@@ -3556,7 +3577,7 @@ import { reportRange, buildReport } from "./report.js";
     exwrap.dataset.letter = letter.toUpperCase(); el.style.setProperty("--letw", letter ? "42px" : "0px");
     let altMode = "list";
     const altList = () => (r.alts || []).filter(Boolean);
-    const paintAltBtn = () => { const n = altList().length; const show = !asClient || n > 0; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };   // the client sees the disc whenever the coach gave alternatives, logged sets or not (a swap keeps the sets)
+    const paintAltBtn = () => { const n = altList().length; const show = (!asClient || n > 0) && !locked; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };   // the client sees the disc whenever the coach gave alternatives, logged sets or not (a swap keeps the sets)
     let downAt = null;                                                                                 // a tap outside closes the menu; a scroll that starts outside (a finger dragging the page) does not
     const outsideDown = (e) => { downAt = exwrap.contains(e.target) ? null : { x: e.clientX, y: e.clientY }; };
     const outsideUp = (e) => { if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 10) closeAlt(); downAt = null; };
@@ -4127,15 +4148,18 @@ import { reportRange, buildReport } from "./report.js";
   const pvReps = (v) => { const t = String(v == null ? "" : v).trim() || REPS_DEFAULT; const w = repsWord(t); return showReps(t) + (w ? " " + w : ""); };   // blank: the page's own grey "10"   // "10, 8, 6 reps", "30 sec", "8 reps / side": as the workout's cards write them
   const pvName = (t) => String((t && t.title) || "").trim() || "Workout";
   const pvMissed = (t) => canSwipeRow(t) && !!effDate(t) && effDate(t) < today();   // its day gone, still to do (the Missed card's)
+  const pvState = (t) => (t.completedAt ? "done" : t.skippedAt ? (t.missed ? "miss" : "skip") : pvMissed(t) ? "miss" : "todo");   // what the preview marks (his picks, 11 Nov): finished green, skipped grey, missed red (this week's, or filed to History after a week), still to do plain
   function pvFill(t, titleEl, dayEl, cardsEl) {                        // a workout's page: its title, its day, its cards (the list's own, or the one sliding in beside it)
     const span = (cls, text) => { const s = document.createElement("span"); s.className = cls; s.textContent = text; return s; };
     titleEl.textContent = pvName(t);
     const day = fmtDayLong(effDate(t) || "");
-    if (pvMissed(t)) dayEl.replaceChildren(span("missed", "Missed"), document.createTextNode(day ? " \u00b7 " + day : ""));   // a missed one says so first, in red (his ask, 11 Nov), as its row does
+    const state = pvState(t), word = { done: "\u2713 Finished", skip: "Skipped", miss: "Missed" }[state];
+    dayEl.className = "pv-day" + (word ? " st-" + state : ""); cardsEl.className = "pv-cards" + (word ? " st-" + state : "");   // History's and the missed ones in their colour (his picks, 11 Nov): the day line and the cards, as History's own page draws a finished one; one still to do plain
+    if (word) dayEl.replaceChildren(span(state === "done" ? "finished" : state === "skip" ? "skipped" : "missed", word), document.createTextNode(day ? " \u00b7 " + day : ""));   // it says what it is first (a missed one in red, as its row does)
     else dayEl.textContent = day;
     const cards = groupsOf(t.rows).map((g) => {
       const st = g.rows.every((r) => r.done) ? groupSummary(g) : null;
-      const card = document.createElement("div"); card.className = "pv-card";
+      const card = document.createElement("div"); card.className = "pv-card" + (st && !st.skipped ? " done" : "");   // done as its page marks a card (.block.done): finished, or finished early with sets logged; skipped with nothing logged, or never started, plain (the review's catch: a finished workout's preview had made every card green)
       for (const r of g.rows) {
         const row = document.createElement("div"); row.className = "pv-row";
         const body = document.createElement("div"); body.className = "pv-b";
@@ -4145,7 +4169,7 @@ import { reportRange, buildReport } from "./report.js";
         for (const text of [n + (n === 1 ? " set" : " sets"), pvReps(r.reps)]) if (text) sum.appendChild(span("si", text));
         body.appendChild(sum); row.append(span("pv-l", String(r.label || "").trim()), body); card.appendChild(row);
       }
-      if (st) { const foot = document.createElement("div"); foot.className = "pv-foot"; for (const line of st.lines) foot.appendChild(span("pv-line", line)); card.appendChild(foot); }   // finished: a quiet line, as its folded card says it (nothing green)
+      if (st) { const foot = document.createElement("div"); foot.className = "pv-foot"; for (const line of st.lines) foot.appendChild(span("pv-line", line)); card.appendChild(foot); }   // finished: a line, as its folded card says it (green on a finished workout's cards)
       const gc = groupCaption(g), cap = document.createElement("div"); cap.className = "pv-cap"; cap.textContent = gc.main;   // its caption over it, as the client's workout page captions its cards (his pick B, 10 Nov): "EXERCISE 2 · SUPERSET"
       if (gc.kind) { const k = document.createElement("i"); k.textContent = " \u00b7 " + gc.kind; cap.appendChild(k); }
       const grp = document.createElement("div"); grp.className = "pv-grp"; grp.append(cap, card);
@@ -4155,7 +4179,8 @@ import { reportRange, buildReport } from "./report.js";
     cardsEl.replaceChildren(...cards);
   }
   function paintPreview(t) {
-    $("pvGo").textContent = canSwipeRow(t) ? "Start workout" : "Show in History";   // Start workout is a planned one's (Apple's Fitness word); a finished one, from its green chip in the calendar (v262), is shown in History (his pick, 11 Nov)
+    const gb = $("pvGo"), hist = !canSwipeRow(t); gb.textContent = hist ? "Show in History" : "Start workout";   // Start workout is a planned one's (Apple's Fitness word); a finished one, from its green chip in the calendar (v262), is shown in History (his pick, 11 Nov)
+    for (const k of ["tint", "wide", "soft"]) gb.classList.toggle(k, hist);   // Show in History goes somewhere, it does nothing: the grey capsule (Skip workout's, Undo's), never the purple of an act (his ask, 11 Nov: "not purple but our Apple transparent because it's not an action")
     pvFill(t, $("pvTitle"), $("pvDay"), $("pvCards")); $("pvBarTitle").textContent = pvName(t);
     const say = $("pvSay"); if (say.textContent && say.textContent !== pvLine(t)) say.textContent = "";   // VoiceOver's line never tells of another workout or an old day
     pvFit(); pvArrows(); pvTitleRoom();                               // (a sync's redraw: it may scroll now, or no longer; the workouts either side may have changed)
@@ -4336,18 +4361,21 @@ import { reportRange, buildReport } from "./report.js";
   // Only the workout moves: the header and Start workout stay, as Apple keeps a pager's bars and the month view its title.
   const PV_SIDE = 8, PV_CONE = 1.732;                                // a slide: 8 points sideways within 30 degrees of level (iOS 27 lets a list scroll only past that: no touch is both)
   const pvOrder = (a, b) => effDate(a).localeCompare(effDate(b)) || byMade(a, b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
-  const pvWalk = (cid) => clientTrainings(cid).filter(canSwipeRow).sort(pvOrder);
+  const pvWalk = (cid) => clientTrainings(cid).filter((t) => canSwipeRow(t) || !!effDate(t)).sort(pvOrder);   // every workout of the client by its day, then as made: History's too (his ask, 11 Nov: "let the slider go even to the history"), the missed, today's, the ones to come
   function pvNear(id) {                                              // the workouts either side of this one in the walk (it may have left it, finished or skipped meanwhile: where it would sort)
     const t = trainings.get(id); if (!t) return { prev: null, next: null };
     const w = pvWalk(t.clientId).filter((x) => x.id !== id), i = w.findIndex((x) => pvOrder(x, t) > 0), k = i < 0 ? w.length : i;
     return { prev: k > 0 ? w[k - 1].id : null, next: k < w.length ? w[k].id : null };
   }
   const pvNested = () => { const wb = $("whenBg"); return !!(wb && !wb.hidden) || [...document.querySelectorAll(".sheet-bg:not([hidden])")].some((el) => el.id !== "pvSheet"); };   // a menu, or a sheet, up over the preview
-  function pvArrows() {                                              // an arrow with nowhere to go is dimmed (a keyboard on it moves to the other, else to the sheet); the "…" with nothing to offer too
-    if (!pv) return; const n = pvNear(pv.id), p = $("pvPrev"), x = $("pvNext"), f = document.activeElement;
-    p.disabled = !n.prev; x.disabled = !n.next; $("pvMore").disabled = !pvItems(trainings.get(pv.id)).length;
-    if ((f === p && p.disabled) || (f === x && x.disabled)) { const to = !p.disabled ? p : !x.disabled ? x : $("pvBox"); if (to && typeof to.focus === "function") to.focus({ preventScroll: true }); }
+  function pvArrows() {                                              // an arrow with nowhere to go is dimmed (a keyboard on it moves to the other, else to the sheet); the "…" with nothing to offer is not there (History's workouts, his rule 11 Nov), the name in the header given its room
+    if (!pv) return; const n = pvNear(pv.id), p = $("pvPrev"), x = $("pvNext"), m = $("pvMore"), was = !!m.hidden; let f = document.activeElement;
+    p.disabled = !n.prev; x.disabled = !n.next; m.hidden = !pvItems(trainings.get(pv.id)).length;
+    if (m.hidden && popClose && popAnchor === m) { const wp = $("whenPop"), inMenu = !!f && typeof wp.contains === "function" && wp.contains(f); popClose(); if (inMenu) f = m; }   // its menu open as it goes (a sync made the workout History): the menu goes with it, and a keyboard in it lands where one on the "…" does (a review's catch: it fell to the page)
+    if ((f === p && p.disabled) || (f === x && x.disabled) || (f === m && m.hidden)) { const to = pvFocusTo(); if (to && typeof to.focus === "function") to.focus({ preventScroll: true }); }
+    if (!!m.hidden !== was) pvTitleRoom();
   }
+  const pvFocusTo = () => { const p = $("pvPrev"), x = $("pvNext"); return !p.disabled ? p : !x.disabled ? x : $("pvBox"); };   // where a keyboard goes when its control in the preview's bar goes: an arrow that can go, else the sheet
   function pvTitleRoom() {                                           // the name in the header: centred on the bar where it fits between the cross and the buttons on the right, as UIKit centres a title; else in the room between them, cut short
     const bar = $("pvBar"), el = $("pvBarTitle"), tools = bar && bar.querySelector(".pv-tools"), W = bar ? pvNum(bar.clientWidth) : 0;
     if (!pv || !W || !tools || typeof document.createRange !== "function") return;
@@ -4355,7 +4383,7 @@ import { reportRange, buildReport } from "./report.js";
     const w = Math.ceil(pvNum(rg.getBoundingClientRect().width));
     if (w / 2 <= half) { el.style.left = el.style.right = Math.round(W / 2 - half) + "px"; } else { el.style.left = L + "px"; el.style.right = Math.round(W - R) + "px"; }
   }
-  const pvLine = (t) => { const day = fmtDayLong(effDate(t) || ""); return pvName(t) + (pvMissed(t) ? ", missed" : "") + (day ? ", " + day : ""); };   // what VoiceOver hears of a workout
+  const pvLine = (t) => { const day = fmtDayLong(effDate(t) || ""), w = { done: ", finished", skip: ", skipped", miss: ", missed" }[pvState(t)] || ""; return pvName(t) + w + (day ? ", " + day : ""); };   // what VoiceOver hears of a workout
   const pvSay = () => { const t = pv && trainings.get(pv.id); if (t) $("pvSay").textContent = pvLine(t); };   // VoiceOver hears the workout it went to
   let pg = null, pvEatUntil = 0;                                     // a slide under way: { dir: the side it shows (-1 the workout before, 1 the next), to: that workout, x: where it is, peek: that workout's page, out: a copy of the page going out (once let go on), top/foot/h0/max: the sheet as the slide began, h1: its height with the incoming workout, settling, finish }
   const PV_CURVE = "280ms cubic-bezier(0.22, 1, 0.36, 1)";           // the month view's own settle
@@ -4444,8 +4472,8 @@ import { reportRange, buildReport } from "./report.js";
     move(d) { if (pvWx === null || !pg || pg.settling) return true; const W = pvW(); pvWx = Math.max(-W, Math.min(W, pvWx + d)); pvFollow(pvWx); return Math.abs(pvWx) >= W; },
     end() { if (pvWx === null) return; pvWx = null; if (pg && !pg.settling) pvLetGo(monthLetGo("cal", pg.x, pvW())); },
   };
-  function pvItems(t) {                                              // the "…": Do it today on a missed one (first, as its row's), Reschedule and Skip on any still to do; the coach's own view adds Copy workout and, last and red, Delete workout
-    if (!t || isTemplateClient(t.clientId)) return [];
+  function pvItems(t) {                                              // the "…": Do it today on a missed one (first, as its row's), Reschedule and Skip on any still to do; the coach's own view adds Copy workout and, last and red, Delete workout. History's workouts (finished, skipped, missed after a week) have none: no "…" at all (his rule, 11 Nov), their page has the rest
+    if (!t || isTemplateClient(t.clientId) || !canSwipeRow(t)) return [];
     const id = t.id, todo = canSwipeRow(t), items = [];
     if (pvMissed(t)) items.push({ label: "Do it today", icon: miToday(), onPick: () => doToday(id) });
     if (todo) items.push({ label: "Reschedule", icon: MI.calendar, onPick: () => rowReschedule(id) }, { label: "Skip", icon: MI.skip, onPick: () => pvSkip(id) });
@@ -4542,6 +4570,7 @@ import { reportRange, buildReport } from "./report.js";
   function openSkip(id, after) {                                       // the workout page's, or a row's on Workouts (id), or the preview's (after: what follows the skip there)
     const t = trainings.get(id || S.view.id); if (!t) return; sk = { t, reason: "", at: performance.now(), after: after || null }; S.asking = true; if (pv) $("pvSheet").inert = true;   // (over the preview, the preview waits)
     for (const b of $("skReasons").querySelectorAll("button")) { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); }
+    $("skFor").hidden = !(S.clientMode || previewing());               // the client's Undo lasts 24 hours (the coach's, always), and the question says so
     $("skipSheet").hidden = false; setTimeout(() => { if (sk) $("skGo").focus({ preventScroll: true }); }, 0);
   }
   function closeSkip() { $("skipSheet").hidden = true; sk = null; S.asking = !!pv; if (pv) $("pvSheet").inert = false; }   // (over the preview: back to it, still a question up)
@@ -4557,9 +4586,9 @@ import { reportRange, buildReport } from "./report.js";
     sk.reason = on ? b.dataset.reason : "";
   });
   $("skipBtn").addEventListener("click", () => openSkip());
-  $("unskipBtn").addEventListener("click", () => setSkipped(false));
+  $("unskipBtn").addEventListener("click", undoTap(() => setSkipped(false)));
   $("finishBtn").addEventListener("click", () => setFinished(true));
-  $("unfinishBtn").addEventListener("click", () => setFinished(false));
+  $("unfinishBtn").addEventListener("click", undoTap(() => setFinished(false)));
   function copyTarget(t) {                                            // "Copy workout" asks which client gets the copy; this client is the first row
     const me = clients.get(t.clientId), others = peopleList().filter((c) => c.id !== t.clientId);
     const items = [me, ...others].filter(Boolean).map((c) => ({ id: c.id, label: c.name || "Unnamed", sub: c.id === t.clientId ? "this client" : (c.paused ? "Paused" : "") }));
@@ -4722,7 +4751,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayWords, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },

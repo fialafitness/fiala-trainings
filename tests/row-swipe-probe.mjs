@@ -67,7 +67,7 @@ const pageMain = mk("main"), pageDiv = mk("div"), field = mk("input"); pageMain.
 let blurred = 0; field.blur = () => { blurred++; if (document.activeElement === field) document.activeElement = null; };
 // the skip sheet's buttons and the workout page's Skip workout and Undo keep their listeners (the shared stand-in drops them): a click reaches them
 const ON = {};
-for (const id of ["skGo", "skKeep", "skReasons", "skipSheet", "skipBtn", "unskipBtn", "datePick", "dpCancel"]) { const e = document.getElementById(id); ON[id] = {}; e.addEventListener = (t, f) => { (ON[id][t] ||= []).push(f); }; }
+for (const id of ["skGo", "skKeep", "skReasons", "skipSheet", "skipBtn", "unskipBtn", "unfinishBtn", "datePick", "dpCancel"]) { const e = document.getElementById(id); ON[id] = {}; e.addEventListener = (t, f) => { (ON[id][t] ||= []).push(f); }; }
 
 const app = (await import("../app/main.js")).internals();
 const { fns, maps } = app;
@@ -460,6 +460,18 @@ const finishArea = () => ({ area: !$("finishWrap").hidden, finishBtn: !$("finish
   app.set({ view: { name: "training", id: "w1" } }); fns.render(); const toDo = finishArea();
   Object.assign(maps.trainings.get("w1"), { skippedAt: "2026-11-02T18:00:00.000Z", skipReason: "Sick" }); fns.render();   // the client's skip, brought in by a sync
   out.empty.coach = { toDo, skipped: { page: finishArea(), text: $("skippedText").textContent } };
+  if (fns.skipSheet()) fns.closeSkip(); sheet.hidden = wasHidden; }
+
+// 30b. the client's Undo lasts 24 hours from the finish or the skip (his rule, 11 Nov): a tap on it within them undoes; a tap that comes after
+//      them, the button still up from before (a phone asleep past the moment), only takes the Undo away and leaves the workout as it was
+{ const wasHidden = sheet.hidden; sheet.hidden = true; out.undoLate = {}; const hours = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+  for (const [k, field, btn] of [["finish", "completedAt", "unfinishBtn"], ["skip", "skippedAt", "unskipBtn"]]) {
+    setup(); const t = maps.trainings.get("w1"); t[field] = hours(23); app.set({ view: { name: "training", id: "w1" } }); fns.render();
+    const up = !$(btn).hidden; t[field] = hours(25); press(btn);
+    const late = { kept: !!t[field], up: !$(btn).hidden, view: app.get().view.name };
+    setup(); const u = maps.trainings.get("w1"); u[field] = hours(23); app.set({ view: { name: "training", id: "w1" } }); fns.render(); press(btn);
+    out.undoLate[k] = { up, late, inTime: { kept: !!u[field] } };
+  }
   if (fns.skipSheet()) fns.closeSkip(); sheet.hidden = wasHidden; }
 
 // 31. a larger Text Size: "Reschedule" wider than its capsule (the action 97 wide, its 61 capsule centred in it) grows in only once half of it

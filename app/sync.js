@@ -280,7 +280,8 @@ const clientBackend = {
     }
     if (pendingSkip.has(id)) {
       const skipped = !!data.skippedAt, reason = String(data.skipReason || "");
-      let { error } = await rpc("client_skip_training", { p_training: id, p_skipped: skipped, p_reason: reason });
+      let { error } = await rpc("client_skip_training", { p_training: id, p_skipped: skipped, p_reason: reason, p_at: skipped ? data.skippedAt || null : null });   // skipped at the time the phone says, as a finish (a skip made offline on Monday and uploaded on Wednesday is Monday's: her 24-hour Undo counts from it)
+      if (error && error.code === "PGRST202") ({ error } = await rpc("client_skip_training", { p_training: id, p_skipped: skipped, p_reason: reason }));   // the rule without the time (not updated yet): the skip still lands, stamped when it arrives
       if (error && error.code === "PGRST202") ({ error } = await rpc("client_skip_training", { p_training: id, p_skipped: skipped }));   // the rule without the reason (not updated yet): the skip still lands
       if (error && error.code !== "P0001") throw error;
       const now = live(); if (error || (!!now.skippedAt === skipped && String(now.skipReason || "") === reason)) pendingSkip.delete(id);

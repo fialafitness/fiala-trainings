@@ -149,7 +149,18 @@ test("a client's skip carries the reason; a rule that does not know the reason y
   const t = training("T", { skippedAt: "2026-10-22T10:00:00.000Z", skipReason: "Sick" }); maps.trainings.set("T", t); maps.pendingSkip.add("T");
   await fns.clientBackend.set("trainings", "T", JSON.parse(JSON.stringify(t)));
   const calls = sb.log.filter((l) => l.rpc === "client_skip_training").map((l) => l.args);
-  assert.deepStrictEqual(calls, [{ p_training: "T", p_skipped: true, p_reason: "Sick" }, { p_training: "T", p_skipped: true }]); assert.ok(!maps.pendingSkip.has("T"));
+  assert.deepStrictEqual(calls, [{ p_training: "T", p_skipped: true, p_reason: "Sick", p_at: "2026-10-22T10:00:00.000Z" }, { p_training: "T", p_skipped: true, p_reason: "Sick" }, { p_training: "T", p_skipped: true }]); assert.ok(!maps.pendingSkip.has("T"));
+});
+test("a client's skip carries the phone's own time, as a finish does (a skip made offline on Monday and uploaded on Wednesday is Monday's: her 24-hour Undo counts from it, a review's catch); a rule without the time still takes the skip with its reason; an Undo sends no time", async () => {
+  const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend });
+  const calls = []; sb.rpcs.client_skip_training = async (a) => { calls.push(a); if ("p_at" in a) { const e = new Error("Could not find the function"); e.code = "PGRST202"; throw e; } return null; };   // the rule from before the time
+  const t = training("T", { skippedAt: "2026-11-09T07:00:00.000Z", skipReason: "Sick" }); maps.trainings.set("T", t); maps.dirty.set("trainings/T", 1); maps.pendingSkip.add("T");
+  fns.flushOne("trainings", "T"); await settle();
+  assert.deepStrictEqual(calls, [{ p_training: "T", p_skipped: true, p_reason: "Sick", p_at: "2026-11-09T07:00:00.000Z" }, { p_training: "T", p_skipped: true, p_reason: "Sick" }], "the time went first; the rule that does not know it got the reason's shape");
+  assert.ok(!maps.pendingSkip.has("T"), "and the skip is done");
+  calls.length = 0; sb.rpcs.client_skip_training = async (a) => { calls.push(a); return null; };   // the rule that knows the time
+  t.skippedAt = null; delete t.skipReason; maps.dirty.set("trainings/T", 2); maps.pendingSkip.add("T"); fns.flushOne("trainings", "T"); await settle();
+  assert.deepStrictEqual(calls, [{ p_training: "T", p_skipped: false, p_reason: "", p_at: null }], "an Undo of the skip: no time to keep");
 });
 test("Finish then Undo while the finish request is out: the answer does not swallow the Undo, which goes with the next flush", async () => {
   const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend });

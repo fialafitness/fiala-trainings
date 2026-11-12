@@ -40,11 +40,11 @@ const app = (await import("../app/main.js")).internals();
 const { fns, maps } = app;
 const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return fns.localIso(d); };
 const W = (id, n, made_, extra = {}) => ({ id, clientId: "c1", title: id.toUpperCase(), date: day(n), createdAt: "2026-11-01T" + made_ + ":00.000Z", completedAt: null, skippedAt: null, rows: [], ...extra });
-function seed(view = {}) {                                                 // a client's workouts: two missed, two today (the morning one made first), two to come; one finished, one skipped, one of another client
+function seed(view = {}) {                                                 // a client's workouts: History's (one finished, one skipped, one missed filed after a week), two missed, two today (the morning one made first), two to come; one of another client
   fns.closePreview(); app.reset(); app.set({ signedIn: true, clientMode: false, tab: "workouts", ...view });
   maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" }); maps.clients.set("c2", { id: "c2", name: "Kim", unit: "lb" });
-  const done = new Date(); done.setDate(done.getDate() - 1); done.setHours(12, 0, 0, 0);
-  for (const t of [W("m2", -3, "08:00"), W("m1", -1, "08:00"), W("b", 0, "09:00"), W("a", 0, "08:00"), W("c", 2, "08:00"), W("d", 5, "08:00"), W("f", -1, "10:00", { completedAt: done.toISOString() }), W("s", 1, "08:00", { skippedAt: done.toISOString() }), { ...W("o", 1, "08:00"), clientId: "c2" }])
+  const noon = (n) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(12, 0, 0, 0); return d.toISOString(); };
+  for (const t of [W("f", -10, "10:00", { completedAt: noon(-10) }), W("s", -9, "08:00", { skippedAt: noon(-9) }), W("om", -8, "08:00", { skippedAt: noon(-1), missed: true }), W("m2", -3, "08:00"), W("m1", -1, "08:00"), W("b", 0, "09:00"), W("a", 0, "08:00"), W("c", 2, "08:00"), W("d", 5, "08:00"), { ...W("o", 1, "08:00"), clientId: "c2" }])
     maps.trainings.set(t.id, t);
   app.set({ view: { name: "client", id: "c1" } }); fns.render(); pvScroll.scrollTop = 0; peeks.length = 0;
 }
@@ -58,7 +58,7 @@ out.near = { a: fns.previewNear("a"), m2: fns.previewNear("m2"), d: fns.previewN
 seed(); out.items = { coach: fns.previewItems("a"), coachMissed: fns.previewItems("m1"), coachFinished: fns.previewItems("f") };
 seed({ clientMode: true }); out.items.client = fns.previewItems("a"); out.items.clientMissed = fns.previewItems("m1"); out.items.clientFinished = fns.previewItems("f");
 // ---------- the arrows: dimmed at the ends; the 350 ms guard; a tap slides on the month view's curve and lands ----------
-{ await openOn("m2"); const first = look(); fns.closePreview(); await openOn("d"); const last = look(); fns.closePreview(); await openOn("a"); out.ends = { first, last, mid: look(), more: byId.get("pvMore").disabled }; }
+{ await openOn("f"); const first = look(); fns.closePreview(); await openOn("d"); const last = look(); fns.closePreview(); await openOn("a"); out.ends = { first, last, mid: look(), more: byId.get("pvMore").disabled }; }
 { seed(); fns.openPreview("a"); await advance(100); byId.get("pvNext").fire("click", { detail: 1 }); out.guard = look(); }
 const page = (p) => p && { tr: p.style.transition, tf: p.style.transform, top: p.style.top, bottom: p.style.bottom, inert: p.inert, aria: p["@aria-hidden"], cls: p.className };
 const veil = () => ({ on: pvBar.style["--pv-on"] ?? null, x: pvBar.style["--pv-veil-x"] ?? null, tr: pvBar.style["--pv-veil-tr"] ?? null, titled: pvBar.classList.contains("pv-titled") });
@@ -67,7 +67,7 @@ const veil = () => ({ on: pvBar.style["--pv-on"] ?? null, x: pvBar.style["--pv-v
   await advance(359); const at359 = look(); await advance(1);
   out.tap = { during, at359, landed: { ...look(), list: { tr: pvScroll.style.transition, tf: pvScroll.style.transform }, peekGone: !!(inP && inP.removed), outGone: !!(outP && outP.removed), veil: veil(), say: byId.get("pvSay").textContent, title: byId.get("pvTitle").textContent, top: pvScroll.classList.contains("pv-top") } }; }
 { await openOn("a"); byId.get("pvNext").fire("click", { detail: 1 }); await advance(50); byId.get("pvNext").fire("click", { detail: 1 }); const mid = look(); await advance(400); out.twoTaps = { mid, landed: look() }; }   // two quick taps: two workouts
-{ await openOn("a"); byId.get("pvPrev").fire("click", { detail: 1 }); await advance(400); const one = look().id; byId.get("pvPrev").fire("click", { detail: 1 }); await advance(400); const two = look().id; byId.get("pvPrev").fire("click", { detail: 1 }); await advance(400); out.back = { one, two, three: look() }; }   // back to the first, then nothing further
+{ await openOn("a"); const ids = []; for (let i = 0; i < 6; i++) { byId.get("pvPrev").fire("click", { detail: 1 }); await advance(400); ids.push(look().id); } out.back = { ids, last: look() }; }   // back through the missed into History (his ask, 11 Nov), then nothing further
 { await openOn("a"); byId.get("pvNext").fire("click", { detail: 1 }); const inP = peeks[peeks.length - 2], outP = peeks[peeks.length - 1]; await advance(100);
   pvScroll.fire("transitionend", { target: pvScroll }); inP.fire("transitionend", { target: inP }); outP.fire("transitionend", { target: pvCards }); const others = !!fns.previewSlide();   // the list's, the incoming page's, a child's on its way up: not the slide's
   outP.fire("transitionend", { target: outP }); out.ended = { others, ...look() }; }   // the page going out's own transitionend lands it before the fallback
@@ -88,7 +88,7 @@ await openOn("a"); out.fling = await drag([[300, 400], [292, 401], [280, 401], [
 await openOn("a"); out.short = await drag([[300, 400], [292, 400], [270, 400]]);                // 30 left: back
 await openOn("a"); out.right = await drag([[100, 400], [108, 400], [170, 401]]);                // 70 right: the one before
 await openOn("a"); out.cancelled = await drag([[300, 400], [292, 400], [200, 400]], { type: "touchcancel" });   // iOS takes the touch: back
-await openOn("m2"); out.band = await drag([[100, 400], [108, 400], [168, 400]]);                // nothing before the first: a third of the way (20), and back
+await openOn("f"); out.band = await drag([[100, 400], [108, 400], [168, 400]]);                 // nothing before the first (History's oldest): a third of the way (20), and back
 await openOn("a"); out.steep = await drag([[300, 400], [285, 411]]);                            // 15 sideways, 11 down (36 degrees): not a slide, and nobody's
 await openOn("a"); out.header = await drag([[300, 30], [292, 30], [230, 31]], { target: inBar });   // from the header too
 { await openOn("a"); cancelable = false; const r = await drag([[300, 400], [290, 400], [250, 400]]); cancelable = true; out.native = r; }   // iOS already scrolling the list: never a slide
@@ -100,7 +100,7 @@ await openOn("a"); out.header = await drag([[300, 30], [292, 30], [230, 31]], { 
   byId.get("pvNext").fire("click", { detail: 1 }); const atGo = paints; ui.render(); const held = paints - atGo; fns.render(); const direct = { id: look().id, paints: paints - atGo }; await advance(400); out.redraw = { atGo, held, direct, after: paints - atGo, landed: look() }; pvCards.replaceChildren = rc; }
 { await openOn("a"); byId.get("pvNext").fire("click", { detail: 1 }); maps.trainings.delete("b"); await advance(400); out.goneMid = look(); }
 // ---------- the sheet's height eases toward the one coming in (its cards' foot), and is its own again when it lands ----------
-{ await openOn("a"); const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return this.className === "pv-cards" ? 94 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return this.className === "pv-cards" ? 200 : 0; }, configurable: true }); return e; };
+{ await openOn("a"); const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return /\bpv-cards\b/.test(this.className) ? 94 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return /\bpv-cards\b/.test(this.className) ? 200 : 0; }, configurable: true }); return e; };
   start(300, 400, inList); await advance(16); move(292, 400, inList); await advance(16); move(92, 400, inList); document.createElement = real;
   out.height = { at200: pvBox.style.height, tr: pvBox.style.transition }; end(inList); out.height.settling = { h: pvBox.style.height, tr: pvBox.style.transition }; await advance(400); out.height.landed = pvBox.style.height; out.height.trAfter = pvBox.style.transition; }
 // ---------- keys: left and right go between them; Escape closes; a menu or a sheet up over the preview takes its own keys ----------
@@ -124,7 +124,7 @@ await openOn("a"); out.header = await drag([[300, 30], [292, 30], [230, 31]], { 
 { await openOn("a"); byId.get("pvMore").fire("click", { detail: 1 }); (byId.get("whenPop").children || []).find((b) => (b.children || []).some((s) => s.textContent === "Delete workout")).fire("click", {});
   await advance(400); const asked = !byId.get("askSheet").hidden; byId.get("askYes").fire("click", {}); await flush(); const atYes = look(); await advance(400);
   out.del = { asked, atYes, gone: !maps.trainings.has("a"), now: look(), asking: app.get().asking, view: app.get().view.name }; }
-{ await openOn("d"); for (const id of ["m2", "m1", "a", "b", "c"]) maps.trainings.delete(id); fns.render(); byId.get("pvMore").fire("click", { detail: 1 }); (byId.get("whenPop").children || []).find((b) => (b.children || []).some((s) => s.textContent === "Delete workout")).fire("click", {});
+{ await openOn("d"); for (const id of ["f", "s", "om", "m2", "m1", "a", "b", "c"]) maps.trainings.delete(id); fns.render(); byId.get("pvMore").fire("click", { detail: 1 }); (byId.get("whenPop").children || []).find((b) => (b.children || []).some((s) => s.textContent === "Delete workout")).fire("click", {});
   await advance(400); byId.get("askYes").fire("click", {}); await flush(); await advance(400); out.delLast = { open: !!fns.previewState(), gone: !maps.trainings.has("d"), asking: app.get().asking }; }
 { await openOn("a"); byId.get("pvMore").fire("click", { detail: 1 }); (byId.get("whenPop").children || []).find((b) => (b.children || []).some((s) => s.textContent === "Delete workout")).fire("click", {}); await advance(400); byId.get("askNo").fire("click", {}); await flush(); await advance(100);
   out.delNo = { now: look(), kept: maps.trainings.has("a"), asking: app.get().asking }; }
@@ -160,7 +160,7 @@ const pick = (label) => (byId.get("whenPop").children || []).find((b) => (b.chil
   const ch = [...F.entries()].map(([id, p]) => T(id, p.x, p.y)); F.clear(); send("touchend", tev(card, ch));
   pvCards.replaceChildren = rc; out.landedUnder = { underFinger, ...look(), drag: fns.previewDrag() }; await advance(400); }
 // ---------- an arrow's slide eases the sheet's height from its own height in points (WebKit eases nothing from height auto), as the finger's ----------
-{ await openOn("a"); const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return this.className === "pv-cards" ? 94 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return this.className === "pv-cards" ? 200 : 0; }, configurable: true }); return e; };
+{ await openOn("a"); const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return /\bpv-cards\b/.test(this.className) ? 94 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return /\bpv-cards\b/.test(this.className) ? 200 : 0; }, configurable: true }); return e; };
   const st = pvBox.style, log = []; let h = st.height || "", tr = st.transition || "";
   Object.defineProperty(st, "height", { get: () => h, set: (v) => { log.push("height=" + v); h = v; }, configurable: true });
   Object.defineProperty(st, "transition", { get: () => tr, set: (v) => { log.push("transition=" + v); tr = v; }, configurable: true });
@@ -170,7 +170,7 @@ const pick = (label) => (byId.get("whenPop").children || []).find((b) => (b.chil
 // ---------- the sheet's cap as laid out (its max-height reads back as calc(), not in points); the foot under the list measured once, as the slide began ----------
 const sized = (cap, natural) => { const st = pvBox.style; Object.defineProperty(pvBox, "offsetHeight", { get: () => Math.min(cap, parseFloat(st.height) || natural), configurable: true }); Object.defineProperty(pvScroll, "offsetHeight", { get: () => pvBox.offsetHeight - 80, configurable: true }); };
 const unsized = () => { Object.defineProperty(pvBox, "offsetHeight", { value: 600, writable: true, configurable: true, enumerable: true }); Object.defineProperty(pvScroll, "offsetHeight", { value: 520, writable: true, configurable: true, enumerable: true }); };
-const cardsOf = (hgt) => { const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return this.className === "pv-cards" ? 94 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return this.className === "pv-cards" ? hgt : 0; }, configurable: true }); return e; }; return () => { document.createElement = real; }; };
+const cardsOf = (hgt) => { const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return /\bpv-cards\b/.test(this.className) ? 94 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return /\bpv-cards\b/.test(this.className) ? hgt : 0; }, configurable: true }); return e; }; return () => { document.createElement = real; }; };
 { seed(); sized(700, 300); fns.openPreview("a"); await advance(400); const back = cardsOf(2000);
   start(300, 400, inList); await advance(16); move(292, 400, inList); await advance(16); move(91, 400, inList); back(); const half = pvBox.style.height; end(inList); const settling = pvBox.style.height; await advance(400);
   out.capped = { half, settling, landed: pvBox.style.height }; unsized(); }
@@ -178,7 +178,7 @@ const cardsOf = (hgt) => { const real = document.createElement; document.createE
   start(300, 400, inList); await advance(16); move(292, 400, inList); await advance(16); move(192, 400, inList); const toward = pvBox.style.height; await advance(16); move(420, 400, inList); back();
   const other = peeks[peeks.length - 1]; out.foot = { toward, bottom: other.style.bottom, h: pvBox.style.height }; end(inList); await advance(400); unsized(); }
 { seed(); const st = pvBox.style; Object.defineProperty(pvBox, "offsetHeight", { get: () => parseFloat(st.height) || 788, configurable: true }); Object.defineProperty(pvScroll, "offsetHeight", { get: () => pvBox.offsetHeight - 119.34375, configurable: true });   // as measured on the test iPhone: a tall workout at the cap, 3 exercises coming in
-  fns.openPreview("a"); await advance(400); const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return this.className === "pv-cards" ? 168.234375 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return this.className === "pv-cards" ? 343.40625 : 0; }, configurable: true }); return e; };
+  fns.openPreview("a"); await advance(400); const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return /\bpv-cards\b/.test(this.className) ? 168.234375 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return /\bpv-cards\b/.test(this.className) ? 343.40625 : 0; }, configurable: true }); return e; };
   const writes = []; let h = st.height || ""; Object.defineProperty(st, "height", { get: () => h, set: (v) => { writes.push(v); h = v; }, configurable: true });
   byId.get("pvNext").fire("click", { detail: 1 }); document.createElement = real; await advance(400); delete st.height; st.height = ""; out.fraction = writes.filter((w) => w !== "100000px"); unsized(); }
 // ---------- a slide reset by a close (its copies gone with it) whose leftover end comes after a reopen touches nothing of the new preview's own slide ----------
@@ -222,10 +222,10 @@ const cardsOf = (hgt) => { const real = document.createElement; document.createE
   const during = { ...veil(), outScroll: outP.scrollTop, listScroll: pvScroll.scrollTop, top: pvScroll.classList.contains("pv-top") }; await advance(400);
   out.veil = { before, during, landed: { id: look().id, ...veil(), scrollTop: pvScroll.scrollTop, top: pvScroll.classList.contains("pv-top") } }; pvScroll.scrollTop = 0; }
 // ---------- the "…" dims when it has nothing to offer (a sync finished the workout); never under the slide after Skip ----------
-{ seed({ clientMode: true, myClientId: "c1" }); fns.openPreview("a"); await advance(400); const before = byId.get("pvMore").disabled;
-  maps.trainings.get("a").completedAt = new Date().toISOString(); ui.render(); const off = { id: look().id, off: byId.get("pvMore").disabled }; fns.closePreview();
-  seed({ clientMode: true, myClientId: "c1" }); fns.openPreview("a"); await advance(400); byId.get("pvMore").fire("click", { detail: 1 }); pick("Skip").fire("click", {}); await advance(400); byId.get("skGo").fire("click", {}); const underSlide = byId.get("pvMore").disabled; await advance(400);
-  out.moreOff = { before, ...off, underSlide, landed: { ...look(), off: byId.get("pvMore").disabled } }; }
+{ seed({ clientMode: true, myClientId: "c1" }); fns.openPreview("a"); await advance(400); const before = byId.get("pvMore").hidden;
+  maps.trainings.get("a").completedAt = new Date().toISOString(); ui.render(); const off = { id: look().id, off: byId.get("pvMore").hidden }; fns.closePreview();
+  seed({ clientMode: true, myClientId: "c1" }); fns.openPreview("a"); await advance(400); byId.get("pvMore").fire("click", { detail: 1 }); pick("Skip").fire("click", {}); await advance(400); byId.get("skGo").fire("click", {}); const underSlide = byId.get("pvMore").hidden; await advance(400);
+  out.moreOff = { before, ...off, underSlide, landed: { ...look(), off: byId.get("pvMore").hidden } }; }
 // ---------- the rest: each a check that failed on one deliberate break of the code ----------
 { await openOn("m1"); out.g04 = (byId.get("pvDay").children || []).map((k) => k.textContent).join(""); }
 { seed(); const tools = mk("div"); tools.offsetWidth = 156; pvBar.querySelector = (s) => (s === ".pv-tools" ? tools : null);   // the header's name room: centred where it fits on the narrower side, else between the cross and the buttons; after a sync's rename and a turn
@@ -276,7 +276,8 @@ const cardsOf = (hgt) => { const real = document.createElement; document.createE
 // ---------- a second review of the slide (each finding checked by a skeptic, most measured in WebKit) ----------
 // after Skip or Delete moves on from the first or the last workout still to do: the arrow toward the one that went is dimmed as the slide begins, and stays so
 { const ends = async (from, label, btn, view) => { await openOn(from, view); byId.get("pvMore").fire("click", { detail: 1 }); pick(label).fire("click", {}); await advance(400); byId.get(btn).fire("click", {}); await flush(); const mid = look(); await advance(400); return { mid, landed: look() }; };
-  out.endsAfter = { delFirst: await ends("m2", "Delete workout", "askYes"), skipFirst: await ends("m2", "Skip", "skGo"), clientSkipFirst: await ends("m2", "Skip", "skGo", { clientMode: true, myClientId: "c1" }), skipLast: await ends("d", "Skip", "skGo"), delLast: await ends("d", "Delete workout", "askYes") }; }
+  const endsNew = async (from, label, btn) => { seed(); for (const id of ["f", "s", "om"]) maps.trainings.delete(id); fns.render(); fns.openPreview(from); await advance(400); byId.get("pvMore").fire("click", { detail: 1 }); pick(label).fire("click", {}); await advance(400); byId.get(btn).fire("click", {}); await flush(); const mid = look(); await advance(400); return { mid, landed: look() }; };   // a client with no History yet
+  out.endsAfter = { delFirst: await endsNew("m2", "Delete workout", "askYes"), skipMid: await ends("m2", "Skip", "skGo"), clientSkipMid: await ends("m2", "Skip", "skGo", { clientMode: true, myClientId: "c1" }), skipLast: await ends("d", "Skip", "skGo"), delLast: await ends("d", "Delete workout", "askYes") }; }
 // the two pages and the header's veil set off in one style change: no layout read between the page going out's move and the one coming in's (with no height to ease, nothing else reads it after them)
 { const together = async (go) => {
     await openOn("a"); const back = cardsOf(2000), log = [], made_ = document.createElement;   // the next workout as tall as the sheet's cap: no height eased
@@ -315,7 +316,7 @@ const cardsOf = (hgt) => { const real = document.createElement; document.createE
   pvBox.getBoundingClientRect = () => { const h = parseFloat(st.height) || 850; return { top: 874 - h, bottom: 874, height: h, left: 0, right: 402, width: 402 }; };
   pvScroll.getBoundingClientRect = () => ({ top: 25, bottom: 789.65625, height: 764.65625, left: 0, right: 402, width: 402 });
   fns.openPreview("a"); await advance(400);
-  const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return this.className === "pv-cards" ? 165.4375 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return this.className === "pv-cards" ? 105.265625 : 0; }, configurable: true }); return e; };
+  const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return /\bpv-cards\b/.test(this.className) ? 165.4375 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return /\bpv-cards\b/.test(this.className) ? 105.265625 : 0; }, configurable: true }); return e; };
   const writes = []; let h = ""; Object.defineProperty(st, "height", { get: () => h, set: (v) => { writes.push(v); h = v; }, configurable: true });
   byId.get("pvNext").fire("click", { detail: 1 }); document.createElement = real; const pages = peeks.slice(-2).map((p) => p.style.top + " " + p.style.bottom);
   await advance(400); delete st.height; st.height = ""; globalThis.getComputedStyle = gcs; pvBox.getBoundingClientRect = boxRect; pvScroll.getBoundingClientRect = listRect; unsized();
@@ -332,5 +333,48 @@ const cardsOf = (hgt) => { const real = document.createElement; document.createE
 { await openOn("a"); start(200, 30, inBar); for (const y of [36, 44, 80, 120, 140]) { await advance(16); move(200, y, inBar); } await advance(120); end(inBar); const springing = !!pvBox.style.transition; await advance(100);
   byId.get("pvMore").fire("click", { detail: 1 }); const menu = !byId.get("whenBg").hidden; await advance(600); if (!byId.get("whenBg").hidden) key("Escape");
   byId.get("pvMore").fire("click", { detail: 1 }); out.moreSpring = { springing, menu, home: !byId.get("whenBg").hidden }; if (!byId.get("whenBg").hidden) key("Escape"); }
+// ---------- the slide into History (his asks, 11 Nov): finished green, skipped grey, missed red (filed after a week, or this week's), still to do plain; History's say Show in History ----------
+{ await openOn("f"); const seen = [];
+  for (let i = 0; i < 6; i++) { const d = byId.get("pvDay"), st = /st-/.test(d.className || ""), w = st && d.children && d.children[0];
+    seen.push({ id: look().id, day: d.className, word: w ? w.className + ":" + w.textContent : null, cards: pvCards.className, go: byId.get("pvGo").textContent, goCls: [...byId.get("pvGo").classes].sort().join(" "), more: !byId.get("pvMore").hidden, say: byId.get("pvSay").textContent });
+    byId.get("pvNext").fire("click", { detail: 1 }); await advance(400); }
+  out.states = seen; }
+{ seed(); const h = { coachSkipped: fns.previewItems("s"), coachOldMissed: fns.previewItems("om") }; seed({ clientMode: true, myClientId: "c1" }); h.clientSkipped = fns.previewItems("s"); h.clientOldMissed = fns.previewItems("om"); out.histItems = h; }
+// the keyboard on the "…" as the slide goes into History (its "…" not there): the keyboard's place moves to the arrows, never lost with it
+{ await openOn("m2"); for (const id of ["pvPrev", "pvNext", "pvBox", "pvMore"]) byId.get(id).focus = function () { document.activeElement = this; };
+  byId.get("pvMore").focus(); key("ArrowLeft"); await advance(400); const f = document.activeElement;
+  out.moreFocus = { on: look().id, more: !byId.get("pvMore").hidden, focus: f === byId.get("pvPrev") ? "prev" : f === byId.get("pvNext") ? "next" : f === byId.get("pvMore") ? "more" : f === pvBox ? "box" : "other" };
+  for (const id of ["pvPrev", "pvNext", "pvBox", "pvMore"]) delete byId.get(id).focus; document.activeElement = null; }
+// a sync makes the previewed workout History while a keyboard is in its "…" menu, or in the days picked from it: the menu or the days go
+// with the "…", and the keyboard lands on an arrow, never on the page (a review's catch)
+// the header's name gets its room back when the "…" goes, also when a sync makes the workout History in the middle of a slide (the one path
+// where only the arrows are redrawn: nothing tested it, a review's catch)
+{ seed(); for (const id of ["a", "b"]) maps.trainings.get(id).title = "Upper body strength day";
+  const tools = mk("div"); Object.defineProperty(tools, "offsetWidth", { get: () => (byId.get("pvMore").hidden ? 100 : 156), configurable: true }); pvBar.querySelector = (s) => (s === ".pv-tools" ? tools : null);   // the ‹ › pill and the "…" (100 without it)
+  document.createRange = () => { let n = null; return { selectNodeContents(x) { n = x; }, getBoundingClientRect: () => ({ width: 10 * String((n && n.textContent) || "").length }) }; };   // 10 points a letter
+  const bt = byId.get("pvBarTitle"), room = () => bt.style.left + " " + bt.style.right;
+  fns.openPreview("a"); await advance(400); const open = { id: look().id, room: room() };
+  byId.get("pvNext").fire("click", { detail: 1 }); await advance(16); const mid = { id: look().id, slide: !!fns.previewSlide(), room: room() };
+  maps.trainings.get(mid.id).completedAt = new Date().toISOString(); fns.render(); const synced = { more: !byId.get("pvMore").hidden, room: room() };
+  await advance(400); delete pvBar.querySelector; delete document.createRange; out.titleRoom = { open, mid, synced }; }
+const hadContains = document.contains; document.contains = () => true;   // (a real page has it: the menu and the days hand focus back only to what is still in it)
+{ await openOn("a"); for (const id of ["pvPrev", "pvNext", "pvBox", "pvMore"]) byId.get(id).focus = function () { document.activeElement = this; };
+  const pop = byId.get("whenPop"), was = pop.contains; byId.get("pvMore").fire("click", { detail: 0 });
+  const rows = pop.children || []; pop.contains = (n) => rows.includes(n); document.activeElement = rows[0] || null;
+  const before = { menu: !byId.get("whenBg").hidden, inMenu: !!rows[0] };
+  maps.trainings.get("a").completedAt = new Date().toISOString(); fns.render(); await advance(50);
+  const f = document.activeElement;
+  out.menuSync = { before, menu: !byId.get("whenBg").hidden, more: !byId.get("pvMore").hidden, focus: f === byId.get("pvPrev") ? "prev" : f === byId.get("pvNext") ? "next" : f === pvBox ? "box" : "other" };
+  pop.contains = was; for (const id of ["pvPrev", "pvNext", "pvBox", "pvMore"]) delete byId.get(id).focus; document.activeElement = null; }
+{ await openOn("a"); for (const id of ["pvPrev", "pvNext", "pvBox", "pvMore"]) byId.get(id).focus = function () { document.activeElement = this; };
+  const pop = byId.get("whenPop"), was = pop.contains; byId.get("pvMore").fire("click", { detail: 0 });
+  const rows = pop.children || [], row = pick("Reschedule"); pop.contains = (n) => rows.includes(n); document.activeElement = row;   // the keyboard on Reschedule
+  row.fire("click", { detail: 0 }); pop.contains = was;                // the menu goes (the keyboard back on the "…", as a page does), the days come up
+  const dp = fns.datePicker(), open = !!dp, back = !!dp && dp.back === byId.get("pvMore"); document.activeElement = null;   // (the keyboard among the days)
+  maps.trainings.get("a").completedAt = new Date().toISOString(); fns.render(); await advance(50);
+  const f = document.activeElement;
+  out.daysSync = { open, back, closed: !fns.datePicker(), more: !byId.get("pvMore").hidden, focus: f === byId.get("pvPrev") ? "prev" : f === byId.get("pvNext") ? "next" : f === pvBox ? "box" : "other" };
+  if (fns.datePicker()) fns.closeDatePicker(); for (const id of ["pvPrev", "pvNext", "pvBox", "pvMore"]) delete byId.get(id).focus; document.activeElement = null; }
+document.contains = hadContains;
 console.log(JSON.stringify(out));
 process.exit(0);
