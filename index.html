@@ -65,6 +65,11 @@
     --done: #3c7a4e;                    /* fern: a true, calm green; inked for white */
     --done-tint: rgba(60,122,78,0.08);  /* soft fern wash inside a finished card */
     --done-ink: #ffffff;
+    --chip-grey: #8e8e93;               /* Apple grey (systemGray): a workout still to do, in the week and the month (his ask, 11 Nov); its chip is Apple Calendar's recipe, measured: the colour at 25% over the page, its words the colour at half its light (light) or itself (dark) */
+    --chip-plan: color-mix(in srgb, var(--chip-grey) 25%, var(--surface)); --chip-plan-ink: color-mix(in srgb, var(--chip-grey), #000 50%);
+    --chip-done: color-mix(in srgb, var(--done) 25%, var(--surface)); --chip-done-ink: color-mix(in srgb, var(--done), #000 50%);   /* finished: the fern, by the same recipe */
+    --chip-miss: color-mix(in srgb, var(--danger) 25%, var(--surface)); --chip-miss-ink: color-mix(in srgb, var(--danger), #000 50%);   /* missed (its day gone, still to do): the crimson, by the same recipe (his pick, 11 Nov) */
+    --cal-line: rgba(0,0,0,0.09);       /* the month's line over each week: Apple Calendar's, measured (#e8e8e8 on white) */
     --danger: #a63a46;                  /* Crimson deep — red text on light */
     --gold: #7f621a;                    /* the best lift: a quiet gold, deep enough to read as small bold text (5:1 on a field) */
     --ink: #1d1d1f;                     /* the strong mark: black on light, white on dark */
@@ -115,6 +120,8 @@
       --done: #bfe8c2;                  /* fern glow: pale sage on dark */
       --done-tint: rgba(191,232,194,0.07);
       --done-ink: #1d1d1f;
+      --chip-plan-ink: var(--chip-grey); --chip-done-ink: var(--done); --chip-miss-ink: var(--danger);   /* dark: the words in the colour itself, as Calendar's */
+      --cal-line: rgba(255,255,255,0.165);   /* #2a2a2b on black, measured on his screenshot */
       --danger: #e06470;                /* Crimson */
       --gold: #e0c268;
       --ink: #ffffff;
@@ -165,6 +172,8 @@
     --done: #bfe8c2;
     --done-tint: rgba(191,232,194,0.07);
     --done-ink: #1d1d1f;
+    --chip-plan-ink: var(--chip-grey); --chip-done-ink: var(--done); --chip-miss-ink: var(--danger);
+    --cal-line: rgba(255,255,255,0.165);
     --danger: #e06470;
     --gold: #e0c268;
     --ink: #ffffff;
@@ -327,7 +336,7 @@
   .btn:disabled { opacity: 0.5; cursor: default; }
   .btn:focus-visible, .back:focus-visible, .list button:focus-visible, .x:focus-visible, .week button:focus-visible, .cal button:focus-visible, .mnav:focus-visible, .cal-today:focus-visible, .cal-disc:focus-visible, .seg button:focus-visible, .view-seg button:focus-visible, .datefield:focus-visible, .dock-add:focus-visible, .month > button:focus-visible, .tracker .tr-chips button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   .tracker .tr-chips button:focus-visible { outline-offset: -2px; }
-  .cal button:focus-visible { outline-offset: -2px; }
+  .week button:focus-visible, .cal button:focus-visible { outline-offset: -2px; }   /* the days touch (the strip has the month's columns): the ring inside the day, clear of the next day's chips */
 
   .stack { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
   .seg { display: inline-flex; border: 0; border-radius: 50px; padding: 2px; background: var(--glyph-fill); }   /* a track that reads on the page and in a card, in both themes */
@@ -1081,19 +1090,20 @@
   .add { margin-top: 16px; }
   .pill.big { min-height: 44px; padding: 0 22px; font-size: 1rem; }   /* the one pill that starts a workout: a size up */
   #tplFill { display: block; margin-top: 10px; }                     /* on its own line under the pill; gone once the first exercise is in */
-  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 28px; }   /* 28 from the strip to the first card; the cards then sit 12 apart */
-  .week button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: var(--r-chip); padding: 8px 0 0; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text-secondary); transition: background-color 150ms ease; }
+  .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; margin-bottom: 28px; }   /* 28 from the strip to the first card; the cards then sit 12 apart */
+  .week button { appearance: none; border: 0; background: transparent; cursor: pointer; border-radius: var(--r-chip); padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text-secondary); transition: background-color 150ms ease; min-width: 0; }
   .week button:hover { background: var(--field); }
   .week .wd { font-size: 0.6875rem; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); }
   .week .dn { font-size: 1.125rem; font-weight: 500; color: var(--text-primary); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .week button.today .dn { background: var(--ink); color: var(--ink-on); }   /* today: a fact, not an action — black on light, white on dark, as in Apple's Fitness strip */
-  .week .dots { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; height: 14px; }   /* under the day: one bar per workout, two or three sharing the room the bar and the padding had (8 + 6) */
-  .week .dot { width: 30px; height: 8px; border-radius: 50px; }   /* a longer bar reads as a workout, not a dot */
-  .week .dots:has(> :nth-child(2)) .dot { height: 5px; }           /* 5 + 3 + 5 = 13 */
-  .week .dots:has(> :nth-child(3)) { gap: 1px; }
-  .week .dots:has(> :nth-child(3)) .dot { height: 4px; }           /* 4 + 1 + 4 + 1 + 4 = 14 */
-  .week .dot.planned { border: 1px solid var(--text-tertiary); }   /* scheduled: a hairline, quiet but there */
-  .week .dot.finished { background: var(--done); border-color: var(--done); }   /* finished is always the fern */
+  .day-evs { align-self: stretch; display: flex; flex-direction: column; gap: 3px; padding: 0 2px; min-height: 16px; }   /* under a day, in the week and the month alike: Apple Calendar's month view, measured (his screenshot, 3 px a point): chips 2 in from the day's edges, 3 apart; room for one even on an empty day, so the rows keep one height */
+  .day-ev { display: block; height: 16px; border-radius: 4px; padding: 0 2px; overflow: hidden; white-space: nowrap; font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0; text-align: left; }   /* 16 tall, 4 round, the words 11 semibold sitting on a line 12 down (Inter's caps centred as Calendar's); in points, not the Text Size: the grid is fixed, as Calendar's */
+  .day-ev-t { display: block; overflow: hidden; }
+  .day-ev-t.over { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 12px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 12px), transparent); }   /* words that do not fit (main.js fitChips) fade over the chip's last 12 points (no "…"), as Calendar's; words that fit are left whole */
+  .day-ev.plan { background: var(--chip-plan); color: var(--chip-plan-ink); }
+  .day-ev.done { background: var(--chip-done); color: var(--chip-done-ink); }
+  .day-ev.miss { background: var(--chip-miss); color: var(--chip-miss-ink); }
+  .day-ev-more { display: block; height: 16px; font-size: 10px; line-height: 16px; color: var(--text-tertiary); text-align: center; }   /* the count of the rest, plain, as Calendar's "+2" */
   .week[hidden] { display: none; }
   /* month view: the week strip opened out to a whole month */
   .week-bar { margin: 28px 0 0; min-height: 36px; }   /* the calendar breathes: 28 above its title row, the strip right under it, 28 below */
@@ -1127,6 +1137,8 @@
   .cal button:hover { background: var(--field); }
   .dragged .cal button:hover { background: transparent; }          /* once the finger slides the months, the day it landed on lets go (iOS keeps a touch's hover until the next touch; Apple's day lets go as the slide starts) */
   .cal button.out { visibility: hidden; }
+  .cal-panel .cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; }
+  .cal-panel .cal button { min-width: 0; border-radius: 0; padding: 6px 0 6px; box-shadow: inset 0 1px 0 var(--cal-line); }   /* a 1-point line over each week, across its days only, as Calendar's */
   .cal .dn { font-size: 1.125rem; font-weight: 500; color: var(--text-primary); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .cal button.today .dn { background: var(--ink); color: var(--ink-on); }
   .cal .dots { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; height: 11px; }   /* the bar and the padding it had (6 + 4), one more for three */
@@ -1759,7 +1771,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=260";
+  import { boot } from "./app/main.js?v=261";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

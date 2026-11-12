@@ -2253,6 +2253,7 @@ import { reportRange, buildReport } from "./report.js";
   const paintCalMode = () => {                                       // the week strip or the month, and the toggle that says which
     $("weekHead").hidden = calOpen; $("week").hidden = calOpen; $("calWrap").hidden = !calOpen;
     $("calToggleText").textContent = calOpen ? "Week" : "Month"; $("calToggle").classList.toggle("open", calOpen); $("calToggle").setAttribute("aria-expanded", String(calOpen));
+    if (!calOpen) fitChips($("week"));                                // the strip just drawn, or shown again as the month folds: which names fade
   };
   function calFold() {                                               // the page is being left: the month folds back into the week first, so the picture the swipe back slides in and the place Back comes back to are the week's; returns how far the page scrolled
     if (!calOpen) return 0;
@@ -2517,6 +2518,21 @@ import { reportRange, buildReport } from "./report.js";
     for (const t of ws.slice().sort(byMade).slice(0, 3)) { const dot = document.createElement("span"); dot.className = "dot " + (t.completedAt ? "finished" : "planned"); box.appendChild(dot); }
     return box;
   };
+  const dayChips = (ws) => {                                                  // under a day, in the week and the month alike: each workout's name in a chip, as Apple Calendar's month view writes its events (his ask, 11 Nov: "bigger Apple like shape", "words in there", Apple grey while it waits, green once finished, "Workout" when it has no name; red once missed, his pick the same day); three at most, else two and "+N", as Calendar keeps its last slot for the count
+    const box = document.createElement("span"); box.className = "day-evs";
+    const all = ws.slice().sort(byMade), shown = all.length > 3 ? all.slice(0, 2) : all;
+    for (const t of shown) { const c = document.createElement("span"); c.className = "day-ev " + (t.completedAt ? "done" : pvMissed(t) ? "miss" : "plan"); const n = document.createElement("span"); n.className = "day-ev-t"; n.textContent = String(t.title || "").trim() || "Workout"; c.appendChild(n); box.appendChild(c); }
+    if (all.length > shown.length) { const m = document.createElement("span"); m.className = "day-ev-more"; m.textContent = "+" + (all.length - shown.length); box.appendChild(m); }
+    return box;
+  };
+  const fitChips = (root) => {                                                // only words wider than their chip fade (.over), as Calendar's: a name that fits stays whole. Measured to the fraction (a Range), a point's grace: a word a point over (the plain "Workout" on a 402-point phone, 0.38 over) is clipped unseen, where the fade would take its last letter. Chips on the screen only (a hidden one has no width: measured once it shows)
+    if (!root || typeof document.createRange !== "function") return;
+    const ns = [...root.querySelectorAll(".day-ev-t")].filter((n) => n.offsetWidth), over = ns.map((n) => { const r = document.createRange(); r.selectNodeContents(n); return r.getBoundingClientRect().width > n.getBoundingClientRect().width + 1; });
+    ns.forEach((n, i) => n.classList.toggle("over", over[i]));
+    if (document.fonts && document.fonts.status === "loading" && document.fonts.ready) document.fonts.ready.then(() => fitChips(root));   // measured in the system font while Inter loads (a little wider): again once it is in
+  };
+  window.addEventListener("resize", () => fitChips(document));            // the phone turned, or the window changed: the chips' room changed
+  const dayNames = (ws) => ws.slice().sort(byMade).map((t) => (String(t.title || "").trim() || "Workout") + (t.completedAt ? ", finished" : pvMissed(t) ? ", missed" : "")).join("; ");   // what VoiceOver hears of a day's chips
   const dayWords = (ws) => { if (!ws.length) return ""; const n = ws.length, done = ws.filter((t) => t.completedAt).length; return ", " + n + (n === 1 ? " workout" : " workouts") + (done === n ? ", finished" : done ? ", " + done + " finished" : ""); };
   const relDay = (iso) => {                                            // "Today", "Tomorrow", "In 4 days", "Yesterday", "3 days ago"
     const n = Math.round((new Date(iso + "T12:00:00") - new Date(today() + "T12:00:00")) / 86400000);
@@ -2606,6 +2622,13 @@ import { reportRange, buildReport } from "./report.js";
     const base = new Date(); base.setHours(12, 0, 0, 0);
     const monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
     const iso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    // missed by more than a week: it files itself under History as "Missed" (his rule, 10 Nov: the Missed card keeps a week), what was logged on it kept there;
+    // filed before the week and the month are drawn, so the redraw that files it never leaves its red chip on the month after the Missed card has let it go
+    const stale = (() => { const d = new Date(base); d.setDate(base.getDate() - 7); return iso(d); })();
+    if (!S.sb || (S.syncedOnce && S.syncedOn === today())) for (const t of list) {   // only once this device has seen the server's copy today: a copy days old (an iPad woken offline) never files what another device moved since
+      if (t.completedAt || t.skippedAt || t.missed !== undefined || !effDate(t) || effDate(t) >= stale) continue;   // missed: true = filed before, false = a person brought it back (Undo on its page) or decided before Do it today stopped deciding
+      t.skippedAt = now(); t.missed = true; if (S.clientMode) pendingMiss.add(t.id); scheduleSave("trainings", t.id);
+    }
     const weekEl = $("week"); weekEl.replaceChildren();
     const weekStart = iso(monday);
     const dayButton = (d, withWeekday) => {
@@ -2615,8 +2638,8 @@ import { reportRange, buildReport } from "./report.js";
       if (key === today()) { b.classList.add("today"); b.setAttribute("aria-current", "date"); }
       if (withWeekday) { const wd = document.createElement("span"); wd.className = "wd"; wd.textContent = d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 3); b.appendChild(wd); }
       const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(d.getDate());
-      b.append(dn, dayDots(dayWorkouts));
-      b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + dayWords(dayWorkouts));
+      b.append(dn, dayChips(dayWorkouts));
+      b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + (dayWorkouts.length ? ": " + dayNames(dayWorkouts) : ""));
       b.addEventListener("click", () => {
         if (dayWorkouts.length > 1) showDay(c, key);                                           // two or more: the day's own list
         else if (dayWorkouts.length) go({ name: "training", id: dayWorkouts[0].id });
@@ -2655,14 +2678,9 @@ import { reportRange, buildReport } from "./report.js";
       $("calTitle").textContent = monthTitle(calMonth);
       $("calToday").hidden = calMonth === cur;
       $("calView").style.height = track.children[1].offsetHeight + "px";
+      fitChips(track);
     }
 
-    // missed by more than a week: it files itself under History as "Missed" (his rule, 10 Nov: the Missed card keeps a week), what was logged on it kept there
-    const stale = (() => { const d = new Date(base); d.setDate(base.getDate() - 7); return iso(d); })();
-    if (!S.sb || (S.syncedOnce && S.syncedOn === today())) for (const t of list) {   // only once this device has seen the server's copy today: a copy days old (an iPad woken offline) never files what another device moved since
-      if (t.completedAt || t.skippedAt || t.missed !== undefined || !effDate(t) || effDate(t) >= stale) continue;   // missed: true = filed before, false = a person brought it back (Undo on its page) or decided before Do it today stopped deciding
-      t.skippedAt = now(); t.missed = true; if (S.clientMode) pendingMiss.add(t.id); scheduleSave("trainings", t.id);
-    }
     const missed = missedOf(c.id);                                                   // its day gone, still to do: the Missed card, the newest first
     const next = list.filter((t) => !t.completedAt && !t.skippedAt && !missed.includes(t)).sort((a, b) => effDate(a).localeCompare(effDate(b)) || byMade(a, b));   // by day, and within a day in the order they were made
     // keep it short: anything due within the next few days (the very next workout always shows);
