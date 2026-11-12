@@ -1,6 +1,7 @@
 // The set slider, squared (his ask, 11 Nov: "it should be more squared … the squares that are not 1 of 10 can have dynamic size based on
 // number of set … smallest square should not be smaller that current size of the circle"; his pick: the sets to come stay plain numbers on
-// the track, no tile; then "something more frosted glass apple like elegant for set 1/10", his pick of three: the frosted lens):
+// the track, no tile; then "something more frosted glass apple like elegant for set 1/10", his pick of three: the frosted lens; then, asked
+// "Are those colors Apple would use?", his pick of Apple's own, measured off its segmented control on iOS 27):
 // the track has the Weight and Reps boxes' corner; each set is a square of 10 that shares the track with the others,
 // never narrower than the old 40-point disc; the set you are on keeps its words' width; one done is a fern square of its share. How it
 // works is unchanged (tapping a set, the scroll past the width). Measured in WebKit on the test iPhone (the widths are the browser's).
@@ -26,13 +27,20 @@ test("each set a square of 10 (the track's 14 less its 4 inset: the corners run 
   assert.ok(rule(".tracker .tr-chips.fits") === "justify-content: space-evenly;", "a lone set, worded, still sits in the track's middle");
 });
 
-test("the set you are on is frosted and lifted off the track (his picks, 11 Nov, over the black key: \"light mode with frosted C but color of A\", \"dark mode C as is\"): a matte frosted white with a soft lit edge and a soft shadow in light, a smoky frosted white in dark (both dark blocks), dark words in both; back on a set done it stays a plain fern square", () => {
-  const cur = rule(".tracker .tr-chips button.cur"), both = rule(".tracker .tr-chips button.cur.done");
-  for (const p of ["background: var(--set-glass);", "color: var(--set-glass-ink);", "box-shadow: var(--set-glass-shadow);"]) assert.ok(cur.includes(p), p + " in: " + cur);
+test("the set you are on wears Apple's own colours for a chosen segment, flat (his pick, 11 Nov, \"Are those colors Apple would use?\", measured off Apple's segmented control on iOS 27): pure white with black words in light, a medium grey with white words in dark (both dark blocks); the sets to come keep their grey numbers; back on a set done it stays a plain fern square", () => {
+  const cur = rule(".tracker .tr-chips button.cur"), both = rule(".tracker .tr-chips button.cur.done"), base = rule(".tracker .tr-chips button");
+  for (const p of ["background: var(--set-cur);", "color: var(--set-cur-ink);"]) assert.ok(cur.includes(p), p + " in: " + cur);
   assert.ok(!/var\(--ink\)|var\(--ink-on\)/.test(cur), "the black key gone: " + cur);
-  assert.ok(html.includes("    --set-glass: rgba(255,255,255,0.74); --set-glass-shadow: inset 0 1px 0 rgba(255,255,255,0.12), inset 0 0 0 0.5px rgba(255,255,255,0.06), 0 1px 3px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.08); --set-glass-ink: #1d1d1f;"), "light: A's matte white with C's frost (its lit edge, its shadow), dark words");
-  const dark = "--set-glass: rgba(255,255,255,0.62); --set-glass-shadow: 0 2px 8px rgba(0,0,0,0.35);";
-  assert.strictEqual(html.split(dark).length - 1, 2, "dark: C as it was, in the system's dark block and in the chosen dark theme's");
-  assert.strictEqual(html.split("--set-glass-ink:").length - 1, 1, "the words dark in both modes (no dark block lightens them)");
-  assert.ok(both.includes("background: var(--done);") && both.includes("box-shadow: none;"), "back on a set done: the fern, not the frost: " + both);
+  assert.ok(!/box-shadow/.test(cur + both), "flat, as Apple's: no shadow, none to cancel: " + cur);
+  assert.ok(!html.includes("--set-glass"), "the frosted lens gone");
+  const darkSys = html.indexOf('\n  @media (prefers-color-scheme: dark) {\n    :root:not([data-theme="light"]) {'), darkPick = html.indexOf('\n  :root[data-theme="dark"] {'), pickEnd = html.indexOf("\n  }\n", darkPick);
+  assert.ok(darkSys > 0 && darkPick > darkSys && pickEnd > darkPick, "the page's light, system-dark and chosen-dark blocks");
+  const light = "\n    --set-cur: #fff; --set-cur-ink: #000;", dark = "--set-cur: #69696f; --set-cur-ink: #fff;";
+  const l = html.indexOf(light), d1 = html.indexOf(dark), d2 = html.indexOf(dark, d1 + 1);
+  assert.ok(l > 0 && l < darkSys && html.indexOf(light, l + 1) < 0, "light: Apple's pure white, black words, in the light block alone");
+  assert.ok(d1 > darkSys && d1 < darkPick, "dark: Apple's medium grey, white words, in the system's dark block");
+  assert.ok(d2 > darkPick && d2 < pickEnd && html.indexOf(dark, d2 + 1) < 0, "and in the chosen dark theme's");
+  assert.strictEqual(html.split("--set-cur:").length - 1, 3, "one light value and the two dark ones, nothing else");
+  assert.ok(base.includes("color: var(--text-tertiary);"), "the sets to come: their numbers stay grey (his pick: still to come, so the set you are on stands out)");
+  assert.ok(both.includes("background: var(--done);") && both.includes("color: var(--done-ink);"), "back on a set done: the fern, not white or grey: " + both);
 });
