@@ -134,6 +134,22 @@ await openOn("a"); out.header = await drag([[300, 30], [292, 30], [230, 31]], { 
 { await openOn("a"); const n0 = maps.trainings.size; byId.get("pvMore").fire("click", { detail: 1 }); (byId.get("whenPop").children || []).find((b) => (b.children || []).some((s) => s.textContent === "Copy workout")).fire("click", {});
   await advance(400); const asked = !byId.get("pickSheet").hidden; byId.get("pickList").fire("click", { target: { closest: () => ({ dataset: { id: "c2" } }) } }); await flush(); await advance(100);
   const v = app.get().view, copy = maps.trainings.get(v.id); out.copy = { asked, open: !!fns.previewState(), view: v.name, client: copy && copy.clientId, title: copy && copy.title, n: maps.trainings.size - n0, asking: app.get().asking }; }
+// Save as template (his ask, 12 Nov), from a finished one's "…" and from one still to do: the preview closes and the new template opens
+{ out.save = {};
+  for (const id of ["f", "a"]) {
+    await openOn(id); const n0 = maps.trainings.size; byId.get("pvMore").fire("click", { detail: 1 }); const row = (byId.get("whenPop").children || []).find((b) => (b.children || []).some((s) => s.textContent === "Save as template")); if (row) row.fire("click", {}); else key("Escape");
+    await advance(100); const v = app.get().view, t = maps.trainings.get(v.id);
+    out.save[id] = { open: !!fns.previewState(), view: v.name, template: !!t && t.clientId !== "c1" && t.clientId !== "c2", title: t && t.title, finished: !!(t && t.completedAt), n: maps.trainings.size - n0 };
+  } }
+// a Save as template row from a menu that outlived its workout (the preview moved on): it saves nothing and leaves the preview as it is
+{ await openOn("f"); const stale = fns.previewItemsRaw("f").find((it) => it.label === "Save as template"); byId.get("pvNext").fire("click", { detail: 1 }); await advance(400);
+  const n0 = maps.trainings.size; if (stale) stale.onPick(); await advance(50); out.saveStale = { on: look().id, open: !!fns.previewState(), n: maps.trainings.size - n0 }; }
+// Copy workout from a finished one's "…": which client gets it, then the copy opens, to do (nothing logged carried over)
+{ await openOn("f"); const n0 = maps.trainings.size; byId.get("pvMore").fire("click", { detail: 1 }); const copyRow = (byId.get("whenPop").children || []).find((b) => (b.children || []).some((s) => s.textContent === "Copy workout")); if (copyRow) copyRow.fire("click", {}); else key("Escape");
+  await advance(400); const asked = !byId.get("pickSheet").hidden;
+  maps.trainings.set("f", { ...maps.trainings.get("f"), title: "F2" });   // a sync brings a newer copy while the clients are up
+  byId.get("pickList").fire("click", { target: { closest: () => ({ dataset: { id: "c2" } }) } }); await flush(); await advance(100);
+  const v = app.get().view, copy = maps.trainings.get(v.id); out.copyDone = { asked, open: !!fns.previewState(), view: v.name, client: copy && copy.clientId, title: copy && copy.title, finished: !!(copy && copy.completedAt), n: maps.trainings.size - n0 }; }
 // Reschedule: the days over the preview (the preview waits; the page behind stays held), then the same workout on its new day
 { await openOn("a"); byId.get("pvMore").fire("click", { detail: 1 }); (byId.get("whenPop").children || []).find((b) => (b.children || []).some((s) => s.textContent === "Reschedule")).fire("click", {});
   const dp = fns.datePicker(); const during = { open: !!dp, pvInert: pvSheet.inert }; const pick = dp && dp.onPick; fns.closeDatePicker(); const closed = { pvInert: pvSheet.inert, mainInert: main.inert, asking: app.get().asking }; if (pick) pick(day(4));
@@ -347,14 +363,14 @@ const cardsOf = (hgt) => { const real = document.createElement; document.createE
   const bt = byId.get("pvBarTitle"), room = () => bt.style.left + " " + bt.style.right;
   fns.openPreview("a"); await advance(400); const open = { id: look().id, room: room() };
   byId.get("pvNext").fire("click", { detail: 1 }); await advance(16); const mid = { id: look().id, slide: !!fns.previewSlide(), room: room() };
-  maps.trainings.get(mid.id).completedAt = new Date().toISOString(); fns.render(); const synced = { more: !byId.get("pvMore").hidden, room: room() };
+  maps.trainings.get(mid.id).skippedAt = new Date().toISOString(); fns.render(); const synced = { more: !byId.get("pvMore").hidden, room: room() };   // (a skip: the coach's own finished one keeps its "…" since 12 Nov)
   await advance(400); delete pvBar.querySelector; delete document.createRange; out.titleRoom = { open, mid, synced }; }
 const hadContains = document.contains; document.contains = () => true;   // (a real page has it: the menu and the days hand focus back only to what is still in it)
 { await openOn("a"); for (const id of ["pvPrev", "pvNext", "pvBox", "pvMore"]) byId.get(id).focus = function () { document.activeElement = this; };
   const pop = byId.get("whenPop"), was = pop.contains; byId.get("pvMore").fire("click", { detail: 0 });
   const rows = pop.children || []; pop.contains = (n) => rows.includes(n); document.activeElement = rows[0] || null;
   const before = { menu: !byId.get("whenBg").hidden, inMenu: !!rows[0] };
-  maps.trainings.get("a").completedAt = new Date().toISOString(); fns.render(); await advance(50);
+  maps.trainings.get("a").skippedAt = new Date().toISOString(); fns.render(); await advance(50);   // (a skip: the coach's own finished one keeps its "…" since 12 Nov)
   const f = document.activeElement;
   out.menuSync = { before, menu: !byId.get("whenBg").hidden, more: !byId.get("pvMore").hidden, focus: f === byId.get("pvPrev") ? "prev" : f === byId.get("pvNext") ? "next" : f === pvBox ? "box" : "other" };
   pop.contains = was; for (const id of ["pvPrev", "pvNext", "pvBox", "pvMore"]) delete byId.get(id).focus; document.activeElement = null; }
@@ -363,10 +379,17 @@ const hadContains = document.contains; document.contains = () => true;   // (a r
   const rows = pop.children || [], row = pick("Reschedule"); pop.contains = (n) => rows.includes(n); document.activeElement = row;   // the keyboard on Reschedule
   row.fire("click", { detail: 0 }); pop.contains = was;                // the menu goes (the keyboard back on the "…", as a page does), the days come up
   const dp = fns.datePicker(), open = !!dp, back = !!dp && dp.back === byId.get("pvMore"); document.activeElement = null;   // (the keyboard among the days)
-  maps.trainings.get("a").completedAt = new Date().toISOString(); fns.render(); await advance(50);
+  maps.trainings.get("a").skippedAt = new Date().toISOString(); fns.render(); await advance(50);   // (a skip, as above)
   const f = document.activeElement;
   out.daysSync = { open, back, closed: !fns.datePicker(), more: !byId.get("pvMore").hidden, focus: f === byId.get("pvPrev") ? "prev" : f === byId.get("pvNext") ? "next" : f === pvBox ? "box" : "other" };
   if (fns.datePicker()) fns.closeDatePicker(); for (const id of ["pvPrev", "pvNext", "pvBox", "pvMore"]) delete byId.get(id).focus; document.activeElement = null; }
+{ await openOn("a"); for (const id of ["pvPrev", "pvNext", "pvBox", "pvMore"]) byId.get(id).focus = function () { document.activeElement = this; };
+  const pop = byId.get("whenPop"), was = pop.contains; byId.get("pvMore").fire("click", { detail: 0 });
+  const rows = pop.children || []; pop.contains = (n) => rows.includes(n); document.activeElement = rows[0] || null;
+  maps.trainings.get("a").completedAt = new Date().toISOString(); fns.render(); await advance(50);
+  const f = document.activeElement;
+  out.menuFinish = { menu: !byId.get("whenBg").hidden, more: !byId.get("pvMore").hidden, items: fns.previewItems("a"), focus: f === byId.get("pvMore") ? "more" : f === byId.get("pvPrev") ? "prev" : f === byId.get("pvNext") ? "next" : f === pvBox ? "box" : "other" };
+  pop.contains = was; for (const id of ["pvPrev", "pvNext", "pvBox", "pvMore"]) delete byId.get(id).focus; document.activeElement = null; }
 document.contains = hadContains;
 out.sizedAll = sizedAll.filter((w) => !w.startsWith("transition=") || /height/i.test(w));   // (the spring's own transform transition is not a size)
 console.log(JSON.stringify(out));

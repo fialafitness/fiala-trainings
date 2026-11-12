@@ -23,10 +23,10 @@ test("the walk: every workout of the client by its day and then as made, History
   assert.deepStrictEqual(r.near, { a: { prev: "m1", next: "b" }, m2: { prev: "om", next: "m1" }, d: { prev: "c", next: null }, f: { prev: null, next: "s" }, gone: { prev: null, next: null } });
 });
 
-test("the \"…\": Reschedule and Skip on any workout still to do; Do it today first on a missed one; the coach's own view adds Copy workout and, last and red, Delete workout; History's (a finished one) offers nothing, the \"…\" not there at all (his rule, 11 Nov)", () => {
-  assert.deepStrictEqual(r.items, { coach: ["Reschedule", "Skip", "Copy workout", "!Delete workout"], coachMissed: ["Do it today", "Reschedule", "Skip", "Copy workout", "!Delete workout"], coachFinished: [],
+test("the \"…\": Reschedule and Skip on any workout still to do; Do it today first on a missed one; the coach's own view adds Copy workout, Save as template (his pick, 12 Nov) and, last and red, Delete workout; on a finished one the coach's own view has Copy workout and Save as template alone (his ask, 12 Nov), the client's still nothing, the \"…\" not there at all (his rule, 11 Nov)", () => {
+  assert.deepStrictEqual(r.items, { coach: ["Reschedule", "Skip", "Copy workout", "Save as template", "!Delete workout"], coachMissed: ["Do it today", "Reschedule", "Skip", "Copy workout", "Save as template", "!Delete workout"], coachFinished: ["Copy workout", "Save as template"],
     client: ["Reschedule", "Skip"], clientMissed: ["Do it today", "Reschedule", "Skip"], clientFinished: [] });
-  assert.deepStrictEqual(r.menu, { rows: ["Reschedule", "Skip", "Copy workout", "!Delete workout"], bgHidden: false, closedOnSlide: true }, "the menu opens over the preview with those rows, and a slide closes it");
+  assert.deepStrictEqual(r.menu, { rows: ["Reschedule", "Skip", "Copy workout", "Save as template", "!Delete workout"], bgHidden: false, closedOnSlide: true }, "the menu opens over the preview with those rows, and a slide closes it");
 });
 
 test("the arrows: dimmed at the first and the last workout; nothing in the sheet's first 350 ms (a double tap's second tap); a tap slides on the month view's curve: the workout it goes to is the preview's at once (its name, its list at its top, still, VoiceOver hears it), as the month view takes its month at the let-go; a copy of the page going out slides away over it and the incoming one comes in beside that (each from its top, out of reach of taps and VoiceOver), the header's veil leaving with the page under it; it lands at 360 ms at the latest (or on the page going out's own transitionend), the copies gone", () => {
@@ -102,11 +102,14 @@ test("Delete workout (the coach's): asked over the preview, then gone and on to 
 
 test("Copy workout (the coach's): which client gets it, over the preview; then the preview closes and the copy opens, as the workout page's Copy workout does", () => {
   assert.deepStrictEqual(r.copy, { asked: true, open: false, view: "training", client: "c2", title: "A", n: 1, asking: false });
+  assert.deepStrictEqual(r.copyDone, { asked: true, open: false, view: "training", client: "c2", title: "F2", finished: false, n: 1 }, "from a finished one too (his ask, 12 Nov): the copy is a workout to do, of the workout as it is now (a sync brought a newer copy while the clients were up)");
+  assert.deepStrictEqual(r.saveStale, { on: "s", open: true, n: 0 }, "a Save as template row from a menu that outlived its workout saves nothing");
+  assert.deepStrictEqual(r.save, { f: { open: false, view: "training", template: true, title: "F", finished: false, n: 1 }, a: { open: false, view: "training", template: true, title: "A", finished: false, n: 1 } }, "Save as template from a finished one's \"…\" and from one still to do: the preview closes, the new template opens");
 });
 
 test("Reschedule: the days over the preview (the preview waits; the page behind stays held), then the same workout on its new day, among its new neighbours; Do it today: the same workout, today's, no longer missed", () => {
   assert.deepStrictEqual(r.resched, { during: { open: true, pvInert: true }, closed: { pvInert: false, mainInert: true, asking: true }, now: at("a", false, false), date: true, day: true, near: { prev: "c", next: "d" } });
-  assert.deepStrictEqual(r.today, { before: "Missed", now: at("m1", false, false), date: true, items: ["Reschedule", "Skip", "Copy workout", "!Delete workout"] });
+  assert.deepStrictEqual(r.today, { before: "Missed", now: at("m1", false, false), date: true, items: ["Reschedule", "Skip", "Copy workout", "Save as template", "!Delete workout"] });
 });
 
 test("a missed workout says so before its day, the one red word (as its row says it), and VoiceOver hears it", () => {
@@ -131,7 +134,7 @@ test("a click or a key while a slide is still landing acts on the workout it wen
   assert.deepStrictEqual(r.startMid, { view: "training", id: "b", open: false });
   assert.strictEqual(r.startKey, "b");
   assert.deepStrictEqual(r.startWheel, { full: true, id: "b" });
-  assert.deepStrictEqual(r.moreMid, { menu: true, sliding: false, id: "b", rows: 4 });
+  assert.deepStrictEqual(r.moreMid, { menu: true, sliding: false, id: "b", rows: 5 });   // Reschedule, Skip, Copy workout, Save as template, Delete workout
   assert.deepStrictEqual(r.goneStart, { threw: false, view: "client", open: false });
 });
 
@@ -184,7 +187,7 @@ test("a slide from a scrolled list: the header's veil stays over that list's car
 
 test("the \"…\" is not there when it has nothing to offer (a sync finished the workout: History's now), and back the moment the slide after Skip begins on one still to do; each of its rows its own glyph", async () => {
   assert.deepStrictEqual(r.moreOff, { before: false, id: "a", off: true, underSlide: false, landed: { ...at("b", false, false), off: false } });
-  assert.deepStrictEqual(r.g25, ["calendar", "skip", "copy", "trash"]);
+  assert.deepStrictEqual(r.g25, ["calendar", "skip", "copy", "save", "trash"]);
   const fs = await import("node:fs"); const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
   assert.ok(!html.includes(".pv-more:disabled") && html.includes(".pv-x:hover:not(:disabled) { opacity: 0.85; }") && html.includes(".pv-x:active:not(:disabled) { transform: scale(0.97); }"), "hidden, never dimmed");
 });
@@ -251,9 +254,9 @@ test("the slide into History: each workout says what it is first, in its colour 
   assert.ok(says[0] === "" && /^S, skipped, \w+day, \w{3} \d{1,2}(, \d{4})?$/.test(says[1]) && /^OM, missed, /.test(says[2]) && /^M2, missed, /.test(says[3]) && /^A, \w+day, /.test(says[5]), JSON.stringify(says));
 });
 
-test("History's workouts are not acted on from the preview (his rule, 11 Nov: \"missed and skipped workouts older than 7 days don't show the 3 dot button at all … finished workouts don't show the button either .. all 3 say show in history\"): a finished, a skipped and a missed one filed after a week have no \"…\" at all, in either view; their own page has the rest", () => {
+test("History's workouts are not acted on from the preview (his rule, 11 Nov: \"missed and skipped workouts older than 7 days don't show the 3 dot button at all … finished workouts don't show the button either .. all 3 say show in history\"): a skipped and a missed one filed after a week have no \"…\" at all, in either view, nor a finished one in the client's; their own page has the rest. Since his ask of 12 Nov (\"in finished workouts preview for coaches view ... bring the 3 dot button and give me option to save as template and copy workout\") the coach's own view of a finished one has the \"…\" with those two", () => {
   assert.deepStrictEqual(r.histItems, { coachSkipped: [], coachOldMissed: [], clientSkipped: [], clientOldMissed: [] });
-  assert.deepStrictEqual(r.states.map((x) => [x.id, x.more]), [["f", false], ["s", false], ["om", false], ["m2", true], ["m1", true], ["a", true]], "the \"…\" there only on the ones still to do (this week's missed included)");
+  assert.deepStrictEqual(r.states.map((x) => [x.id, x.more]), [["f", true], ["s", false], ["om", false], ["m2", true], ["m1", true], ["a", true]], "the coach's \"…\" on a finished one (Copy workout, Save as template: his ask, 12 Nov); otherwise there only on the ones still to do (this week's missed included)");
 });
 
 test("the colours of the states, from the app's own (one colour, one reason): the fern's edge and wash on a finished workout's cards (History's page), Apple grey on a skipped one's, the crimson on a missed one's; the day line in the same colour", async () => {
@@ -278,4 +281,5 @@ test("the header's name gets its room back when the \"…\" goes (rule: \"the na
 test("a sync that makes the previewed workout History while a keyboard is in its \"…\" menu, or among the days picked from it (Reschedule): the menu or the days go with the \"…\", and the keyboard lands on an arrow, never on the page (a review's catch: it fell to the page)", () => {
   assert.deepStrictEqual(r.menuSync, { before: { menu: true, inMenu: true }, menu: false, more: false, focus: "prev" });
   assert.deepStrictEqual(r.daysSync, { open: true, back: true, closed: true, more: false, focus: "prev" });
+  assert.deepStrictEqual(r.menuFinish, { menu: false, more: true, items: ["Copy workout", "Save as template"], focus: "more" }, "a finish meanwhile, in the coach's own view: the menu goes (its rows changed), the \"…\" stays with Copy workout and Save as template, the keyboard back on it");
 });
