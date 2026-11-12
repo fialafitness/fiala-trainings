@@ -4380,14 +4380,14 @@ import { reportRange, buildReport } from "./report.js";
   }
   const pvLine = (t) => { const day = fmtDayLong(effDate(t) || ""), w = { done: ", finished", skip: ", skipped", miss: ", missed" }[pvState(t)] || ""; return pvName(t) + w + (day ? ", " + day : ""); };   // what VoiceOver hears of a workout
   const pvSay = () => { const t = pv && trainings.get(pv.id); if (t) $("pvSay").textContent = pvLine(t); };   // VoiceOver hears the workout it went to
-  let pg = null, pvEatUntil = 0;                                     // a slide under way: { dir: the side it shows (-1 the workout before, 1 the next), to: that workout, x: where it is, peek: that workout's page, out: a copy of the page going out (once let go on), top/foot/h0/max: the sheet as the slide began, h1: its height with the incoming workout, settling, finish }
+  let pg = null, pvEatUntil = 0;                                     // a slide under way: { dir: the side it shows (-1 the workout before, 1 the next), to: that workout, x: where it is, peek: that workout's page, out: a copy of the page going out (once let go on), top/foot: the list's place in the sheet as the slide began, settling, finish }
   const PV_CURVE = "280ms cubic-bezier(0.22, 1, 0.36, 1)";           // the month view's own settle
   const pvNum = (v) => +v || 0;                                       // a size read off the page (0 where there is none)
   const pvW = () => pvNum($("pvBox").clientWidth) || 1;
   function pvPage(t) {                                               // a workout's page as the list shows it, for sliding (out of reach of taps and VoiceOver), placed where the list is
     const p = document.createElement("div"); p.className = "pv-scroll pv-peek"; p.setAttribute("aria-hidden", "true"); p.inert = true;
     const h = document.createElement("h3"), d = document.createElement("p"), c = document.createElement("div"); d.className = "pv-day"; c.className = "pv-cards"; p.append(h, d, c); pvFill(t, h, d, c);
-    p.style.top = pg.top + "px"; p.style.bottom = pg.foot + "px"; p.cards = c; return p;
+    p.style.top = pg.top + "px"; p.style.bottom = pg.foot + "px"; return p;
   }
   function pvPeek(dir) {                                             // the workout on that side, painted beside the list, from its top (built when a slide shows it, gone when it lands)
     if (!pg || !pv) return null; const n = pvNear(pv.id), to = dir < 0 ? n.prev : n.next;
@@ -4395,26 +4395,19 @@ import { reportRange, buildReport } from "./report.js";
     if (pg.peek) { pg.peek.remove(); pg.peek = null; }
     pg.dir = dir; pg.to = to; const t = to && trainings.get(to); if (!t) return null;
     const sc = $("pvScroll"), box = $("pvBox");
-    if (pg.h0 == null) {                                             // the sheet as the slide began, measured once (the list grows and shrinks with the sheet as it eases), in fractions of a point as laid out (whole points added up left it up to a point short, and it jumped by that as the slide landed: measured on the test iPhone)
+    if (pg.top == null) {                                            // the list's place in the sheet as the slide began, measured once, in fractions of a point as laid out (the sheet keeps its one height: his ask, 11 Nov, "make sure the card is always the same height")
       const br = box.getBoundingClientRect(), sr = sc.getBoundingClientRect(), bs = getComputedStyle(box) || {};
-      pg.h0 = pvNum(br.height); pg.list = pvNum(sr.height);
       pg.top = pvNum(sr.top - br.top - (parseFloat(bs.borderTopWidth) || 0)); pg.foot = Math.max(0, pvNum(br.bottom - (parseFloat(bs.borderBottomWidth) || 0) - sr.bottom));   // the list's place in the sheet, from its padding edge (where a page placed beside it goes)
-      const was = box.style.height; box.style.height = "100000px"; pg.max = pvNum(box.getBoundingClientRect().height) || Infinity; box.style.height = was;   // its cap as laid out (its max-height reads back as calc(), not in points)
     }
     const p = pvPage(t); p.style.transform = "translate3d(" + (dir < 0 ? -pvW() : pvW()) + "px,0,0)";
     sc.after(p); pg.peek = p; void p.offsetWidth;                    // placed at its side before anything moves it
-    const pr = p.getBoundingClientRect(), cr = p.cards.getBoundingClientRect();
-    pg.h1 = Math.min(pg.max, pg.h0 - pg.list + pvNum(cr.bottom - pr.top)) || pg.h0;   // the sheet's height with that workout in it: the list's own height given up for the incoming page's, to its cards' foot; up to the cap, as the month view measures the month coming in
     return p;
   }
-  function pvSlideTo(x, settle) {                                    // the page going out x points from its place (+: to the right, the one before coming in from the left), the one coming in beside it, the header's veil with the page it is over; the sheet's height eased toward the incoming one's by the share slid, as the month view's (settle: there on the slide's own curve)
+  function pvSlideTo(x, settle) {                                    // the page going out x points from its place (+: to the right, the one before coming in from the left), the one coming in beside it, the header's veil with the page it is over (settle: there on the slide's own curve); the sheet keeps its height
     const W = pvW(), out = (pg && pg.out) || $("pvScroll"), bar = $("pvBar"); out.style.transform = x ? "translate3d(" + x + "px,0,0)" : "";   // (the width read before anything moves: a read between the two pages' moves starts the page going out, and the veil, a frame before the one coming in, and the list shows between them: measured in WebKit)
     bar.style.setProperty("--pv-veil-x", x + "px"); bar.style.setProperty("--pv-veil-tr", settle ? "transform " + settle : "none");
     if (pg && pg.peek) {
       pg.peek.style.transform = "translate3d(" + (x + (pg.dir < 0 ? -W : W)) + "px,0,0)";
-      if (pg.h1 !== pg.h0) { const f = Math.min(1, Math.abs(x) / W), box = $("pvBox");
-        if (settle && !box.style.height) { box.style.transition = "none"; box.style.height = pg.h0 + "px"; void box.offsetHeight; }   // an arrow's or a key's: from the sheet's own height in points (WebKit eases nothing from height auto; a finger's follow has already set one)
-        box.style.transition = settle ? "height " + settle : "none"; box.style.height = (f >= 1 ? pg.h1 : f <= 0 ? pg.h0 : Math.round(pg.h0 + (pg.h1 - pg.h0) * f)) + "px"; }   // (its ends to the fraction: landed, the sheet's own height is the same)
     }
   }
   function pvFollow(raw) {                                           // the fingers raw points from where they took the slide: the workout that way comes in; with none that way, a third of the way (the day picker's months at their ends)
@@ -4440,17 +4433,17 @@ import { reportRange, buildReport } from "./report.js";
     mv.addEventListener("transitionend", onEnd); timer = setTimeout(finish, 360);
     pvSlideTo(to ? -g.dir * pvW() : 0, PV_CURVE);
   }
-  function pvLand(g, to) {                                           // the slide over: the pages that slid gone, the sheet its own height again, the header as its list is
+  function pvLand(g, to) {                                           // the slide over: the pages that slid gone, the header as its list is
     if (pg !== g) return; pg = null;                                  // (a slide reset meanwhile, by a close or a reopen: its leftover end changes nothing)
-    const sc = $("pvScroll"), box = $("pvBox"), bar = $("pvBar");
+    const sc = $("pvScroll"), bar = $("pvBar");
     if (to && sc.scrollTop) sc.scrollTop = 0;                         // (a Mac trackpad's coasting, begun before the let-go, carried on scrolling the list under the copies: it lands at its top, as the page that slid in showed it)
-    sc.style.transition = ""; sc.style.transform = ""; if (g.peek) g.peek.remove(); if (g.out) g.out.remove(); box.style.height = ""; if (/height/.test(box.style.transition || "")) box.style.transition = "";
+    sc.style.transition = ""; sc.style.transform = ""; if (g.peek) g.peek.remove(); if (g.out) g.out.remove();
     bar.style.removeProperty("--pv-veil-x"); bar.style.removeProperty("--pv-veil-tr");
     if (to && pv && !trainings.has(to)) closePreview();               // (a sync took it away meanwhile)
     else if (pv) { pvFit(); pvHeader(); }
     rsFlush();                                                        // a sync's redraw that waited for it
   }
-  function pvSlideReset() { const g = pg; pg = null; if (g && g.peek) g.peek.remove(); if (g && g.out) g.out.remove(); const sc = $("pvScroll"), box = $("pvBox"), bar = $("pvBar"); sc.style.transition = ""; sc.style.transform = ""; box.style.height = ""; if (/height/.test(box.style.transition || "")) box.style.transition = ""; bar.style.removeProperty("--pv-veil-x"); bar.style.removeProperty("--pv-veil-tr"); }
+  function pvSlideReset() { const g = pg; pg = null; if (g && g.peek) g.peek.remove(); if (g && g.out) g.out.remove(); const sc = $("pvScroll"), bar = $("pvBar"); sc.style.transition = ""; sc.style.transform = ""; bar.style.removeProperty("--pv-veil-x"); bar.style.removeProperty("--pv-veil-tr"); }
   const pvSlideStart = () => { pg = { dir: 0, to: null, x: 0, peek: null, settling: false, finish: null }; if (popClose && popAnchor === $("pvMore")) popClose(); return pg; };
   function pvGo(dir) {                                               // an arrow, a key, or after Skip or Delete: the same slide on its own; a slide still landing lands at once first (two quick taps: two workouts, as the month's arrows)
     if (!pv || pvDrag || pvAnim) return false;

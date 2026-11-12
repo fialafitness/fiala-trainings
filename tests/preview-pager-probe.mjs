@@ -29,6 +29,8 @@ const pvScroll = recorder("pvScroll", { scrollTop: 0, scrollHeight: 1600, client
 const peeks = []; pvScroll.after = (p) => { peeks.push(p); };          // the page sliding in, put beside the list
 pvBox.getBoundingClientRect = () => { const h = num(pvBox.offsetHeight); return { top: 812 - h, bottom: 812, height: h, left: 0, right: 402, width: 402 }; };   // a bottom sheet: its foot at the screen's
 pvScroll.getBoundingClientRect = () => { const t = pvBox.getBoundingClientRect().top + num(pvScroll.offsetTop), h = num(pvScroll.offsetHeight); return { top: t, bottom: t + h, height: h, left: 0, right: 402, width: 402 }; };
+// every size written on the sheet, the whole run long (his ask, 11 Nov: "make sure the card is always the same height"): its height, its min and max heights, and a transition of any of them; read as a slice by the scenes that watch one slide, all of it at the end
+const sizedAll = []; for (const k of ["height", "minHeight", "maxHeight", "transition"]) { let v = pvBox.style[k] || ""; Object.defineProperty(pvBox.style, k, { get: () => v, set: (x) => { sizedAll.push(k + "=" + x); v = x; }, configurable: true }); }
 for (const id of ["pvTitle", "pvBarTitle", "pvX", "pvGo", "pvDay", "pvMore", "pvPrev", "pvNext", "pvSay", "whenPop", "askYes", "askNo", "askTitle", "askText", "pickList", "pickNo", "pickTitle", "skGo", "skKeep", "skReasons", "dpCancel"]) recorder(id);
 for (const id of ["whenBg", "askSheet", "pickSheet", "skipSheet", "datePick"]) recorder(id, { hidden: true });
 for (const id of ["pvSheet", "askSheet", "pickSheet", "skipSheet", "datePick"]) byId.get(id).classList.add("sheet-bg");   // every sheet's backdrop, as in the page
@@ -83,7 +85,7 @@ const fire = (type, ev) => { ev.type = type; pvSheet.fire(type, ev); return pvBo
 const start = (x, y, target) => { F.clear(); F.set(1, { x, y }); return fire("touchstart", tev(target, [T(1, x, y)])); };
 const move = (x, y, target) => { F.set(1, { x, y }); return fire("touchmove", tev(target, [T(1, x, y)])); };
 const end = (target, type = "touchend") => { const ch = [...F.entries()].map(([id, p]) => T(id, p.x, p.y)); F.clear(); return fire(type, tev(target, ch)); };
-async function drag(path, { target = inList, type = "touchend" } = {}) { const [x0, y0] = path[0]; start(x0, y0, target); const p = []; for (const [x, y] of path.slice(1)) { await advance(16); p.push(move(x, y, target).defaultPrevented); } const during = look(); end(target, type); const after = look(); await advance(400); return { p, during, after, landed: look() }; }
+async function drag(path, { target = inList, type = "touchend" } = {}) { const [x0, y0] = path[0]; start(x0, y0, target); const p = []; for (const [x, y] of path.slice(1)) { await advance(16); p.push(move(x, y, target).defaultPrevented); } const during = look(); end(target, type); const after = look(); await advance(400); return { p, during, after, landed: look(), listTr: pvScroll.style.transition || "" }; }
 await openOn("a"); out.fling = await drag([[300, 400], [292, 401], [280, 401], [240, 402]]);   // 8 left (the claim), then 60: on to the next
 await openOn("a"); out.short = await drag([[300, 400], [292, 400], [270, 400]]);                // 30 left: back
 await openOn("a"); out.right = await drag([[100, 400], [108, 400], [170, 401]]);                // 70 right: the one before
@@ -99,10 +101,10 @@ await openOn("a"); out.header = await drag([[300, 30], [292, 30], [230, 31]], { 
 { await openOn("a"); let paints = 0; const rc = pvCards.replaceChildren; pvCards.replaceChildren = (...k) => { paints++; rc(...k); };
   byId.get("pvNext").fire("click", { detail: 1 }); const atGo = paints; ui.render(); const held = paints - atGo; fns.render(); const direct = { id: look().id, paints: paints - atGo }; await advance(400); out.redraw = { atGo, held, direct, after: paints - atGo, landed: look() }; pvCards.replaceChildren = rc; }
 { await openOn("a"); byId.get("pvNext").fire("click", { detail: 1 }); maps.trainings.delete("b"); await advance(400); out.goneMid = look(); }
-// ---------- the sheet's height eases toward the one coming in (its cards' foot), and is its own again when it lands ----------
-{ await openOn("a"); const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return /\bpv-cards\b/.test(this.className) ? 94 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return /\bpv-cards\b/.test(this.className) ? 200 : 0; }, configurable: true }); return e; };
-  start(300, 400, inList); await advance(16); move(292, 400, inList); await advance(16); move(92, 400, inList); document.createElement = real;
-  out.height = { at200: pvBox.style.height, tr: pvBox.style.transition }; end(inList); out.height.settling = { h: pvBox.style.height, tr: pvBox.style.transition }; await advance(400); out.height.landed = pvBox.style.height; out.height.trAfter = pvBox.style.transition; }
+// ---------- the sheet keeps its one height through a finger's slide, its let-go and its landing (his ask, 11 Nov: "make sure the card is always the same height"): nothing writes a height on it ----------
+{ await openOn("a"); const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return /\bpv-cards\b/.test(this.className) ? 94 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return /\bpv-cards\b/.test(this.className) ? 200 : 0; }, configurable: true }); return e; }; const n0 = sizedAll.length;   // (the workout coming in a short one: its cards 200 tall under 94)
+  start(300, 400, inList); await advance(16); move(292, 400, inList); await advance(16); move(92, 400, inList); document.createElement = real; const mid = pvBox.style.height, slid = !!fns.previewSlide(); end(inList); await advance(400);
+  out.height = { slid, writes: sizedAll.slice(n0), mid, landed: look().id }; }
 // ---------- keys: left and right go between them; Escape closes; a menu or a sheet up over the preview takes its own keys ----------
 { await openOn("a"); const r = key("ArrowRight"); await advance(400); const right = look().id; key("ArrowLeft"); await advance(400); const left = look().id; key("ArrowRight", { metaKey: true }); await advance(400);
   out.keys = { prevented: r.defaultPrevented, right, left, withCmd: look().id }; byId.get("whenBg").hidden = false; key("Escape"); out.keys.menuEsc = !!fns.previewState(); byId.get("whenBg").hidden = true; key("Escape"); out.keys.esc = !!fns.previewState(); }
@@ -159,28 +161,17 @@ const pick = (label) => (byId.get("whenPop").children || []).find((b) => (b.chil
   for (const y of [396, 380, 340]) { await advance(16); F.set(1, { x: 60, y }); send("touchmove", tev(card, [T(1, 60, y)])); }
   const ch = [...F.entries()].map(([id, p]) => T(id, p.x, p.y)); F.clear(); send("touchend", tev(card, ch));
   pvCards.replaceChildren = rc; out.landedUnder = { underFinger, ...look(), drag: fns.previewDrag() }; await advance(400); }
-// ---------- an arrow's slide eases the sheet's height from its own height in points (WebKit eases nothing from height auto), as the finger's ----------
-{ await openOn("a"); const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return /\bpv-cards\b/.test(this.className) ? 94 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return /\bpv-cards\b/.test(this.className) ? 200 : 0; }, configurable: true }); return e; };
-  const st = pvBox.style, log = []; let h = st.height || "", tr = st.transition || "";
-  Object.defineProperty(st, "height", { get: () => h, set: (v) => { log.push("height=" + v); h = v; }, configurable: true });
-  Object.defineProperty(st, "transition", { get: () => tr, set: (v) => { log.push("transition=" + v); tr = v; }, configurable: true });
-  Object.defineProperty(pvBox, "offsetHeight", { get: () => { log.push("read"); return 600; }, configurable: true });
-  byId.get("pvNext").fire("click", { detail: 1 }); document.createElement = real;
-  Object.defineProperty(pvBox, "offsetHeight", { value: 600, writable: true, configurable: true, enumerable: true }); delete st.height; delete st.transition; st.height = h; st.transition = tr; out.arrowHeight = log; await advance(400); }
-// ---------- the sheet's cap as laid out (its max-height reads back as calc(), not in points); the foot under the list measured once, as the slide began ----------
+// ---------- an arrow's slide (a key's, the one after Skip or Delete) writes no height either ----------
+{ await openOn("a"); const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return /\bpv-cards\b/.test(this.className) ? 94 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return /\bpv-cards\b/.test(this.className) ? 200 : 0; }, configurable: true }); return e; }; const n0 = sizedAll.length;
+  byId.get("pvNext").fire("click", { detail: 1 }); document.createElement = real; const mid = !!fns.previewSlide(); await advance(400);
+  out.arrowHeight = { mid, log: sizedAll.slice(n0), landed: look().id }; }
+// ---------- the page coming in placed where the list is: its foot under the list measured once, as the slide began ----------
 const sized = (cap, natural) => { const st = pvBox.style; Object.defineProperty(pvBox, "offsetHeight", { get: () => Math.min(cap, parseFloat(st.height) || natural), configurable: true }); Object.defineProperty(pvScroll, "offsetHeight", { get: () => pvBox.offsetHeight - 80, configurable: true }); };
 const unsized = () => { Object.defineProperty(pvBox, "offsetHeight", { value: 600, writable: true, configurable: true, enumerable: true }); Object.defineProperty(pvScroll, "offsetHeight", { value: 520, writable: true, configurable: true, enumerable: true }); };
 const cardsOf = (hgt) => { const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return /\bpv-cards\b/.test(this.className) ? 94 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return /\bpv-cards\b/.test(this.className) ? hgt : 0; }, configurable: true }); return e; }; return () => { document.createElement = real; }; };
-{ seed(); sized(700, 300); fns.openPreview("a"); await advance(400); const back = cardsOf(2000);
-  start(300, 400, inList); await advance(16); move(292, 400, inList); await advance(16); move(91, 400, inList); back(); const half = pvBox.style.height; end(inList); const settling = pvBox.style.height; await advance(400);
-  out.capped = { half, settling, landed: pvBox.style.height }; unsized(); }
 { seed(); sized(616, 600); fns.openPreview("a"); await advance(400); const back = cardsOf(200);
-  start(300, 400, inList); await advance(16); move(292, 400, inList); await advance(16); move(192, 400, inList); const toward = pvBox.style.height; await advance(16); move(420, 400, inList); back();
-  const other = peeks[peeks.length - 1]; out.foot = { toward, bottom: other.style.bottom, h: pvBox.style.height }; end(inList); await advance(400); unsized(); }
-{ seed(); const st = pvBox.style; Object.defineProperty(pvBox, "offsetHeight", { get: () => parseFloat(st.height) || 788, configurable: true }); Object.defineProperty(pvScroll, "offsetHeight", { get: () => pvBox.offsetHeight - 119.34375, configurable: true });   // as measured on the test iPhone: a tall workout at the cap, 3 exercises coming in
-  fns.openPreview("a"); await advance(400); const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return /\bpv-cards\b/.test(this.className) ? 168.234375 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return /\bpv-cards\b/.test(this.className) ? 343.40625 : 0; }, configurable: true }); return e; };
-  const writes = []; let h = st.height || ""; Object.defineProperty(st, "height", { get: () => h, set: (v) => { writes.push(v); h = v; }, configurable: true });
-  byId.get("pvNext").fire("click", { detail: 1 }); document.createElement = real; await advance(400); delete st.height; st.height = ""; out.fraction = writes.filter((w) => w !== "100000px"); unsized(); }
+  start(300, 400, inList); await advance(16); move(292, 400, inList); await advance(16); move(192, 400, inList); await advance(16); move(420, 400, inList); back();
+  const other = peeks[peeks.length - 1]; out.foot = { bottom: other.style.bottom, h: pvBox.style.height }; end(inList); await advance(400); unsized(); }
 // ---------- a slide reset by a close (its copies gone with it) whose leftover end comes after a reopen touches nothing of the new preview's own slide ----------
 { await openOn("a"); const n0 = peeks.length; byId.get("pvNext").fire("click", { detail: 1 }); await advance(100); key("Escape"); const firstLeft = peeks.slice(n0).filter((p) => !p.removed).length;
   await advance(50); fns.openPreview("c"); await advance(100); fns.previewGo(1); const mid = look().id; await advance(110); const at360 = fns.previewSlide(); await advance(400);
@@ -309,7 +300,7 @@ const cardsOf = (hgt) => { const real = document.createElement; document.createE
   await openOn("a"); start(300, 400, inList); await advance(16); move(292, 400, inList); await advance(16); move(200, 400, inList); const finger = await gone(() => end(inList));
   await openOn("a"); const m = fns.monthWheel({ closest: (s) => (s === "#pvBox" ? pvBox : null) }); m.begin(); m.move(-100); const wheel = await gone(() => m.end());
   out.fromGone = { finger, wheel }; }
-// the sheet laid out to the fraction, as WebKit at 402 x 874 measured a slide from 9 exercises to 1 (the sheet 24 to 874 under its 1-point top border, its list 25 to 789.65625; the incoming cards' foot 270.703125 under their page's top): the pages that slide cover the list exactly, and the sheet eases to the incoming workout's own height
+// the sheet laid out to the fraction, as WebKit at 402 x 874 measured a slide from 9 exercises to 1 (the sheet 24 to 874 under its 1-point top border, its list 25 to 789.65625; the incoming cards' foot 270.703125 under their page's top): the pages that slide cover the list exactly, and the sheet keeps its height (nothing written on it)
 { seed(); const st = pvBox.style, gcs = globalThis.getComputedStyle, boxRect = pvBox.getBoundingClientRect, listRect = pvScroll.getBoundingClientRect;
   globalThis.getComputedStyle = (e) => (e === pvBox ? { borderTopWidth: "1px", borderBottomWidth: "0px", getPropertyValue: () => "" } : gcs(e));
   Object.defineProperty(pvBox, "offsetHeight", { get: () => Math.round(parseFloat(st.height) || 850), configurable: true });
@@ -317,17 +308,18 @@ const cardsOf = (hgt) => { const real = document.createElement; document.createE
   pvScroll.getBoundingClientRect = () => ({ top: 25, bottom: 789.65625, height: 764.65625, left: 0, right: 402, width: 402 });
   fns.openPreview("a"); await advance(400);
   const real = document.createElement; document.createElement = (t) => { const e = real(t); Object.defineProperty(e, "offsetTop", { get() { return /\bpv-cards\b/.test(this.className) ? 165.4375 : 0; }, configurable: true }); Object.defineProperty(e, "offsetHeight", { get() { return /\bpv-cards\b/.test(this.className) ? 105.265625 : 0; }, configurable: true }); return e; };
-  const writes = []; let h = ""; Object.defineProperty(st, "height", { get: () => h, set: (v) => { writes.push(v); h = v; }, configurable: true });
+  const n0 = sizedAll.length;
   byId.get("pvNext").fire("click", { detail: 1 }); document.createElement = real; const pages = peeks.slice(-2).map((p) => p.style.top + " " + p.style.bottom);
-  await advance(400); delete st.height; st.height = ""; globalThis.getComputedStyle = gcs; pvBox.getBoundingClientRect = boxRect; pvScroll.getBoundingClientRect = listRect; unsized();
-  out.fracPlace = { writes: writes.filter((w) => w !== "100000px"), pages }; }
-// the menu up, a sync's redraw moves its "…" (the sheet sits at the screen's foot, as tall as its workout): the menu, placed once under it, closes; one that moves nothing keeps it
-{ await openOn("a"); const more = byId.get("pvMore"), rc = pvCards.replaceChildren; let top = 414;   // the "…" 60 higher for each card painted under it, as the real sheet grows
-  more.getBoundingClientRect = () => ({ top, bottom: top + 44, left: 230, right: 274, width: 44, height: 44 }); pvCards.replaceChildren = (...k) => { top = 474 - 60 * k.length; rc(...k); };
+  await advance(400); const writes = sizedAll.slice(n0); globalThis.getComputedStyle = gcs; pvBox.getBoundingClientRect = boxRect; pvScroll.getBoundingClientRect = listRect; unsized();
+  out.fracPlace = { writes, pages }; }
+// the menu up, a sync's redraw: the sheet keeps its one height, so its "…" stays where it is and the menu with it, two exercises added or not; a redraw that did move the "…" (none does now) would close the menu placed once under it
+{ await openOn("a"); const more = byId.get("pvMore"), rc = pvCards.replaceChildren; let top = 414;
+  more.getBoundingClientRect = () => ({ top, bottom: top + 44, left: 230, right: 274, width: 44, height: 44 });
   more.fire("click", { detail: 1 }); const was = !byId.get("whenBg").hidden;
   maps.trainings.get("d").title = "D2"; ui.render(); const same = !byId.get("whenBg").hidden;   // another workout changed: this one repainted as it was
-  maps.trainings.set("a", { ...maps.trainings.get("a"), rows: [{ id: "x1", name: "Squat", label: "1", sets: "3", reps: "10" }, { id: "x2", name: "Lunge", label: "2", sets: "3", reps: "10" }] }); ui.render();   // two exercises added on another device
-  out.menuMoved = { was, same, moved: !byId.get("whenBg").hidden, open: (fns.previewState() || {}).id || null };
+  maps.trainings.set("a", { ...maps.trainings.get("a"), rows: [{ id: "x1", name: "Squat", label: "1", sets: "3", reps: "10" }, { id: "x2", name: "Lunge", label: "2", sets: "3", reps: "10" }] }); ui.render(); const stays = !byId.get("whenBg").hidden;   // two exercises added on another device: the "…" where it was
+  pvCards.replaceChildren = (...k) => { top = 300; rc(...k); }; maps.trainings.set("a", { ...maps.trainings.get("a"), rows: [{ id: "x1", name: "Squat", label: "1", sets: "3", reps: "10" }] }); ui.render();   // a redraw that moves the "…"
+  out.menuMoved = { was, same, stays, moved: !byId.get("whenBg").hidden, open: (fns.previewState() || {}).id || null };
   pvCards.replaceChildren = rc; delete more.getBoundingClientRect; if (!byId.get("whenBg").hidden) key("Escape"); }
 // the "…" tapped while the sheet springs back from a short pull: nothing (its menu would open where the "…" is mid-spring and hang below it once the sheet is home)
 { await openOn("a"); start(200, 30, inBar); for (const y of [36, 44, 80, 120, 140]) { await advance(16); move(200, y, inBar); } await advance(120); end(inBar); const springing = !!pvBox.style.transition; await advance(100);
@@ -376,5 +368,6 @@ const hadContains = document.contains; document.contains = () => true;   // (a r
   out.daysSync = { open, back, closed: !fns.datePicker(), more: !byId.get("pvMore").hidden, focus: f === byId.get("pvPrev") ? "prev" : f === byId.get("pvNext") ? "next" : f === pvBox ? "box" : "other" };
   if (fns.datePicker()) fns.closeDatePicker(); for (const id of ["pvPrev", "pvNext", "pvBox", "pvMore"]) delete byId.get(id).focus; document.activeElement = null; }
 document.contains = hadContains;
+out.sizedAll = sizedAll.filter((w) => !w.startsWith("transition=") || /height/i.test(w));   // (the spring's own transform transition is not a size)
 console.log(JSON.stringify(out));
 process.exit(0);
