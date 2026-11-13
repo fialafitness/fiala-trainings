@@ -1,6 +1,6 @@
 // His ask, 10 Nov: "add the three dot button in the right top corner to coaches view too but in coaches view it will also have the option to
 // delete workout". His picks: Reschedule (any day, as his row's) and, last and red, Delete workout, which asks first; a finished or skipped
-// workout shows only Delete, a template only Delete template; the red Delete workout at the page's foot stays. The client's "…" (and the
+// workout shows only Delete, a template Move to and Delete template (v283); the red Delete workout at the page's foot stays. The client's "…" (and the
 // coach's Client view of a workout) keeps the client's Reschedule, from today on. And the client page's tabs are filled (his pick: B, a
 // dumbbell, bars, a page; traced to Apple's dumbbell.fill, chart.bar.fill and doc.text.fill).
 // His ask, 12 Nov: "copy workout and save as template will go to "..." button only for coaches view": between Reschedule and Delete.
@@ -35,7 +35,7 @@ test("the coach's own view: the \"…\" on every workout and template; Reschedul
   page("w1"); assert.deepStrictEqual([shown(), menu("w1")], [true, ["Reschedule", ...MID, "red Delete workout"]], "still to do"); agree("w1");
   page("w1", { completedAt: DONE }); assert.deepStrictEqual([shown(), menu("w1")], [true, [...MID, "red Delete workout"]], "finished: nothing to reschedule"); agree("w1");
   page("w1", { skippedAt: DONE }); assert.deepStrictEqual([shown(), menu("w1")], [true, [...MID, "red Delete workout"]], "skipped"); agree("w1");
-  page("tp"); assert.deepStrictEqual([shown(), menu("tp")], [true, ["red Delete template"]], "a template: no day to move, and Use for a client is its copy"); agree("tp");
+  page("tp"); assert.deepStrictEqual([shown(), menu("tp")], [true, ["Move to", "red Delete template"]], "a template: no day to move, and Use for a client is its copy; Move to its place, as its row's swipe (v283)"); agree("tp");
   for (const id of ["w1", "tp"]) assert.ok(fns.moreItems(maps.trainings.get(id)).every((it) => it.icon), "each with its symbol, as every menu of his");
   quiet();
 });

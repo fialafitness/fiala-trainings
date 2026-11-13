@@ -128,7 +128,7 @@ const cloudBackend = {
     let base = seenDoc.get(k) ? JSON.parse(seenDoc.get(k)) : null; const map = kind === "clients" ? clients : trainings;
     const takeFields = (serverData) => {                      // two of his own devices: a field this one did not change since it last read the record takes the other device's value
       if (!base || !serverData) return;
-      const skip = kind === "clients" ? ["id", "notes", "packages", "folders", "rootOrder", "plan", "planHistory"] : ["id", "rows", "completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"];   // the fields with their own merge rules
+      const skip = kind === "clients" ? ["id", "notes", "packages", "folders", "rootOrder", "plan", "planHistory"] : ["id", ...(isTemplateClient(data.clientId) ? [] : ["rows"]), "completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"];   // the fields with their own merge rules (a template's exercises have none: no client logs on one, so rows this copy did not change take the other device's, as a field does; else Move to on a stale copy undid an edit made there, the v283 review)
       for (const target of [data, map.get(id)]) {
         if (!target) continue;
         for (const f of new Set([...Object.keys(serverData), ...Object.keys(base)])) {

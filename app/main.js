@@ -1343,6 +1343,8 @@ import { reportRange, buildReport } from "./report.js";
   const SA_SKIP = '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3 3.4v9.2c0 .6.6.9 1.1.6l7-4.6c.4-.3.4-.9 0-1.2l-7-4.6C3.6 2.5 3 2.8 3 3.4z"/><rect x="11.6" y="2.6" width="2" height="10.8" rx="1" fill="currentColor"/></svg>';   // forward.end.fill: skip, as media controls draw it
   const REPS_DEFAULT = "10";                                          // blank reps read as 10: the reps field's grey, the client's filled-in value, the preview
   const SA_EYE = '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M8 3.6c3.1 0 5.6 2.1 6.7 4.1a.6.6 0 0 1 0 .6C13.6 10.3 11.1 12.4 8 12.4S2.4 10.3 1.3 8.3a.6.6 0 0 1 0-.6C2.4 5.7 4.9 3.6 8 3.6zm0 2.1a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6z"/></svg>';   // eye.fill: Preview, as Apple's Quick Look
+  const SA_FOLDER = '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M1.6 4.1C1.6 3.3 2.2 2.7 3 2.7H6.05C6.47 2.7 6.87 2.89 7.13 3.22L7.9 4.2H13C13.8 4.2 14.4 4.8 14.4 5.6V11.9C14.4 12.7 13.8 13.3 13 13.3H3C2.2 13.3 1.6 12.7 1.6 11.9Z"/></svg>';   // folder.fill: Move to, the folder New folder draws without its plus (Notes moves a note with a folder)
+  const SA_TRASH = '<svg class="mi" viewBox="-7.3 -3.3 62.6 62.6" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M17.75 0.5H30.25A4.5 4.5 0 0 1 34.75 5V10.25H31V6.5A2.5 2.5 0 0 0 28.5 4H19.5A2.5 2.5 0 0 0 17 6.5V10.25H13.25V5A4.5 4.5 0 0 1 17.75 0.5ZM1.45 10.25H46.55A1.45 1.45 0 0 1 48 11.7V12.2A1.45 1.45 0 0 1 46.55 13.65H1.45A1.45 1.45 0 0 1 0 12.2V11.7A1.45 1.45 0 0 1 1.45 10.25ZM5 13.65H43L41.25 50.5A5 5 0 0 1 36.25 55.5H11.75A5 5 0 0 1 6.75 50.5ZM14.5 19.78L15 46.28A1.5 1.5 0 0 0 18 46.22L17.5 19.72A1.5 1.5 0 0 0 14.5 19.78ZM22.5 19.75L22.5 46.25A1.5 1.5 0 0 0 25.5 46.25L25.5 19.75A1.5 1.5 0 0 0 22.5 19.75ZM30.5 19.72L30 46.22A1.5 1.5 0 0 0 33 46.28L33.5 19.78A1.5 1.5 0 0 0 30.5 19.72Z"/></svg>';   // trash.fill: Delete, the menu's own trash (MI.trash) filled, its three slits cut through, as Apple's swiped rows show it
   const DOTS = '<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" fill="currentColor"><circle cx="3.8" cy="10" r="1.75"/><circle cx="10" cy="10" r="1.75"/><circle cx="16.2" cy="10" r="1.75"/></svg>';   // a "…" disc's three dots, as the coach's exercise "…"
   const rowArmed = (x, w, row) => x >= Math.max(row - RS_ARM_EDGE, w + RS_ARM_PAST);   // the full swipe: the row's edge within 81 points of its own start, and never before 50 points past the open actions (a row let go open stays open; where that is past the row's end there is no full swipe, the actions are tapped)
   const rowDecide = (x, v, w, row) => (rowArmed(x, w, row) ? "fire" : Math.abs(v) > RS_FLICK ? (v > 0 ? "open" : "close") : x > w / 2 ? "open" : "close");   // where a let-go row goes; v: px per ms to the left
@@ -1848,6 +1850,7 @@ import { reportRange, buildReport } from "./report.js";
     const sl = tplSlide(f);
     if (sl) items.push({ label: "Rename slide", icon: MI.pencil, onPick: () => renameNode(sl.id) });
     items.push({ label: "Rename folder", icon: MI.pencil, onPick: () => renameNode(f.id) });
+    if (folderPlaces(f).length) items.push({ label: "Move folder", icon: MI.folder, onPick: () => moveFolder(f.id) });   // as its row's Move to, which only a gesture or a right-click reaches (the v283 review)
     if (sl) items.push({ label: "Delete slide", icon: MI.trash, danger: true, onPick: () => deleteNode(sl.id) });
     items.push({ label: "Delete folder", icon: MI.trash, danger: true, onPick: () => deleteNode(f.id) });
     return items;
@@ -2046,19 +2049,19 @@ import { reportRange, buildReport } from "./report.js";
   }
   const askName = (title, value, yes) => askFirst({ title, yes: yes || "Add", red: false, input: { value: value || "", placeholder: "Name", max: 40 } });
   // a list in a sheet, in the same language as askFirst: rows are <li> with a button[data-id]; resolves with the tapped id, or null for Cancel / tap outside / Escape
-  function sheetList({ title, rows }) {
+  function sheetList({ title, rows, up }) {                            // up: a step back over the title ("\u2039 Fat Burn"), answering ".." (Move to's steps)
     return new Promise((resolve) => {
       if (askOpen) askOpen(false);
-      const bg = $("pickSheet"), ul = $("pickList"), n = $("pickNo"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert);
-      $("pickTitle").textContent = title;
+      const bg = $("pickSheet"), ul = $("pickList"), n = $("pickNo"), ub = $("pickUp"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert);
+      $("pickTitle").textContent = title; ub.hidden = !up; ub.textContent = up ? "\u2039 " + up : "";
       ul.replaceChildren(...rows);
       let armed = false;                                                                      // the second tap of a double tap must not pick a row
       const settle = setTimeout(() => { armed = true; }, 350);
-      const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = !!pv; bg.hidden = true; for (const el of behind) el.inert = false; n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); ul.removeEventListener("click", onRow); document.removeEventListener("keydown", onKey); resolve(v); };
-      const onNo = () => done(null), onBg = (e) => { if (armed && e.target === bg) done(null); }, onKey = (e) => { if (e.key === "Escape") done(null); };
+      const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = !!pv; bg.hidden = true; for (const el of behind) el.inert = false; n.removeEventListener("click", onNo); ub.removeEventListener("click", onUp); bg.removeEventListener("click", onBg); ul.removeEventListener("click", onRow); document.removeEventListener("keydown", onKey); resolve(v); };
+      const onNo = () => done(null), onUp = () => { if (armed) done(".."); }, onBg = (e) => { if (armed && e.target === bg) done(null); }, onKey = (e) => { if (e.key === "Escape") done(null); };
       const onRow = (e) => { const b = e.target.closest("button[data-id]"); if (b && armed) done(b.dataset.id); };
       askOpen = done; S.asking = true;
-      n.addEventListener("click", onNo); bg.addEventListener("click", onBg); ul.addEventListener("click", onRow); document.addEventListener("keydown", onKey);
+      n.addEventListener("click", onNo); ub.addEventListener("click", onUp); bg.addEventListener("click", onBg); ul.addEventListener("click", onRow); document.addEventListener("keydown", onKey);
       for (const el of behind) el.inert = true;
       bg.hidden = false; ul.scrollTop = 0; n.focus({ preventScroll: true });
     });
@@ -2270,15 +2273,94 @@ import { reportRange, buildReport } from "./report.js";
     const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = pick ? "Use" : "›"; if (pick) chev.style.color = "var(--brand)";
     b.append(left, chev);
     b.addEventListener("click", () => { if (pick) { if (fillFor) { fillFromTemplate(trainings.get(t.id) || t); return; } const cid = pickFor; const who = clients.get(cid); openDatePicker({ clientId: cid, title: "Add to " + ((who && who.name) || "client"), onPick: (date) => { pickFor = null; applyTemplate(trainings.get(t.id) || t, cid, date); } }); } else go({ name: "training", id: t.id }); });
-    li.appendChild(b); return li;
+    li.appendChild(b);
+    if (!pick && tplPageOn()) tplSwipe(li, { move: () => moveTemplate(t.id), del: () => deleteTemplateRow(t.id), ok: () => isTemplateClient((trainings.get(t.id) || {}).clientId) && tplPageOn(), open: () => go({ name: "training", id: t.id }) });
+    return li;
   }
   function navRow(title, sub, onClick) {
     const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button";
     b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = title; b.lastChild.textContent = sub; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">&rsaquo;</span>');
     b.addEventListener("click", onClick); li.appendChild(b); return li;
   }
+  // ---- Move to and Delete on the Templates pages' rows (his picks, 12 Nov: "Swipe the row" — "slide a template or folder row left: purple
+  // Move to and red Delete appear ... a long press (or right-click on the Mac) shows the same two in a menu"; Move to "Purple, like
+  // Reschedule"; "Everything is movable and editable", the built-in programs too; the places "Step by step", as the pages are browsed)
+  function tplSwipe(li, { move, del, ok, open }) {                    // a template's or a folder's row: Delete (red; it asks first) and, outermost, Move to (purple, as Reschedule, and like it the full swipe's: his ask, 12 Nov, "make sure the delete is the second option so move to sits on the right of delete"); the same two on a touch and hold and a right-click, Delete last and red as every menu ends (move: none for a folder with nowhere to go, Delete then alone)
+    li.classList.add("swipe-row");
+    const layer = document.createElement("div"); layer.className = "swipe-acts"; layer.setAttribute("aria-hidden", "true");
+    const act = (cls, icon, label, run) => { const b = document.createElement("button"); b.type = "button"; b.className = "swipe-act " + cls; b.tabIndex = -1; b.innerHTML = '<span class="sa-cap">' + icon + '</span><span class="sa-lbl">' + label + '</span>'; b.addEventListener("click", (e) => { e.stopPropagation(); run(); }); return b; };
+    const outer = move || del;                                        // the full swipe's: Move to, or Delete where it is alone
+    if (move) layer.appendChild(act("sa-del", SA_TRASH, "Delete", () => { if (rs && rs.li === li) rsSettle(rs, 0, 0); del(); }));
+    layer.appendChild(move ? act("sa-move", SA_FOLDER, "Move to", () => { if (rs && rs.li === li) rsFire(rs); else move(); }) : act("sa-del", SA_TRASH, "Delete", () => { if (rs && rs.li === li) rsFire(rs); else del(); }));
+    li._full = outer; li.appendChild(layer);                          // last, under the row's own parts: they slide off it
+    li._ctx = () => [...(move ? [{ label: "Move to", icon: MI.folder, onPick: move }] : []), { label: "Delete", icon: MI.trash, danger: true, onPick: del }]; li._ctx.ok = ok; li._ctx.open = open;
+  }
+  const tplName = (t) => { const m = templateMeta(t); return m.n ? "Workout " + m.n : (t.title || "Template"); };   // a template as its row names it
+  const draftOpen = (id) => !!(S.templateDraft && S.templateDraft.id === id && S.templateDraft.dirty);   // a template with unsaved changes: a move would join them (Discard would take it back)
+  const sheetFocusBack = () => { if (!$("pickSheet").contains(document.activeElement)) return; const m = $("tMore"); if (m && !m.hidden) m.focus({ preventScroll: true }); };   // a keyboard's or VoiceOver's place, left in a sheet that has gone (the row it came from may have moved away): the page's "…"
+  const placeRow = (key, label, sub, more, cur) => {                  // a row of Move to's list: a place, or a folder to open (its chevron); where it is now shown, not picked (as Files greys the folder an item is in)
+    const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; b.dataset.id = key; if (cur) b.disabled = true;
+    b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = label; b.lastChild.textContent = sub || "";
+    if (more) b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>');
+    li.appendChild(b); return li;
+  };
+  async function moveTemplate(id) {                                   // Move to, step by step (his pick, 12 Nov): My templates and his top folders; a folder with weeks or folders opens to them; a week, or a folder with neither, is where it goes; a step back over the title
+    let at = null;                                                    // the folder open in the sheet (null: the top)
+    for (;;) {
+      const T = trainings.get(id); if (!T || !isTemplateClient(T.clientId) || draftOpen(id)) { sheetFocusBack(); return false; }   // read again at every step: a sync may have taken it
+      if (at && !tplNode(at)) at = null;                              // the folder open was deleted on another device: back to the top
+      const home = (tplHome(T) || {}).id || null, loose = !home && templateMeta(T).program === MY_TEMPLATES, f = at ? tplNode(at) : null, rows = [];
+      const leaf = (key, label, cur, sub) => rows.push(placeRow(key, label, cur ? "Current" : sub || "", false, cur));
+      const place = (x) => { if (tplKids(x.id, "slide").length || tplKids(x.id, "folder").length) rows.push(placeRow("in:" + x.id, x.name, "", true, false)); else leaf("to:" + x.id, x.name, home === x.id); };   // a folder with weeks or folders opens; one with neither takes it as it is
+      if (!f) { leaf("to:", MY_TEMPLATES, loose); for (const e of tplRootList()) if (e.folder) place(e.folder); }
+      else {
+        const sl = tplKids(f.id, "slide"), subs = tplKids(f.id, "folder");
+        if (!sl.length) leaf("to:" + f.id, f.name, home === f.id, "This folder");   // a folder with folders and no weeks holds templates of its own too (its page's Templates), named so beside its title
+        for (const x of sl) leaf("to:" + x.id, x.name, home === x.id);
+        for (const x of subs) place(x);
+      }
+      const pick = await sheetList({ title: f ? f.name : "Move \u201c" + tplName(T) + "\u201d to", rows, up: f ? (tplNode(f.parent) || { name: "Templates" }).name : null });
+      if (typeof pick !== "string") { sheetFocusBack(); return false; }   // Cancel, or another sheet put over it
+      if (pick === "..") { at = (f && f.parent) || null; continue; }
+      if (pick.startsWith("in:")) { at = pick.slice(3); continue; }
+      const to = pick.slice(3) || null, cur = trainings.get(id);
+      if (!cur || !isTemplateClient(cur.clientId) || draftOpen(id) || (to && !tplNode(to))) { sheetFocusBack(); return false; }   // gone while the sheet was up, or the place
+      placeTemplate(cur, to); render(); sheetFocusBack(); return true;
+    }
+  }
+  function folderPlaces(f) {                                          // where a folder of his can go, two deep at most: the top, or into another top folder; one with folders inside stays at the top
+    if (!f || tplKids(f.id, "folder").length) return [];
+    return [...(f.parent ? [{ id: "", name: "Templates" }] : []), ...tplRootList().filter((e) => e.folder && e.folder.id !== f.id && e.folder.id !== f.parent).map((e) => ({ id: e.folder.id, name: e.folder.name }))];
+  }
+  async function moveFolder(fid) {                                    // Move to on a folder's row: the top (the Templates page) or another top folder, in one list; at its new place it comes after those he put in order
+    const f = tplNode(fid), places = folderPlaces(f); if (!places.length) return false;
+    const pick = await sheetList({ title: "Move \u201c" + f.name + "\u201d to", rows: places.map((p) => placeRow("to:" + p.id, p.name, p.id ? "" : "Top level", false, false)) });
+    if (typeof pick !== "string") { sheetFocusBack(); return false; }   // Cancel, or another sheet put over it
+    const to = pick.slice(3) || null, now = tplNode(fid);
+    if (!now || !folderPlaces(now).some((p) => (p.id || null) === to)) { sheetFocusBack(); return false; }   // read again: a sync may have moved or deleted it, or the folder it was going into
+    const tc = tplClient(); tc.folders = (tc.folders || []).map((x) => { if (!x || x.id !== fid) return x; const y = { ...x, parent: to }; delete y.sort; return y; });
+    folderTouched.set(fid, TEMPLATES_ID); saveFolders(); render(); sheetFocusBack(); return true;
+  }
+  async function deleteTemplateRow(id) {                              // Delete on a template's row: asked first, as on its page ("Workouts already made from it stay"), then gone from the page it was on
+    const t = trainings.get(id); if (!t || !isTemplateClient(t.clientId)) return false;
+    if (!(await askFirst({ title: "Delete \u201c" + tplName(t) + "\u201d?", text: "Workouts already made from it stay.", yes: "Delete" }))) return false;
+    if (!trainings.has(id)) return false;                             // a sync took it away while the question was up
+    if (S.templateDraft && S.templateDraft.id === id) { S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); }
+    trainings.delete(id); scheduleSave("trainings", id, 0); render(); return true;
+  }
+  const folderRow = (x, sub) => {                                     // a folder's row: opens it; swiped, Move to (where it can go) and Delete (its own question: its folders and weeks go, its templates to My templates)
+    const li = navRow(x.name, sub, () => go(tplPage(x.id))); li.dataset.fid = x.id;
+    if (tplPageOn()) tplSwipe(li, { move: folderPlaces(x).length ? () => moveFolder(x.id) : null, del: () => deleteNode(x.id), ok: () => !!tplNode(x.id) && tplPageOn(), open: () => go(tplPage(x.id)) });
+    return li;
+  };
   const h2 = (text) => { const e = document.createElement("h2"); e.textContent = text; e.style.marginTop = "24px"; return e; };
-  function renderTemplates(c) {
+  function renderTemplates(c) {                                       // the Templates pages, a row swiped open kept open across a sync's redraw, as the client page's rows
+    const mine = !!(rs && rs.li && rs.li.closest && rs.li.closest("#tplList")), keep = mine && rs.open && !rs.busy && !(rsT && rsT.held) ? rs.li.dataset.tid || rs.li.dataset.fid || "" : "";
+    if (mine) rsForget();
+    drawTemplates(c);
+    if (keep) { const li = [...$("tplList").querySelectorAll("li.swipe-row")].find((x) => (x.dataset.tid || x.dataset.fid) === keep), r = li && rsBegin(li, true); if (r) { rsPaint(r, r.w, null); r.open = true; } }
+  }
+  function drawTemplates(c) {
     if (dragging) return;                                    // a folder of his under the finger (Reorder folders): the list is drawn again once it is put down
     const all = clientTrainings(c.id);
     const wrap = $("tplList"); wrap.replaceChildren(); wrap.hidden = false;
@@ -2302,7 +2384,7 @@ import { reportRange, buildReport } from "./report.js";
     if (f) {                                                 // a folder of his, drawn as a program is (his ask: "should look exactly like templates I already have"): its folders as phases, its slides as the week slider
       const up = tplNode(f.parent), subs = tplKids(f.id, "folder"), slides = tplKids(f.id, "slide"), cur = tplSlide(f);
       $("tplKicker").textContent = up ? up.name : "Templates"; $("cName").textContent = f.name;
-      if (subs.length) { wrap.appendChild(h2(!f.parent && String(f.id).startsWith("b:") ? "Phases" : "Folders")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...subs.map((x) => navRow(x.name, wn(tplIn(tplTree(x.id)).length), () => go(tplPage(x.id))))); wrap.appendChild(ul); }   // (a built-in program keeps its word for them: Phases)
+      if (subs.length) { wrap.appendChild(h2(!f.parent && String(f.id).startsWith("b:") ? "Phases" : "Folders")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...subs.map((x) => folderRow(x, wn(tplIn(tplTree(x.id)).length)))); wrap.appendChild(ul); }   // (a built-in program keeps its word for them: Phases)
       if (slides.length) {
         const seg = document.createElement("div"); seg.className = "seg stages"; seg.setAttribute("role", "tablist"); if (subs.length) seg.style.marginTop = "24px";
         for (const x of slides) { const b = document.createElement("button"); b.type = "button"; const nm = document.createElement("span"); nm.textContent = x.name; b.appendChild(nm); b.classList.toggle("on", x === cur); b.addEventListener("click", () => { S.view = { ...S.view, slide: x.id }; lsSet("fiala.trainings.view", S.view); renderTemplates(c); nav.curKey = screenKey(); }); seg.appendChild(b); }   // (in place, as a week tab: the screen's picture is filed under this slide)
@@ -2320,7 +2402,7 @@ import { reportRange, buildReport } from "./report.js";
       const mine = (byProg.get(MY_TEMPLATES) || []).sort((x, y) => templateMeta(x).n - templateMeta(y).n);
       if (mine.length) { wrap.appendChild(h2("My templates")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...mine.map((t) => tplRow(t, !!pickFor))); wrap.appendChild(ul); }
       const list = tplRootList();                            // his folders and the built-in programs, in the order he put them (Reorder)
-      if (list.length) { wrap.appendChild(h2("Programs")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...list.map((e) => (e.folder ? navRow(e.folder.name, wn(tplIn(tplTree(e.folder.id)).length), () => go(tplPage(e.folder.id))) : navRow(e.prog, wn((byProg.get(e.prog) || []).length), () => go({ ...S.view, program: e.prog, phase: null, stage: null }))))); wrap.appendChild(ul); }
+      if (list.length) { wrap.appendChild(h2("Programs")); const ul = document.createElement("ul"); ul.className = "list"; ul.replaceChildren(...list.map((e) => (e.folder ? folderRow(e.folder, wn(tplIn(tplTree(e.folder.id)).length)) : navRow(e.prog, wn((byProg.get(e.prog) || []).length), () => go({ ...S.view, program: e.prog, phase: null, stage: null }))))); wrap.appendChild(ul); }
       if (!all.length && !list.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "No templates yet. Open a workout and tap Save as template."; wrap.appendChild(e); }
       return;
     }
@@ -3633,6 +3715,7 @@ import { reportRange, buildReport } from "./report.js";
     slidePlus: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M4.2 3.6H11.8C13.24 3.6 14.4 4.76 14.4 6.2V9.8C14.4 11.24 13.24 12.4 11.8 12.4H4.2C2.76 12.4 1.6 11.24 1.6 9.8V6.2C1.6 4.76 2.76 3.6 4.2 3.6ZM7.4 5.7H8.6V7.4H10.3V8.6H8.6V10.3H7.4V8.6H5.7V7.4H7.4Z"/></svg>',   // New slide: our own, a filled rounded tab (a slide of the week slider) with a plus cut through it
     docPlus: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M5 1.6H11C12.22 1.6 13.2 2.58 13.2 3.8V12.2C13.2 13.42 12.22 14.4 11 14.4H5C3.78 14.4 2.8 13.42 2.8 12.2V3.8C2.8 2.58 3.78 1.6 5 1.6ZM7.4 5.3H8.6V7.4H10.7V8.6H8.6V10.7H7.4V8.6H5.3V7.4H7.4Z"/></svg>',   // New template (12 Nov): our own, a filled page standing up with a plus cut through it, beside the folder and the slide
   };
+  MI.folder = SA_FOLDER;                                               // Move to in a menu: the swipe's folder
   MI.reorder = MI.swap.replace("<path ", '<path transform="rotate(90 21.88 10)" ');   // Reorder folders (his ask, 12 Nov): the swap arrows a quarter turn round, up beside down, as Apple's arrow.up.arrow.down
   function exerciseMenu(r, on) {                                    // the coach's "…" on an exercise: swap it, its instructions, and last and red, delete it, as Apple ends a menu with its destructive row (his ask, 9 Nov: Delete was hidden in Alternate exercise); the video is the play disc's own business
     return [
@@ -4979,6 +5062,7 @@ import { reportRange, buildReport } from "./report.js";
     const items = [];
     if (canSwipeRow(t)) { const still = () => page() && coachMore(trainings.get(id)) && canSwipeRow(trainings.get(id)); items.push({ label: "Reschedule", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, moving: id, title: "Reschedule", selected: cur.date || today(), min: null, ok: still, onPick: (date) => moveWorkout(id, date) }); } }); }
     if (!isTemplateClient(cid)) items.push({ label: "Copy workout", icon: MI.copy, onPick: () => copyWorkout(id) }, { label: "Save as template", icon: MI.save, onPick: () => { const cur = trainings.get(id); if (cur && page() && coachMore(cur)) saveAsTemplate(cur); } });   // moved here from the page's foot, the coach's own view only (his ask, 12 Nov: "copy workout and save as template will go to '...' button only for coaches view")
+    if (isTemplateClient(cid) && !draftOpen(id)) items.push({ label: "Move to", icon: MI.folder, onPick: () => { if (page()) moveTemplate(id); } });   // a template's place, as its row's swipe moves it (Apple never keeps an action in a gesture only); not while it has unsaved changes, which Discard would take the move back with (the v283 review)
     items.push({ label: isTemplateClient(cid) ? "Delete template" : "Delete workout", icon: MI.trash, danger: true, onPick: () => askDelete(id) });
     return items;
   }
@@ -5221,7 +5305,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },

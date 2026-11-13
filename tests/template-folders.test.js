@@ -119,9 +119,9 @@ test("the two buttons (his ask, 12 Nov: \"split it in 2 buttons\"): the + has ev
   setup();
   assert.deepStrictEqual([adds(), menu()], [["New template", "New folder"], ["Reorder"]], "the Templates page");
   fns.go(fns.tplPage("A")); assert.deepStrictEqual([adds(), menu()], [["New template", "New folder", "New slide"], ["Rename folder", "red Delete folder"]], "a top folder with no slides and one folder inside");
-  fns.go(fns.tplPage("B")); assert.deepStrictEqual([adds(), menu()], [["New template", "New slide"], ["Use for a client", "Rename slide", "Rename folder", "red Delete slide", "red Delete folder"]], "a folder inside a folder: no deeper folder (and Week 1's three templates go into a client's calendar at once: v282)");
+  fns.go(fns.tplPage("B")); assert.deepStrictEqual([adds(), menu()], [["New template", "New slide"], ["Use for a client", "Rename slide", "Rename folder", "Move folder", "red Delete slide", "red Delete folder"]], "a folder inside a folder: no deeper folder (and Week 1's three templates go into a client's calendar at once: v282; it can go elsewhere: v283)");
   const MI = fns.menuIcons();
-  assert.deepStrictEqual([fns.tplAddItems().map((it) => it.icon), fns.tplMoreItems().map((it) => it.icon)], [[MI.docPlus, MI.slidePlus], [MI.calendar, MI.pencil, MI.pencil, MI.trash, MI.trash]]);
+  assert.deepStrictEqual([fns.tplAddItems().map((it) => it.icon), fns.tplMoreItems().map((it) => it.icon)], [[MI.docPlus, MI.slidePlus], [MI.calendar, MI.pencil, MI.pencil, MI.folder, MI.trash, MI.trash]]);
   fns.go({ name: "client", id: TPL }); assert.deepStrictEqual([fns.tplAddItems().map((it) => it.icon), fns.tplMoreItems().map((it) => it.icon)], [[MI.docPlus, MI.folderPlus], [MI.reorder]]);
   assert.strictEqual(MI.reorder, MI.swap.replace("<path ", '<path transform="rotate(90 21.88 10)" '), "Reorder: the swap arrows a quarter turn round (up beside down)");
   for (const k of ["folderPlus", "slidePlus", "docPlus"]) assert.ok(/^<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M[^"]+Z"\/><\/svg>$/.test(MI[k]) && !MI[k].includes("stroke"), k + ": our own filled glyph, its plus cut through it");
@@ -740,7 +740,7 @@ test("Use all into an empty workout across the clock change, one finished or fil
 test("Use for a client, first in a folder's \"…\" when its page shows two templates or more: which client (the last one used first), the first day, then the week and their page; nothing from a page left meanwhile", async () => {
   setup(FOLDERS, TPLS, { name: "client", id: TPL, folder: "B" });
   maps.clients.set("c2", { id: "c2", name: "Bob", unit: "lb", sort: 9 }); maps.clients.get("c1").sort = 1;   // his Clients list: Jane, then Bob
-  assert.deepStrictEqual(menu(), ["Use for a client", "Rename slide", "Rename folder", "red Delete slide", "red Delete folder"]);
+  assert.deepStrictEqual(menu(), ["Use for a client", "Rename slide", "Rename folder", "Move folder", "red Delete slide", "red Delete folder"]);
   assert.strictEqual(fns.tplMoreItems()[0].icon, fns.menuIcons().calendar, "the calendar, as Reschedule's");
   app.set({ view: { name: "client", id: TPL, folder: "B", slide: "S2" } });
   assert.ok(!menu().includes("Use for a client"), "Week 2 has one workout: nothing to add at once");
@@ -827,5 +827,226 @@ test("Use all with every template of the page deleted while the days are up adds
   const before = JSON.stringify(maps.trainings.get("w0"));
   pickDays("2026-11-30");
   assert.deepStrictEqual([JSON.stringify(maps.trainings.get("w0")), theirs("c1", "w0").length, fns.choosing().pickFor], [before, 0, "c1"], "nothing to add: the workout as it was, still choosing");
+  quiet();
+});
+
+// His picks, 12 Nov: "Swipe the row" (a template's or a folder's row slid left: Move to and Delete; a long press, or a right-click on the
+// Mac, the same two in a menu), Move to "Purple, like Reschedule", "Everything is movable and editable" (the built-in programs too), and
+// for where it goes, "Step by step" (My templates and his top folders, a folder opened to its weeks, as the Templates pages are browsed).
+const rowsOf = (kids) => kids.filter((e) => e.className === "list").flatMap((ul) => ul.kids);
+const swipeOf = (li) => (li.classList.contains("swipe-row") ? li.kids.find((k) => k.className === "swipe-acts").kids.map((a) => a.className.replace("swipe-act ", "") + ":" + /sa-lbl">([^<]*)/.exec(a.innerHTML)[1]) : null);
+const ctxOf = (li) => li._ctx().map((it) => (it.danger ? "red " : "") + it.label);
+function sheetOn() {                                                  // the pick sheet's rows, its step back and its Cancel, keeping what they are given (and, till off, elements that keep what is put in them, as drawing's)
+  const S2 = { rows: [] }, pl = $("pickList"), pu = $("pickUp"), pn = $("pickNo"), make = document.createElement;
+  document.createElement = (tag) => {
+    const e = make(tag); e.kids = []; e.on = {}; let inner = "";
+    e.appendChild = (c) => { e.kids.push(c); return c; }; e.append = (...k) => { e.kids.push(...k); }; e.addEventListener = (type, f) => { (e.on[type] ||= []).push(f); };
+    Object.defineProperty(e, "innerHTML", { configurable: true, get: () => inner, set: (v) => { inner = String(v); e.firstChild = make("span"); e.lastChild = make("span"); } });
+    return e;
+  };
+  pl.replaceChildren = (...k) => { S2.rows = k; }; pl.addEventListener = (t, f) => { if (t === "click") S2.onRow = f; }; pu.addEventListener = (t, f) => { if (t === "click") S2.onUp = f; }; pn.addEventListener = (t, f) => { if (t === "click") S2.onNo = f; };
+  S2.list = () => S2.rows.map((li) => { const b = li.kids[0]; return (b.disabled ? "~" : "") + b.dataset.id + " " + b.firstChild.textContent + (b.lastChild.textContent ? " (" + b.lastChild.textContent + ")" : ""); });
+  S2.tap = (id) => S2.onRow({ target: { closest: () => ({ dataset: { id } }) } });
+  S2.off = () => { document.createElement = make; delete pl.replaceChildren; delete pl.addEventListener; delete pu.addEventListener; delete pn.addEventListener; };
+  return S2;
+}
+
+test("the Templates pages' rows swipe to Delete (red) and, outermost, Move to (purple, the full swipe's: his ask, \"move to sits on the right of delete\"), and hold the same two for a long press and a right-click; a folder with nowhere to go has Delete alone; none while choosing for a client or putting folders in order", () => {
+  setup(FOLDERS, TPLS, { name: "client", id: TPL });
+  let kids = drawing((got) => { fns.render(); return got(); });
+  const byKey = (k) => rowsOf(kids).find((li) => li.dataset.tid === k || li.dataset.fid === k);
+  assert.deepStrictEqual(swipeOf(byKey("t5")), ["sa-del:Delete", "sa-move:Move to"], "a template of My templates: Delete, then Move to outermost (his ask, 12 Nov: \"move to sits on the right of delete\")");
+  assert.deepStrictEqual([ctxOf(byKey("t5")), byKey("t5")._ctx().map((it) => it.icon), typeof byKey("t5")._full, byKey("t5")._ctx.ok()], [["Move to", "red Delete"], [fns.menuIcons().folder, fns.menuIcons().trash], "function", true], "its long press and right-click: the same two, Delete last and red; the full swipe moves it");
+  assert.deepStrictEqual([swipeOf(byKey("H")), swipeOf(byKey("A"))], [["sa-del:Delete", "sa-move:Move to"], ["sa-del:Delete"]], "his folders: Rehab can go into Summer block; Summer block has a folder inside, so it stays at the top: Delete alone");
+  assert.deepStrictEqual(ctxOf(byKey("A")), ["red Delete"]);
+  assert.strictEqual(rowsOf(kids).find((li) => !li.dataset.tid && !li.dataset.fid).classList.contains("swipe-row"), false, "a built-in program not yet a folder: no swipe");
+  app.set({ view: { name: "client", id: TPL, folder: "A" } });
+  kids = drawing((got) => { fns.render(); return got(); });
+  assert.deepStrictEqual(swipeOf(byKey("B")), ["sa-del:Delete", "sa-move:Move to"], "a folder inside a folder: to the top, or into another top folder");
+  app.set({ view: { name: "client", id: TPL, folder: "B" } });
+  kids = drawing((got) => { fns.render(); return got(); });
+  assert.deepStrictEqual(["t1", "t2", "t4"].map((k) => swipeOf(byKey(k)).length), [2, 2, 2], "every template on a week");
+  const acts = byKey("t1").kids.find((k) => k.className === "swipe-acts").kids;
+  assert.deepStrictEqual([acts[0].innerHTML.includes('viewBox="-7.3 -3.3 62.6 62.6"'), acts[1].innerHTML.includes('d="M1.6 4.1C1.6 3.3 2.2 2.7 3 2.7H6.05')], [true, true], "Delete's capsule the trash, Move to's the folder");
+  const gone = byKey("t1"); maps.trainings.delete("t1");
+  assert.strictEqual(gone._ctx.ok(), false, "its template deleted on another device: no menu for it");
+  fns.setPickFor("c1");
+  kids = drawing((got) => { fns.render(); return got(); });
+  assert.ok(rowsOf(kids).every((li) => !li.classList.contains("swipe-row")), "choosing a template for a client: its Use, no swipe");
+  app.set({ view: { name: "client", id: TPL } });
+  kids = drawing((got) => { fns.render(); return got(); });
+  assert.ok(rowsOf(kids).length > 1 && rowsOf(kids).every((li) => !li.classList.contains("swipe-row")), "nor his folders' rows then");
+  fns.setPickFor(null); app.set({ view: { name: "client", id: TPL } }); fns.tplMoreItems()[0].onPick();
+  kids = drawing((got) => { fns.render(); return got(); });
+  assert.ok(rowsOf(kids).length && rowsOf(kids).every((li) => !li.classList.contains("swipe-row")), "Reorder: grips, no swipe");
+  fns.doneTplOrder();
+  app.set({ view: { name: "client", id: TPL, program: "Fat Burn", phase: 1, stage: 1 } });
+  kids = drawing((got) => { fns.render(); return got(); });
+  assert.ok(rowsOf(kids).every((li) => !li.classList.contains("swipe-row")), "a program's old page (not yet a folder): as it was");
+  setup(FOLDERS, BTPLS, { name: "client", id: TPL }); fns.adoptBuiltins();
+  kids = drawing((got) => { fns.render(); return got(); });
+  assert.deepStrictEqual(swipeOf(byKey("b:Fat Burn")), ["sa-del:Delete"], "a built-in program, now a folder of his: its phases inside keep it at the top");
+  const fb = byKey("b:Fat Burn"); maps.clients.get(TPL).folders = maps.clients.get(TPL).folders.filter((x) => x.id !== "b:Fat Burn");
+  assert.strictEqual(fb._ctx.ok(), false, "a folder deleted on another device: no menu for it");
+  setup(FOLDERS, BTPLS, { name: "client", id: TPL }); fns.adoptBuiltins();
+  app.set({ view: { name: "client", id: TPL, folder: "b:Fat Burn" } });
+  kids = drawing((got) => { fns.render(); return got(); });
+  assert.deepStrictEqual(swipeOf(byKey("b:Fat Burn/1")), ["sa-del:Delete", "sa-move:Move to"], "its phase can go elsewhere, as his own (\"Everything is movable\")");
+  quiet();
+});
+
+test("Move to, step by step: My templates and his top folders; a folder opens to its weeks (and to its own templates when it has none), a step back over the title; where it is now shown, not picked; it lands numbered next there", async () => {
+  setup(FOLDERS, TPLS, { name: "client", id: TPL, folder: "B" });
+  const sh = sheetOn();
+  try {
+    let p = fns.moveTemplate("t1");
+    assert.deepStrictEqual([$("pickTitle").textContent, $("pickUp").hidden, sh.list()], ["Move “Workout 1” to", true, ["to: My templates", "to:H Rehab", "in:A Summer block"]], "the top: My templates, his folders in his order (Rehab has neither weeks nor folders: it takes it as it is)");
+    await tick(400); sh.tap("in:A"); await tick(0);
+    assert.deepStrictEqual([$("pickTitle").textContent, $("pickUp").hidden, $("pickUp").textContent, sh.list()], ["Summer block", false, "‹ Templates", ["to:A Summer block (This folder)", "in:B Phase 1"]], "a folder with folders and no weeks: its own templates' place, and its folders");
+    await tick(400); sh.tap("in:B"); await tick(0);
+    assert.deepStrictEqual([$("pickTitle").textContent, $("pickUp").textContent, sh.list()], ["Phase 1", "‹ Summer block", ["~to:S1 Week 1 (Current)", "to:S2 Week 2"]], "its weeks; the one it is on now greyed");
+    await tick(400); sh.onUp(); await tick(0);
+    assert.strictEqual($("pickTitle").textContent, "Summer block", "a step back");
+    await tick(400); sh.tap("in:B"); await tick(400); sh.tap("to:S2");
+    assert.strictEqual(await p, true);
+    assert.deepStrictEqual([meta("t1"), maps.dirty.has("trainings/t1")], [["My templates", 2, "S2"], true], "on Week 2, numbered after its Workout 1, saved");
+    p = fns.moveTemplate("t1"); await tick(400); sh.onNo(); assert.strictEqual(await p, false, "Cancel moves nothing");
+    assert.deepStrictEqual(meta("t1"), ["My templates", 2, "S2"]);
+    p = fns.moveTemplate("t1"); await tick(400); sh.tap("to:");
+    assert.deepStrictEqual([await p, meta("t1")], [true, ["My templates", 2, null]], "to My templates: loose, after Workout 1 there");
+    p = fns.moveTemplate("t1");
+    assert.ok(sh.list()[0].startsWith("~to: My templates (Current)"), "where it is now, at the top too");
+    await tick(400); sh.onNo(); await p;
+    p = fns.moveTemplate("b1"); await tick(400);
+    assert.ok(!sh.list().some((r) => r.startsWith("~")), "a built-in one not yet in a folder: nowhere is its place yet");
+    sh.tap("to:H");
+    assert.deepStrictEqual([await p, meta("b1")], [true, ["Fat Burn", 1, "H"]], "into his folder, Workout 1 there");
+    p = fns.moveTemplate("t2"); await tick(400); sh.tap("in:A"); await tick(400); sh.tap("in:B");
+    maps.clients.get(TPL).folders = maps.clients.get(TPL).folders.filter((x) => x.id !== "S2"); await tick(400);
+    sh.tap("to:S2"); assert.deepStrictEqual([await p, meta("t2")[2]], [false, "S1"], "the week deleted on another device while the sheet was up: it stays where it was");
+    p = fns.moveTemplate("t2"); await tick(400); maps.trainings.delete("t2"); sh.tap("to:H");
+    assert.deepStrictEqual([await p, maps.trainings.has("t2")], [false, false], "itself deleted meanwhile: nothing made again");
+    p = fns.moveTemplate("t4"); const other = fns.sheetList({ title: "Something else", rows: [] });
+    assert.deepStrictEqual([await p, meta("t4")[2]], [false, "B"], "another sheet put over it: Move to stops, nothing moved");
+    await tick(400); sh.onNo(); await other;
+    app.set({ view: { name: "training", id: "t4" } }); const item = fns.moreItems(maps.trainings.get("t4")).find((it) => it.label === "Move to");
+    app.set({ view: { name: "client", id: TPL, folder: "B" } }); $("pickSheet").hidden = true; item.onPick();
+    assert.strictEqual($("pickSheet").hidden, true, "a template page's Move to, picked from a menu its page has left: nothing asked");
+  } finally { sh.off(); }
+  quiet();
+});
+
+test("Move to on a folder's row: the top or another top folder, never deeper than two; the move is this device's, merged field by field; a folder deleted meanwhile is not gone into", async () => {
+  setup([...FOLDERS.slice(0, 2), { ...FOLDERS[2], sort: 3 }, ...FOLDERS.slice(3)], TPLS, { name: "client", id: TPL });
+  const sh = sheetOn(), place = (id) => fns.tplNode(id).parent;
+  try {
+    assert.deepStrictEqual([fns.folderPlaces(fns.tplNode("H")), fns.folderPlaces(fns.tplNode("A")), fns.folderPlaces(fns.tplNode("B"))], [[{ id: "A", name: "Summer block" }], [], [{ id: "", name: "Templates" }, { id: "H", name: "Rehab" }]], "Rehab into Summer block; Summer block (a folder inside) stays at the top; Phase 1 to the top or into Rehab");
+    assert.strictEqual(await fns.moveFolder("A"), false, "nowhere to go: nothing asked");
+    let p = fns.moveFolder("B");
+    assert.deepStrictEqual([$("pickTitle").textContent, $("pickUp").hidden, sh.list()], ["Move “Phase 1” to", true, ["to: Templates (Top level)", "to:H Rehab"]]);
+    await tick(400); sh.tap("to:H");
+    assert.deepStrictEqual([await p, place("B"), "sort" in maps.clients.get(TPL).folders.find((x) => x.id === "B"), maps.folderTouched.has("B"), maps.dirty.has("clients/" + TPL)], [true, "H", false, true, true], "into Rehab, after the folders he put in order there; this device's change, saved");
+    assert.deepStrictEqual([fns.tplKids("H", "slide").length, fns.tplIn(new Set(["S1"])).map((t) => t.id).sort()], [0, ["t1", "t2"]], "its weeks and their templates go with it");
+    p = fns.moveFolder("B"); await tick(400); sh.tap("to:");
+    assert.deepStrictEqual([await p, place("B")], [true, null], "back to the top");
+    p = fns.moveFolder("H"); await tick(400); maps.clients.get(TPL).folders = maps.clients.get(TPL).folders.filter((x) => x.id !== "A"); sh.tap("to:A");
+    assert.deepStrictEqual([await p, place("H")], [false, null], "Summer block deleted on another device while the sheet was up: Rehab stays at the top");
+  } finally { sh.off(); }
+  quiet();
+});
+
+test("Delete on a template's row asks first, by its name (Workouts already made from it stay), and takes it off the page it is on; Cancel keeps it; the swipe's own buttons do the same", async () => {
+  setup(FOLDERS, TPLS, { name: "client", id: TPL, folder: "B" });
+  const a = asking();
+  try {
+    let p = fns.deleteTemplateRow("t2");
+    assert.deepStrictEqual(sheet(), { up: true, title: "Delete “Workout 2”?", text: "Workouts already made from it stay.", field: null, yes: "Delete", red: true });
+    a.no(); assert.deepStrictEqual([await p, maps.trainings.has("t2")], [false, true], "Cancel: kept");
+    p = fns.deleteTemplateRow("t4"); const was = maps.trainings.get("t4"); maps.trainings.delete("t4"); maps.dirty.delete("trainings/t4");
+    await tick(400); a.yes();
+    assert.deepStrictEqual([await p, maps.dirty.has("trainings/t4")], [false, false], "deleted on another device while the question was up: nothing more to do");
+    maps.trainings.set("t4", was);
+    const li = rowsOf(drawing((got) => { fns.render(); return got(); })).find((x) => x.dataset.tid === "t2");
+    $("askTitle").textContent = ""; li.kids.find((k) => k.className === "swipe-acts").kids[0].on.click[0]({ stopPropagation() {} });
+    assert.strictEqual(sheet().title, "Delete “Workout 2”?", "the red Delete behind the row asks the same");
+    await tick(400); a.yes(); await tick(0);   // (its red button waits 350 ms: the second tap of a double tap never lands on it)
+    assert.deepStrictEqual([maps.trainings.has("t2"), maps.dirty.has("trainings/t2"), app.get().view], [false, true, { name: "client", id: TPL, folder: "B" }], "gone, saved, the page as it was");
+    const sh = sheetOn();
+    try {
+      const l1 = rowsOf(drawing((got) => { fns.render(); return got(); })).find((x) => x.dataset.tid === "t1");
+      const q = l1.kids.find((k) => k.className === "swipe-acts").kids[1].on.click[0]({ stopPropagation() {} });
+      assert.strictEqual($("pickTitle").textContent, "Move “Workout 1” to", "the purple Move to behind the row opens the places");
+      await tick(400); sh.onNo(); await q;
+      $("pickTitle").textContent = ""; const f = l1._full();
+      assert.strictEqual($("pickTitle").textContent, "Move \u201cWorkout 1\u201d to", "the full swipe: Move to, the outermost");
+      await tick(400); sh.onNo(); await f;
+    } finally { sh.off(); }
+    app.set({ view: { name: "client", id: TPL } });
+    const top = rowsOf(drawing((got) => { fns.render(); return got(); })).find((x) => x.dataset.fid === "A");
+    $("askTitle").textContent = ""; const d = top._full();
+    assert.strictEqual(sheet().title, "Delete \u201cSummer block\u201d?", "a folder with nowhere to go: its full swipe is Delete, asked first");
+    a.no(); await d; assert.ok(fns.tplNode("A"), "Cancel: kept");
+  } finally { a.done(); }
+  quiet();
+});
+
+test("Move to everywhere it is offered, and what each leaves behind: a template's page (not while it has unsaved changes, which Discard would take the move back with), a folder's own “…”, a folder row's swipe and menu; the page drawn again; a keyboard's place back on the “…”; Delete forgets the template's draft; the light that finds a template shows on a swipe row", async () => {
+  setup(FOLDERS, TPLS, { name: "client", id: TPL, folder: "B" });
+  const sh = sheetOn(), a = asking();
+  try {
+    app.set({ view: { name: "training", id: "t1" } });
+    const mv = () => fns.moreItems(maps.trainings.get("t1")).find((it) => it.label === "Move to");
+    $("pickTitle").textContent = ""; mv().onPick();
+    assert.strictEqual($("pickTitle").textContent, "Move “Workout 1” to", "a template's own page: its “…” has Move to");
+    await tick(400); sh.onNo(); await tick(0);
+    app.set({ templateDraft: { id: "t1", snapshot: "{}", dirty: true, saving: false } });
+    assert.strictEqual(mv(), undefined, "with unsaved changes: none until they are saved or discarded");
+    $("pickSheet").hidden = true; assert.deepStrictEqual([await fns.moveTemplate("t1"), $("pickSheet").hidden], [false, true], "and a Move to begun before cannot slip into them");
+    app.set({ templateDraft: null, view: { name: "client", id: TPL, folder: "B" } });
+    assert.ok(fns.tplMoreItems().some((it) => it.label === "Move folder"), "a folder's own “…”: Move folder, as its row's Move to");
+    app.set({ view: { name: "client", id: TPL, folder: "A" } }); assert.ok(!fns.tplMoreItems().some((it) => it.label === "Move folder"), "not for one with folders inside");
+    app.set({ view: { name: "client", id: TPL } });
+    const rows = rowsOf(drawing((got) => { fns.render(); return got(); })), h = rows.find((x) => x.dataset.fid === "H");
+    $("pickTitle").textContent = ""; h.kids.find((k) => k.className === "swipe-acts").kids[1].on.click[0]({ stopPropagation() {} });
+    assert.strictEqual($("pickTitle").textContent, "Move “Rehab” to", "a folder row's Move to, behind the row");
+    await tick(400); sh.onNo(); await tick(0);
+    $("pickTitle").textContent = ""; h._ctx().find((it) => it.label === "Move to").onPick();
+    assert.strictEqual($("pickTitle").textContent, "Move “Rehab” to", "and in its menu");
+    await tick(400); sh.onNo(); await tick(0);
+    $("askTitle").textContent = ""; const d = h._ctx().find((it) => it.label === "Delete").onPick();
+    assert.strictEqual(sheet().title, "Delete “Rehab”?", "its menu's Delete asks its own question");
+    a.no(); await d;
+    let drawn = 0; const wrap = $("tplList"); wrap.replaceChildren = () => { drawn++; };
+    let focused = 0; const more = $("tMore"), sheetEl = $("pickSheet"); more.hidden = false; more.focus = () => { focused++; }; sheetEl.contains = () => true;
+    try {
+      const p = fns.moveTemplate("t5"); await tick(400); sh.tap("to:H"); await p;
+      assert.deepStrictEqual([drawn > 0, meta("t5")[2], focused], [true, "H", 1], "moved: the page drawn again at once, the keyboard's place back on the “…”");
+      const q = fns.moveTemplate("t5"); await tick(400); sh.onNo(); await q;
+      assert.strictEqual(focused, 2, "Cancel: the same");
+    } finally { delete wrap.replaceChildren; delete more.focus; delete sheetEl.contains; }
+    app.set({ templateDraft: { id: "t3", snapshot: "{}", dirty: false, saving: false } });
+    const r = fns.deleteTemplateRow("t3"); await tick(400); a.yes(); await r;
+    assert.deepStrictEqual([maps.trainings.has("t3"), app.get().templateDraft], [false, null], "Delete forgets the draft kept for it");
+  } finally { sh.off(); a.done(); }
+  assert.ok(html.includes("\n  .list li.swipe-row.flash > :not(.swipe-acts) { animation: flash-row 1200ms ease; }") && html.includes("@keyframes flash-row { 0% { box-shadow: inset 0 0 0 100vmax rgba(111,107,153,0.28); } 100% { box-shadow: inset 0 0 0 100vmax rgba(111,107,153,0); } }"), "the light that finds a template (Back to its template) laid over a swipe row's solid part");
+  quiet();
+});
+
+test("Move to on a stale copy of a template keeps the exercises another device gave it meanwhile, as any field it did not change (the v283 review); its own exercise edits still stand", async () => {
+  const sb = makeSupabase(); coach(sb);
+  maps.clients.set(TPL, { id: TPL, name: "Templates", kind: "templates", folders: JSON.parse(JSON.stringify(FOLDERS)) });
+  const old = T("t1", MINE(1, "S1")), there = { ...old, rows: [{ id: "x1", label: "1", name: "Front squat", sets: 5, reps: "5", rest: "", tempo: "", note: "", alts: [] }] };
+  sb.seed("ft_trainings", "t1", there, { client_id: TPL });
+  maps.seenAt.set("trainings/t1", "S0"); maps.seenDoc.set("trainings/t1", JSON.stringify(old));   // what this device last read: before the other device's edit
+  maps.trainings.set("t1", JSON.parse(JSON.stringify(old)));
+  fns.placeTemplate(maps.trainings.get("t1"), "H");
+  await fns.cloudBackend.set("trainings", "t1", JSON.parse(JSON.stringify(maps.trainings.get("t1"))));
+  const saved = sb.tables.ft_trainings.get("t1").data;
+  assert.deepStrictEqual([saved.rows.map((r) => r.name), saved.template.folder], [["Front squat"], "H"], "the other device's exercises, and the move made here");
+  const mine = { ...old, rows: [{ ...old.rows[0], name: "Box squat" }] };
+  sb.seed("ft_trainings", "t1", there, { client_id: TPL }); maps.seenAt.set("trainings/t1", "S0"); maps.seenDoc.set("trainings/t1", JSON.stringify(old));
+  maps.trainings.set("t1", JSON.parse(JSON.stringify(mine)));
+  await fns.cloudBackend.set("trainings", "t1", JSON.parse(JSON.stringify(mine)));
+  assert.deepStrictEqual(sb.tables.ft_trainings.get("t1").data.rows.map((r) => r.name), ["Box squat"], "an exercise edit made here still stands");
   quiet();
 });
