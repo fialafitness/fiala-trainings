@@ -51,13 +51,13 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
   - `import_odboj.py`, `import_bodytype.py` (with `pdfstr.swift`) and `merge_templates.py` rebuild `templates.json` from program PDFs in the parent folder. Two of the `tools/*.json` files are hand-made inputs: `bodytype-manual.json` (name mappings) and `bodytype-cues-en.json` (a translation). The others are the scripts' outputs.
   - `clean_names.py` and `match_videos.py` are one-offs over the parent folder's spreadsheets.
 - `supabase/*.sql`: the server's tables and rules, run by hand (see Database).
-- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 37 `*.test.js` files and 16 `*-probe.mjs` scripts (see Tests).
+- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 38 `*.test.js` files and 17 `*-probe.mjs` scripts (see Tests).
 
 ## Releasing
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (284 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (285 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -199,7 +199,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v284 it ends "497 passed, 0 failed" after about 50 s.
+- At v285 it ends "519 passed, 0 failed" after about 55 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
@@ -216,8 +216,8 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 
 - `*-probe.mjs` scripts test what in-process tests cannot: gestures, document and window listeners, and import-time variants (the home-screen app, phone or Mac).
 - Each probe runs in its own Node process (`execFileSync` from its test file). It sets up its stand-ins before it imports `main.js`, then prints one JSON line that the test parses.
-- Eight probes run every timer and `performance.now` on their own clock: row-swipe, hold-menu, month-menu, preview-swipe, preview-pager, cal-drag, cal-fold and cal-fold-reload. The others use real timers.
-- Most probes record whether a document listener is capture. hold-menu and cal-drag also record whether it is passive.
+- Nine probes run every timer and `performance.now` on their own clock: row-swipe, hold-menu, month-menu, preview-swipe, preview-pager, cal-drag, cal-fold, cal-fold-reload and week-pager. The others use real timers.
+- Most probes record whether a document listener is capture. hold-menu, cal-drag and week-pager also record whether it is passive.
 - All probes start from `env.js`. One that needs `held()` to be false hides `#whenBg` (an `env.js` stub starts visible), and makes `document.querySelector` return null for `.sheet-bg` and `.crop-view`.
 - Start a new probe from the nearest existing one.
 
@@ -285,7 +285,14 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - `cd*`: calendar drag;
   - `lp*`: touch-and-hold menus;
   - `pv*`: the workout preview sheet.
-- `calWheel` (the client page's month) and `dpWheel` (the day picker) page months, and `pvWheel` pages the preview's workouts. `monthWheel()` picks one by what is under the fingers.
+- `calWheel` (the client page's month) and `dpWheel` (the day picker) page months, `weekWheel` pages the client page's week strip, and `pvWheel` pages the preview's workouts. `monthWheel()` picks one by what is under the fingers.
+- The week strip pages week by week (v285), as the month does: `#weekView` > `#weekTrack` > `#weekPrev`, `#week`, `#weekNext`.
+  - `weekOff` is the week shown. It survives redraws; `calFold()` (every way off the client's page), `render()` off the client's Workouts tab, and Today (`#weekToday`, beside Month) bring this week back. A workout dropped on another week leaves the strip on that week.
+  - `#weekPrev`/`#weekNext` are pictures, drawn by `wkSide` as a finger or two fingers take the strip: no listeners, `inert`, `aria-hidden`.
+  - While the weeks slide (`wkSliding`), `renderClient` leaves `#week` as it is; the strip is drawn anew as they land. Month opens on the shown week's month (its Thursday's, `wkMonth`).
+  - `calFold()` lands a slide quietly (`weekLand(true)`) and draws the strip alone (`wkDraw`). A whole `renderClient()` there would sweep away the empty workout being opened (`isEmptyWorkout`), and `render()` would then drop the coach on Clients.
+  - `wkRoll()` keeps the week shown when a new week begins (Sunday's midnight) before a redraw; at a redraw (`wkRoll(true)`) this week shown stays this week.
+  - Both pagers (`#weekView`, `#calView`) end a press only for its own pointer (`cpid`), settle back 150 ms after a Mac's lost release (a move with `buttons` 0 and no pointerup), let a press that never ended go at the next press, and land at once when nothing is left to move (`at`). A transitionend from a day inside the track is not the slide's end.
 - `held()` is true while a question, menu or sheet owns the touch.
 - A new gesture also needs its Mac form (click-and-hold or the trackpad), since the coach works on a Mac.
 - Redraw deferral: syncs redraw through `ui.render`, which is `renderUnlessSwiping`. It waits while the pages slide or `rowHolds()` is true. A new gesture:

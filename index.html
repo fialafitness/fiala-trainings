@@ -1123,6 +1123,11 @@
   .week { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }   /* a day of the strip is pressed, never selected: a finger held on a workout lifts it, with no loupe and no callout, as on the month */
   .week.wk-in-r { animation: wkInR 260ms cubic-bezier(0.22, 1, 0.36, 1); }   /* a dragged workout held at the strip's edge turned it: the next week comes in from that side (and this week from the other once it is down) */
   .week.wk-in-l { animation: wkInL 260ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .week-view { position: relative; overflow: hidden; touch-action: pan-y; margin-bottom: 28px; transition: height 280ms ease; }   /* the strip pages week by week (his ask, 13 Nov: "slide between weeks ... right and left swipe"): last week, this one and the next side by side on a track that follows the finger, as the month's */
+  .week-view[hidden] { display: none; }
+  .week-track { display: flex; align-items: flex-start; width: 100%; transform: translateX(-100%); will-change: transform; }
+  .week-track > .week { flex: 0 0 100%; min-width: 0; margin-bottom: 0; }   /* the 28 under the strip is the view's: the weeks either side are empty until a finger takes it */
+  .dragged .week button:hover { background: transparent; }          /* once the finger slides the weeks, the day it landed on lets go, as the month's */
   @keyframes wkInR { from { transform: translateX(30%); opacity: 0; } to { transform: none; opacity: 1; } }
   @keyframes wkInL { from { transform: translateX(-30%); opacity: 0; } to { transform: none; opacity: 1; } }
   #calDrag { position: fixed; left: 0; top: 0; z-index: 56; height: 20px; box-sizing: border-box; border-radius: 5px; padding: 0 6px; overflow: hidden; white-space: nowrap; font-size: 15px; line-height: 20px; font-weight: 600; letter-spacing: 0; color: #fff; pointer-events: none; transform-origin: 0 0; box-shadow: 0 3px 12px rgba(0, 0, 0, 0.22); will-change: transform; }   /* a workout lifted out of its chip to drag it (his ask, 11 Nov), as Apple Calendar lifts an event (measured, iOS 27): 20 tall, its width 1.6 of the day's (main.js), its words a size up (15 for 11), its colour solid with white words */
@@ -1137,7 +1142,9 @@
   .week-bar { margin: 28px 0 0; min-height: 36px; }   /* the calendar breathes: 28 above its title row, the strip right under it, 28 below */
   .week-bar h2 { margin: 0; font-size: 1.0625rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; text-transform: none; color: var(--text-primary); }   /* the month the week is in — "November", or "Nov – Dec" when the week straddles — where Calendar writes it; nothing else needs saying */
   .week-bar h2[hidden] { display: none; }
+  .week-bar h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* with Today beside Month (another week shown) on a 320-point phone at the largest text sizes, the month's name gives way first, as a title does in Apple's bars */
   .week-bar .cal-disc { margin-left: auto; }
+  .week-bar .cal-today { margin-left: auto; } .week-bar .cal-today:not([hidden]) + .cal-disc { margin-left: 4px; }   /* on another week: Today, beside Month, as the month's own Today sits by its arrows */
   .cal-disc { appearance: none; border: 0; background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 6px 0 10px; border-radius: 50px; color: var(--brand-text); font-size: 0.9375rem; font-weight: 500; letter-spacing: 0; transition: opacity 300ms ease; }
   .cal-disc:hover { opacity: 0.8; }
   .cal-disc svg { transition: transform 220ms ease; }
@@ -1298,7 +1305,7 @@
   .paused-card b { font-weight: 500; font-size: 1.0625rem; letter-spacing: -0.01em; }
   .paused-card span { font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.45; }
   .paused-card[hidden] { display: none; }
-  body.client.paused #weekBar, body.client.paused #calWrap, body.client.paused #week, body.client.paused #missHead, body.client.paused #missList, body.client.paused #todayHead, body.client.paused #todayList, body.client.paused #nextHead, body.client.paused #nextList, body.client.paused #histHead, body.client.paused #histList, body.client.paused #trainingEmpty { display: none; }
+  body.client.paused #weekBar, body.client.paused #calWrap, body.client.paused #week, body.client.paused #weekView, body.client.paused #missHead, body.client.paused #missList, body.client.paused #todayHead, body.client.paused #todayList, body.client.paused #nextHead, body.client.paused #nextList, body.client.paused #histHead, body.client.paused #histList, body.client.paused #trainingEmpty { display: none; }
   .list.inactive button > .pn { color: var(--text-secondary); }
   .list[hidden], .listbar[hidden] { display: none; }
   .seg.stages { display: flex; width: 100%; }
@@ -1308,7 +1315,7 @@
   .tpl-stage { font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-tertiary); margin: 14px 4px 8px; }
   .pick-note { margin: 12px 2px 0; font-size: 0.9375rem; color: var(--text-secondary); }
   .pick-note b { font-weight: 500; color: var(--text-primary); }
-  #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #missHead, #vClient.tpl #missList, #vClient.tpl #todayHead, #vClient.tpl #todayList, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
+  #vClient.tpl .disc, #vClient.tpl #pausedKicker, #vClient.tpl #weekBar, #vClient.tpl #calWrap, #vClient.tpl #week, #vClient.tpl #weekView, #vClient.tpl #missHead, #vClient.tpl #missList, #vClient.tpl #todayHead, #vClient.tpl #todayList, #vClient.tpl #nextHead, #vClient.tpl #nextList, #vClient.tpl #histHead, #vClient.tpl #histList,
   #vClient.tpl #notesWrap, #vClient.tpl #reportWrap, #vClient.tpl #delWrap, #vClient.tpl #histCard, #vClient.tpl #trainingEmpty { display: none; }   /* the library is not a client: no history card either */
   #vTraining.tpl #finishWrap, #vTraining.tpl #tDate, #vTraining.tpl .weights, #vTraining.tpl .card-foot, #vTraining.tpl .setlog { display: none; }
   .use { margin-top: 24px; }
@@ -1401,6 +1408,7 @@
   @keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .cele-check { animation: none; } .cal-view, .cal-track { transition: none !important; } }
   @media (prefers-reduced-motion: reduce) { .week.wk-in-r, .week.wk-in-l { animation: none; } #calDrag { transition: none !important; } }   /* Reduce Motion: a dragged workout and the turned week move at once */
+  @media (prefers-reduced-motion: reduce) { .week-view, .week-track { transition: none !important; } }   /* and a week swiped to: no slide */
   .finish .finished { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin-top: 12px; font-size: 1.0625rem; }   /* Skip / Undo under Finish workout: air between a capsule and the button. Scoped: a finished day in the week strip carries the same class */
   .finish.split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }   /* an exercise still open, in either view: Finish early and Skip workout side by side, half and half, alike (his ask, 12 Nov); every exercise done, Finish workout takes the whole width again, Skip under it */
   .finish.split #skipLine { margin-top: 0; min-height: 0; }
@@ -1686,8 +1694,8 @@
       <div class="ov-pick"><input id="ovEx" placeholder="Look up an exercise" autocomplete="off" autocapitalize="sentences" aria-label="Look up an exercise"><button class="ov-clear" id="ovClear" type="button" aria-label="Clear" hidden>&times;</button><ul class="sugg" id="ovSugg" hidden></ul></div>
       <div class="ov-best" id="ovBest" hidden><button type="button" class="ov-tile best" id="ovBestBtn"><b id="ovBestVal"></b><span>Best</span></button><span class="ov-none" id="ovNone" hidden></span></div>
     </div>
-    <div data-tab="workouts" class="listbar week-bar" id="weekBar"><h2 id="weekHead"></h2><button class="cal-disc" id="calToggle" type="button" aria-expanded="false"><span id="calToggleText">Month</span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5.5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-    <div data-tab="workouts" class="week" id="week"></div>
+    <div data-tab="workouts" class="listbar week-bar" id="weekBar"><h2 id="weekHead"></h2><button class="cal-today" id="weekToday" type="button" hidden>Today</button><button class="cal-disc" id="calToggle" type="button" aria-expanded="false"><span id="calToggleText">Month</span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5.5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+    <div data-tab="workouts" class="week-view" id="weekView"><div class="week-track" id="weekTrack"><div class="week" id="weekPrev" aria-hidden="true" inert></div><div class="week" id="week"></div><div class="week" id="weekNext" aria-hidden="true" inert></div></div></div>
     <div data-tab="workouts" id="calWrap" hidden>
       <div class="cal-head"><button class="mnav" id="calPrev" type="button" aria-label="Previous month">&lsaquo;</button><span class="cal-title" id="calTitle"></span><span class="cal-right"><button class="cal-today" id="calToday" type="button" hidden>Today</button><button class="mnav" id="calNext" type="button" aria-label="Next month">&rsaquo;</button></span></div>
       <div class="cal-wd" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
@@ -1802,7 +1810,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=284";
+  import { boot } from "./app/main.js?v=285";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

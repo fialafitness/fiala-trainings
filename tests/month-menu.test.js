@@ -57,6 +57,13 @@ test("a press on the month that never comes back to it (a right-click's menu too
   assert.deepStrictEqual({ mid: r.cal.secondFinger.mid, on: r.cal.secondFinger.on }, { mid: -40, on: -60 }, "a second finger lifted elsewhere: the first finger's drag goes on");
   assert.notStrictEqual(r.cal.secondFinger.after, r.cal.secondFinger.before, "and its let-go past 48 px pages");
   assert.deepStrictEqual(r.dp.afterOutsideRelease, { before: 12, after: 13 });
+  const o = r.cal.secondOn; assert.deepStrictEqual([o.mid, o.kept, o.on], [-30, -30, -120], "a second finger down and up on the month itself: no release of the first one's drag either (v285, the week strip's review)");
+  assert.notStrictEqual(o.after, o.before, "and the first one's let-go past 48 px pages");
+  assert.deepStrictEqual(r.cal.lost, { held: -100, bare: -100, back: 0, stayed: true, paged: true }, "a Mac's release lost: the bare pointer moves nothing, back after 150 ms, and two fingers page again (v285)");
+  assert.deepStrictEqual(r.cal.pressAgain, { held: -100, pressed: 0, rest: 0, same: true }, "a press after a release lost with no move: the old press let go first, the months back where they were (v285)");
+  assert.deepStrictEqual(r.cal.secondCancel, { kept: -30, on: -120, paged: true }, "a second finger the browser cancels is no release either (v285)");
+  assert.deepStrictEqual(r.cal.lostAgain, { mid: -90, paged: true }, "a new drag within a lost release's 150 ms pages (v285)");
+  assert.deepStrictEqual(r.cal.wholeMonth, { landed: 0, paged: true }, "a whole month's two-finger flick lands at once: nothing left to move or wait for (v285)");
 });
 
 test("up and down, a slant, a menu up, a finger on the months: the fingers are not the month's", () => {
