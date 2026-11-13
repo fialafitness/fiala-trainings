@@ -36,7 +36,7 @@ test("every floating bar button wears the edge; the preview's take the sheet's g
 test("the page's own buttons stay plain, as Apple's do; the round ones inside a card take Apple's card grey (Reminders' card ×: 226 on white, 59 on #1c1c1e: system fill)", () => {
   assert.ok(html.includes("--card-disc: rgba(120,120,128,0.215);"), "light");
   assert.strictEqual(count("--card-disc: rgba(120,120,128,0.335);"), 2, "dark, both blocks");
-  for (const sel of ["body:not(.client) .ex-icons button { width: 36px; height: 36px; border-radius: 50%; background: var(--card-disc);", ".card-chev { position: absolute; right: 12px; z-index: 2; appearance: none; border: 0; background: var(--card-disc);", "body.client .ex-icons .alt-btn { width: 36px; height: 36px; margin-right: 10px; border-radius: 50%; background: var(--card-disc);", ".list li.swipe-row.swiped > button.miss-more { background: var(--card-disc); }"])
+  for (const sel of ["body:not(.client) .ex-icons button { width: 36px; height: 36px; border-radius: 50%; background: var(--card-disc);", ".card-chev { position: absolute; right: 12px; z-index: 2; appearance: none; border: 0; background: var(--card-disc);", ".list li.swipe-row.swiped > button.miss-more { background: var(--card-disc); }"])   // (the client's swap disc went in v291: its name is the pop-up now)
     assert.ok(html.includes(sel), sel.slice(0, 40));
   assert.ok(/\.btn\.tint \{ background: var\(--glyph-fill\);/.test(html), "the grey capsules unchanged (Finish early, Skip workout)");
 });

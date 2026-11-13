@@ -988,7 +988,8 @@ import { reportRange, buildReport } from "./report.js";
     window.addEventListener("pageshow", (e) => { if (e && e.persisted) scrollMode("manual"); });
   }
   let popClose = null, popAnchor = null, popRows = "";              // the frosted bubble or menu that is open, if one is: its own close, the button it hangs from, and the rows it opened with (a menu)
-  const menuRows = (items) => items.map((it) => (it.danger ? "!" : "") + it.label).join("|");
+  const byKeys = (e) => !!e && e.isTrusted === true && e.detail === 0;   // a pick made from the keyboard or VoiceOver (a script's click, as the touch and hold's slide onto a row, is not one)
+  const menuRows = (items) => items.map((it) => (it.danger ? "!" : "") + (it.sep ? "-" : "") + (it.checked ? "+" : "") + it.label).join("|");
   let liftClick = null, liftLate = 0;                               // a touch and hold's menu: what the dimmed page's click does, and the close that comes if that click never does
   let rs = null, rsT = null, wg = null, rsEat = 0, lpHoldAt = 0;    // a workout row swiped to its actions (below the swipe back): the row out or open, the finger or mouse on one, the trackpad's swipe under way, a tap's click to drop; when a touch and hold's menu came under a finger not yet let go (see lpOpen)
   const closeMoreMenu = () => { if (popClose && popAnchor === $("tMore") && ($("tMore").hidden || menuRows(pageMoreItems()) !== popRows)) popClose(); if (popClose && popAnchor === $("tAdd") && ($("tAdd").hidden || menuRows(tplAddItems()) !== popRows)) popClose(); };   // a redraw that takes the workout's "…" away (a sync brought a client's finish, skip or delete), or changes what it offers (the coach's: a finish or skip takes Reschedule out), takes its menu with it
@@ -2090,6 +2091,90 @@ import { reportRange, buildReport } from "./report.js";
       for (const el of behind) el.inert = true;
       bg.hidden = false; ul.scrollTop = 0; n.focus({ preventScroll: true });
     });
+  }
+  function editAlts(tid, rid, keys) {                                      // the coach's alternatives for one exercise in a sheet (his pick, 13 Nov: Edit alternatives opens a small sheet): Apple's red minus on each (a tap shows Delete, as the edit card of Contacts asks), Add alternative to type one and pick it from the names, two at most; each change saved as it is made
+    if (askOpen) askOpen(false);
+    const bg = $("altSheet"), sh = bg.firstElementChild, ul = $("altRows"), ok = $("altDone"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert);
+    const row = () => { const t = trainings.get(tid); return t ? (t.rows || []).find((x) => x.id === rid) || null : null; };
+    if (!row()) return;
+    const list = () => { const r = row(); return r ? (r.alts || []).filter((a) => a && a !== r.name) : []; };
+    let adding = false, delFor = null, armed = false, changed = false;
+    const settle = setTimeout(() => { armed = true; }, 350);                                // the second tap of a double tap must not close the sheet
+    const vv = window.visualViewport, lift = () => {                // the keyboard up: the rows above it, as askFirst's name
+      const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0; sh.style.paddingBottom = kb ? kb + 16 + "px" : ""; ul.style.maxHeight = ""; if (!kb) return;
+      ul.style.maxHeight = "0px"; const rest = Number(sh.scrollHeight) || 0, top = parseFloat(getComputedStyle($("ctxDim")).paddingTop) || 0;   // the sheet without its list: its words, Done and the keyboard's room
+      ul.style.maxHeight = Math.max(132, Math.floor(window.innerHeight - top - 24 - rest)) + "px";   // the list no taller than what is left under the sheet's top (the status bar's room and 24), so the field, the names and Done all show above the keys; the names scroll (seen on the simulator: twenty names ran under the keyboard and took Done with them)
+    };
+    const keep = () => { changed = true; if (!S.clientMode) { if (!trainerNamed.has(tid)) trainerNamed.set(tid, new Set()); trainerNamed.get(tid).add(rid); } scheduleSave("trainings", tid); };
+    const remove = (a) => {
+      const r = row(); if (!r) { done(); return; }                    // the workout gone under it (a sync): nothing left to edit
+      const kb = !!document.activeElement && document.activeElement !== sh && sh.contains(document.activeElement);   // Delete pressed from the keyboard (a tap gives a button no focus): the keyboard's place goes on to the next
+      r.alts = (r.alts || []).filter((v) => v && v !== a); delFor = null; keep(); paint();
+      if (kb) (ul.querySelector(".alt-minus") || ul.querySelector(".alt-addb") || ok).focus({ preventScroll: true });
+    };
+    const markDel = () => { for (const li of ul.querySelectorAll("li.alt-row")) { const on = li.dataset.name === delFor, m = li.querySelector(".alt-minus"), d = li.querySelector(".alt-del"); li.classList.toggle("del", on); if (m) m.setAttribute("aria-expanded", on ? "true" : "false"); if (d) d.hidden = !on; } };   // in place: the minus turns as Apple's does (a row drawn anew would jump), the focus stays where it is
+    const add = (typed) => {
+      const r = row(); let name = tidyName(properName(typed)); const known = ALL_KEYS.indexOf(squash(name)); if (known >= 0) name = ALL_NAMES[known]; adding = false;   // an old spelling or a known name however typed: the list's own spelling; a new one tidied, as the exercise page does
+      if (r && name && squash(name) !== squash(r.name) && !list().some((v) => squash(v) === squash(name))) { r.alts = [...list(), name].slice(0, 2); keep(); }
+      paint();
+    };
+    const hitsFor = (v) => {                                          // the names to pick from as it is typed: the ones that start so first, the shortest first, then the ones that hold it
+      const r = row(), s = squash(v); if (!r || s.length < 2) return [];
+      const taken = new Set([squash(r.name), ...list().map(squash)]), starts = [], contains = [];
+      ALL_NAMES.forEach((n, i) => { const k = ALL_KEYS[i]; if (taken.has(k)) return; if (k.startsWith(s)) starts.push(n); else if (k.includes(s)) contains.push(n); });
+      starts.sort((a, b) => a.length - b.length || a.localeCompare(b));
+      return [...starts, ...contains, ...aliasFinds(s, [...starts, ...contains]).filter((n) => !taken.has(squash(n)))].slice(0, 20);
+    };
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    function paint() {
+      const r = row(); if (!r) { done(); return; }
+      const fa = document.activeElement, fli = fa && fa !== sh && ul.contains(fa) ? fa.closest("li") : null, fcls = fli ? ["alt-minus", "alt-del", "alt-addb"].find((c) => fa.classList.contains(c)) : null, fname = fli ? fli.dataset.name : null;   // a keyboard's place, found again in the rows drawn anew
+      $("altLead").textContent = "Your client can swap " + (String(r.name || "").trim() || "this exercise") + " for one of these.";
+      const lis = list().map((a) => {
+        const li = mk("li", "alt-row"), minus = mk("button", "alt-minus"); li.dataset.name = a; li.classList.toggle("del", delFor === a); minus.type = "button"; minus.innerHTML = ALT_MINUS;
+        minus.setAttribute("aria-label", "Remove " + a); minus.setAttribute("aria-expanded", delFor === a ? "true" : "false");
+        minus.addEventListener("click", () => { if (!row()) { done(); return; } const was = adding, kb = document.activeElement === minus; delFor = delFor === a ? null : a; adding = false; if (was) paint(); else markDel(); if (kb && delFor === a) { const li = [...ul.querySelectorAll("li.alt-row")].find((x) => x.dataset.name === a), d = li && li.querySelector(".alt-del"); if (d) d.focus({ preventScroll: true }); } });   // (the exercise gone under it: the sheet goes) · from the keyboard, on to the Delete it showed (a tap gives a button no focus)
+        const del = mk("button", "alt-del", "Delete"); del.type = "button"; del.hidden = delFor !== a; del.addEventListener("click", () => remove(a));
+        li.append(minus, mk("span", "alt-name", a), del); return li;
+      });
+      let field = null;
+      if (list().length < 2) {                                         // two at most, as before: the row to add one goes when there are two
+        const li = mk("li", "alt-add" + (adding ? " on" : ""));
+        if (!adding) { const b = mk("button", "alt-addb"); b.type = "button"; b.innerHTML = ALT_PLUS; b.append("Add alternative"); b.addEventListener("click", () => { adding = true; delFor = null; paint(); }); li.appendChild(b); }
+        else {
+          field = mk("input", "alt-field"); field.type = "text"; field.maxLength = 120; field.placeholder = "Exercise"; field.autocomplete = "off"; field.setAttribute("autocapitalize", "sentences"); field.setAttribute("enterkeyhint", "done"); field.setAttribute("aria-label", "Alternative exercise");
+          li.insertAdjacentHTML("afterbegin", ALT_PLUS); li.appendChild(field);
+          const f = field, showHits = () => {
+            for (const h of [...ul.querySelectorAll("li.alt-hit")]) h.remove();
+            let at = li; for (const n of hitsFor(f.value)) { const h = mk("li", "alt-hit"), b = mk("button", null, n); b.type = "button"; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { const kb = document.activeElement === b; add(n); if (kb) (ul.querySelector(".alt-addb") || [...ul.querySelectorAll("li.alt-row")].map((x) => x.querySelector(".alt-minus")).pop() || ok).focus({ preventScroll: true }); }); h.appendChild(b); at.after(h); at = h; }   // a name picked from the keyboard: its place on the row to add another, or on the one it added
+          };
+          f.addEventListener("input", showHits);
+          f.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); if (f.value.trim()) add(f.value); else { adding = false; paint(); } if (deskOn || keys) (ul.querySelector(".alt-addb") || [...ul.querySelectorAll("li.alt-row")].map((x) => x.querySelector(".alt-minus")).pop() || ok).focus({ preventScroll: true }); } else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); adding = false; paint(); const b = ul.querySelector(".alt-addb"); if (b) b.focus({ preventScroll: true }); } });   // (Escape is a keyboard's: its place back on the row it came from)
+          f.addEventListener("blur", () => setTimeout(() => { if (adding && !bg.hidden && document.activeElement !== f && !f.value.trim()) { adding = false; paint(); } }, 200));   // left empty: the row to add one again
+        }
+        lis.push(li);
+      }
+      ul.replaceChildren(...lis);
+      if (field) field.focus({ preventScroll: true });                 // in the tap that asked for it, so the phone gives the keyboard
+      else if (fcls) { const li = fname ? [...ul.querySelectorAll("li.alt-row")].find((x) => x.dataset.name === fname) : ul.querySelector("li.alt-add"), el = li && li.querySelector("." + fcls); if (el && !el.hidden) el.focus({ preventScroll: true }); }
+    }
+    const done = () => {
+      clearTimeout(settle); askOpen = null; S.asking = !!pv; bg.hidden = true; sh.style.paddingBottom = ""; ul.style.maxHeight = ""; ul.replaceChildren();
+      for (const el of behind) el.inert = false;
+      ok.removeEventListener("click", onOk); bg.removeEventListener("click", onBg); sh.removeEventListener("click", onSheet); document.removeEventListener("keydown", onKey);
+      if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
+      if (changed) { const now = $("rows").querySelector('.row[data-id="' + CSS.escape(rid) + '"]'), p = now && now.querySelector(".alt-pop"), w = now && now.querySelector(".top .exwrap"); if (p && w) { const has = list().length > 0; p.hidden = !has; w.classList.toggle("has-pop", has); regrowNames(); const T = trainings.get(tid); if (T && S.renderedTraining === tid) paintedSig = paintSigOf(T); } else { S.renderedTraining = null; render(); } }   // its chevrons there or gone and its name box measured again (their room changes its lines), the page not drawn again (an open video plays on), now or at the next sync (the picture the cards stand for is this one)
+      if (keys) { const now = $("rows").querySelector('.row[data-id="' + CSS.escape(rid) + '"]'), b = now && (now.querySelector(".alt-pop:not([hidden])") || now.querySelector(".more-btn")); if (b) b.focus({ preventScroll: true }); }   // a keyboard's place: back on the exercise it left
+    };
+    const commit = () => { const f = ul.querySelector(".alt-field"); if (adding && f && String(f.value || "").trim()) add(f.value); };   // a name typed and not yet entered is kept, as Apple's Done keeps what was typed
+    const onOk = () => { commit(); done(); }, onBg = (e) => { if (armed && e.target === bg) { commit(); done(); } };
+    const onSheet = (e) => { if (!bg.hidden && delFor && !e.target.closest(".alt-del, .alt-minus")) { delFor = null; markDel(); } };   // a tap anywhere else takes the Delete back, as Apple's edit mode does
+    const onKey = (e) => { if (e.key !== "Escape") return; if (delFor) { const d = document.activeElement, li = d && d.classList && d.classList.contains("alt-del") ? d.closest("li") : null; delFor = null; markDel(); if (li) { const m = li.querySelector(".alt-minus"); if (m) m.focus({ preventScroll: true }); } } else done(); };   // Escape on a Delete: back on its minus
+    askOpen = done; S.asking = true;
+    ok.addEventListener("click", onOk); bg.addEventListener("click", onBg); sh.addEventListener("click", onSheet); document.addEventListener("keydown", onKey);
+    if (vv) { vv.addEventListener("resize", lift); vv.addEventListener("scroll", lift); }
+    for (const el of behind) el.inert = true;                                              // the page behind is out of reach while it is up
+    paint(); bg.hidden = false; if (keys) (ul.querySelector("button") || ok).focus({ preventScroll: true }); else sh.focus({ preventScroll: true });   // from the keyboard or VoiceOver: on its first button; from a tap, on the sheet itself (a button focused after a tap wore the keyboard's ring)
   }
   function pickOne({ title, items }) {                                                        // a list to choose from: label, a quiet sub, a chevron
     return sheetList({ title, rows: items.map((it) => {
@@ -3469,13 +3554,14 @@ import { reportRange, buildReport } from "./report.js";
     const rowsEl = $("rows");
     const active = document.activeElement;
     if (S.renderedTraining === t.id && (S.asking || (rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.tagName === "IFRAME")))) return; // never rebuild under a typing finger, a playing video, nor under a confirm sheet
-    const sigOf = () => JSON.stringify([t.rows, t.completedAt, t.skippedAt, t.date, t.inPerson, t.missed, (clients.get(t.clientId) || {}).unit, asClient, [...openBlocks], [...fullBlocks], [...peekBlocks], [...setSel], [...openExNotes], [...openNotes]]);
+    const sigOf = () => paintSigOf(t);
     if (S.renderedTraining === t.id && sigOf() === paintedSig) return;   // a sync that changed nothing here: the cards stay as they are, open video, menus and half-typed notes included
     S.renderedTraining = t.id;
     const sc = document.scrollingElement || document.documentElement, keepScroll = sc.scrollTop;   // the cards are rebuilt in place (every sync does it): the page must not move while it is empty
     if (!S.clientMode && normalizeLabels(t)) tidySave(t);
     t.rows.sort((a, b) => cmpLabel(a.label, b.label));
     if (closeOpenAlt) closeOpenAlt();
+    if (popClose && popAnchor && rowsEl.contains(popAnchor)) popClose();   // a menu hung from the cards goes with them: its rows were built from the copy the redraw replaces (the v291 recheck)
     rowsEl.replaceChildren();
     const groups = groupsOf(t.rows);
     let numbered = 0;
@@ -3684,15 +3770,21 @@ import { reportRange, buildReport } from "./report.js";
         fold.hidden = true; chev.hidden = !done; chev.classList.toggle("up", open);
         chev.setAttribute("aria-label", open ? "Hide sets" : "Show sets");
       };
+      const popLive = () => {                                           // the client's name with alternatives is a pop-up button only where its chevrons show (the card in play, or opened for a look); a card still to come, folded or finished: no menu to promise, no stop for the keyboard (the v291 review). The card's own names: it is not in its block yet on its first paint
+        const off = block.classList.contains("ahead") || (block.classList.contains("done") && (!block.classList.contains("open") || block.classList.contains("summary")));
+        const dead = block.classList.contains("done") && block.classList.contains("open") && block.classList.contains("summary");   // an opened finished card: its name does nothing (folded or still to come, it opens its card)
+        for (const v of card.querySelectorAll(".name-pop")) { if (off) { v.removeAttribute("aria-haspopup"); v.tabIndex = -1; } else { v.setAttribute("aria-haspopup", "menu"); v.removeAttribute("tabindex"); } if (dead) v.setAttribute("aria-disabled", "true"); else v.removeAttribute("aria-disabled"); }
+      };
       const paintSummary = () => {                                      // a finished card opened: the sets in rows, unless opened all the way
         const summary = block.classList.contains("done") && block.classList.contains("open") && (locked || !fullBlocks.has(selKey)); block.classList.toggle("summary", summary); if (openFull) openFull.hidden = !summary || locked; if (placeFootRows) placeFootRows(summary);   // a finished workout (the client's): no "Resume this exercise" (its note disc stays), and a card resumed before the finish opens as its sets
         const regrow = () => { for (const n of block.querySelectorAll("textarea.name")) { n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; } };   // the name field re-wraps when the card changes shape: show the whole name
         if (block.isConnected) regrow(); else setTimeout(regrow, 0);    // in the page already: at once, so the page does not change height a moment after it was drawn (the glide would chase it)
+        popLive();
       };
       const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey)) block.classList.add("open"); if (!all) { openBlocks.delete(selKey); fullBlocks.delete(selKey); } btn.textContent = all ? "\u2713 Done" : "Done"; paintSum(all); paintFold(); paintSummary(); };
       const toggleOpen = () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey); else { openBlocks.delete(selKey); fullBlocks.delete(selKey); } paintFold(); paintSummary(); };
       fold.addEventListener("click", toggleOpen); chev.addEventListener("click", toggleOpen);
-      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.composedPath().some((n) => n.tagName === "BUTTON")) { block.classList.add("open"); openBlocks.add(selKey); paintFold(); paintSummary(); } });
+      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.composedPath().some((n) => n.tagName === "BUTTON" && !(n.classList && n.classList.contains("name-pop")))) { block.classList.add("open"); openBlocks.add(selKey); paintFold(); paintSummary(); } });
       btn.addEventListener("click", () => {
         const next = !g.rows.every((r) => r.done);
         const track = S.clientMode ? pendingWeightRows : trainerTouched;   // the client's Done goes with the row's log and its number, so a late older request cannot undo it
@@ -3716,6 +3808,7 @@ import { reportRange, buildReport } from "./report.js";
         }
         if (peeking) { block.classList.add("peek"); chev.addEventListener("click", unpeek); for (const top of card.querySelectorAll(".row .top")) top.addEventListener("click", (e) => { if (e.target.closest(".ex-icons")) return; unpeek(); }); }
         else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey); S.renderedTraining = null; render(); }); }
+        popLive();
       } else peekBlocks.delete(selKey);
       block.appendChild(card); rowsEl.appendChild(block);
     });
@@ -3836,13 +3929,16 @@ import { reportRange, buildReport } from "./report.js";
   function showMenu(anchor, items, opts) {                           // the same frosted bubble with rows to tap: [{ label, icon?, onPick }]; opts.align "right" hangs it from the anchor's right edge (a disc at the edge of a card)
     const pop = $("whenPop"); pop.classList.remove("plain"); pop.classList.add("menu");
     let close = null;
-    pop.replaceChildren(...items.map((it) => {
+    const checks = items.some((it) => typeof it.checked === "boolean"); pop.classList.toggle("checks", checks);   // a choice of one (Apple's pop-up menu, Calendar's Repeat measured): every row keeps room for the tick, the one in effect wears it
+    pop.replaceChildren(...items.flatMap((it, i) => {
       const b = document.createElement("button"); b.type = "button"; b.className = "wopt" + (it.danger ? " danger" : "");
       if (it.icon) b.innerHTML = it.icon;
+      if (it.checked) { b.insertAdjacentHTML("afterbegin", MENU_CHECK); b.setAttribute("aria-current", "true"); }
       const s = document.createElement("span"); s.textContent = it.label; b.appendChild(s);
       b.addEventListener("mousedown", (e) => e.preventDefault());   // pressing a row moves no focus: a field typed in keeps it (and its redraw waits) until the row is picked
-      b.addEventListener("click", (e) => { e.stopPropagation(); if (close) close(); if (opts && opts.lift && opts.lift.drop) opts.lift.drop(); it.onPick(); });   // close() first: a keyboard's focus is back on the anchor, so a sheet the row opens returns there (a held item's copy goes at once: what the pick opens, or the page it glides, is not under a copy of the item as it was)
-      return b;
+      b.addEventListener("click", (e) => { e.stopPropagation(); if (close) close(); if (opts && opts.lift && opts.lift.drop) opts.lift.drop(); it.onPick(e); });   // close() first: a keyboard's focus is back on the anchor, so a sheet the row opens returns there (a held item's copy goes at once: what the pick opens, or the page it glides, is not under a copy of the item as it was)
+      if (!it.sep || !i) return [b];
+      const line = document.createElement("div"); line.className = "msep"; line.setAttribute("role", "separator"); return [line, b];   // a new group: Apple's line across the menu (Files, measured)
     }));
     close = openPop(anchor, opts); popRows = menuRows(items);         // (after openPop: it closes the menu before)
     if (opts && opts.focus) { const f = pop.querySelector(".wopt"); if (f) f.focus({ preventScroll: true }); }   // opened from the keyboard or VoiceOver: into the menu, as a system menu takes focus (a tap leaves focus where it is)
@@ -3862,11 +3958,15 @@ import { reportRange, buildReport } from "./report.js";
     slidePlus: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M4.2 3.6H11.8C13.24 3.6 14.4 4.76 14.4 6.2V9.8C14.4 11.24 13.24 12.4 11.8 12.4H4.2C2.76 12.4 1.6 11.24 1.6 9.8V6.2C1.6 4.76 2.76 3.6 4.2 3.6ZM7.4 5.7H8.6V7.4H10.3V8.6H8.6V10.3H7.4V8.6H5.7V7.4H7.4Z"/></svg>',   // New slide: our own, a filled rounded tab (a slide of the week slider) with a plus cut through it
     docPlus: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M5 1.6H11C12.22 1.6 13.2 2.58 13.2 3.8V12.2C13.2 13.42 12.22 14.4 11 14.4H5C3.78 14.4 2.8 13.42 2.8 12.2V3.8C2.8 2.58 3.78 1.6 5 1.6ZM7.4 5.3H8.6V7.4H10.7V8.6H8.6V10.7H7.4V8.6H5.3V7.4H7.4Z"/></svg>',   // New template (12 Nov): our own, a filled page standing up with a plus cut through it, beside the folder and the slide
   };
+  const MENU_CHECK = '<svg class="ck" viewBox="0 0 11 10.5" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M1.15 5.45 4.33 8.9 9.85 1.1"/></svg>';   // Apple's menu tick, traced off Calendar's Repeat menu at 3x
+  const POP_CHEV = '<svg class="pop-chev" viewBox="0 0 9 13" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.1 4.5 4.5 1.2 7.9 4.5M1.1 8.83 4.5 12.13 7.9 8.83"/></svg>';   // a pop-up button's up-and-down chevrons, traced off Calendar's "None" at 3x: 9 by 13 at 17 points, standing on the baseline
+  const ALT_MINUS = '<svg class="alt-ic" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="11" fill="currentColor"/><path d="M6.5 11h9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
+  const ALT_PLUS = '<svg class="alt-ic" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="11" fill="currentColor"/><path d="M11 6.5v9M6.5 11h9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
   MI.folder = SA_FOLDER;                                               // Move to in a menu: the swipe's folder
   MI.reorder = MI.swap.replace("<path ", '<path transform="rotate(90 21.88 10)" ');   // Reorder folders (his ask, 12 Nov): the swap arrows a quarter turn round, up beside down, as Apple's arrow.up.arrow.down
   function exerciseMenu(r, on) {                                    // the coach's "…" on an exercise: swap it, its instructions, and last and red, delete it, as Apple ends a menu with its destructive row (his ask, 9 Nov: Delete was hidden in Alternate exercise); the video is the play disc's own business
     return [
-      { label: "Alternate exercise", icon: MI.swap, onPick: on.swap },   // no ellipsis on any menu row (his pick, 10 Nov: "I don't see the … in any apples design so drop it")
+      { label: (r.alts || []).some((a) => a && a !== r.name) ? "Edit alternatives" : "Add alternatives", icon: MI.swap, onPick: on.swap },   // no ellipsis on any menu row (his pick, 10 Nov: "I don't see the … in any apples design so drop it")
       { label: (r.note || "").trim() ? "Edit instructions" : "Add instructions", icon: MI.pencil, onPick: on.note },
       { label: "Delete exercise", icon: MI.trash, danger: true, onPick: on.remove },
     ];
@@ -3885,9 +3985,9 @@ import { reportRange, buildReport } from "./report.js";
     const bg = $("whenBg"), pop = $("whenPop");
     const at = opts && opts.at;                                       // a right-click's menu: from the pointer itself, no pointer drawn (opts.at { x, y })
     const lift = opts && opts.lift;                                   // a touch and hold's: under the item it lifted (opts.lift { box, rect, grow, open })
-    bg.hidden = false; pop.classList.remove("above"); pop.classList.toggle("hung", !!(opts && (opts.align === "right" || at || lift))); pop.classList.toggle("lift", !!lift);
+    bg.hidden = false; pop.classList.remove("above"); pop.classList.toggle("hung", !!(opts && (opts.align === "right" || at || lift || opts.over))); pop.classList.toggle("lift", !!lift);
     pop.style.left = "0px"; pop.style.top = "0px";                   // measured at its own size: where the last bubble was, a menu would be squeezed by the screen's edge (taller, its rows wrapped) and placed by that
-    const r = anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, pw = pop.offsetWidth, ph = pop.offsetHeight;
+    const r = (opts && opts.rect) || anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, pw = pop.offsetWidth, ph = pop.offsetHeight;
     const box = anchor.closest(".group, .card, .plan-card, .overview"), bb = box ? box.getBoundingClientRect() : null;   // the bubble stays inside the card it belongs to, as Apple keeps a popover inside its content's margins, never out at the screen's edge
     let minL = 8, maxL = vw - pw - 8; if (bb && bb.right - bb.left >= pw) { minL = Math.max(minL, bb.left); maxL = Math.min(maxL, bb.right - pw); }
     const want = opts && opts.align === "right" ? r.right - pw : opts && opts.align === "center" ? r.left + r.width / 2 - pw / 2 : r.left;   // hung from the right edge, centred under the anchor, or from its left
@@ -3898,6 +3998,11 @@ import { reportRange, buildReport } from "./report.js";
       ({ left, top } = L); lift.vis = L.vis; lift.box.style.transform = "translateY(" + L.dy + "px) scale(" + L.s + ")";   // the item moves up with its menu where it must, and shrinks only if it is too tall to fit
       pop.style.setProperty("--lift-off", (b0 > L.vis.bottom ? b0 - L.vis.bottom : 0) + "px");   // the menu starts that far lower and rises with it on the item's own curve (liftRise): 16 under it all the way, never over it
     } else if (at) ({ left, top } = ctxPlace(at.x, at.y, pw, ph, vw, vh));
+    else if (opts && opts.over) {                                     // a pop-up button's menu: over the button from its top (Calendar's Repeat, measured: the menu's top at the button's); with no room under it, up from the button's foot (its Alert)
+      const dcs = getComputedStyle($("ctxDim")), vv = window.visualViewport, vt = vv ? Math.max(0, Number(vv.offsetTop) || 0) : 0, vb = vv && Number(vv.height) ? vt + Number(vv.height) : vh;   // what shows: the keyboard's top, when it is up (the coach's name being typed keeps it up)
+      const lo = vt + (parseFloat(dcs.paddingTop) || 0) + 8, hi = (vb < vh - 1 ? vb : vh - (parseFloat(dcs.paddingBottom) || 0)) - 8;
+      top = Math.max(lo, r.top); if (top + ph > hi) top = Math.max(lo, Math.min(r.bottom, hi) - ph);   // never under the status bar (a name scrolled up under it)
+    }
     else if (top + ph > vh - 8) { top = r.top - 8 - ph; pop.classList.add("above"); }
     pop.style.left = left + "px"; pop.style.top = top + "px"; pop.style.setProperty("--caret", Math.max(12, Math.min(r.left + r.width / 2 - left, pw - 12)) + "px");
     const close = () => {
@@ -4206,6 +4311,7 @@ import { reportRange, buildReport } from "./report.js";
   const fullBlocks = new Set();           // of those, the ones opened all the way ("Resume this exercise"): the working card instead of the summary
   const peekBlocks = new Set();   // client: exercises still to come that were tapped open to have a look
   let paintedSig = "";              // what the cards on screen were built from: a redraw with the same picture is skipped
+  const paintSigOf = (t) => JSON.stringify([t.rows, t.completedAt, t.skippedAt, t.date, t.inPerson, t.missed, (clients.get(t.clientId) || {}).unit, S.clientMode || previewClient, [...openBlocks], [...fullBlocks], [...peekBlocks], [...setSel], [...openExNotes], [...openNotes]]);
   const cardNoteDraft = new Map();  // selKey -> a card note being written: it survives a rebuild of the cards (a sync, a set logged elsewhere)
   let completeAt = 0;               // when Complete set last fired: the second tap of a double tap must not log a second set
   const PREVIEW_KEY = "fiala.preview";
@@ -4219,7 +4325,7 @@ import { reportRange, buildReport } from "./report.js";
     el.innerHTML = `
       <div class="top">
         <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
-        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg class="i-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg><svg class="i-up" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="alt-btn" type="button" hidden aria-label="Swap exercise" title="Swap exercise"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h10M10 3l2.5 2.5L10 8"/><path d="M13.5 10.5h-10M6 8l-2.5 2.5L6 13"/></svg></button><button class="more-btn trainer-only" type="button" aria-label="More" title="More"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" fill="currentColor"><circle cx="3.8" cy="10" r="1.75"/><circle cx="10" cy="10" r="1.75"/><circle cx="16.2" cy="10" r="1.75"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu" hidden></div><div class="alt-menu note-pop trainer-only" hidden></div></div>
+        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><button class="alt-pop trainer-only" type="button" hidden aria-label="Alternatives" aria-haspopup="menu">${POP_CHEV}</button><div class="ex-icons"><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg class="i-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg><svg class="i-up" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></button><button class="note-btn trainer-only" type="button" aria-label="Note" title="Note"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"/></svg></button><button class="more-btn trainer-only" type="button" aria-label="More" title="More"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" fill="currentColor"><circle cx="3.8" cy="10" r="1.75"/><circle cx="10" cy="10" r="1.75"/><circle cx="16.2" cy="10" r="1.75"/></svg></button></div><ul class="sugg" hidden></ul><div class="alt-menu note-pop trainer-only" hidden></div></div>
       </div>
       <div class="sum"></div>
       <div class="newname trainer-only" hidden><span>New exercise</span><button class="btn tint addname" type="button">Add to database</button></div>
@@ -4244,87 +4350,31 @@ import { reportRange, buildReport } from "./report.js";
     const growName = () => { const n = q(".name"); n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; };
     const asClient = S.clientMode || previewClient;        // what to show; what to save still follows clientMode
     const locked = asClient && !!t.completedAt && !isTemplateClient(t.clientId);   // a finished workout, as the client sees it (renderTraining's lock): no swap disc, its room given back to the name
-    const layoutIcons = () => { const w = asClient ? (q(".vid-btn").hidden ? 0 : 38) + (q(".alt-btn").hidden ? 0 : 46) : 0; /* the coach's name has the whole field: the discs are a row under it, and the stylesheet pins its padding */ for (const el of q(".exwrap").querySelectorAll(".name")) { const px = (w ? 4 + w + 8 : 16) + "px"; el.style.paddingRight = px; el.style.setProperty("--iconpad", px); } growName(); };   // the name wraps before the icons: their real footprint (the client's swap disc is 36px with a 10px gap, the others 38px, all 4px in from the edge) plus a breath
+    const layoutIcons = () => { const w = asClient ? (q(".vid-btn").hidden ? 0 : 38) : 0; /* the coach's name has the whole field: the discs are a row under it, and the stylesheet pins its padding */ for (const el of q(".exwrap").querySelectorAll(".name")) { const px = (w ? 4 + w + 8 : 16) + "px"; el.style.paddingRight = px; el.style.setProperty("--iconpad", px); } growName(); };   // the name wraps before the icons: their real footprint (the play disc, 38px, 4px in from the edge) plus a breath
     const loose = (x) => String(x || "").toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ").trim();
     const videoFor = (name) => { const s = String(name || "").trim(); if (!s) return null; const l = loose(ALIASES[s] || s); if (customVideos.has(loose(s))) return customVideos.get(loose(s)); if (customVideos.has(l)) return customVideos.get(l); return VIDEOS[s] || VIDEO_LOOSE.get(l) || null; };
     const markNamed = () => { if (S.clientMode) return; if (!trainerNamed.has(t.id)) trainerNamed.set(t.id, new Set()); trainerNamed.get(t.id).add(r.id); };
-    const exwrap = q(".top .exwrap"), altBtn = q(".alt-btn"), altMenu = q(".alt-menu");
+    const exwrap = q(".top .exwrap"), altPop = q(".alt-pop");
     const letter = (String(r.label || "").match(/^(?:\d+|w)([a-z])$/i) || [])[1] || "";   // superset rows read "A  Bench press" (warm-up Wa / Wb too)
     exwrap.dataset.letter = letter.toUpperCase(); el.style.setProperty("--letw", letter ? "42px" : "0px");
-    let altMode = "list";
     const altList = () => (r.alts || []).filter(Boolean);
-    const paintAltBtn = () => { const n = altList().length; const show = (!asClient || n > 0) && !locked; altBtn.hidden = !show; exwrap.classList.toggle("has-alt", show); altBtn.classList.toggle("some", n > 0); layoutIcons(); };   // the client sees the disc whenever the coach gave alternatives, logged sets or not (a swap keeps the sets)
-    let downAt = null;                                                                                 // a tap outside closes the menu; a scroll that starts outside (a finger dragging the page) does not
-    const outsideDown = (e) => { downAt = exwrap.contains(e.target) ? null : { x: e.clientX, y: e.clientY }; };
-    const outsideUp = (e) => { if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 10) closeAlt(); downAt = null; };
-    const unwatchKb = () => { if (altMenu._kb && window.visualViewport) { window.visualViewport.removeEventListener("resize", altMenu._kb); altMenu._kb = null; } };
-    const closeAlt = () => { altMenu.hidden = true; altMenu.replaceChildren(); altMenu.classList.remove("add"); altMode = "list"; unwatchKb(); document.removeEventListener("pointerdown", outsideDown, true); document.removeEventListener("pointerup", outsideUp, true); if (closeOpenAlt === closeAlt) closeOpenAlt = null; };
+    const others = () => altList().filter((a) => a !== r.name);     /* what can be swapped in: never the exercise itself */
+    const paintAltPop = () => { const show = !asClient && others().length > 0; altPop.hidden = !show; exwrap.classList.toggle("has-pop", show); };   // the coach's chevrons at the end of the name field whenever the exercise has alternatives (the client's come with the name itself, drawn below)
     function swapTo(a) {
-      const old = r.name; r.name = a; r.alts = altList().map((v) => (v === a ? old : v)).filter(Boolean);
+      const T = trainings.get(t.id), cur = (T && (T.rows || []).find((x) => x.id === r.id)) || r;   // the exercise as it is now: a sync's redraw may have replaced it under the open menu
+      const old = cur.name, was = (cur.alts || []).filter(Boolean); if (a === old || !was.includes(a)) { S.renderedTraining = null; render(); return; }   // a pick from a menu older than the exercise (the client swapped meanwhile): nothing to swap, as the server's own swap rule does; the cards drawn as they are now
+      cur.name = a; cur.alts = was.map((v) => (v === a ? old : v)).filter(Boolean);
       if (S.clientMode) { if (!pendingSwap.has(t.id)) pendingSwap.set(t.id, new Map()); pendingSwap.get(t.id).set(r.id, a); } else markNamed();
       save(); S.renderedTraining = null; render();
       const n = $("rows").querySelector('.row[data-id="' + r.id + '"]'); const b = n && n.closest(".block");
       if (b && b.classList.contains("done")) { b.classList.add("open"); const f = b.querySelector(".fold-btn"); if (f) f.textContent = "Hide weights"; } // a folded card stays open to show the swap
     }
-    const addAlt = (name) => { name = String(name || "").trim(); name = ALIASES[name] || name; if (!name) return; if (name === r.name || altList().includes(name)) { paintAltList(); return; } r.alts = [...altList(), name].slice(0, 2); markNamed(); save(); paintAltBtn(); paintAltList(); };
-    const dropAltNamed = () => { if (altList().includes(r.name)) { r.alts = altList().filter((v) => v !== r.name); paintAltBtn(); } };
-    const removeAlt = async (a) => { closeAlt(); if (!(await askFirst({ title: "Remove \u201c" + a + "\u201d as an alternative?", yes: "Remove" }))) return; r.alts = altList().filter((v) => v !== a); markNamed(); save(); paintAltBtn(); };
-    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-    const menuItem = (text, cls, onPick, onRemove) => {
-      const d = mk("div", "item"); const b = mk("button", "pick" + (cls ? " " + cls : ""), text); b.type = "button";
-      b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", onPick); d.appendChild(b);
-      if (onRemove) { const x = mk("button", "rm", "\u00d7"); x.type = "button"; x.setAttribute("aria-label", "Remove alternative"); x.addEventListener("mousedown", (ev) => ev.preventDefault()); x.addEventListener("click", onRemove); d.appendChild(x); }
-      return d;
-    };
-    function paintAltList() {
-      altMode = "list"; altMenu.replaceChildren(); altMenu.classList.remove("add"); unwatchKb();
-      const alts = altList().filter((a) => a !== r.name);
-      if (String(r.name || "").trim()) { const c = mk("div", "cur"); c.appendChild(mk("span", "ck", "\u2713")); c.appendChild(mk("span", null, r.name)); altMenu.appendChild(c); }
-      for (const a of alts) altMenu.appendChild(menuItem(a, "", () => { closeAlt(); swapTo(a); }, asClient ? null : () => removeAlt(a)));
-      if (!asClient && alts.length < 2) altMenu.appendChild(menuItem("+ Add alternative", "add", paintAltAdd));
-      if (!asClient) {                                                                                   // a clear way out, like a sheet: Done on the right (deleting the exercise is in its "…" menu)
-        const foot = mk("div", "alt-foot");
-        const ok = mk("button", "done", "Done"); ok.type = "button"; ok.addEventListener("mousedown", (ev) => ev.preventDefault()); ok.addEventListener("click", closeAlt);
-        foot.append(ok); altMenu.appendChild(foot);
-      }
-      altMenu.hidden = false;
-    }
-    function paintAltAdd() {
-      altMode = "add"; altMenu.replaceChildren(); altMenu.classList.add("add");                      // solid while a field is being typed in: the glass flickers under a caret on iPhone
-      const inp = mk("input", "alt-input"); inp.maxLength = 120; inp.placeholder = "Alternative exercise"; inp.autocomplete = "off"; inp.setAttribute("autocapitalize", "sentences"); inp.setAttribute("enterkeyhint", "done");
-      const hits = mk("div", "alt-hits"); altMenu.append(inp, hits);
-      const foot = mk("div", "alt-foot"); const back = mk("button", "cancel", "Cancel"); back.type = "button"; back.addEventListener("mousedown", (ev) => ev.preventDefault()); back.addEventListener("click", paintAltList); foot.appendChild(back); altMenu.appendChild(foot);   // back to the list without adding
-      const paintHits = () => {
-        const s = squash(inp.value); hits.replaceChildren(); if (s.length < 2) return;
-        const taken = new Set([squash(r.name), ...altList().map(squash)]); const starts = [], contains = [];
-        ALL_NAMES.forEach((n, i) => { const k = ALL_KEYS[i]; if (taken.has(k)) return; if (k.startsWith(s)) starts.push(n); else if (k.includes(s)) contains.push(n); });
-        starts.sort((a, b) => a.length - b.length || a.localeCompare(b));
-        for (const n of [...starts, ...contains, ...aliasFinds(s, [...starts, ...contains]).filter((n) => !taken.has(squash(n)))]) hits.appendChild(menuItem(n, "", () => addAlt(n)));
-      };
-      inp.addEventListener("input", paintHits);
-      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); if (inp.value.trim()) addAlt(inp.value); else paintAltList(); } else if (e.key === "Escape") paintAltList(); });
-      inp.addEventListener("blur", () => setTimeout(() => { if (altMode === "add" && !altMenu.hidden && !inp.value.trim()) paintAltList(); }, 200));
-      const vv = window.visualViewport;                                                              // the keyboard: the field is brought up under the bar and the hits get the room above the keys, so a pick is never hidden under them
-      const kb = () => {
-        if (!vv || altMode !== "add") return; const r = inp.getBoundingClientRect(), top = vv.offsetTop, want = top + 76;
-        if (vv.height < window.innerHeight - 120 && r.top > want + 8) window.scrollBy({ top: r.top - want, behavior: "smooth" });
-        const room = top + vv.height - Math.min(r.bottom, want + r.height) - 72; hits.style.maxHeight = Math.max(120, Math.min(room, Math.round(window.innerHeight * 0.32))) + "px";
-      };
-      if (vv) { altMenu._kb = kb; vv.addEventListener("resize", kb); }
-      inp.focus();
-    }
-    altBtn.addEventListener("mousedown", (ev) => ev.preventDefault());
-    altBtn.addEventListener("click", (e) => {
-      if (asClient) {                                                                                   // the client picks from the frosted bubble under the disc: consistent with the other pop-ups, and it always fits
-        const alts = altList().filter((a) => a !== r.name); if (!alts.length) return;
-        showMenu(altBtn, alts.map((a) => ({ label: a, onPick: () => swapTo(a) })), { focus: e.detail === 0 });   // the frosted bubble, like last/best: tap an alternative to swap it in (from the keyboard: focus into it)
-        return;
-      }
-      if (!altMenu.hidden) { closeAlt(); return; }
-      q(".sugg").hidden = true; q(".numpick").hidden = true;
-      paintAltList(); document.addEventListener("pointerdown", outsideDown, true); document.addEventListener("pointerup", outsideUp, true); closeOpenAlt = closeAlt;
-    });
-    paintAltBtn();
+    const dropAltNamed = () => { if (altList().includes(r.name)) { r.alts = altList().filter((v) => v !== r.name); paintAltPop(); } };
+    const altItems = () => [{ label: String(r.name || "").trim() || "Exercise", checked: true, onPick: () => {} }, ...others().map((a) => ({ label: a, checked: false, onPick: () => swapTo(a) })), ...(asClient ? [] : [{ label: "Edit alternatives", sep: true, onPick: (e) => editAlts(t.id, r.id, byKeys(e)) }])];   // Apple's pop-up menu (his pick, 13 Nov): a tick on the exercise in effect, the alternatives under it; the coach's ends, after a line, in Edit alternatives
+    const openAlts = (anchor, rect, e) => { q(".sugg").hidden = true; showMenu(anchor, altItems(), { over: true, align: asClient ? "left" : "right", rect, focus: e.detail === 0 }); };
+    altPop.addEventListener("mousedown", (ev) => ev.preventDefault());   // a name being typed keeps its focus under the menu
+    altPop.addEventListener("click", (e) => { e.stopPropagation(); const g = (altPop.querySelector(".pop-chev") || altPop).getBoundingClientRect(); openAlts(altPop, { left: g.left, right: g.right, top: g.top - 10, bottom: g.bottom + 10, width: g.width, height: g.height + 20 }, e); });   // from the chevrons, as Calendar's Repeat: the menu's edge at theirs, its top 10 above them (the button's own top, measured)
+    paintAltPop();
     const newName = q(".newname");
     const paintNewName = () => { const n = String(r.name || "").trim(); const near = !knownName(n) && n ? nearName(n) : null; newName.hidden = asClient || !n || knownName(n); newName.firstElementChild.textContent = near ? "Did you mean “" + near + "”? · Or" : "New exercise"; };
     q(".addname").addEventListener("click", async () => {
@@ -4363,7 +4413,6 @@ import { reportRange, buildReport } from "./report.js";
       q(".vid-form").hidden = true; paintVideo(); setStatus();
     });
     vidBtn.addEventListener("click", () => {
-      closeAlt();
       if (!videoId) { if (!asClient) openVidForm(); return; }
       const pl = q(".player");
       if (!pl.hidden) { pl.replaceChildren(); pl.hidden = true; vidRow.hidden = true; vidBtn.classList.remove("open"); vidBtn.title = "Watch video"; vidBtn.setAttribute("aria-pressed", "false"); return; }
@@ -4378,11 +4427,19 @@ import { reportRange, buildReport } from "./report.js";
     if (!S.clientMode && Array.isArray(r.alts) && r.alts.some((a) => ALIASES[a])) { r.alts = r.alts.map((a) => ALIASES[a] || a); tidySave(t); }
     q(".label").value = r.label || ""; q(".name").value = r.name || "";
     if (S.clientMode || previewClient) {                                                             // the client reads the name as one run of text, its subtitle in the grey of the superset letter; the coach keeps the one editable line
-      const parts = splitName(r.name, subtitleFor(r.name));
-      if (parts.sub) {
-        const v = document.createElement("div"); v.className = "name name-view"; v.setAttribute("aria-hidden", "true");
-        v.append(parts.title); const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = parts.sub; v.appendChild(sub);   // the subtitle on its own line under the name
-        q(".name").classList.add("has-sub"); q(".name").insertAdjacentElement("afterend", v); v.style.paddingRight = q(".name").style.paddingRight;   // the box keeps the whole name for the reader; the eye gets the view, with the same room for the discs
+      const parts = splitName(r.name, subtitleFor(r.name)), pop = !locked && others().length > 0;   // with alternatives the name is Apple's pop-up button (his pick, 13 Nov): its chevrons after the last word, as Calendar's "Never" with its own
+      if (parts.sub || pop) {
+        const v = document.createElement(pop ? "button" : "div"); v.className = "name name-view" + (pop ? " name-pop" : "");
+        if (pop) { v.type = "button"; v.setAttribute("aria-haspopup", "menu"); } else v.setAttribute("aria-hidden", "true");
+        const title = String(parts.title), last = title.lastIndexOf(" ") + 1, cut = title.length - last > 12 ? title.length - 4 : last;   // the last word and the chevrons together; a word too long for that, its last four letters
+        if (pop) { if (cut) v.append(title.slice(0, cut)); const nw = document.createElement("span"); nw.className = "nw"; nw.textContent = title.slice(cut); nw.insertAdjacentHTML("beforeend", POP_CHEV); v.appendChild(nw); } else v.append(title);   // the last word and the chevrons wrap together
+        if (parts.sub) { const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = parts.sub; v.appendChild(sub); }   // the subtitle on its own line under the name
+        q(".name").classList.add("has-sub"); q(".name").after(v); v.style.paddingRight = q(".name").style.paddingRight;   // the view stands in for the box, with the same room for the discs
+        if (pop) v.addEventListener("click", (e) => {                   // where the card shows no chevrons (a card still to come, folded, or finished) the tap is the card's
+          const ch = v.querySelector(".pop-chev"); if (!ch || getComputedStyle(ch).display === "none") return;
+          e.stopPropagation(); const b0 = v.getBoundingClientRect(), pl = parseFloat(getComputedStyle(v).paddingLeft) || 0;
+          openAlts(v, { left: b0.left + pl, right: b0.right, top: b0.top, bottom: b0.bottom, width: b0.width - pl, height: b0.height }, e);   // the menu over the name, from where its words start
+        });
       }
     }
     requestAnimationFrame(growName);
@@ -4423,9 +4480,9 @@ import { reportRange, buildReport } from "./report.js";
       let labelAtFocus = "";
       q(".label").addEventListener("focus", (e) => { labelAtFocus = e.target.value; if (el.closest && el.closest(".block.done:not(.open)")) return; showNumbers(); });   // a folded finished card takes no clicks: no picker there
       q(".label").addEventListener("blur", (e) => { numpick.hidden = true; if (q(".label").value !== labelAtFocus) { const to = e.relatedTarget, field = to && el.contains(to) && /^(INPUT|TEXTAREA)$/.test(to.tagName) ? [...to.classList].find((c) => /^(name|reps|rest|tempo|w|rp)$/.test(c)) : null; S.renderedTraining = null; render(); followRow(r.id, field || null); } });   // the card moves to its place; the field he tapped next is focused again in the moved card
-      q(".name").addEventListener("input", (e) => { closeAlt(); r.name = e.target.value.replace(/\n/g, " "); markNamed(); dropAltNamed(); growName(); save(); suggest(e.target.value); renderWeights(); paintVideo(); paintNewName(); });
+      q(".name").addEventListener("input", (e) => { r.name = e.target.value.replace(/\n/g, " "); markNamed(); dropAltNamed(); growName(); save(); suggest(e.target.value); renderWeights(); paintVideo(); paintNewName(); });
       q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
-      q(".name").addEventListener("focus", (e) => { closeAlt(); suggest(e.target.value); });
+      q(".name").addEventListener("focus", (e) => { suggest(e.target.value); });
     }
 
     const tempoTiles = q(".tempo-tiles"), tempoInp = q(".tempo");
@@ -4473,6 +4530,7 @@ import { reportRange, buildReport } from "./report.js";
     };
     cnoteBtn.addEventListener("click", () => { if (openNotes.has(r.id)) openNotes.delete(r.id); else openNotes.add(r.id); paintClientNote(); });
     paintClientNote();
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
     const noteBtn = q(".note-btn"), notePop = q(".note-pop");       // instructions for the client: the same panel as Add alternative (solid while typing, a field, Clear and Done), under the name
     const showNote = () => { const v = (r.note || "").trim(); noteBtn.classList.toggle("has", !!v); noteBtn.title = v ? "Instructions" : "Add instructions"; noteBtn.setAttribute("aria-label", noteBtn.title); };
     let noteDownAt = null;
@@ -4486,7 +4544,7 @@ import { reportRange, buildReport } from "./report.js";
       showNote();
     }
     function openNote() {
-      closeAlt(); if (closeOpenAlt) closeOpenAlt();
+      if (closeOpenAlt) closeOpenAlt();
       notePop.replaceChildren(); notePop.classList.add("add");
       const ta = mk("textarea", "note-field"); ta.rows = 2; ta.maxLength = 500; ta.placeholder = "Instructions for the client"; ta.value = r.note || ""; ta.setAttribute("autocapitalize", "sentences"); ta.setAttribute("enterkeyhint", "done"); ta.setAttribute("aria-label", "Instructions for the client");
       const grow = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, Math.round(window.innerHeight * 0.3)) + "px"; };
@@ -4504,21 +4562,21 @@ import { reportRange, buildReport } from "./report.js";
     noteBtn.addEventListener("click", openNote);
     showNote();
     const deleteRow = async () => {                                  // asked first, as Apple asks before deleting; a template's change waits for Save template
-      closeAlt(); const nm = String(r.name || "").trim() || "this exercise", tpl = isTemplateClient(t.clientId);
+      const nm = String(r.name || "").trim() || "this exercise", tpl = isTemplateClient(t.clientId);
       if (!(await askFirst({ title: tpl ? "Delete " + nm + " from this template?" : "Delete " + nm + "?", text: tpl ? "Nothing changes until you tap Save template." : "It comes off this workout, with anything logged on it.", yes: "Delete" }))) return;
       t.rows = t.rows.filter((x) => x.id !== r.id); renumber(t, r); save(); S.renderedTraining = null; render();
     };
     const moreBtn = q(".more-btn");                                  // the coach's "…" disc: the card's other actions, in a menu under it
-    const live = (sel, own) => () => {                                // a pick from the menu: a field still typed in is let go first (its redraw may draw this exercise again), then the button of the exercise as it is now
-      const a = document.activeElement; if (a && a !== document.body && /^(INPUT|TEXTAREA)$/.test(a.tagName) && a.blur) { a.blur(); document.body.classList.remove("typing"); }   // (and the typing look with it: a field its own redraw took off the page never tells the page it let go)
-      const now = $("rows").querySelector('.row[data-id="' + CSS.escape(r.id) + '"]'), b = (now && now.querySelector(sel)) || own; if (b) b.click();
+    const letGo = () => { const a = document.activeElement; if (a && a !== document.body && /^(INPUT|TEXTAREA)$/.test(a.tagName) && a.blur) { a.blur(); document.body.classList.remove("typing"); } };   // a pick from the menu: a field still typed in is let go first (its redraw may draw this exercise again), and the typing look with it (a field its own redraw took off the page never tells the page it let go)
+    const live = (sel, own) => () => {                                // then the button of the exercise as it is now
+      letGo(); const now = $("rows").querySelector('.row[data-id="' + CSS.escape(r.id) + '"]'), b = (now && now.querySelector(sel)) || own; if (b) b.click();
     };
-    const moreItems = () => exerciseMenu(r, { swap: live(".alt-btn", altBtn), note: live(".note-btn", noteBtn), remove: deleteRow });
+    const moreItems = () => exerciseMenu(r, { swap: (e) => { letGo(); editAlts(t.id, r.id, byKeys(e)); }, note: live(".note-btn", noteBtn), remove: deleteRow });
     if (moreBtn) moreBtn.addEventListener("click", (e) => {
-      e.stopPropagation(); closeAlt();
+      e.stopPropagation();
       showMenu(moreBtn, moreItems(), { align: "right", focus: e.detail === 0 });
     });
-    el._ctx = exerciseCtx(moreBtn, moreItems, closeAlt);             // a right-click on the exercise: the same menu, at the pointer (its open panel closes first)
+    el._ctx = exerciseCtx(moreBtn, moreItems);                       // a right-click on the exercise: the same menu, at the pointer
 
     function suggest(v) {
       const ul = q(".sugg"); const s = squash(v);
@@ -5533,7 +5591,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, weekOffNow: () => weekOff, setWeekOff: (v) => { weekOff = v; }, weekWheelNow: () => weekWheel, weekPageNow: () => weekPage, wkMonth, calFold, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, editAlts, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, weekOffNow: () => weekOff, setWeekOff: (v) => { weekOff = v; }, weekWheelNow: () => weekWheel, weekPageNow: () => weekPage, wkMonth, calFold, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
