@@ -51,13 +51,13 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
   - `import_odboj.py`, `import_bodytype.py` (with `pdfstr.swift`) and `merge_templates.py` rebuild `templates.json` from program PDFs in the parent folder. Two of the `tools/*.json` files are hand-made inputs: `bodytype-manual.json` (name mappings) and `bodytype-cues-en.json` (a translation). The others are the scripts' outputs.
   - `clean_names.py` and `match_videos.py` are one-offs over the parent folder's spreadsheets.
 - `supabase/*.sql`: the server's tables and rules, run by hand (see Database).
-- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 40 `*.test.js` files and 19 `*-probe.mjs` scripts (see Tests).
+- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 41 `*.test.js` files and 19 `*-probe.mjs` scripts (see Tests).
 
 ## Releasing
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (289 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (290 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -200,7 +200,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v289 it ends "537 passed, 0 failed" after about 60 s.
+- At v290 it ends "541 passed, 0 failed" after about 60 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
@@ -274,6 +274,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 - `main.js` sets transitions, transforms, heights and opacity inline on anything that moves (sheets, rows, the month, the preview). Those override a CSS-only change, so grep `main.js` for the element's id and class too.
 - `body.client` is the client's look (client mode, or the coach previewing as the client). `body:not(.client)` is the coach's.
 - Anything that deletes or discards asks first through `askFirst()`, a sheet whose red button does it. There are two exceptions, both inline Delete/Keep confirms: Delete client, and a note in the coach's notes list.
+- The floating bar buttons wear Apple's glass, measured pixel by pixel on iOS 27.2 (v290, the owner's pick A): the back, Messages, "…" and the Templates pages' + … at the top of a page (`--disc-fill`/`--disc-edge`: #f8f8f8 with a grey ring and a faint shadow in light; #1f1f1f with a bright top and bottom line on the black page, fitted to the owner's Mail screenshot), and the preview's ×, "…", ‹ › and Edit (`--glass-sheet-fill`/`--glass-sheet-edge`, remapped onto `--disc-*` by `.sheet.pv-sheet`: in dark #3a3a3c on the #1c1c1e sheet, Calendar's). The edges are stacks of box-shadows in whole iPhone pixels (WebKit snaps them): keep their order. The + … pair draws one glass on `#tAdd::after` (its `::before` is the wider tap area). Buttons inside the page stay plain, as Apple's are (Fitness, Reminders: measured flat); round ones inside a card use Apple's card grey `--card-disc` (system fill).
 - Menu rows never end in "…".
 - New icons are our own filled paths, traced from the reference the owner sends, never copied from an icon set. Stroke sketches read as cheaper. About half of the existing icons are still strokes, and the Settings gear and the Data cylinder are Feather's.
 

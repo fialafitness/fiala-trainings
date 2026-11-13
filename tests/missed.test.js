@@ -217,8 +217,8 @@ test("the page: the Missed card above Today with Skip all on its title; the \"�
   assert.ok(/\.miss-head h2 \{ margin: 0; font: inherit; letter-spacing: inherit; text-transform: none; color: inherit; \}/.test(html), "its title in the card's own type, never the page's small capitals");
   assert.ok(/\.miss-all \{[^}]*min-height: 30px; margin: -6px -8px -2px 0;[^}]*border-radius: 50px; background: var\(--glyph-fill\);/.test(html), "Skip all: a 30 capsule, inside the title bar (14 over a 22.1 line, 2 under it): the first row never covers its foot");
   assert.ok(html.includes(".miss-all::after { content: \"\"; position: absolute; inset: -9px -4px -2px; }"), "its target up to the card's top, never over the first row");
-  assert.ok(/\.list li\.w > button\.miss-more \{[^}]*width: 36px; height: 36px;[^}]*border-radius: 50%; corner-shape: round; background: var\(--glyph-fill\);/.test(html), "the \"…\": the coach's exercise disc, a true circle");
-  assert.ok(html.includes(".list li.swipe-row.swiped > button.miss-more { background: var(--glyph-fill); }"), "it keeps its disc on the swiped row's grey");
+  assert.ok(/\.list li\.w > button\.miss-more \{[^}]*width: 36px; height: 36px;[^}]*border-radius: 50%; corner-shape: round; background: var\(--card-disc\);/.test(html), "the \"…\": the coach's exercise disc, a true circle, in Apple's plain card grey (v290)");
+  assert.ok(html.includes(".list li.swipe-row.swiped > button.miss-more { background: var(--card-disc); }"), "it keeps its disc on the swiped row's grey");
   assert.ok(html.includes(".list li.w.miss > button:not(.miss-more) { padding-right: 60px; }"), "the words stop short of it");
   assert.ok(html.includes(".list li.swipe-row:last-child > :first-child {"), "the last row's own button keeps the card's corners, with the \"…\" after it");
   assert.ok(html.includes("body.client.paused #missHead, body.client.paused #missList,") && html.includes("#vClient.tpl #missHead, #vClient.tpl #missList,"), "paused, or the library: no card");
