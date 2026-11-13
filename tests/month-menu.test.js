@@ -118,10 +118,10 @@ test("a right-click elsewhere: the swipe's own buttons, a finished workout, a fi
 });
 
 test("a right-click on an exercise: the menu of its \"…\" at the pointer; in the field being typed in the browser's own; in its open panel nothing", () => {
-  const labels = ["Alternate exercise", "Add instructions", "Delete exercise"];   // no ellipsis on a menu row (his pick, 10 Nov)
+  const labels = ["Add alternatives", "Add instructions", "Delete exercise"];   // no ellipsis on a menu row (his pick, 10 Nov)
   assert.deepStrictEqual({ press: r.ex.name.pressKept, menu: r.ex.name.menuKept, open: r.ex.name.open, labels: r.ex.name.labels }, { press: true, menu: true, open: true, labels }, "on its name, not being typed in: the press focuses nothing, the menu opens");
   assert.deepStrictEqual([r.ex.name.ring, r.ex.name.ringOff], [true, true], "ringed while open");
-  assert.deepStrictEqual(r.ex.noted.labels, ["Alternate exercise", "Edit instructions", "Delete exercise"], "on its number (no picker: the press focuses nothing); it has instructions");
+  assert.deepStrictEqual(r.ex.noted.labels, ["Add alternatives", "Edit instructions", "Delete exercise"], "on its number (no picker: the press focuses nothing); it has instructions");
   assert.strictEqual(r.ex.noted.pressKept, true);
   assert.deepStrictEqual({ press: r.ex.typing.pressKept, menu: r.ex.typing.menuKept, open: r.ex.typing.open }, { press: false, menu: false, open: false }, "the name being typed in: Cut, Copy, Paste");
   assert.deepStrictEqual({ press: r.ex.otherField.pressKept, open: r.ex.otherField.open }, { press: true, open: true }, "typing in its reps, right-clicking its name: the menu");

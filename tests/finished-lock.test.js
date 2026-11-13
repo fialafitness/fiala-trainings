@@ -30,7 +30,7 @@ function capture(run) {                                                // what t
   const chip = (sel) => (sel === ".chip" ? make("div") : null);           // a chip's lookups answer (the cards' weight and reps ask for them), as preview.test.js's
   document.createElement = (tag) => { const e = make(tag); e.kids = []; e.on = {}; e.qs = {};
     e.append = (...k) => { e.kids.push(...k); }; e.appendChild = (c) => { e.kids.push(c); return c; }; e.prepend = (...k) => { e.kids.unshift(...k); }; e.after = () => {};
-    e.closest = chip; e.querySelector = (sel) => e.qs[sel] || (e.qs[sel] = (() => { const c = make("input"); c.closest = chip; return c; })());   // the same part for the same look-up (a row's swap disc, asked for again as it is painted)
+    e.closest = chip; e.querySelector = (sel) => e.qs[sel] || (e.qs[sel] = (() => { const c = make("input"); c.closest = chip; return c; })());   // the same part for the same look-up (a row's chevrons, asked for again as they are painted)
     e.querySelectorAll = (sel) => (sel === ".specs .chip" ? [make("div"), make("div")] : []);
     e.addEventListener = (type, f) => { (e.on[type] ||= []).push(f); }; got.all.push(e); return e; };
   rows.appendChild = (c) => { got.blocks.push(c); return c; }; rows.replaceChildren = (...k) => { got.blocks = [...k]; };
@@ -46,7 +46,7 @@ function look(clientMode, finished, preview = false) {                 // the pa
   page(clientMode, finished, preview);
   const drawn = capture(() => fns.render()), [b1, , b3, b4] = drawn.blocks;
   const resume = find(b1, "resume-full")[0], chev1 = find(b1, "card-chev")[0];
-  const calf = drawn.all.find((x) => x.className === "row" && x.dataset && x.dataset.id === "c"), swap = calf ? !calf.qs[".alt-btn"].hidden : null;   // Calf raise has an alternative: its swap disc
+  const calf = drawn.all.find((x) => x.className === "row" && x.dataset && x.dataset.id === "c"), swap = !calf ? null : clientMode || preview ? drawn.all.some((x) => has(x, "name-pop")) : !calf.qs[".alt-pop"].hidden;   // Calf raise has an alternative: the client's name is its pop-up button, the coach's field has the chevrons (v291)
   tap(chev1);
   const sr = drawn.all.find((x) => has(x, "sum-row")), pen = sr && sr.kids.find((k) => has(k, "add-note"));
   const noteDisc = sr ? !sr.hidden && !!pen && !pen.hidden : null;     // the opened card's line: its note disc, itself shown (and Resume where there is one)
@@ -58,11 +58,11 @@ function look(clientMode, finished, preview = false) {                 // the pa
   return out;
 }
 
-test("a finished workout, the client's view: its done card opens to its sets with no \"Resume this exercise\", its note disc kept; its cards not done stay folded, a look with nothing to do (no \"Finish … first\", no Start this exercise, no swap disc)", () => {
+test("a finished workout, the client's view: its done card opens to its sets with no \"Resume this exercise\", its note disc kept; its cards not done stay folded, a look with nothing to do (no \"Finish … first\", no Start this exercise, no swap)", () => {
   assert.deepStrictEqual(look(true, true), { locked: true, resumeHidden: true, summary: true, noteDisc: true, swap: false, ahead: [true, true], peek: true, wait: [], start: 0 }, "its note disc stays (his \"Yes, exactly\": notes stay)");
 });
 
-test("the same workout still to do, the client's view: Resume there, the swap disc there, the first card not done is the one open, a card after it says to finish that one first and offers Start this exercise (what the lock takes away on a finished one)", () => {
+test("the same workout still to do, the client's view: Resume there, the swap there (its name a pop-up), the first card not done is the one open, a card after it says to finish that one first and offers Start this exercise (what the lock takes away on a finished one)", () => {
   assert.deepStrictEqual(look(true, false), { locked: false, resumeHidden: false, summary: true, noteDisc: true, swap: true, ahead: [false, true], peek: true, wait: ["Finish Exercise 3 first"], start: 1 });
 });
 
@@ -81,7 +81,7 @@ test("Undo of the finish lifts the lock at once: the cards are drawn again, the 
   capture(() => fns.render()); assert.strictEqual($("rows").classes.has("locked"), true, "finished: locked");
   const again = capture(() => fns.setFinished(false)), [, , b3, b4] = again.blocks;
   const calf = again.all.find((x) => x.className === "row" && x.dataset && x.dataset.id === "c");
-  assert.deepStrictEqual({ undone: !t.completedAt, redrawn: again.blocks.length, locked: $("rows").classes.has("locked"), ahead: [b3, b4].map((b) => !!b && has(b, "ahead")), swap: !!calf && !calf.qs[".alt-btn"].hidden },
+  assert.deepStrictEqual({ undone: !t.completedAt, redrawn: again.blocks.length, locked: $("rows").classes.has("locked"), ahead: [b3, b4].map((b) => !!b && has(b, "ahead")), swap: !!calf && again.all.some((x) => has(x, "name-pop")) },
     { undone: true, redrawn: 4, locked: false, ahead: [false, true], swap: true });
   app.set({ renderedTraining: null });
 });
@@ -93,5 +93,5 @@ test("on a finished workout an exercise not done, opened for a look, takes nothi
   assert.ok(html.includes(".block.peek .card-foot .complete, #rows:not(.locked) .block.peek .card-foot .add-note, #rows:not(.locked) .block.peek .card-foot .exnote, #rows:not(.locked) .block.peek .card-foot .client-note { display: none !important; }"), "a card still to come keeps hiding its note; a finished workout's exercise not done shows it (the review's catch: her note there was out of reach)");
   assert.ok(html.includes("#rows:not(.locked) .block.peek .card-foot .foot-row, #rows.locked .block.peek .card-foot .foot-row.center { display: none; }"), "on a finished workout only the note's row stays on a looked-at card");
   assert.ok(html.includes("#rows.locked .card-foot .complete, #rows.locked .card-foot .finish-early, #rows.locked .card-foot .resume { display: none !important; }"), "no card of a finished workout offers a way to change what was logged");
-  assert.ok(!html.includes("#rows.locked .alt-btn"), "the swap disc goes in the code (its room given back to the name: the review's catch), not by a style alone");
+  assert.ok(!html.includes("#rows.locked .alt-btn") && !html.includes("#rows.locked .name-pop"), "the swap goes in the code (no pop-up is drawn on a finished workout: the review's catch), not by a style alone");
 });

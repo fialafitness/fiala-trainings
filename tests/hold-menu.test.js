@@ -13,7 +13,7 @@ import { load } from "./load.js";
 const { fns } = await load();
 const probe = path.join(path.dirname(fileURLToPath(import.meta.url)), "hold-menu-probe.mjs");
 const r = JSON.parse(execFileSync(process.execPath, [probe], { encoding: "utf8", timeout: 60000 }).trim().split("\n").pop());
-const ROW = ["Reschedule", "Skip", "Preview"], EX = ["Alternate exercise", "Add instructions", "Delete exercise"];
+const ROW = ["Reschedule", "Skip", "Preview"], EX = ["Add alternatives", "Add instructions", "Delete exercise"];
 const none = { open: false, menu: false, lifted: false, dim: false };
 const brief = (s) => ({ open: !!(s.hold && s.hold.open), menu: s.menu, lifted: s.lifted, dim: s.dim });
 const tf = (s) => { const m = /^translateY\(([-\d.e]+)px\) scale\(([\d.e]+)\)$/.exec(s || ""); return m ? { dy: +(+m[1]).toFixed(2), s: +(+m[2]).toFixed(4) } : s; };   // the lifted copy's move and scale, rounded
