@@ -480,6 +480,9 @@
   .pick-sheet .list { margin-top: 14px; max-height: 50vh; overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }   /* "Copy workout to": a grouped list of clients inside the sheet */
   .pick-sheet .list { background: var(--sheet-list); border-color: transparent; }
   .pick-sheet .ask-actions { margin-top: 10px; }
+  .pick-sheet .pick-up { appearance: none; border: 0; background: none; font: inherit; font-size: 1.0625rem; color: var(--brand-text); display: flex; align-items: center; min-height: 44px; margin: -10px 0 0 -8px; padding: 0 8px; cursor: pointer; }   /* Move to's step back, over the title, as a sheet's own back button ("\2039 Fat Burn") */
+  .pick-sheet .pick-up[hidden] { display: none; }
+  .pick-sheet .list button:disabled { opacity: 0.4; cursor: default; }   /* where it is now: shown, not picked, as Files greys the folder an item is in */
   .pick-sheet .list li.w .wd { display: none; }   /* a day's sheet: the date is its title, the rows need not repeat it */
   .ask-actions { display: grid; gap: 10px; margin-top: 18px; }
   /* the workout preview (his asks, 10 Nov: "very simple and clean", "aesthetically pleasing and simple", "no green lines", no buttons or
@@ -1317,6 +1320,8 @@
   .tpl-pill .chev { color: var(--text-tertiary); flex: none; font-size: 1rem; line-height: 1; }
   .list li.last-used button .pri::after { content: " \00b7  last used"; font-size: 0.8125rem; color: var(--text-tertiary); font-weight: 400; }
   .list li.flash { animation: flash 1200ms ease; }
+  .list li.swipe-row.flash > :not(.swipe-acts) { animation: flash-row 1200ms ease; }   /* a swipe row's own part is solid over the row: the same light, laid over it (the v283 review) */
+  @keyframes flash-row { 0% { box-shadow: inset 0 0 0 100vmax rgba(111,107,153,0.28); } 100% { box-shadow: inset 0 0 0 100vmax rgba(111,107,153,0); } }
   @keyframes flash { 0% { background: rgba(111,107,153,0.28); } 100% { background: transparent; } }
   #draftBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: center; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--elevated); border-top: 1px solid var(--card-border); box-shadow: 0 -6px 20px rgba(0,0,0,0.10); }
   #draftBar[hidden], #draftBar.kb { display: none; }
@@ -1377,6 +1382,7 @@
   .swipe-act .sa-cap .mi { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; transition: left 200ms ease, margin-left 200ms ease; }
   .swipe-act.sa-skip .sa-cap { background: var(--swipe-skip); }
   .swipe-act.sa-prev .sa-cap { background: var(--swipe-preview); }           /* Preview: his peacock teal, beside Skip's grey and Reschedule's purple */
+  .swipe-act.sa-del .sa-cap { background: var(--danger); }            /* Delete: the app's one red, as every Delete (Move to keeps Reschedule's purple, his pick, 12 Nov) */
   .armed .swipe-act:last-child .sa-cap .mi { left: 20px; margin-left: 0; }      /* armed (the row's edge within 81 points of its start): the outer icon at its capsule's leading edge, as Apple's */
   .swipe-act .sa-lbl { margin: 0 -5.5px; font-size: 0.8125rem; line-height: 1.2; letter-spacing: 0; color: var(--swipe-label); white-space: nowrap; transition: opacity 150ms ease; }   /* "Reschedule" is 72 px to the capsule's 61: it overhangs it by 5.5 px a side, so the action is the capsule's width and the gaps are measured from the capsule (a larger Text Size widens the action instead, the title always clear of the row) */
   .armed .swipe-act:last-child .sa-lbl { opacity: 0; }
@@ -1755,7 +1761,7 @@
 <input type="file" id="photoInput" accept="image/*" hidden>
 <div class="sheet-bg" id="pvSheet" hidden><div class="sheet pv-sheet" id="pvBox" role="dialog" aria-modal="true" aria-labelledby="pvTitle" tabindex="-1"><div class="pv-bar" id="pvBar"><button class="pv-x" id="pvX" type="button" aria-label="Close"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M1.7 1.7 16.3 16.3M16.3 1.7 1.7 16.3"/></svg></button><p class="pv-bar-title" id="pvBarTitle" aria-hidden="true"></p><div class="pv-tools"><button class="pv-x pv-more" id="pvMore" type="button" aria-label="More" aria-haspopup="menu"><svg viewBox="0 0 22 22" aria-hidden="true" fill="currentColor"><circle cx="3.13" cy="11" r="1.97"/><circle cx="11" cy="11" r="1.97"/><circle cx="18.87" cy="11" r="1.97"/></svg></button><div class="pv-pager" role="group" aria-label="Workouts"><button id="pvPrev" type="button" aria-label="Previous workout"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 3.2 5.7 9l5.8 5.8"/></svg></button><button id="pvNext" type="button" aria-label="Next workout"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.2 12.3 9l-5.8 5.8"/></svg></button></div></div></div><div class="pv-scroll" id="pvScroll" tabindex="0" role="group" aria-labelledby="pvTitle"><h3 id="pvTitle"></h3><p class="pv-day" id="pvDay"></p><div class="pv-cards" id="pvCards" role="group" aria-label="Exercises"></div></div><div class="ask-actions"><button class="btn" id="pvGo" type="button">Start workout</button></div><p class="vh" id="pvSay" aria-live="polite"></p></div></div>
 <div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><input class="ask-input" id="askInput" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" aria-labelledby="askTitle" hidden><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
-<div class="sheet-bg" id="pickSheet" hidden><div class="sheet ask confirm-sheet pick-sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle"><h3 id="pickTitle"></h3><ul class="list" id="pickList"></ul><div class="ask-actions"><button class="btn quiet" id="pickNo" type="button">Cancel</button></div></div></div>
+<div class="sheet-bg" id="pickSheet" hidden><div class="sheet ask confirm-sheet pick-sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle"><button class="pick-up" id="pickUp" type="button" hidden></button><h3 id="pickTitle"></h3><ul class="list" id="pickList"></ul><div class="ask-actions"><button class="btn quiet" id="pickNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="skipSheet" hidden>
   <div class="sheet ask" role="dialog" aria-modal="true" aria-labelledby="skTitle">
     <h3 id="skTitle">Skip this workout?</h3>
@@ -1795,7 +1801,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=282";
+  import { boot } from "./app/main.js?v=283";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
