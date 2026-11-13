@@ -813,7 +813,9 @@ test("Use on one template while choosing for an empty workout still fills it whe
   fns.fromTemplate(maps.trainings.get("w0")); await tick();
   fns.go(fns.tplPage("B")); await tick(); maps.trainings.get("t2").rows = [];   // (the stand-in page cannot draw a workout's exercises)
   const list = drawing((got) => { fns.render(); return got(); }).find((e) => e.className === "list");
-  list.kids.find((li) => li.dataset.tid === "t2").kids[0].on.click[0](); await tick();
+  fns.setOpenAs("client");                                                 // (his Settings: workouts open as the client; v284)
+  try { list.kids.find((li) => li.dataset.tid === "t2").kids[0].on.click[0](); await tick(); } finally { fns.setOpenAs("coach"); localStorage.removeItem("fiala.openAs"); }
+  assert.strictEqual(fns.previewOn(), false, "filled from a template, it is still being made: as the coach, whatever Settings say");
   const w0 = maps.trainings.get("w0");
   assert.deepStrictEqual([app.get().view, w0.title, w0.date, w0.fromTemplate, fns.navState().depth, fns.choosing().fillFor, theirs("c1", "w0").length], [{ name: "training", id: "w0" }, "Workout 2", "2026-11-27", "t2", dw, null, 0], "Workout 2 into it, on its own day, nothing else added; back on its own step");
   quiet();

@@ -130,10 +130,11 @@ await openOn("a"); out.header = await drag([[300, 30], [292, 30], [230, 31]], { 
   await advance(400); byId.get("askYes").fire("click", {}); await flush(); await advance(400); out.delLast = { open: !!fns.previewState(), gone: !maps.trainings.has("d"), asking: app.get().asking }; }
 { await openOn("a"); byId.get("pvMore").fire("click", { detail: 1 }); (byId.get("whenPop").children || []).find((b) => (b.children || []).some((s) => s.textContent === "Delete workout")).fire("click", {}); await advance(400); byId.get("askNo").fire("click", {}); await flush(); await advance(100);
   out.delNo = { now: look(), kept: maps.trainings.has("a"), asking: app.get().asking }; }
-// Copy workout: which client gets it, then the preview closes and the copy opens
+// Copy workout: which client gets it, then the day over the preview (his ask, 12 Nov), then the preview closes and the copy opens on that day
 { await openOn("a"); const n0 = maps.trainings.size; byId.get("pvMore").fire("click", { detail: 1 }); (byId.get("whenPop").children || []).find((b) => (b.children || []).some((s) => s.textContent === "Copy workout")).fire("click", {});
   await advance(400); const asked = !byId.get("pickSheet").hidden; byId.get("pickList").fire("click", { target: { closest: () => ({ dataset: { id: "c2" } }) } }); await flush(); await advance(100);
-  const v = app.get().view, copy = maps.trainings.get(v.id); out.copy = { asked, open: !!fns.previewState(), view: v.name, client: copy && copy.clientId, title: copy && copy.title, n: maps.trainings.size - n0, asking: app.get().asking }; }
+  const dp = fns.datePicker(), days = dp && dp.title, waiting = !!fns.previewState() && maps.trainings.size === n0; if (dp) { const pick = dp.onPick; fns.closeDatePicker(); pick("2026-12-07"); } await flush(); await advance(100);
+  const v = app.get().view, copy = maps.trainings.get(v.id); out.copy = { asked, days, waiting, open: !!fns.previewState(), view: v.name, client: copy && copy.clientId, title: copy && copy.title, day: copy && copy.date, n: maps.trainings.size - n0, asking: app.get().asking }; }
 // Save as template (his ask, 12 Nov), from a finished one's "…" and from one still to do: the preview closes and the new template opens
 { out.save = {};
   for (const id of ["f", "a"]) {
@@ -149,7 +150,8 @@ await openOn("a"); out.header = await drag([[300, 30], [292, 30], [230, 31]], { 
   await advance(400); const asked = !byId.get("pickSheet").hidden;
   maps.trainings.set("f", { ...maps.trainings.get("f"), title: "F2" });   // a sync brings a newer copy while the clients are up
   byId.get("pickList").fire("click", { target: { closest: () => ({ dataset: { id: "c2" } }) } }); await flush(); await advance(100);
-  const v = app.get().view, copy = maps.trainings.get(v.id); out.copyDone = { asked, open: !!fns.previewState(), view: v.name, client: copy && copy.clientId, title: copy && copy.title, finished: !!(copy && copy.completedAt), n: maps.trainings.size - n0 }; }
+  const days = fns.datePicker() && fns.datePicker().title; { const dp = fns.datePicker(); if (dp) { const pick = dp.onPick; fns.closeDatePicker(); pick("2026-12-08"); } await flush(); await advance(100); }
+  const v = app.get().view, copy = maps.trainings.get(v.id); out.copyDone = { days, day: copy && copy.date, asked, open: !!fns.previewState(), view: v.name, client: copy && copy.clientId, title: copy && copy.title, finished: !!(copy && copy.completedAt), n: maps.trainings.size - n0 }; }
 // Reschedule: the days over the preview (the preview waits; the page behind stays held), then the same workout on its new day
 { await openOn("a"); byId.get("pvMore").fire("click", { detail: 1 }); (byId.get("whenPop").children || []).find((b) => (b.children || []).some((s) => s.textContent === "Reschedule")).fire("click", {});
   const dp = fns.datePicker(); const during = { open: !!dp, pvInert: pvSheet.inert }; const pick = dp && dp.onPick; fns.closeDatePicker(); const closed = { pvInert: pvSheet.inert, mainInert: main.inert, asking: app.get().asking }; if (pick) pick(day(4));
