@@ -631,6 +631,8 @@ test("Use all, choosing a template for a client's empty workout: the slide's wor
   assert.deepStrictEqual(read(kids), ["tabs [Week 1] Week 2", "bar 3 workouts · Use all", "tpl t1", "tpl t2", "tpl t4"], "how many, and Use all, above the slide's list (Workout 1, 2, 3: the one in the folder itself counts with the first slide)");
   const use = kids.find((e) => e.className === "listbar").kids[1];
   assert.deepStrictEqual([use.style.color, use.className], ["var(--brand-text)", "btn quiet use-all"], "the purple as text, as the pick note's Cancel above it (the v282 review: the fill purple reads 4.2:1 on the dark page)");
+  const find = (e, c) => (e.className === c ? e : (e.kids || []).reduce((f, k) => f || find(k, c), null)), chevs = kids.find((e) => e.className === "list").kids.map((li) => find(li, "chev"));
+  assert.deepStrictEqual(chevs.map((c) => [c.textContent, c.style.color]), [["Use", "var(--brand-text)"], ["Use", "var(--brand-text)"], ["Use", "var(--brand-text)"]], "and each row's Use in the same purple (his ask, 13 Nov: \"keep it consistent\": the fill purple read 3.4:1 on the dark card)");
   app.set({ tab: "notes" });                                          // their page was last left on another tab
   use.on.click[0]();
   const dp = fns.datePicker();

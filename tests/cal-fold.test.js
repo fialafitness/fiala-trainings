@@ -109,3 +109,25 @@ test("the app's own reload for a new version, with the month open 600 down: the 
     assert.deepStrictEqual({ ...look(a.atReload), y: a.atReload.y }, { ...WEEK, y: 380 }, p + ": as the reload is asked for: the week, the list where it was");
   }
 });
+
+test("a week paged to (v285, his pick, 13 Nov: \"Leaving the client's page brings it back to this week\"): a workout opened from it (the month open over it too), the client card over it, Back to Clients, another tab: this week again before the picture is taken, and Back lands on it", () => {
+  const wk = r.week, days = (s) => s.split(" ").map(Number);
+  for (const how of ["workout", "card", "clients", "tab", "month"]) {
+    assert.deepStrictEqual(wk[how].before.off, 1, how);
+    assert.strictEqual(days(wk[how].before.days).length, 7, how);
+    assert.notStrictEqual(wk[how].back.days, wk[how].before.days, how + ": not the week it was on");
+    assert.strictEqual(wk[how].left.off, 0, how + ": this week as it is left");
+    assert.deepStrictEqual({ view: wk[how].back.view, off: wk[how].back.off, today: wk[how].back.today }, { view: "client", off: 0, today: false }, how + ": Back (or the page again) on this week, no Today");
+  }
+  assert.deepStrictEqual([wk.workout.left.view, wk.card.left.view, wk.clients.left.view, wk.tab.left.view, wk.month.left.view], ["training", "client", "clients", "client", "training"]);
+  assert.deepStrictEqual(wk.workout.left.pic.length, 1, "one picture, taken as the workout opened");
+  assert.deepStrictEqual(days(wk.workout.left.pic[0]).length, 7);
+  assert.deepStrictEqual(wk.workout.left.pic[0], wk.workout.back.days, "the picture is the week Back lands on");
+  assert.deepStrictEqual(wk.card.left.pic[0], wk.card.back.days);
+  assert.deepStrictEqual(wk.month.left.pic, [wk.month.back.days], "the month open over it: the strip under the folded month drawn for this week before the picture (the v285 review: it showed the week paged to)");
+});
+
+test("a paged week whose strip is taller (two workouts on a day), 300 down: as it comes back to this week the list stays where it was on the screen, in the picture and on Back, as the month's fold keeps it (the v285 review)", () => {
+  assert.deepStrictEqual(r.place, { before: { y: 300, h: 1299 }, pic: [281], left: { h: 2000 }, back: { y: 281, off: 0 } });
+  assert.deepStrictEqual(r.placeUp, { before: { y: 300, h: 1280 }, pic: [319], back: { y: 319, off: 0 } }, "this week's strip the taller: the list moved down with it, the window too");
+});

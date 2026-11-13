@@ -35,7 +35,7 @@ const kids = (e) => {
 const listens = (e) => { const H = {}; e.addEventListener = (type, fn) => { (H[type] ||= []).push(fn); }; e.removeEventListener = (type, fn) => { const a = H[type] || []; const i = a.indexOf(fn); if (i >= 0) a.splice(i, 1); }; e.fire = (type, ev) => { for (const fn of [...(H[type] || [])]) fn(ev); }; return e; };
 const recorder = (id, extra = {}) => { const e = listens(kids(el("div"))); Object.assign(e, extra); byId.set(id, e); return e; };
 for (const id of ["calView", "calTrack", "calTitle", "calToday", "calPrev", "calNext", "pvGo"]) recorder(id, { clientWidth: 350 });   // (pvGo: the preview's Start workout, which a workout in the calendar opens first since v262)
-const calWrap = recorder("calWrap"), week = recorder("week"), weekHead = recorder("weekHead"), toggleText = recorder("calToggleText"), toggle = recorder("calToggle");
+const calWrap = recorder("calWrap"), week = recorder("week"), weekView = recorder("weekView"), weekHead = recorder("weekHead"), toggleText = recorder("calToggleText"), toggle = recorder("calToggle");
 recorder("tabbar"); recorder("meDisc");
 calWrap.hidden = true;
 const make = document.createElement; document.createElement = (t) => listens(kids(make(t)));
@@ -46,7 +46,7 @@ const maxY = () => Math.max(0, pageH() - 800);
 Object.defineProperty(globalThis, "scrollY", { get: () => Math.min(rawY, maxY()), configurable: true });
 Object.defineProperty(globalThis, "scrollTo", { value: (x, y) => { rawY = Math.max(0, Math.min(maxY(), Math.round(Number(y) || 0))); }, configurable: true, writable: true });
 Object.defineProperty(document.documentElement, "scrollHeight", { get: () => pageH(), configurable: true });
-const calLook = () => ({ month: !calWrap.hidden, week: !week.hidden, head: !weekHead.hidden, toggle: toggleText.textContent, arrowUp: toggle.classList.contains("open") });
+const calLook = () => ({ month: !calWrap.hidden, week: !weekView.hidden, head: !weekHead.hidden, toggle: toggleText.textContent, arrowUp: toggle.classList.contains("open") });
 let app = null;
 const seen = () => ({ view: app.get().view.name, tab: app.get().tab, open: app.fns.calState().open, ...calLook(), y: globalThis.scrollY });
 const todayInMonth = () => {

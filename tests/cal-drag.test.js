@@ -50,15 +50,15 @@ test("a missed workout inside its week lifts red and moves to today; one missed 
   assert.deepStrictEqual(r.missed.old, { shown: true, lifted: false });
 });
 
-test("held at the strip's right edge: the next week after half a second, the one after 0.9 s later; let go on a day there, it moves there and the strip comes back to this week at its own height; never back past this week", () => {
+test("held at the strip's right edge: the next week after half a second, the one after 0.9 s later; let go on a day there, it moves there and the strip stays on that week at its own height, as the month stays on its month (v285: the weeks page by a swipe now, and Today brings this one back); never back past this week", () => {
   const w = r.weekEdge;
   assert.strictEqual(w.left, 0, "the left edge of this week turns nothing: every day before it is gone by");
   assert.strictEqual(w.before, 0, "0.48 s at the edge: not yet");
   assert.deepStrictEqual(w.first, { weekOff: 1, days: "16 17 18 19 20 21 22", slide: true, minHeight: "116px" }, "the next week slides in from the right; the strip keeps its height while the drag lasts (fewer names, the same finger)");
   assert.strictEqual(w.again, 2, "and on while it stays there");
   assert.deepStrictEqual([w.key, w.date], ["2026-11-25", "2026-11-25"]);
-  assert.strictEqual(w.back, true, "this week slides back in from the left");
-  assert.deepStrictEqual(w.after, { weekOff: 0, days: "09 10 11 12 13 14 15", minHeight: "", slide: false }, "and the slide's class goes once it has played (else the strip would slide in each time it is shown)");
+  assert.strictEqual(w.back, false, "no slide back to this week");
+  assert.deepStrictEqual(w.after, { weekOff: 2, days: "23 24 25 26 27 28 29", minHeight: "", slide: false }, "the week it landed in, and the slide's class gone once it has played (else the strip would slide in each time it is shown)");
 });
 
 test("held at the month's right edge: December after half a second, the day under the finger found once it lands; let go there, it moves there; never back past this month; the month's own slide stands still under a lifted workout", () => {
@@ -102,8 +102,8 @@ test("midnight passing under a lifted workout held over today makes today a day 
   assert.deepStrictEqual(r.midnight, { key: "2026-11-11", date: "2026-11-13" });
 });
 
-test("a redraw in the moment after a drop from another week (before the strip slides back) leaves the strip on this week, at its own height", () => {
-  assert.deepStrictEqual(r.landRedraw, { date: "2026-11-19", weekOff: 0, days: "09 10 11 12 13 14 15", minHeight: "" });
+test("a redraw in the moment after a drop on another week leaves the strip on that week, at its own height", () => {
+  assert.deepStrictEqual(r.landRedraw, { date: "2026-11-19", weekOff: 1, days: "16 17 18 19 20 21 22", minHeight: "" });
 });
 
 test("the edge is the calendar's rim and beyond, never a day's middle: resting on Sunday (a phone's Sunday is 53 wide) aims at Sunday, in the strip and in the month", () => {
@@ -144,6 +144,6 @@ test("on a Mac the grabbing hand stays over the whole calendar while a workout i
   assert.ok(html.includes("  body.cal-drag, body.cal-drag * { cursor: grabbing !important; }"));
 });
 
-test("dropped on a turned week, a quick tap on a chip there before the strip slides back: the strip still comes back to this week, at its own height", () => {
-  assert.deepStrictEqual(r.tapBack, { date: "2026-11-18", weekOff: 0, days: "09 10 11 12 13 14 15", minHeight: "" });
+test("dropped on a turned week, a quick tap on a chip there: the strip stays on that week, at its own height", () => {
+  assert.deepStrictEqual(r.tapBack, { date: "2026-11-18", weekOff: 1, days: "16 17 18 19 20 21 22", minHeight: "" });
 });

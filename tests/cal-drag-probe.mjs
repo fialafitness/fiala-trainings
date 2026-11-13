@@ -99,6 +99,7 @@ const iso = (d) => fns.localIso(d), day = (n) => { const d = new Date(); d.setHo
 const W = (id, title, n, extra = {}) => ({ id, clientId: "c1", title, date: day(n), createdAt: "2026-11-01T0" + (TID++ % 9) + ":00:00.000Z", completedAt: null, skippedAt: null, rows: [{ id: "r" + id, name: "Squat", sets: "3", reps: "10" }], ...extra });
 function seed(clientMode = false) {
   week.classList.remove("wk-in-r", "wk-in-l");   // (each scene on a settled page: the last one's slide, 260 ms, long over)
+  fns.setWeekOff(0); if (fns.calState().open) toggle.fire("click", {});   // (and on this week, the month folded: a drop leaves the strip on its week, as the month on its month, v285)
   app.reset(); app.set({ signedIn: true, clientMode, myClientId: clientMode ? "c1" : null, tab: "workouts" });
   maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" });
   for (const t of [
@@ -252,7 +253,7 @@ seed();
   out.midnight = { key, date: maps.trainings.get("a").date };
   NOW -= 14 * 3600 * 1000;
 }
-// 15. a redraw in the moment after a drop from another week (before the strip slides back) leaves the strip this week, at its own height
+// 15. a redraw in the moment after a drop on another week leaves the strip on that week, at its own height
 seed();
 { const chip = chipOf("a"), [x, y] = mid(chip);
   down(chip, x, y); await advance(410); await glide(x, y, 381, y, 6); await advance(520);
@@ -337,7 +338,7 @@ seed();
   out.calm = { tr, slide, gone, date: maps.trainings.get("a").date };
   globalThis.matchMedia = mm;
 }
-// 24. dropped on a turned week, then a quick tap on a chip there before the strip slides back: it still comes back, at its own height
+// 24. dropped on a turned week, then a quick tap on a chip there: the strip stays on that week, at its own height
 seed();
 { const chip = chipOf("a"), [x, y] = mid(chip);
   down(chip, x, y); await advance(410); await glide(x, y, 381, y, 6); await advance(520);

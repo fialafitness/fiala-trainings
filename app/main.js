@@ -1102,7 +1102,7 @@ import { reportRange, buildReport } from "./report.js";
   // The move that holds does nothing else, so its answer reaches WebKit at once; should the page scroll anyway, the swipe settles back.
   let swipeOn = (() => { try { return (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || (typeof navigator !== "undefined" && navigator.standalone === true); } catch (_) { return false; } })();
   const deskOn = (() => { try { return typeof matchMedia === "function" && matchMedia("(hover: hover) and (pointer: fine)").matches; } catch (_) { return false; } })();   // a computer (mouse or trackpad): two fingers swipe the page back there too, in a browser tab as in the Dock's web app (the web app's own swipe has no page behind it, and Chrome's is off under overscroll-behavior-x: none)
-  const SWIPE_EDGE = 24, SWIPE_GO = 8, NO_SWIPE = "#calView, #week, #dpGrid, .tr-chips, .kb-chips, .grip, .alt-menu, .sugg, input, textarea, select, [contenteditable], li.swipe-row.swiped";   // things that drag sideways or scroll themselves keep the touch (Apple's rule for its swipe from anywhere)
+  const SWIPE_EDGE = 24, SWIPE_GO = 8, NO_SWIPE = "#calView, #week, #weekView, #dpGrid, .tr-chips, .kb-chips, .grip, .alt-menu, .sugg, input, textarea, select, [contenteditable], li.swipe-row.swiped";   // things that drag sideways or scroll themselves keep the touch (Apple's rule for its swipe from anywhere)
   const GLASS_RES = 0.416, GLASS_DAMP = 0.75, GLASS = ["back", "meDisc", "navDone", "tMore", "tAdd", "barMsg"];   // the bar's buttons, and their change on release
   const easeMemo = new Map();
   const springEase = (v0, response, damping) => {                   // a spring (from rest at 0 to 1, starting at speed v0 in "whole distances per second") as a CSS easing and its length,
@@ -1552,14 +1552,15 @@ import { reportRange, buildReport } from "./report.js";
   // on the trackpad: coasting only slows and never turns), each judged by the travel of the latest events, never one event's size. Anything
   // that scrolls sideways itself keeps the fingers, and so does the browser where nothing of the app's is.
   const WG_GAP = 120, WG_END = 90;
-  const NO_WHEEL_BACK = "#calView, #dpGrid, .kb-chips, .alt-menu, .sugg, li.swipe-row.swiped";   // the swipe back's own list, less what only a finger drags (a set track, the week strip: where one really scrolls, its scroll keeps the fingers) and the fields (two fingers select nothing)
+  const NO_WHEEL_BACK = "#calView, #weekView, #dpGrid, .kb-chips, .alt-menu, .sugg, li.swipe-row.swiped";   // the swipe back's own list, less what only a finger drags (a set track, the week strip: where one really scrolls, its scroll keeps the fingers) and the fields (two fingers select nothing)
   let wgNatural = true;                                             // natural scrolling (the Mac's default: the page moves with the fingers), from the latest wheel event
   let calWheel = null, dpWheel = null, calPage = null, calBusy = () => false, calForget = () => {};                              // the client page's month and the day picker's months, for two fingers: { begin, move, end }, set where each pager lives
+  let weekWheel = null, weekPage = null, weekBusy = () => false, weekForget = () => {}, weekLand = () => false;   // the client page's week strip, as its month: two fingers, a turn, a slide under way, a press let go of, a slide still landing landed at once (true if one was)
   function monthLetGo(kind, x, w) {                                  // a month let go x px from where it rests (+ = toward the month before): -1 the month before, 1 the next, 0 back. The client page's month goes on past 48 px, as it always has under a finger; the day picker's to the nearer month, as UIKit's pager does (a flick, a finger's speed or two fingers' coasting, has carried it on by then)
     const past = kind === "cal" ? Math.abs(x) > 48 : Math.abs(x) > Math.max(1, w) / 2;
     return past ? (x > 0 ? -1 : 1) : 0;
   }
-  const monthWheel = (el) => (!el || !el.closest ? null : el.closest("#pvBox") ? (pv && !pvNested() ? pvWheel : null) : el.closest("#dpGrid") ? (dp ? dpWheel : null) : el.closest("#calView") && !held() ? calWheel : null);   // two fingers over a month: they page it (his pick, 9 Nov, "do what Apple would do": as a finger does on the phone, as two fingers page Calendar's days and weeks on the Mac)
+  const monthWheel = (el) => (!el || !el.closest ? null : el.closest("#pvBox") ? (pv && !pvNested() ? pvWheel : null) : el.closest("#dpGrid") ? (dp ? dpWheel : null) : el.closest("#calView") && !held() ? calWheel : el.closest("#weekView") && !held() && !calOpen ? weekWheel : null);   // two fingers over a month: they page it (his pick, 9 Nov, "do what Apple would do": as a finger does on the phone, as two fingers page Calendar's days and weeks on the Mac)
   const canScrollX = (n, ax) => ((wgNatural ? ax < 0 : ax > 0) ? n.scrollLeft + n.clientWidth < n.scrollWidth - 1 : n.scrollLeft > 0);   // fingers this way (ax) scroll n toward its end, or toward its start: can it still go?
   const sideScroller = (el, ax) => { for (let n = el; n && n !== document.body && n.nodeType === 1; n = n.parentElement) { const cs = getComputedStyle(n); if (/(auto|scroll)/.test(cs.overflowX) && n.scrollWidth > n.clientWidth + 1 && canScrollX(n, ax)) return true; } return false; };
   const wheelBack = (el, ax) => (wgNatural ? ax > 0 : ax < 0) && (swipeOn || deskOn) && canBack() && !held() && !el.closest(NO_WHEEL_BACK) && !sideScroller(el, ax) && !(document.activeElement && el.closest("input, textarea") === document.activeElement && canScrollX(document.activeElement, ax));   // (the field being typed in keeps the fingers while its text can still scroll that way, as Safari's own swipe leaves it)
@@ -2282,7 +2283,7 @@ import { reportRange, buildReport } from "./report.js";
     const pri = document.createElement("span"); pri.className = "pri"; pri.textContent = m.n ? "Workout " + m.n : (t.title || "Template");
     const sec = document.createElement("span"); sec.className = "sec"; sec.textContent = m.n ? (t.title || "") : (t.rows.length + (t.rows.length === 1 ? " exercise" : " exercises"));
     const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.textContent) left.append(sec);
-    const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = pick ? "Use" : "›"; if (pick) chev.style.color = "var(--brand)";
+    const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = pick ? "Use" : "›"; if (pick) chev.style.color = "var(--brand-text)";   // the purple as text, as every other text button of his (his pick, 13 Nov: "keep it consistent"; the fill purple read 3.4:1 on the dark card)
     b.append(left, chev);
     b.addEventListener("click", () => { if (pick) { if (fillFor) { fillFromTemplate(trainings.get(t.id) || t); return; } const cid = pickFor; const who = clients.get(cid); openDatePicker({ clientId: cid, title: "Add to " + ((who && who.name) || "client"), onPick: (date) => { pickFor = null; applyTemplate(trainings.get(t.id) || t, cid, date); } }); } else go({ name: "training", id: t.id }); });
     li.appendChild(b);
@@ -2481,7 +2482,7 @@ import { reportRange, buildReport } from "./report.js";
     $("meDisc").setAttribute("aria-label", S.clientMode ? "Settings" : "Client card");
     paintMeDisc(); paintBarMsg();
     if (S.clientMode && S.tab === "notes") setTab("workouts");   // Notes is the coach's tab
-    if (!(S.view.name === "client" && S.tab === "workouts" && !isTemplateClient(S.view.id))) calOpen = false;   // the month lasts only while its page is up: another page or tab and it is the week again (go() and the settings pages fold it already, before their picture)
+    if (!(S.view.name === "client" && S.tab === "workouts" && !isTemplateClient(S.view.id))) { calOpen = false; weekLand(true); if (!(cd && cd.lifted)) weekOff = 0; }   // the month, and a week paged to, last only while their page is up: another page or tab and it is this week's strip again (go() and the settings pages fold them already, before their picture)
     if (S.view.name === "clients") { S.renderedTraining = null; renderClients(); }
     else if (S.view.name === "client") { S.renderedTraining = null; const tf = isTemplateClient(S.view.id) ? tplNode(S.view.folder) : null, up = tf && tplNode(tf.parent); $("backLabel").textContent = tf ? (up ? up.name : "Templates") : isTemplateClient(S.view.id) && S.view.phase ? S.view.program : (isTemplateClient(S.view.id) && S.view.program ? "Templates" : "Clients"); renderClient(); }
     else { const t = trainings.get(S.view.id); $("backLabel").textContent = fromHistory(t) ? "History" : S.clientMode ? "Workouts" : (isTemplateClient(t.clientId) ? "Templates" : (clients.get(t.clientId)?.name || "Client")); renderTraining(t); }
@@ -2582,6 +2583,7 @@ import { reportRange, buildReport } from "./report.js";
   $("reorderBtn").addEventListener("click", () => { reordering = !reordering; renderClients(); });
   // month calendar under the week strip: Week | Month switch, arrows, Today, finger-follow swipe
   let calOpen = false, calMonth = today().slice(0, 7), calFor = null, calAnchor = calMonth, calSliding = false, calMissed = false;   // calMissed: a redraw came while the months were moving (it runs when they land)   // calOpen: the month, only while its page is up (his ask, 10 Nov: back to the week "every time I leave the page"; a reload opens on the week too)
+  let wkSliding = false, wkSide = null, wkDraw = null, wkAnchor = null;   // the week strip under a finger or two (or settling: a redraw meanwhile leaves the strip as it is, drawn anew as it lands); how a week is drawn (either side, as a picture) and the strip itself (set by renderClient); this week's Monday when weekOff was last read
   let cd = null, cdEatUntil = 0, weekOff = 0, cdWeekSlide = 0, cdSpent = null, cdSlideTok = 0;   // a workout held or dragged in the calendar ("drag a workout to another day", below the month's pager); the end of the window in which its release's click goes nowhere; the week strip's weeks from this one while a drag turns it; the side its week comes in from
   const NEXT_DAYS = 3, NEXT_STEP = 5;      // "Up next" shows this many days ahead (the very next workout always); each "Show more" adds this many workouts
   let nextExtra = 0, nextFor = null;
@@ -2589,23 +2591,28 @@ import { reportRange, buildReport } from "./report.js";
   const monthAdd = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1, 12); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
   const monthTitle = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1, 12).toLocaleDateString(undefined, { month: "long", year: "numeric" }); };
   const paintCalMode = () => {                                       // the week strip or the month, and the toggle that says which
-    $("weekHead").hidden = calOpen; $("week").hidden = calOpen; $("calWrap").hidden = !calOpen;
+    $("weekHead").hidden = calOpen; $("weekView").hidden = calOpen; $("calWrap").hidden = !calOpen; if (!wkSliding) $("weekToday").hidden = calOpen || !weekOff;   // (while the weeks slide, Today is the week coming in's, set as it set off)
     $("calToggleText").textContent = calOpen ? "Week" : "Month"; $("calToggle").classList.toggle("open", calOpen); $("calToggle").setAttribute("aria-expanded", String(calOpen));
     if (!calOpen) fitChips($("week"));                                // the strip just drawn, or shown again as the month folds: which names fade
   };
-  function calFold() {                                               // the page is being left: the month folds back into the week first, so the picture the swipe back slides in and the place Back comes back to are the week's; returns how far the page scrolled
-    if (!calOpen) return 0;
+  function calFold() {                                               // the page is being left: the month folds back into the week, and a week paged to comes back to this one (his pick, 13 Nov: "Leaving the client's page brings it back to this week"), first, so the picture the swipe back slides in and the place Back comes back to are this week's; returns how far the page scrolled
+    const landed = weekLand(true);                                   // a slide still landing lands where it was going (nothing else redrawn: the page is being left)
+    const paged = !!weekOff && !(cd && cd.lifted);
+    if (paged) weekOff = 0;
+    if (!calOpen && !paged && !landed) return 0;
     calOpen = false;
-    if (S.view.name !== "client" || $("vClient").hidden || S.tab !== "workouts") return 0;   // not on the screen: its next draw is the week
+    if (S.view.name !== "client" || $("vClient").hidden || S.tab !== "workouts" || !clients.has(S.view.id)) return 0;   // not on the screen: its next draw is this week's strip
     const de = document.documentElement, y0 = Number(window.scrollY) || 0, h0 = Number(de.scrollHeight);
+    if ((paged || landed) && wkDraw) wkDraw();                       // this week's strip, drawn alone (a whole redraw here would sweep away the empty workout being opened)
     paintCalMode();
-    const d = Number(de.scrollHeight) - h0;                          // the week is shorter than the month: everything under it moved up by as much
-    if (!y0 || !Number.isFinite(d) || d >= 0) return 0;
+    const d = Number(de.scrollHeight) - h0;                          // the week is shorter than the month, and one week's strip may be taller than another's: everything under it moved by as much
+    if (!y0 || !Number.isFinite(d) || !d) return 0;
     window.scrollTo(0, Math.max(0, y0 + d));                         // so the list stays where it was on the screen (scrolled into the month: the top)
     return (Number(window.scrollY) || 0) - y0;
   }
   $("calToggle").addEventListener("click", () => {
-    calOpen = !calOpen; if (calOpen) { calMonth = today().slice(0, 7); calAnchor = calMonth; }
+    weekLand(true); wkRoll();                                        // a week still sliding in lands first: Month opens on its month
+    calOpen = !calOpen; if (calOpen) { calAnchor = today().slice(0, 7); calMonth = weekOff ? wkMonth() : calAnchor; if (S.view.name === "client") calFor = S.view.id; }   // the month of the week shown (its Thursday's, as weeks are counted), this month for this week; anchored here for this client (else its first draw would take it back to this month)
     if (S.view.name === "client") renderClient();
   });
   $("dpCancel").addEventListener("click", (e) => { if (dpSettled(e)) closeDatePicker(); });
@@ -2693,7 +2700,7 @@ import { reportRange, buildReport } from "./report.js";
   {
     const view_ = $("calView"), track = $("calTrack");
     const reduced = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let busy = false, sx = null, sy = null, dragging = null, dx = 0, swallow = false, finishNow = null, cpid = null;
+    let busy = false, sx = null, sy = null, dragging = null, dx = 0, swallow = false, finishNow = null, cpid = null, lostT = null, at = 0;   // at: where a finger or two fingers left the months (px)
     const settle = (dir) => {                      // slide to the neighbour panel, then re-render around the new month
       if (busy) { if (finishNow) finishNow(); else return; }
       busy = true; calSliding = true;
@@ -2704,7 +2711,8 @@ import { reportRange, buildReport } from "./report.js";
       let done = false;
       const finish = () => { if (done) return; done = true; finishNow = null; track.removeEventListener("transitionend", finish); busy = false; calSliding = false; view_.style.transition = ""; if ((dir || calMissed) && S.view.name === "client") { calMissed = false; renderClient(); } else view_.style.height = track.children[1].offsetHeight + "px"; };
       finishNow = finish;
-      if (reduced()) { track.style.transition = "none"; track.style.transform = "translateX(" + (-100 - (dir || 0) * 100) + "%)"; finish(); return; }
+      const still = Math.abs(-(dir || 0) * Math.max(1, view_.clientWidth) - at) < 1; at = 0;   // the fingers carried it all the way (a whole month's flick): nothing left to move, nothing to wait for (v285, as the week's)
+      if (reduced() || still) { track.style.transition = "none"; track.style.transform = "translateX(" + (-100 - (dir || 0) * 100) + "%)"; finish(); return; }
       track.addEventListener("transitionend", finish);
       track.style.transition = "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)";
       track.style.transform = "translateX(" + (-100 - (dir || 0) * 100) + "%)";
@@ -2713,7 +2721,7 @@ import { reportRange, buildReport } from "./report.js";
     $("calPrev").addEventListener("click", () => settle(-1));
     $("calNext").addEventListener("click", () => settle(1));
     const follow = (x) => {                        // the months x px from where they rest, the height easing toward the month coming in
-      track.style.transition = "none"; track.style.transform = "translateX(calc(-100% + " + x + "px))";
+      at = x; track.style.transition = "none"; track.style.transform = "translateX(calc(-100% + " + x + "px))";
       const centre = track.children[1], side = track.children[x < 0 ? 2 : 0];
       if (centre && side) { const f = Math.min(1, Math.abs(x) / Math.max(1, view_.clientWidth)); view_.style.transition = "none"; view_.style.height = Math.round(centre.offsetHeight + (side.offsetHeight - centre.offsetHeight) * f) + "px"; }
     };
@@ -2724,24 +2732,108 @@ import { reportRange, buildReport } from "./report.js";
       end() { if (wx === null) return; const x = wx; wx = null; calSliding = false; settle(monthLetGo("cal", x, view_.clientWidth)); },
     };
     calPage = (dir) => settle(dir); calBusy = () => busy || dragging === true || wx !== null; calForget = () => { sx = sy = null; dragging = null; dx = 0; };   // (calForget: a press that lifted a workout is the drag's to the end, never a swipe of the months, even once the drag is called off with the finger still down)   // a workout held at the month's edge turns it, as an arrow does; a press on a chip while the months move under a finger or slide lifts nothing
-    view_.addEventListener("pointerdown", (e) => { view_.classList.remove("dragged"); if (!e.isPrimary || wx !== null) return; if (e.pointerType === "mouse" && (e.button !== 0 || e.ctrlKey)) return; if (busy && finishNow) finishNow(); if (busy) return; sx = e.clientX; sy = e.clientY; dragging = null; dx = 0; cpid = e.pointerId; });   // (two fingers holding the months keep them; a right-click or a Control-click never starts a drag: its menu takes the release)
+    view_.addEventListener("pointerdown", (e) => { if (!e.isPrimary || wx !== null) return; view_.classList.remove("dragged"); if (e.pointerType === "mouse" && (e.button !== 0 || e.ctrlKey)) return; if (sx !== null) release(true); if (busy && finishNow) finishNow(); if (busy) return; sx = e.clientX; sy = e.clientY; dragging = null; dx = 0; cpid = e.pointerId; });   // (two fingers holding the months keep them; a right-click or a Control-click never starts a drag: its menu takes the release)
     view_.addEventListener("pointermove", (e) => {
       if (sx === null || busy || !e.isPrimary || cdHolds()) return;
+      if (e.pointerType === "mouse" && e.buttons === 0) { if (!lostT) lostT = setTimeout(() => { lostT = null; release(true); }, 150); return; }   // the button already up and no release yet (a Mac's lost to the window, or a menu took it): back where it was, as the drag's (v285, as the week's)
       dx = e.clientX - sx; const dy = e.clientY - sy;
       if (dragging === null) { if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { dragging = true; try { view_.setPointerCapture(e.pointerId); } catch {} } else if (Math.abs(dy) > 8) dragging = false; if (dragging !== null && e.pointerType !== "mouse") view_.classList.add("dragged"); }   // not a tap: the day the finger landed on lets go of its grey
       if (dragging) follow(dx);
     });
     const release = (cancel) => {
+      clearTimeout(lostT); lostT = null;
       if (sx === null) return; const was = dragging; const moved = dx; sx = sy = null; dragging = null; dx = 0;
       if (!was) return;
       swallow = true; setTimeout(() => { swallow = false; }, 0);
       settle(cancel ? 0 : monthLetGo("cal", moved, view_.clientWidth));
     };
-    view_.addEventListener("pointerup", () => release(false));
-    view_.addEventListener("pointercancel", () => release(true));
+    view_.addEventListener("pointerup", (e) => { if (e.pointerId === cpid) release(false); });   // only the finger that took the months lets them go (a second one lifted is no release; v285, as the week's)
+    view_.addEventListener("pointercancel", (e) => { if (e.pointerId === cpid) release(true); });
     document.addEventListener("pointerup", (e) => { if (sx !== null && e.pointerId === cpid && !view_.contains(e.target)) release(false); }, true);   // its own press let go outside the month (one that went up or down first, never captured): it ends there too, or two fingers would wait on it for good
     document.addEventListener("pointercancel", (e) => { if (sx !== null && e.pointerId === cpid && !view_.contains(e.target)) release(true); }, true);
     view_.addEventListener("click", (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
+  }
+  // ---------- the week strip pages week by week (his ask, 13 Nov: "we should add the ability to slide between weeks as well right and left
+  // swipe between weeks"; his pick: as the month does). Last week, this one and the next sit side by side on a track (index.html .week-track):
+  // the weeks either side are drawn as a finger takes the strip, it follows the finger 1:1 (held after 8 points sideways, as the month's) with
+  // its height easing toward the week coming in, and let go it settles on that week (past 48 points, or flicked) or back, in the month's 280 ms;
+  // the strip is then drawn anew for that week. Two fingers on a Mac's trackpad do the same, a week at most. Today (beside Month) comes back to
+  // this week; leaving the page does too (calFold). A workout held on the strip is the drag's (cd*), never a swipe of the weeks.
+  const wkMonday = (off) => { const m = new Date(); m.setHours(12, 0, 0, 0); m.setDate(m.getDate() - ((m.getDay() + 6) % 7) + off * 7); return m; };   // the Monday of the week off weeks from this one
+  const wkRoll = (redraw) => {                                       // a new week begun (Sunday's midnight) since the strip was drawn: the week on screen stays the one weekOff counts to (from the new week), as a browsed month stays, so a touch on it pages from what it shows; a redraw shows this week if this week was shown. True if a week had begun.
+    const m = localIso(wkMonday(0)), rolled = !!wkAnchor && wkAnchor !== m;
+    if (rolled && (weekOff || !redraw)) weekOff -= Math.round((Date.parse(m) - Date.parse(wkAnchor)) / 6048e5);
+    wkAnchor = m; return rolled;
+  };
+  const wkMonth = () => { const m = wkMonday(weekOff); m.setDate(m.getDate() + 3); return localIso(m).slice(0, 7); };   // the month of the week shown: its Thursday's
+  const wkHead = (off) => { const mo = wkMonday(off), su = new Date(mo); su.setDate(mo.getDate() + 6); return mo.getMonth() === su.getMonth() ? mo.toLocaleDateString(undefined, { month: "long" }) : mo.toLocaleDateString(undefined, { month: "short" }) + " \u2013 " + su.toLocaleDateString(undefined, { month: "short" }); };   // the strip's title: the month it is in, as Calendar's ("November", or "Nov \u2013 Dec" when it straddles)
+  {
+    const view_ = $("weekView"), track = $("weekTrack");
+    let busy = false, sx = null, sy = null, dragging = null, dx = 0, swallow = false, finishNow = null, cpid = null, drawn = false, wx = null, lostT = null, at = 0;   // at: where a finger or two fingers left the weeks (px)
+    const sides = () => { if (drawn || !wkSide) return; drawn = true; wkRoll(); wkSide($("weekPrev"), weekOff - 1); wkSide($("weekNext"), weekOff + 1); };   // the weeks either side, drawn as the strip is taken
+    const settle = (dir) => {                      // slide to the week that way (0: back), then draw the strip anew for it
+      if (busy) { if (finishNow) finishNow(); else return; }
+      if (!view_.style.height) { view_.style.transition = "none"; view_.style.height = view_.offsetHeight + "px"; }   // at rest its height is auto, from which nothing eases: this week's height now, first (once the weeks either side are drawn it would be the tallest of the three)
+      busy = true; wkSliding = true; sides(); const page = viewKey(S.view);   // the page it began on: one left meanwhile keeps this week (calFold)
+      if (dir) { $("weekHead").textContent = wkHead(weekOff + dir); $("weekToday").hidden = calOpen || !(weekOff + dir); }   // the month's name and Today as it sets off, as the month's title
+      const target = track.children[1 + (dir || 0)];
+      void view_.offsetHeight; view_.style.transition = "";
+      if (target) view_.style.height = target.offsetHeight + "px";
+      let done = false;
+      const finish = (e, quiet) => {
+        if (done || (e && e.type === "transitionend" && (e.target !== track || e.propertyName !== "transform"))) return;   // (a day's own fade ending under it bubbles up here too: not the slide's end)
+        done = true; finishNow = null; track.removeEventListener("transitionend", finish);
+        busy = false; wkSliding = false; drawn = false; if (viewKey(S.view) === page) weekOff += dir || 0;
+        track.style.transition = "none"; track.style.transform = ""; view_.style.transition = ""; view_.style.height = "";
+        $("weekPrev").replaceChildren(); $("weekNext").replaceChildren();
+        if (!quiet && S.view.name === "client" && clients.has(S.view.id)) renderClient();   // the strip for the week it landed on (and anything a sync brought meanwhile); quiet: the caller draws (Month) or the page is being left (calFold)
+      };
+      finishNow = (quiet) => finish(null, quiet);
+      const still = Math.abs(-(dir || 0) * Math.max(1, view_.clientWidth) - at) < 1; at = 0;   // the fingers carried it all the way (a whole week's flick): nothing left to move, nothing to wait for
+      if (calmMotion() || still) { finish(); return; }
+      track.addEventListener("transitionend", finish);
+      track.style.transition = "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)";
+      track.style.transform = "translateX(" + (-100 - (dir || 0) * 100) + "%)";
+      setTimeout(finish, 360);
+    };
+    const follow = (x) => {                        // the weeks x px from where they rest, the height easing toward the week coming in
+      sides(); at = x; track.style.transition = "none"; track.style.transform = "translateX(calc(-100% + " + x + "px))";
+      const centre = track.children[1], side = track.children[x < 0 ? 2 : 0];
+      if (centre && side) { const f = Math.min(1, Math.abs(x) / Math.max(1, view_.clientWidth)); view_.style.transition = "none"; view_.style.height = Math.round(centre.offsetHeight + (side.offsetHeight - centre.offsetHeight) * f) + "px"; }
+    };
+    weekWheel = {                                  // two fingers on a Mac's trackpad: the weeks follow them, a week at most, and settle by the finger's rule
+      begin() { if (busy && finishNow) finishNow(); if (busy || sx !== null || cdHolds()) return false; wx = 0; wkSliding = true; return true; },
+      move(d) { if (wx === null) return true; const w = Math.max(1, view_.clientWidth); wx = Math.max(-w, Math.min(w, wx + d)); follow(wx); return Math.abs(wx) >= w; },   // true: a whole week over
+      end() { if (wx === null) return; const x = wx; wx = null; settle(monthLetGo("cal", x, view_.clientWidth)); },
+    };
+    weekPage = (dir) => settle(dir); weekLand = (quiet) => { if (!(busy && finishNow)) return false; finishNow(quiet); return true; }; weekBusy = () => busy || dragging === true || wx !== null; weekForget = () => { if (dragging === true) { drawn = false; wkSliding = false; at = 0; track.style.transition = "none"; track.style.transform = ""; view_.style.height = ""; } sx = sy = null; dragging = null; dx = 0; };   // (weekForget: a press that lifted a workout is the drag's to the end)
+    view_.addEventListener("pointerdown", (e) => { if (!e.isPrimary || wx !== null) return; view_.classList.remove("dragged"); if (e.pointerType === "mouse" && (e.button !== 0 || e.ctrlKey)) return; if (sx !== null) release(true); if (busy && finishNow) finishNow(); if (busy) return; sx = e.clientX; sy = e.clientY; dragging = null; dx = 0; cpid = e.pointerId; });   // (a press that never ended, its release lost: back where it was first)
+    view_.addEventListener("pointermove", (e) => {
+      if (sx === null || busy || !e.isPrimary || cdHolds()) return;
+      if (e.pointerType === "mouse" && e.buttons === 0) { if (!lostT) lostT = setTimeout(() => { lostT = null; release(true); }, 150); return; }   // the button already up and no release yet (a Mac's lost to the window, or a menu took it): back where it was, as the drag's
+      dx = e.clientX - sx; const dy = e.clientY - sy;
+      if (dragging === null) { if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { dragging = true; wkSliding = true; try { view_.setPointerCapture(e.pointerId); } catch {} } else if (Math.abs(dy) > 8) dragging = false; if (dragging !== null && e.pointerType !== "mouse") view_.classList.add("dragged"); }   // not a tap: the day the finger landed on lets go of its grey
+      if (dragging) follow(dx);
+    });
+    const release = (cancel) => {
+      clearTimeout(lostT); lostT = null;
+      if (sx === null) return; const was = dragging, moved = dx; sx = sy = null; dragging = null; dx = 0;
+      if (!was) return;
+      swallow = true; setTimeout(() => { swallow = false; }, 0);
+      settle(cancel ? 0 : monthLetGo("cal", moved, view_.clientWidth));
+    };
+    view_.addEventListener("pointerup", (e) => { if (e.pointerId === cpid) release(false); });   // only the finger that took the strip lets it go (a second one lifted is no release)
+    view_.addEventListener("pointercancel", (e) => { if (e.pointerId === cpid) release(true); });
+    document.addEventListener("pointerup", (e) => { if (sx !== null && e.pointerId === cpid && !view_.contains(e.target)) release(false); }, true);   // its own press let go outside the strip (one that went up or down first, never captured): it ends there too
+    document.addEventListener("pointercancel", (e) => { if (sx !== null && e.pointerId === cpid && !view_.contains(e.target)) release(true); }, true);
+    view_.addEventListener("click", (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
+    $("weekToday").addEventListener("click", () => {                   // back to this week: slid from the next or last one, else coming in from that side
+      if (busy && finishNow) finishNow();                              // a week still sliding in lands first (Today shows as it sets off)
+      const rolled = wkRoll();
+      if (!weekOff || calOpen || busy) { if (rolled && !calOpen && !busy && S.view.name === "client" && clients.has(S.view.id)) renderClient(); return; }   // (a new week begun since: the week shown is this one now, drawn anew with today on it and no Today)
+      if (Math.abs(weekOff) === 1) { settle(-weekOff); return; }
+      cdWeekSlide = weekOff > 0 ? -1 : 1; weekOff = 0; if (S.view.name === "client" && clients.has(S.view.id)) renderClient();
+    });
   }
 
   // ---------- drag a workout to another day (his ask, 11 Nov: "when you press and hold on the workout only in calendar view .. both week and
@@ -2783,8 +2875,8 @@ import { reportRange, buildReport } from "./report.js";
     const g = cd; if (!g) return; g.timer = null;
     const t = trainings.get(g.tid);
     if (!cdLive(g.chip)) { const c = cdChip(g.tid), d = c && cdDayOf(c); if (d && d.dataset.day === g.from) g.chip = c; }   // a redraw during the hold (a sync's) drew the chip anew: the same workout in the same day is the one held
-    if (!cdLive(g.chip) || !cdCan(t) || held() || calSliding || calBusy() || (S.view.name !== "client")) { cdOff(); return; }
-    g.lifted = true; if (calOpen) calForget();
+    if (!cdLive(g.chip) || !cdCan(t) || held() || calSliding || calBusy() || wkSliding || weekBusy() || (S.view.name !== "client")) { cdOff(); return; }
+    g.lifted = true; if (calOpen) calForget(); else weekForget();
     const r = g.chip.getBoundingClientRect(), day = cdDayOf(g.chip), dr = day ? day.getBoundingClientRect() : r;
     const w = Math.round(Math.max(r.width || 0, (dr.width || r.width || 0) * CD_WIDE)), box = document.createElement("div"), n = document.createElement("span");
     box.id = "calDrag"; box.className = cdHas(g.chip, "miss") ? "miss" : "plan"; box.setAttribute("aria-hidden", "true");
@@ -2852,8 +2944,7 @@ import { reportRange, buildReport } from "./report.js";
     } else if (box && !calmMotion()) { box.style.transition = "opacity 150ms ease"; box.style.opacity = "0"; setTimeout(done, 170); }
     else done();
     const wk = $("week"), free = () => { if (!(cd && cd.lifted) && wk) wk.style.minHeight = ""; };
-    if (weekOff) setTimeout(() => { if (!(cd && cd.lifted) && weekOff) { if (S.view.name === "client") { cdWeekSlide = -weekOff; weekOff = 0; renderClient(); } else weekOff = 0; } free(); }, 230);   // the strip comes back to this week once the copy is down, at its own height again (a redraw meanwhile may have brought it back already: its height is let go all the same)
-    else free();
+    free();                                                            // at its own height again; it stays on the week it was let go in, as Calendar's (the strip pages week by week since v285: Today brings it back)
     setTimeout(rsFlush, 240);                                          // a sync's redraw that waited
   }
   function cdDrop() {                                                  // let go: on a day from today on, other than its own, the workout moves there by Reschedule's own rule (the client's by the server's rule, the coach's an ordinary save); anywhere else it settles back
@@ -3131,8 +3222,8 @@ import { reportRange, buildReport } from "./report.js";
     const list = clientTrainings(c.id);
 
     const base = new Date(); base.setHours(12, 0, 0, 0);
-    if (!(cd && cd.lifted)) { weekOff = 0; $("week").style.minHeight = ""; }   // the strip is this week, at its own height, unless a drag held at its edge has turned it
-    const monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7) + weekOff * 7);
+    if (!(cd && cd.lifted)) $("week").style.minHeight = "";            // the strip at its own height, unless a workout is held over it (weekOff: the week paged to, kept across a redraw, this week again once the page is left)
+    wkRoll(true);
     const iso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     // missed by more than a week: it files itself under History as "Missed" (his rule, 10 Nov: the Missed card keeps a week), what was logged on it kept there;
     // filed before the week and the month are drawn, so the redraw that files it never leaves its red chip on the month after the Missed card has let it go
@@ -3141,9 +3232,8 @@ import { reportRange, buildReport } from "./report.js";
       if (t.completedAt || t.skippedAt || t.missed !== undefined || !effDate(t) || effDate(t) >= stale) continue;   // missed: true = filed before, false = a person brought it back (Undo on its page) or decided before Do it today stopped deciding
       t.skippedAt = now(); t.missed = true; if (S.clientMode) pendingMiss.add(t.id); scheduleSave("trainings", t.id);
     }
-    const weekEl = $("week"); weekEl.replaceChildren();
-    const weekStart = iso(monday);
-    const dayButton = (d, withWeekday) => {
+    const weekEl = $("week");
+    const dayButton = (d, withWeekday, live = true) => {
       const key = iso(d);
       const dayWorkouts = list.filter((t) => effDate(t) === key && !(t.skippedAt && !t.completedAt));
       const b = document.createElement("button"); b.type = "button"; b.dataset.day = key;   // (its day: a preview opened from it gives a keyboard's place back to it, drawn anew)
@@ -3153,6 +3243,7 @@ import { reportRange, buildReport } from "./report.js";
       const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = String(d.getDate());
       b.append(dn, dayChips(dayWorkouts));
       b.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + (dayWorkouts.length ? ": " + dayNames(dayWorkouts) : ""));
+      if (!live) { b.tabIndex = -1; return b; }                        // a week either side, drawn as the finger takes the strip: a picture of it (the strip drawn once it lands is the real one)
       b.addEventListener("click", (e) => {                                                    // a workout in the calendar opens its preview first (his ask, 11 Nov: "only from calendar view both week and month if I click on a workout it opens preview first instead of the actual workout"), as Calendar opens an event's sheet; its rows below still open the workout itself
         const chip = e && e.target && e.target.closest ? e.target.closest(".day-ev") : null, tid = chip && chip.dataset ? chip.dataset.tid : "";
         if (tid && dayWorkouts.some((t) => t.id === tid)) { openPreview(tid); return; }       // the chip tapped: that workout's
@@ -3162,10 +3253,10 @@ import { reportRange, buildReport } from "./report.js";
       });
       return b;
     };
-    for (let i = 0; i < 7; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); weekEl.appendChild(dayButton(d, true)); }
-    if (cdWeekSlide) { const side = cdWeekSlide; cdWeekSlide = 0; weekEl.classList.remove("wk-in-r", "wk-in-l"); if (!calmMotion()) { void weekEl.offsetWidth; weekEl.classList.add(side > 0 ? "wk-in-r" : "wk-in-l"); const tok = ++cdSlideTok, off = () => { if (tok === cdSlideTok) weekEl.classList.remove("wk-in-r", "wk-in-l"); }; weekEl.onanimationend = weekEl.onanimationcancel = off; setTimeout(off, 320); } }   // a drag turned the strip, or it comes back: the new week slides in from that side, and the class goes once it has played (or the strip would slide in again each time it is shown)
-    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);   // the strip's title is the month it is in, as Calendar's; the month view carries its own
-    $("weekHead").textContent = monday.getMonth() === sunday.getMonth() ? monday.toLocaleDateString(undefined, { month: "long" }) : monday.toLocaleDateString(undefined, { month: "short" }) + " \u2013 " + sunday.toLocaleDateString(undefined, { month: "short" });
+    wkSide = (el, off, live = false) => { const m0 = wkMonday(off), days = []; for (let i = 0; i < 7; i++) { const d = new Date(m0); d.setDate(m0.getDate() + i); days.push(dayButton(d, true, live)); } el.replaceChildren(...days); if (!live) fitChips(el); };   // a week either side (a picture), or the strip itself (live)
+    wkDraw = () => { wkSide(weekEl, weekOff, true); $("weekHead").textContent = wkHead(weekOff); wkAnchor = localIso(wkMonday(0)); };   // the strip for the week shown (calFold draws it alone as the page is left)
+    if (!wkSliding) wkDraw();                                          // the weeks sliding: this strip stays as it is, drawn again once they land
+    if (cdWeekSlide && !wkSliding) { const side = cdWeekSlide; cdWeekSlide = 0; weekEl.classList.remove("wk-in-r", "wk-in-l"); if (!calmMotion()) { void weekEl.offsetWidth; weekEl.classList.add(side > 0 ? "wk-in-r" : "wk-in-l"); const tok = ++cdSlideTok, off = () => { if (tok === cdSlideTok) weekEl.classList.remove("wk-in-r", "wk-in-l"); }; weekEl.onanimationend = weekEl.onanimationcancel = off; setTimeout(off, 320); } }   // a drag turned the strip, or it comes back: the new week slides in from that side, and the class goes once it has played (or the strip would slide in again each time it is shown)
     paintCalMode();
     // month view: three months on a sliding track (previous, shown, next) so a swipe follows the finger
     if (calOpen) {
@@ -5327,7 +5418,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, weekOffNow: () => weekOff, setWeekOff: (v) => { weekOff = v; }, weekWheelNow: () => weekWheel, weekPageNow: () => weekPage, wkMonth, calFold, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },

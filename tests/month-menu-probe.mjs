@@ -126,7 +126,7 @@ out.cal.slanted = await calRun(Array.from({ length: 12 }, () => [4, 3]));    // 
   const before = calTitle.textContent, prevented = await play(steady(60), calDay); await advance(600); bg.hidden = true;
   out.cal.underMenu = { before, after: calTitle.textContent, prevented }; }
 { clientPage(); await advance(500); calView.fire("pointerdown", { isPrimary: true, pointerId: 1, clientX: 200, clientY: 300 });   // a finger already on the months: they stay its
-  const before = calTitle.textContent, prevented = await play(steady(60), calDay); await advance(600); calView.fire("pointerup", {});
+  const before = calTitle.textContent, prevented = await play(steady(60), calDay); await advance(600); calView.fire("pointerup", { isPrimary: true, pointerId: 1, clientX: 200, clientY: 300 });   // (its own finger lifted: a lift carries its pointer, and only the finger that took the months lets them go, v285)
   out.cal.fingerOn = { before, after: calTitle.textContent, prevented }; }
 { clientPage(); await advance(500); const panels = calTrack.children; let keptMid = null;   // a sync's redraw while two fingers hold the months: it waits, then comes
   await play(steady(30), calDay, { each: () => { if (keptMid === null && calX() !== 0) { fns.render(); keptMid = calTrack.children === panels; } } });
@@ -150,6 +150,33 @@ out.cal.slowFlick = await calRun([...steady(330, 3), ...FINGERS, ...COAST]);   /
   fire("pointerup", { target: elsewhere, pointerType: "touch", pointerId: 2, isPrimary: false, button: 0, clientX: 10, clientY: 10 });
   f("pointermove", 240); const on = calX(); f("pointerup", 240); await advance(600);
   out.cal.secondFinger = { mid, on, before, after: calTitle.textContent }; }
+{ clientPage(); await advance(500); const before = calTitle.textContent;   // ... and one lifted on the month itself (v285, the week's review): no release of the first one's either
+  const f = (type, x, id = 1, extra = {}) => calView.fire(type, { isPrimary: id === 1, pointerId: id, pointerType: "touch", button: 0, clientX: x, clientY: 300, ...extra });
+  f("pointerdown", 300); f("pointermove", 280); f("pointermove", 270); const mid = calX();
+  f("pointerdown", 100, 2); f("pointerup", 100, 2); const kept = calX(); f("pointermove", 180); const on = calX(); f("pointerup", 180); await advance(600);
+  out.cal.secondOn = { mid, kept, on, before, after: calTitle.textContent }; }
+{ clientPage(); await advance(500); const before = calTitle.textContent;   // a Mac's release lost (the button up, no pointerup): the months no longer follow the bare pointer, and go back after 150 ms; two fingers page again
+  const m = (type, x, extra = {}) => calView.fire(type, { isPrimary: true, pointerId: 1, pointerType: "mouse", button: 0, buttons: 1, clientX: x, clientY: 300, ...extra });
+  m("pointerdown", 300); m("pointermove", 280); m("pointermove", 200); const held = calX(); m("pointermove", 150, { buttons: 0 }); const bare = calX();
+  await advance(200); const back = calX(); await advance(600); const stay = calTitle.textContent; await play(steady(60), calDay); await advance(600);
+  out.cal.lost = { held, bare, back, stayed: stay === before, paged: calTitle.textContent !== before }; }
+{ clientPage(); await advance(500); const before = calTitle.textContent;   // a press on the month after a release lost with no move to show it: the old press is let go first (back), nothing left across
+  const m = (type, x, extra = {}) => calView.fire(type, { isPrimary: true, pointerId: 1, pointerType: "mouse", button: 0, buttons: 1, clientX: x, clientY: 300, ...extra });
+  m("pointerdown", 300); m("pointermove", 280); m("pointermove", 200); const held = calX(); await advance(500);
+  m("pointerdown", 300); const pressed = calX(); m("pointerup", 300, { buttons: 0 }); await advance(600);
+  out.cal.pressAgain = { held, pressed, rest: calX(), same: calTitle.textContent === before }; }
+{ clientPage(); await advance(500); const before = calTitle.textContent;   // a second finger the browser cancels: no release of the first one's drag
+  const f = (type, x, id = 1, extra = {}) => calView.fire(type, { isPrimary: id === 1, pointerId: id, pointerType: "touch", button: 0, clientX: x, clientY: 300, ...extra });
+  f("pointerdown", 300); f("pointermove", 280); f("pointermove", 270); f("pointerdown", 100, 2); f("pointercancel", 100, 2); const kept = calX(); f("pointermove", 180); const on = calX(); f("pointerup", 180); await advance(600);
+  out.cal.secondCancel = { kept, on, paged: calTitle.textContent !== before }; }
+{ clientPage(); await advance(500); const before = calTitle.textContent;   // a Mac's release lost, then a new drag within its 150 ms: the new drag pages (the old press's timer let go with it)
+  const m = (type, x, extra = {}) => calView.fire(type, { isPrimary: true, pointerId: 1, pointerType: "mouse", button: 0, buttons: 1, clientX: x, clientY: 300, ...extra });
+  m("pointerdown", 300); m("pointermove", 280); m("pointermove", 200); m("pointermove", 180, { buttons: 0 }); await advance(40);
+  m("pointerdown", 300); m("pointermove", 280); await advance(40); m("pointermove", 240); await advance(40); m("pointermove", 210); await advance(60); const mid = calX();
+  m("pointerup", 210, { buttons: 0 }); await advance(600);
+  out.cal.lostAgain = { mid, paged: calTitle.textContent !== before }; }
+{ clientPage(); await advance(500); const before = calTitle.textContent;   // two fingers carry the months a whole month (a firm flick): they land at once, nothing left to move or wait for (v285, as the week's)
+  await play(steady(400, 10), calDay); await advance(100); out.cal.wholeMonth = { landed: calX(), paged: calTitle.textContent !== before }; }
 // ---------- the day picker's months ----------
 const dpTrack = () => g.firstElementChild;
 const dpPx = () => { const m = /translate3d\(([-\d.e]+)px/.exec(dpTrack().style.transform || ""); return m ? Number(m[1]) : null; };
