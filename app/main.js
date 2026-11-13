@@ -1124,7 +1124,6 @@ import { reportRange, buildReport } from "./report.js";
     if (easeMemo.size > 200) easeMemo.clear(); easeMemo.set(key, out); return out;
   };
   const calmMotion = () => { try { return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (_) { return false; } };
-  if ((swipeOn || deskOn) && !iosHome && typeof document !== "undefined" && document.body && document.body.classList) document.body.classList.add("clip-x");   // Android's installed app and a computer: the sliding page must not widen the page (index.html)
   const dockSig = (dock) => [...dock.children].filter((k) => !k.hidden).map((k) => k.id).join(",");   // which bar the page shows at its foot: a client page's tabs and +, a workout's Coach | Client and +
   const dockShows = (dock) => !!dock && [...dock.children].some((k) => !k.hidden) && !document.body.classList.contains("typing") && !document.body.classList.contains("kb");   // the bar at the foot is on screen (the keyboard, or its bar of keys, has the bottom: index.html)
   const dockGoes = (dockOn, shot, dock) => !!dockOn && !(shot && shot._dock && shot._dockSig === dockSig(dock));   // the swipe back: this page's bar goes with this page; the same bar on both pages stays (the copy's then stays hidden); a different one (the workout's Coach | Client and +, the client page's tabs and +) goes with its page while the other comes in with its own
@@ -1134,6 +1133,7 @@ import { reportRange, buildReport } from "./report.js";
     const box = document.createElement("div"); box.className = "nav-shot"; box.setAttribute("aria-hidden", "true");
     box.dataset.bar = String(Math.min(1, Math.max(0, (Number(window.scrollY) || 0) / BAR_FADE)));   // how the top bar looked over this page: the swipe brings it back
     box.dataset.look = lookNow();                                   // the coach's look or the client's: a copy is only shown in the look it was taken in, and at the width (the phone turned since: laid out for the other one)
+    box.dataset.body = bodyState();                                 // and the page's own classes on the body as it was taken (shown under a body of its own: v286)
     for (const s of secs) {
       const r = s.getBoundingClientRect(), c = s.cloneNode(true), from = s.querySelectorAll("input, textarea, select"), to = c.querySelectorAll("input, textarea, select");
       from.forEach((el, i) => { if (to[i]) to[i].value = el.value; });   // what was typed shows, not just the empty fields
@@ -1145,6 +1145,16 @@ import { reportRange, buildReport } from "./report.js";
     return box;
   }
   const lookNow = () => (document.body.classList.contains("client") ? "client" : "coach") + "@" + (Number(window.innerWidth) || 0);
+  const SHOT_SKIP = ["typing", "kb", "rs-drag", "swipe-busy", "pv-up", "cal-drag"];   // the body's passing states (a keyboard, a finger, a sheet): never part of a page's picture
+  const bodyState = (also = []) => Array.from(document.body.classList || []).filter((c) => !SHOT_SKIP.includes(c) && !also.includes(c)).join(" ");
+  function lookBack(bk) {                                           // the look the screen Back goes to will have (v286): the client's own app always theirs; the coach's the client's only on a workout shown as the client (the one open, from its exercise page; another one by his Settings' Open workouts in)
+    const w = Number(window.innerWidth) || 0;
+    if (S.clientMode) return "client@" + w;
+    const [name, id] = String(bk).split("|")[0].split("/");
+    let client = false;
+    if (name === "training") { const t = trainings.get(id), fresh = id === freshWorkout || (!!fillFor && id === fillFor); client = S.view.name === "training" && S.view.id === id ? previewing() : !fresh && !!t && !isTemplateClient(t.clientId) && openAs() === "client"; }   // (go()'s own rule, keep in step: a brand-new one, or one a template is being chosen for, always as the coach)
+    return (client ? "client" : "coach") + "@" + w;
+  }
   function barFor(key) {                                            // the bar's buttons on the screen with this key (keep in step with render() and the settings pages)
     const [vk, sub] = String(key).split("|"), [name, id, prog] = vk.split("/"), home = !sub && (name === "clients" || (S.clientMode && name === "client"));
     const tplMore = !sub && name === "client" && isTemplateClient(id) && !prog && !S.clientMode && !pickFor;   // the Templates page and his folders: his "…" (keep in step with tplPageOn)
@@ -1166,7 +1176,7 @@ import { reportRange, buildReport } from "./report.js";
     if (settingsOpen) { if (backScroll != null) y = backScroll; else if (!$("localFoot").hidden) { y = 0; toFoot = true; } else y = 0; }
     const cr = cur.getBoundingClientRect(), docTop = cr.top + (Number(window.scrollY) || 0), px = (st, k) => parseFloat(st[k]) || 0, ms = getComputedStyle(cur.parentElement), bs = getComputedStyle(document.body);
     const below = px(ms, "paddingBottom") + px(ms, "borderBottomWidth") + px(ms, "marginBottom") + px(bs, "paddingBottom");   // what the page has under its section (main's and body's), the same under the home
-    const box = document.createElement("div"); box.className = "nav-shot"; box.setAttribute("aria-hidden", "true"); box.dataset.look = lookNow();
+    const box = document.createElement("div"); box.className = "nav-shot"; box.setAttribute("aria-hidden", "true"); box.dataset.look = "coach@" + (Number(window.innerWidth) || 0); box.dataset.body = bodyState(["client", "tabs", "tplus", "wsdock", "paused"]);   // the coach's home, in his look, with none of a page's own classes
     const c = $("vClients").cloneNode(true); c.hidden = false; c.style.position = "absolute"; c.style.left = cr.left + "px"; c.style.width = cr.width + "px"; c.style.margin = "0"; box.appendChild(c);
     const put = (at) => { c.style.top = (docTop - at) + "px"; box.dataset.bar = String(Math.min(1, Math.max(0, at / BAR_FADE))); };
     put(y);
@@ -1233,11 +1243,11 @@ import { reportRange, buildReport } from "./report.js";
     sw.on = true; sw.w = window.innerWidth; sw.main = document.querySelector("main");
     const layer = document.createElement("div"); layer.className = "swipe-under"; layer.setAttribute("aria-hidden", "true");
     const bk = backKey(); let shot = shotByKey.get(bk) || null;
-    if (shot && shot.dataset.look !== lookNow()) shot = null;       // taken in the other look (the coach previewing a workout as the client) or at another width: not the page Back will show
+    if (shot && shot.dataset.look !== lookBack(bk)) shot = null;    // taken in another look than the one Back lands in, or at another width: not the page Back will show (a workout shown as the client goes back to the client's page in the coach's own look: its copy, v286)
     if (!shot && bk === viewKey({ name: "clients" }) + "||") shot = freshHomeShot();   // the home has no copy yet (after a relaunch): one drawn now, never the plain page colour
-    if (shot) layer.appendChild(shot);                              // none known: the plain page colour, never a wrong page
+    if (shot) { const under = document.createElement("body"); under.className = shot.dataset.body || ""; under.appendChild(shot); layer.appendChild(under); }   // none known: the plain page colour, never a wrong page. The copy sits in a body of its own with the classes it was taken under, so the live page's (body.client, as the coach shows a workout as the client) restyle nothing in it
     const dim = document.createElement("div"); dim.className = "swipe-dim"; layer.appendChild(dim);
-    document.body.appendChild(layer); sw.layer = layer; sw.dim = dim; sw.shot = shot;
+    document.documentElement.appendChild(layer); sw.layer = layer; sw.dim = dim; sw.shot = shot;   // (beside the live body, not in it: the stacking is the same, the last thing on the page under main.swiping)
     if (shot && shot._land) shot._land();                           // a fresh copy placed by its own layout
     document.body.classList.add("swipe-busy");                      // no taps on the bar or the tab bar until the pages have settled (UIKit takes none during its transition)
     const dock = $("dock"), dockOn = dockShows(dock);

@@ -57,7 +57,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (285 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (286 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -156,7 +156,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - A client edit that is in no queue is replaced at the next sync.
 - `clientBackend.set` sends workouts only. A client's change to their own profile needs its own RPC and queue, as `photos.js` has for `client_set_photo`.
 - `previewClient` (the coach's Coach|Client switch) gives the coach the client's look, actions and limits; for one, Reschedule works only from today. Every save is still the coach's. A new client-only control needs a decision about what it does in the coach's Client view.
-- A workout the coach opens comes up in the view set in his Settings, "Open workouts in: Coach | Client" (v284, `openAs`, kept per device in `fiala.openAs`): `go()` sets `previewClient` when a workout page opens, except for a brand-new one (`freshWorkout`, set by `addTraining` and `fillFromTemplate`, and a return from choosing a template for it) and for templates; the same workout drawn again keeps what he switched to. A workout page opened anew takes this tab's own view from `sessionStorage` (`fiala.preview`, "1" or "0"), else the setting (`firstPreview`, in `boot`). With the client's look on, the swipe back from a workout slides over the plain page colour: its page's picture was taken in the coach's look (`startSwipe` drops a picture taken in another look).
+- A workout the coach opens comes up in the view set in the coach's Settings, "Open workouts in: Coach | Client" (v284, `openAs`, kept per device in `fiala.openAs`): `go()` sets `previewClient` when a workout page opens, except for a brand-new one (`freshWorkout`, set by `addTraining` and `fillFromTemplate`, and a return from choosing a template for it) and for templates; the same workout drawn again keeps what the coach switched to. A workout page opened anew takes this tab's own view from `sessionStorage` (`fiala.preview`, "1" or "0"), else the setting (`firstPreview`, in `boot`). The swipe back shows a page's picture only in the look Back lands in (`lookBack`, keep it in step with `go()`): a workout shown as the client goes back over its client's page in the coach's look.
 - Copy workout (a workout's `…`, the preview's `…`) asks the client, then the day in that client's calendar ("Copy to <name>", `copyDay`); the copy goes on that day and opens.
 - Coach code marks what it changed, or a merge hands the field back to the server's value:
   - `touchState(id, field)` for `completedAt`, `completedBy`, `skippedAt`, `skipReason`, `missed`, `date` and `inPerson`;
@@ -199,7 +199,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v285 it ends "519 passed, 0 failed" after about 55 s.
+- At v286 it ends "522 passed, 0 failed" after about 55 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
@@ -279,7 +279,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Gestures
 
 - Gestures, by prefix in `main.js`:
-  - `sw`: swipe back;
+  - `sw`: swipe back. Its picture of the page underneath (`captureScreen`) is drawn under a `<body>` of its own carrying the classes it was taken under (`dataset.body`, less passing states such as `typing`), in a layer beside the live body, so the live page's `body.client` restyles nothing in it;
   - `rs*`: row swipe;
   - `wg`: the trackpad's sideways two-finger swipe, which `wheelKind()` hands to a row, the swipe back or a pager;
   - `cd*`: calendar drag;
@@ -294,6 +294,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - `wkRoll()` keeps the week shown when a new week begins (Sunday's midnight) before a redraw; at a redraw (`wkRoll(true)`) this week shown stays this week.
   - Both pagers (`#weekView`, `#calView`) end a press only for its own pointer (`cpid`), settle back 150 ms after a Mac's lost release (a move with `buttons` 0 and no pointerup), let a press that never ended go at the next press, and land at once when nothing is left to move (`at`). A transitionend from a day inside the track is not the slide's end.
 - `held()` is true while a question, menu or sheet owns the touch.
+- The body clips sideways on every device (`body { overflow-x: clip }`), and the viewport has `minimum-scale=1` and `shrink-to-fit=no`. On the iPhone's home-screen app the page sliding off under the swipe back widened the page from 402 to 804 points, and WebKit could zoom out to fit: the two pages side by side at half size (v286).
 - A new gesture also needs its Mac form (click-and-hold or the trackpad), since the coach works on a Mac.
 - Redraw deferral: syncs redraw through `ui.render`, which is `renderUnlessSwiping`. It waits while the pages slide or `rowHolds()` is true. A new gesture:
   - adds its own `*Holds()` to `rowHolds`, and calls `rsFlush()` when it ends, or a sync rebuilds the element under the finger;

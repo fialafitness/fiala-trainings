@@ -28,3 +28,20 @@ test("the swipe settles on UIKit's spring written as a cubic-bezier (Core Animat
   }
   assert.ok(!/linear\(/.test(fns.springEase(0, 0.3, 0.85).css), "never linear()");
 });
+
+// His screenshot, 13 Nov ("I see a lot of glitches like this when swiping back"): the client's page and the Clients list side by side at half size.
+// Measured in the iOS 27.2 Simulator the same day: on the iPhone's home-screen app the page sliding off widened the page from 402 to 804 points as
+// the swipe let go, and WebKit may zoom a width=device-width page laid out wider than the screen out to fit it (402 / 804: half size). The body
+// clips sideways on every device now (it did on Android and a computer only), so the page never gets wider than the screen (402 throughout,
+// measured), and the viewport forbids any zoom-out below 1 and WebKit's shrink-to-fit.
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const here = path.dirname(fileURLToPath(import.meta.url));
+const html = fs.readFileSync(path.join(here, "../index.html"), "utf8"), js = fs.readFileSync(path.join(here, "../app/main.js"), "utf8");
+test("(v286) the swipe back never widens the page or zooms it out: the body clips sideways on every device (the iPhone too), and the viewport keeps the page at its own scale, never shrunk to fit", () => {
+  assert.ok(html.includes('<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, shrink-to-fit=no, viewport-fit=cover">'), "never below 1, never shrunk to fit a wider page");
+  assert.ok(/\n {2}body \{ overflow-x: clip; \}/.test(html), "the body clips sideways always (clip, unlike hidden, makes no scroller of body)");
+  assert.ok(!html.includes("body.clip-x") && !js.includes('"clip-x"'), "no device left out of it (the iPhone's home-screen app was)");
+  assert.ok(html.includes("  html { overflow-x: hidden; }"), "and the page itself never scrolls sideways");
+});

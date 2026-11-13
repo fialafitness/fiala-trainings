@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, shrink-to-fit=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -205,7 +205,7 @@
   #typeProbe { position: absolute; left: -9999px; top: 0; font: -apple-system-body; visibility: hidden; }   /* a hidden line in the system font: its size is the Text Size setting */
   body { touch-action: pan-x pan-y; }                /* scroll, never pinch or double-tap zoom: a zoomed page is what drifts side to side in Safari */
   main { overflow-x: clip; }
-  body.clip-x { overflow-x: clip; }                  /* Android's installed app (main.js): the page sliding off under the swipe never widens the page (Chrome grew its layout to fit it, and the tab bar dropped below the screen); clip, unlike hidden, makes no scroller of body. Not on iPhone, which does not widen: the page there stays as it was */
+  body { overflow-x: clip; }                         /* the page sliding off under the swipe back never widens the page, on every device (v286: the iPhone's home-screen app widened it too now, 402 to 804 points as the page slid off, and the phone could zoom out to fit: the two pages side by side at half size); clip, unlike hidden, makes no scroller of body. The viewport's minimum-scale=1 and shrink-to-fit=no keep WebKit from zooming out to fit a page laid out wider than the screen at all */
   main > section:not([hidden]) { display: flow-root; }   /* a section keeps its first child's top margin inside it (nothing on screen moves): its copy under the swipe then lays out exactly like it, at any depth (the home's title margin made the copy 20 points low, measured 7 Nov) */
   body {
     margin: 0;
@@ -1810,7 +1810,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=285";
+  import { boot } from "./app/main.js?v=286";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
