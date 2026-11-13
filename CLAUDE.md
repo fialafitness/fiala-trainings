@@ -57,7 +57,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (281 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (282 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -184,7 +184,8 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - `takeNotes` in `sync.js` merges the list by id, and a folder this device changed field by field (its `sort` from Reorder folders, its name), judged against the copy last read;
   - change a template's place with `placeTemplate()`, which saves through `tidySave` (never into an open template draft);
   - the Templates page's Programs list (the coach's top folders and the built-in programs) keeps its Reorder as `rootOrder` on that record: keys, a folder's id or `"p:" + program` (read as `"b:" + program` once that is a folder); `tplRootList()` reads it, and anything not in it comes after. With no `rootOrder`, the coach's own folders come first, then the programs. `takeNotes` takes the server's order unless this device changed it (`folderTouched` key `":rootOrder"`);
-  - the Templates pages' top bar has a `+` (`#tAdd`, `tplAddItems`) and the `…` (`tplMoreItems`) in one capsule (CSS on `#tAdd`).
+  - the Templates pages' top bar has a `+` (`#tAdd`, `tplAddItems`) and the `…` (`tplMoreItems`) in one capsule (CSS on `#tAdd`);
+  - a folder page's templates (`tplHere`: the slide shown, or the folder's own) go into a client's calendar at once, one a day in their order from the day picked (v282, `useWeek`): "Use all" above the list while a template is chosen for a client's empty workout (`pickFor`/`fillFor`; while that workout is still empty and to do (`canFill`), it takes the first where it is and moves to the first day; one skipped or finished, or changed by a sync meanwhile, stays as it is and the week goes in beside it), and "Use for a client" in the folder's `…`. Both end on the client's page.
 - `templates.json` reaches an existing coach account only when its Templates record's `templatesVersion` is below `TEMPLATES_VERSION` in `main.js`: after a raise, or after restoring an older backup. Ask the owner before raising it. Each time, the app:
   - adds every built-in template the account lacks, so templates the coach deleted come back;
   - never replaces a template the account already holds. It only re-runs the old version-3 repair on them (reps saved as the built-in's plus " sec" get the built-in's reps back).
@@ -194,7 +195,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v281 it ends "483 passed, 0 failed" after about 45 s.
+- At v282 it ends "490 passed, 0 failed" after about 50 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
@@ -226,7 +227,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - the rule finders in the `set-slider`, `preview-pager` and `cal-chips` tests rely on the two-space indent.
 - Don't reformat, re-indent or reorder a pinned rule. When one changes on purpose, update the test's string in the same commit.
 - A source-text check also matches text inside a comment, so it cannot prove that code runs.
-- Anything a test must reach goes into the `fns` list of `internals()` at the end of `main.js`, with a getter arrow for private `let` state. That list is one line of about 3,500 characters.
+- Anything a test must reach goes into the `fns` list of `internals()` at the end of `main.js`, with a getter arrow for private `let` state. That list is one line of about 4,200 characters.
 
 ### Guard tests
 
