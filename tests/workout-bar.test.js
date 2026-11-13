@@ -21,7 +21,7 @@ const $ = (id) => document.getElementById(id);
 const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const here = path.dirname(fileURLToPath(import.meta.url));
 const probe = (mode) => JSON.parse(execFileSync(process.execPath, [path.join(here, "workout-bar-probe.mjs"), mode], { encoding: "utf8", timeout: 60000 }).trim().split("\n").pop());
-const phone = probe("phone"), desk = probe("desk"), swipe = probe("swipe");
+const phone = probe("phone"), desk = probe("desk"), swipe = probe("swipe"), kb = probe("kb");
 const src = fs.readFileSync(new URL("../app/main.js", import.meta.url), "utf8");
 const workout = (id, extra = {}) => ({ id, clientId: "c1", title: "Legs", date: fns.today(), createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [], ...extra });
 const BAR = ["viewSeg", "addExBtn", "tabbar", "addBtn"];
@@ -151,7 +151,7 @@ test("typing on a phone: the bar gives the keyboard the bottom, from the + on; i
   assert.deepStrictEqual(phone.reps, { typing: true, keys: true, focus: "reps" }, "a number box: the keyboard and its bar of keys");
   assert.deepStrictEqual(phone.backToName, { typing: true, keys: false, focus: "name" });
   assert.deepStrictEqual(phone.letGo, { typing: false, keys: false, focus: "nothing" }, "let go: the bar is back");
-  assert.ok(html.includes("body.typing #dock, body.kb #dock { display: none; }"), "either look takes the bar away");
+  assert.ok(html.includes("body.typing #dock, body.kb #dock { visibility: hidden; }"), "either look takes the bar away: hidden, never taken out (v287), so WebKit keeps placing it with the page");
 });
 
 test("typing on a computer (his Mac): the bar stays, so the + is under the pointer for the next exercise; only the keyboard's bar of keys, at the window's foot, takes the bottom", () => {
@@ -160,7 +160,8 @@ test("typing on a computer (his Mac): the bar stays, so the + is under the point
   assert.deepStrictEqual(desk.reps, { typing: false, keys: true, focus: "reps" }, "a number box: its bar of keys has the bottom, so the bar gives way");
   assert.deepStrictEqual(desk.backToName, { typing: false, keys: false, focus: "name" }, "back to a name: the bar is back at once");
   assert.deepStrictEqual(desk.letGo, { typing: false, keys: false, focus: "nothing" });
-  assert.ok(src.includes('box._dock = dockShows(dock);') && src.includes("dockOn = dockShows(dock);") && src.includes('&& !document.body.classList.contains("typing") && !document.body.classList.contains("kb");'), "a picture and a swipe count the bar only when it is on screen");
+  assert.ok(src.includes("dockOn = dockShows(dock);") && src.includes('&& !document.body.classList.contains("typing") && !document.body.classList.contains("kb");'), "a swipe counts the live bar only when it is on screen");
+  assert.ok(src.includes("box._dock = !!dock && [...dock.children].some((k) => !k.hidden);"), "a page's picture has its bar as the page comes back (never typing then, v287)");
   assert.ok(src.includes('a.blur(); document.body.classList.remove("typing"); if (kbTarget) hideKb(); }'), "two fingers on a computer let the field go, and its bar of keys at once: the page's bar slides with the page");
 });
 
@@ -219,4 +220,19 @@ test("the swipe back: a page's bar goes with it, unless the page underneath has 
   assert.ok(src.includes('box._dockSig = box._dock ? dockSig(dock) : "";'), "each picture remembers which bar it had");
   assert.ok(src.includes('$("dock").classList.toggle("ws", wsDock);') && src.includes('$("dock").classList.remove("ws");'), "the copy (a clone of the bar) carries its page's layout: the workout's bar comes in at its edges under the Templates page, the client page's tabs centred under a workout");
   assert.ok(src.includes('if (s.dockSlides && s.dock) { s.dock.style.transition = "none"; s.dock.style.transform = "translate3d(" + w + "px,0,0)"; }'), "Back refused (a template's Unsaved changes): the bar that went with the page comes back in with it");
+});
+
+// His screenshots, 13 Nov ("the glass bar has a lot of glitches ... sometimes when I add an exercise after I add it it disappears sometimes it moves
+// when it shouldn't ... make sure the glass bar and all the plus buttons ... always there no matter what"): the bar mid-screen on a workout.
+test("(v287) the bar at the foot and the keyboard: it waits for the keyboard to have gone before it comes back, at most 0.7 s; a box taken away with the keyboard on it, a redraw, or the app sent away and back never leave it away; it never moves with the visible area; a read-only box hides nothing; a swipe back as the keyboard goes takes the bar with its page", () => {
+  assert.deepStrictEqual(kb.kbGate, { waiting: true, back: false }, "let go with the keyboard still on its way out: away until it has gone, then back");
+  assert.deepStrictEqual(kb.kbSilent, { mid: true, late: false }, "a keyboard that never says: back after 0.7 s");
+  assert.deepStrictEqual(kb.kbGone, { stuck: [true, true], after: [false, false] }, "the box taken away with no blur: the keyboard going takes the typing look and the bar of keys with it");
+  assert.strictEqual(kb.kbRedraw, false, "or the next redraw does");
+  assert.deepStrictEqual(kb.kbPin, { pinned: "", rest: "", keyboardUp: "", notPanned: "" }, "the visible area reported moved (an iPhone does so at every bounce at a page's foot, 125 points measured): the bar never moves with it (the v287 review: a pin made it dip)");
+  assert.deepStrictEqual(kb.kbReadOnly, { typing: false, hidden: false }, "a read-only box (the client's look: the title, an exercise's name and number) takes a tap with no keyboard: no typing look, the bar stays (it hid the bar for good)");
+  assert.deepStrictEqual(kb.kbSwipe, { typingAtTouch: true, typingAtStart: false, slid: true }, "a swipe back started as the keyboard still goes (the typing look still on at the touch): the bar is back once the swipe starts and slides with its page (it stayed still over the page coming in)");
+  assert.strictEqual(kb.kbBack, false, "the app back on screen: no typing look left behind");
+  assert.deepStrictEqual(kb.kbNext, { typing: true, keys: true, focus: "reps" }, "another box has the keyboard: still away");
+  assert.deepStrictEqual([kb.drawn, kb.plus, kb.reps, kb.letGo], [phone.drawn, phone.plus, phone.reps, phone.letGo], "the phone's own steps, the same with its visible area");
 });

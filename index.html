@@ -923,7 +923,7 @@
   #tabbar button.on { background: var(--tab-on); color: var(--brand-text); box-shadow: var(--tab-on-shadow); }
   body.tabs #vClient { padding-bottom: 100px; }                                   /* the last thing on the page clears the bar */
   body.tplus #vClient { padding-bottom: 100px; }                                  /* the Templates pages: the last template clears the + (main.js) */
-  body.typing #dock, body.kb #dock { display: none; }                            /* the keyboard has the bottom (a phone's: a computer's keyboard is on the desk, main.js), and so has the keyboard's own bar of keys above it (on a computer too: there it sits at the window's foot) */
+  body.typing #dock, body.kb #dock { visibility: hidden; }                       /* the keyboard has the bottom (a phone's: a computer's keyboard is on the desk, main.js), and so has the keyboard's own bar of keys above it (on a computer too: there it sits at the window's foot). Hidden, never taken out (v287): taken out, the bar was made anew as it came back, and an iPhone could pin the new one where the keyboard's top had been, mid-screen (his screenshots, 13 Nov); kept, WebKit keeps placing it with the page */
   #dock.ws { justify-content: space-between; padding: 0 21px; max-width: 680px; margin: 0 auto; }   /* the coach's workout page: Coach | Client at the leading edge, the + at the trailing one, 21 in from the screen's edges (measured on Photos, his reference); on a wide screen the row keeps to the page's column. Marked on the bar itself, not the page, so the swipe back's picture of a page keeps that page's own bar (main.js captureScreen) */
   #dock.tp { justify-content: flex-end; padding: 0 21px; max-width: 680px; margin: 0 auto; }   /* the Templates pages and his folders (12 Nov): the + alone at the trailing edge, where the workout page's sits */
   #dock.ws #addExBtn { margin-left: auto; }                                      /* the + stays at the trailing edge when it is alone (a template has no Coach | Client) */
@@ -1810,7 +1810,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=286";
+  import { boot } from "./app/main.js?v=287";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
