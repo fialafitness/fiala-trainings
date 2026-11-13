@@ -1140,7 +1140,7 @@ import { reportRange, buildReport } from "./report.js";
       c.style.position = "absolute"; c.style.left = r.left + "px"; c.style.top = r.top + "px"; c.style.width = r.width + "px"; c.style.margin = "0";   // the copy's content exactly where the page's was (a section is flow-root, index.html, so its first child's margin stays inside it)
       box.appendChild(c);
     }
-    const dock = $("dock"); box._dock = dockShows(dock); box._dockSig = box._dock ? dockSig(dock) : "";
+    const dock = $("dock"); box._dock = !!dock && [...dock.children].some((k) => !k.hidden); box._dockSig = box._dock ? dockSig(dock) : "";   // the page's bar as it comes back (never typing then: a keyboard up as the page was left leaves it out of the picture no more, v287)
     if (box._dock) { const d = dock.cloneNode(true); d.classList.add("shot-dock"); box.appendChild(d); }   // the page's tab bar too, styled as itself (fixed inside the copy, which holds it in place: will-change): it comes in with the page
     return box;
   }
@@ -1250,6 +1250,7 @@ import { reportRange, buildReport } from "./report.js";
     document.documentElement.appendChild(layer); sw.layer = layer; sw.dim = dim; sw.shot = shot;   // (beside the live body, not in it: the stacking is the same, the last thing on the page under main.swiping)
     if (shot && shot._land) shot._land();                           // a fresh copy placed by its own layout
     document.body.classList.add("swipe-busy");                      // no taps on the bar or the tab bar until the pages have settled (UIKit takes none during its transition)
+    if (document.body.classList.contains("typing") && !typingIn(document.activeElement)) { clearTimeout(typingT); typingT = 0; document.body.classList.remove("typing"); }   // the keyboard still on its way out (no box has it): the bar is back now and goes with its page (v287)
     const dock = $("dock"), dockOn = dockShows(dock);
     sw.dock = dock; sw.dockSlides = dockGoes(dockOn, shot, dock);
     if (shot) for (const d of shot.querySelectorAll(".shot-dock")) d.style.visibility = dockOn && !sw.dockSlides ? "hidden" : "";
@@ -1716,6 +1717,7 @@ import { reportRange, buildReport } from "./report.js";
     if (kind === "rest") { unitChip("sec"); unitChip("min"); }
     kbNextBtn.hidden = !kbSibling(t);                                                      // Next only while another box of this exercise, superset or giant set is left; the check is always there
   }
+  let typingWatch = () => {};                                         // (set with the typing look below: render() asks it after each redraw)
   function showKb(el) {
     kbTarget = el; paintKb(); kbbar.hidden = false; placeKb(); $("draftBar").classList.add("kb"); document.body.classList.add("kb");   // (the bar at the foot gives it the bottom, on a computer too: index.html)
     if (window.visualViewport) { window.visualViewport.addEventListener("resize", placeKb); window.visualViewport.addEventListener("scroll", placeKb); }
@@ -2455,6 +2457,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   const templateHome = (t) => { const h = tplHome(t); if (h) return h.kind === "slide" ? { name: "client", id: TEMPLATES_ID, folder: h.parent, slide: h.id } : { name: "client", id: TEMPLATES_ID, folder: h.id }; const m = templateMeta(t); return m.program === MY_TEMPLATES ? { name: "client", id: TEMPLATES_ID } : { name: "client", id: TEMPLATES_ID, program: m.program, phase: m.phase, stage: m.stage }; };   // a template in a folder or slide of his: back to that folder, on that slide
   function render() {
+    Promise.resolve().then(() => typingWatch());                    // after the redraw: a field it took away with the keyboard on it leaves no typing look behind (WebKit sends no blur for a field taken out)
     if (S.recovering) { showRecovery(); return; }
     if (pendingPage && S.signedIn && !(S.clientMode && !S.myClientId)) {   // a refresh on a settings page lands back on it at the first paint: no glimpse of the Clients page on the way
       const p = pendingPage; pendingPage = null; exStale = !!S.sb && !S.syncedOnce && (p.open === "exercises" || p.open === "exercise");
@@ -4738,9 +4741,29 @@ import { reportRange, buildReport } from "./report.js";
     for (const x of $("chatSeg").querySelectorAll("button")) x.classList.toggle("on", x === b);
   });
   $("tabbar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b || b.dataset.tab === S.tab) return; setTab(b.dataset.tab); render(); window.scrollTo(0, 0); });
-  const typingIn = (el) => !!el && /^(INPUT|TEXTAREA)$/.test(el.tagName) && !/^(date|month|checkbox|radio|file|range)$/.test(el.type || "");   // a keyboard is coming: a select or a date wheel is not typing
+  const typingIn = (el) => !!el && /^(INPUT|TEXTAREA)$/.test(el.tagName) && !el.readOnly && !/^(date|month|checkbox|radio|file|range)$/.test(el.type || "");   // a keyboard is coming: a select or a date wheel is not typing, nor a read-only box (the client's look: the title, an exercise's name and number take a tap with no keyboard; it hid the bar for good, the v287 review)
   document.addEventListener("focusin", (e) => { if (typingIn(e.target) && !deskOn) document.body.classList.add("typing"); });   // a phone's keyboard comes up over the bottom (the bar at the foot gives way: index.html); a computer's is on the desk, so its bar stays (the + under the pointer for the next exercise)
-  const typingOff = () => { setTimeout(() => { if (!typingIn(document.activeElement)) document.body.classList.remove("typing"); }, 80); };
+  // the bar at the foot and the keyboard (v287, his ask, 13 Nov: "the glass bar ... always there no matter what .. after I add exercise it
+  // appears again reliably it never moves from its spot"): it comes back only once no field has the keyboard and the keyboard itself has gone
+  // (the visible area its full height again; 700 ms at most, for a keyboard that never says): shown while the keyboard still slid away, an
+  // iPhone could leave it where the keyboard's top had been. Any way the keyboard goes (a field redrawn away with no blur, the app sent away
+  // and back), the typing look goes with it. Nothing moves the bar to follow the visible area: an iPhone reports that area moved at every
+  // bounce at a page's foot (125 points, measured in the iOS 27.2 Simulator), and the bar would dip with it (the v287 review).
+  let typingT = 0;
+  function typingCheck(t0) {
+    typingT = 0;
+    if (typingIn(document.activeElement)) return;                    // another box has the keyboard: still typing
+    const vv = window.visualViewport, open = !!vv && (Number(vv.height) || 0) < (Number(window.innerHeight) || 0) - 2;
+    if (open && performance.now() - t0 < 700) { typingT = setTimeout(() => typingCheck(t0), 50); return; }   // the keyboard still on its way out
+    document.body.classList.remove("typing");
+  }
+  const typingOff = () => { clearTimeout(typingT); const t0 = performance.now(); typingT = setTimeout(() => typingCheck(t0), 80); };
+  typingWatch = () => {
+    if (document.body.classList.contains("typing") && !typingT && !typingIn(document.activeElement)) typingOff();
+    if (kbTarget && !kbKind(document.activeElement)) hideKb();      // the bar of keys too, its box gone
+  };
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", () => typingWatch());   // the keyboard gone (or come)
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") typingWatch(); });
   document.addEventListener("focusout", typingOff);
   document.addEventListener("blur", typingOff, true);                // a field whose own blur redraws the page (an exercise's new number) is off the page before its focusout, which then never reaches here: the tab bar stayed hidden after it. Its blur is heard on the way down, while it is still on the page
   $("newTraining").addEventListener("click", () => addTraining(S.view.id, null, today()));

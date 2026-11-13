@@ -57,7 +57,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (286 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (287 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -199,7 +199,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v286 it ends "522 passed, 0 failed" after about 55 s.
+- At v286 it ends "523 passed, 0 failed" after about 60 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
@@ -294,6 +294,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - `wkRoll()` keeps the week shown when a new week begins (Sunday's midnight) before a redraw; at a redraw (`wkRoll(true)`) this week shown stays this week.
   - Both pagers (`#weekView`, `#calView`) end a press only for its own pointer (`cpid`), settle back 150 ms after a Mac's lost release (a move with `buttons` 0 and no pointerup), let a press that never ended go at the next press, and land at once when nothing is left to move (`at`). A transitionend from a day inside the track is not the slide's end.
 - `held()` is true while a question, menu or sheet owns the touch.
+- The bar at the foot (`#dock`) gives a phone's keyboard the bottom (`body.typing`, and `body.kb` for the bar of number keys) by `visibility: hidden`, never `display: none`: made anew while the keyboard still moved, an iPhone could pin it mid-screen. `typingCheck` takes the typing look off only once no field has the keyboard and the keyboard has gone (`visualViewport.height` back to `innerHeight`, 0.7 s at most). `typingWatch` (after every `render()`, on a `visualViewport` resize, on `visibilitychange`) takes off a look whose field has gone with no blur. `typingIn` skips read-only boxes, which an iPhone focuses with no keyboard. Never move the bar by `visualViewport.offsetTop`: an iPhone reports it at every bounce at a page's foot (v287).
 - The body clips sideways on every device (`body { overflow-x: clip }`), and the viewport has `minimum-scale=1` and `shrink-to-fit=no`. On the iPhone's home-screen app the page sliding off under the swipe back widened the page from 402 to 804 points, and WebKit could zoom out to fit: the two pages side by side at half size (v286).
 - A new gesture also needs its Mac form (click-and-hold or the trackpad), since the coach works on a Mac.
 - Redraw deferral: syncs redraw through `ui.render`, which is `renderUnlessSwiping`. It waits while the pages slide or `rowHolds()` is true. A new gesture:

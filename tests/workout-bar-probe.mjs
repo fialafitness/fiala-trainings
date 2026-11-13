@@ -3,12 +3,17 @@
 //   "phone" / "desk": typing on the workout (the +, a number box, back to the name, letting go) and a double click on the +, on a phone
 //                     (a keyboard comes up from the bottom) or a computer ((hover: hover) and (pointer: fine): its keyboard is on the desk);
 //   "swipe":          the swipe back's pictures of the bar (Templates back to a workout, a workout back to its client's page), and a Back
-//                     refused by a template's Unsaved changes.
+//                     refused by a template's Unsaved changes;
+//   "kb":             the phone's again, with its visible area (visualViewport) as the keyboard moves it (v287: the bar waits for the keyboard
+//                     to go, follows the visible foot, and never stays away once no box has the keyboard).
 // Prints, as JSON, what the page showed at each step.
 import { byId, el } from "./env.js";
 const MODE = process.argv[2] || "phone", DESK = MODE === "desk";
 globalThis.matchMedia = (q) => ({ matches: (DESK && /hover: hover|pointer: fine/.test(q)) || /reduced-motion/.test(q), addEventListener() {}, removeEventListener() {} });   // (reduced motion: a glide lands at once)
 const L = {};
+const vvL = {}, VV = MODE === "kb" ? { width: 402, height: 812, offsetTop: 0, offsetLeft: 0, scale: 1, addEventListener: (t, fn) => { (vvL[t] ||= []).push(fn); }, removeEventListener: (t, fn) => { const a = vvL[t] || []; const i = a.indexOf(fn); if (i >= 0) a.splice(i, 1); } } : null;
+if (VV) { globalThis.visualViewport = VV; globalThis.innerHeight = 812; }   // the phone's visible area: 812 tall, the keyboard takes 396 of it
+const vvFire = (t) => { for (const fn of [...(vvL[t] || [])]) fn({ type: t }); };
 document.addEventListener = (t, fn, o) => { (L[t] ||= []).push({ fn, capture: o === true || !!(o && o.capture) }); };
 document.removeEventListener = (t, fn) => { const a = L[t] || []; const i = a.findIndex((x) => x.fn === fn); if (i >= 0) a.splice(i, 1); };
 const fire = (type, ev = {}) => { ev.type = type; ev.preventDefault ||= () => {}; ev.stopPropagation ||= () => {}; const ls = L[type] || []; for (const l of [...ls.filter((x) => x.capture), ...ls.filter((x) => !x.capture)]) l.fn(ev); };
@@ -70,6 +75,39 @@ if (MODE !== "swipe") {
   const click = (detail) => { const e = { detail, prevented: false, stopped: false }; e.preventDefault = () => { e.prevented = true; }; e.stopImmediatePropagation = () => { e.stopped = true; }; return e; };
   addRow.fire("click", { detail: 1 }); const second = click(2), single = click(1); fire("click", second); fire("click", single);
   await wait(600); const late = click(2); fire("click", late);
+  if (MODE === "kb") {
+    const pin = () => dock.style.translate || "", up = () => { VV.height = 416; vvFire("resize"); }, down = () => { VV.height = 812; vvFire("resize"); };
+    // 1. let go while the keyboard is still on its way out: the bar waits for it, then comes back
+    name.focus(); up(); await wait(30); name.blur(); await wait(150); const waiting = look().typing; down(); await wait(120);
+    out.kbGate = { waiting, back: look().typing };
+    // 2. a keyboard that never says it has gone: back after 0.7 s all the same
+    name.focus(); up(); name.blur(); await wait(400); const mid = look().typing; await wait(500); out.kbSilent = { mid, late: look().typing }; down(); await wait(50);
+    // 3. the box taken away with the keyboard on it (no blur, as WebKit does): once the keyboard goes, the typing look and the bar of keys go too
+    reps.focus(); up(); document.activeElement = body; await wait(150); const stuck = look(); down(); await wait(150);
+    out.kbGone = { stuck: [stuck.typing, stuck.keys], after: [look().typing, look().keys] };
+    // 4. ... or at the next redraw
+    name.focus(); document.activeElement = body; fns.render(); await wait(150); out.kbRedraw = look().typing;
+    // 5. the visible area left moved against the page's own (the keyboard's pan, left behind): the bar follows it to the visible foot, and back
+    VV.offsetTop = 396; vvFire("scroll"); const pinned = pin(); VV.offsetTop = 0; vvFire("scroll"); out.kbPin = { pinned, rest: pin() };
+    VV.offsetTop = 396; VV.height = 416; vvFire("resize"); out.kbPin.keyboardUp = pin(); VV.offsetTop = 0; vvFire("resize"); out.kbPin.notPanned = pin(); VV.height = 812; vvFire("resize");   // (the keyboard up, the page panned or not: the bar is never pulled up)
+    // 6. the app sent away and back with the typing look left on
+    body.classList.add("typing"); document.activeElement = body; fire("visibilitychange", {}); await wait(150); out.kbBack = look().typing;
+    // 7. another box takes the keyboard: still typing, the bar still away
+    name.focus(); reps.focus(); await wait(150); out.kbNext = look(); reps.blur(); await wait(150);
+    // 8. a read-only box (the client's look) takes a tap with no keyboard: no typing look, the bar stays
+    const ro = field("TEXTAREA", "name"); ro.readOnly = true; ro.focus(); await wait(150);
+    out.kbReadOnly = { typing: look().typing, hidden: body.classList.contains("typing") || body.classList.contains("kb") }; ro.blur(); await wait(150);
+    // 9. a swipe back started while the keyboard still goes (no box has it): the bar is back at once and slides with its page
+    fns.forceSwipe(true); fire("pointerdown", {});
+    app.set({ view: { name: "client", id: "c1" } }); fns.render(); await wait(10); fns.go({ name: "training", id: "w1" }); await wait(10);
+    name.focus(); up(); name.blur(); await wait(100);
+    const target = { closest: () => null }; let ts = 1000; moves.length = 0;
+    fire("touchstart", { touches: [{ clientX: 5, clientY: 300 }], target, timeStamp: ts }); const typingAtTouch = body.classList.contains("typing");
+    for (const x of [20, 60, 120, 180]) { ts += 16; fire("touchmove", { touches: [{ clientX: x, clientY: 300 }], target, timeStamp: ts }); }
+    const typingAtStart = body.classList.contains("typing"), slid = moves.some((m) => /translate3d\((?!0px)/.test(m));   // (the swipe starts past its slop, with the moves)
+    fire("touchcancel", { changedTouches: [{ clientX: 180 }], target, timeStamp: ts + 5 }); await wait(800); down(); await wait(100);
+    out.kbSwipe = { typingAtTouch, typingAtStart, slid };
+  }
   out.addRow = { added: added.length, secondEaten: second.prevented && second.stopped, singleKept: !single.prevented && !single.stopped, lateKept: !late.prevented && !late.stopped };
   for (const t of maps.timers.values()) clearTimeout(t);
 }
