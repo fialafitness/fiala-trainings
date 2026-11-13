@@ -182,6 +182,23 @@ test("the swipe back: each picture keeps its own page's bar, laid out as that pa
   assert.deepStrictEqual(swipe.workoutToClient.landed, { view: "client", wsdock: false, ws: false, bar: "tabbar,addBtn" });
 });
 
+test("(v286) a workout the coach shows as the client (Settings: Open workouts in Client): the swipe back slides over the client's page as Back shows it, in the coach's own look (it was the plain page colour), the copy under a body of its own with that page's classes and not the client's look", () => {
+  assert.deepStrictEqual(swipe.asClient, { view: "training", wsdock: true, ws: true, bar: "viewSeg", client: true }, "the workout in the client's look (no + of the coach's)");
+  const a = swipe.asClientToClient;
+  assert.deepStrictEqual(a.picture, { classes: "shot-dock", shows: "tabbar,addBtn" }, "the client's page under it, its tabs and the coach's + as Back brings them");
+  assert.deepStrictEqual([a.under, a.layerIn, a.clientMid, a.landedClient], ["tabs", "html", true, false], "its body: the page's own class (its tabs), not the client's look the live page keeps while the finger holds it, beside the live body (inside it, body.client's rules would restyle it); landed: the coach's look");
+  assert.deepStrictEqual(a.landed, { view: "client", wsdock: false, ws: false, bar: "tabbar,addBtn" });
+});
+
+test("(v286) the picture is taken in the look Back lands in, every way: a brand-new workout a template is being chosen for opens as the coach even with Open workouts in Client; a workout switched to the client's view by hand comes back as the client's from Settings; the client's own app keeps its look; a passing state (typing) is never in a picture", () => {
+  assert.deepStrictEqual([swipe.fillAsClient.picture, swipe.fillAsClient.under, swipe.fillAsClient.landedClient], [{ classes: "shot-dock ws", shows: "viewSeg,addExBtn" }, "wsdock", false], "the brand-new workout, as the coach (its + and Coach | Client)");
+  const st = swipe.settingsToClientView;
+  assert.deepStrictEqual([st.switched, st.picture, st.under, st.landedClient], [true, { classes: "shot-dock ws", shows: "viewSeg" }, "wsdock client", true], "Settings over a workout shown as the client: back to it as the client sees it");
+  assert.strictEqual(swipe.typingToClient.under, "tabs", "taken while typing: no typing class under the picture");
+  assert.deepStrictEqual([swipe.clientApp.picture, swipe.clientApp.under], [{ classes: "shot-dock", shows: "tabbar" }, "tabs client"], "the client's own app: their page in their look");
+});
+
+
 test("Back refused (a template's Unsaved changes): the + that went with the page comes back in with it", () => {
   assert.deepStrictEqual(swipe.template, { view: "training", wsdock: true, ws: true, bar: "addExBtn", dirty: true });
   const m = swipe.refused.moves;
