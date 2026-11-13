@@ -15,7 +15,7 @@ const $ = (id) => document.getElementById(id);
 const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const src = fs.readFileSync(new URL("../app/main.js", import.meta.url), "utf8");
 const TPL = TEMPLATES_ID;
-const quiet = () => { for (const t of maps.timers.values()) clearTimeout(t); maps.timers.clear(); fns.setPreview(false); fns.setPickFor(null); };   // no save left to run into a later test
+const quiet = () => { for (const t of maps.timers.values()) clearTimeout(t); maps.timers.clear(); fns.setPreview(false); fns.setPickFor(null); fns.setFillFor(null); };   // no save left to run into a later test
 const at = (m) => "2026-11-12T10:" + String(m).padStart(2, "0") + ":00.000Z";
 const node = (id, name, parent, kind, m) => ({ id, name, parent, kind, at: at(m) });
 const T = (id, meta, extra = {}) => ({ id, clientId: TPL, title: "", date: "2026-01-01", createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [{ id: "r" + id, label: "1", name: "Back squat", sets: 3, reps: "8", rest: "90 sec", tempo: "", note: "", alts: [] }], template: meta, ...extra });
@@ -60,6 +60,7 @@ function drawing(fn) {
 const read = (kids) => kids.flatMap((e) => (e.tagName === "H2" ? ["# " + e.textContent]
   : e.className === "list" ? e.kids.map((li) => (li.dataset.tid ? "tpl " + li.dataset.tid : li.kids[0].className === "rowline" ? (li.className === "drag-row" ? "≡ " : "· ") + li.kids[0].kids[0].textContent : "> " + li.kids[0].firstChild.textContent + " · " + li.kids[0].lastChild.textContent))
   : /\bseg\b/.test(e.className) ? ["tabs " + e.kids.map((b) => { const w = b.kids.length ? b.kids[0].textContent : b.textContent; return b.classList.contains("on") ? "[" + w + "]" : w; }).join(" ")]
+  : e.className === "listbar" ? ["bar " + e.kids.map((k) => k.textContent).join(" · ")]
   : e.className === "empty" ? ["empty: " + e.textContent] : ["? " + e.tagName]));
 const pageNow = () => [$("tplKicker").textContent, $("cName").textContent];
 
@@ -118,9 +119,9 @@ test("the two buttons (his ask, 12 Nov: \"split it in 2 buttons\"): the + has ev
   setup();
   assert.deepStrictEqual([adds(), menu()], [["New template", "New folder"], ["Reorder"]], "the Templates page");
   fns.go(fns.tplPage("A")); assert.deepStrictEqual([adds(), menu()], [["New template", "New folder", "New slide"], ["Rename folder", "red Delete folder"]], "a top folder with no slides and one folder inside");
-  fns.go(fns.tplPage("B")); assert.deepStrictEqual([adds(), menu()], [["New template", "New slide"], ["Rename slide", "Rename folder", "red Delete slide", "red Delete folder"]], "a folder inside a folder: no deeper folder");
+  fns.go(fns.tplPage("B")); assert.deepStrictEqual([adds(), menu()], [["New template", "New slide"], ["Use for a client", "Rename slide", "Rename folder", "red Delete slide", "red Delete folder"]], "a folder inside a folder: no deeper folder (and Week 1's three templates go into a client's calendar at once: v282)");
   const MI = fns.menuIcons();
-  assert.deepStrictEqual([fns.tplAddItems().map((it) => it.icon), fns.tplMoreItems().map((it) => it.icon)], [[MI.docPlus, MI.slidePlus], [MI.pencil, MI.pencil, MI.trash, MI.trash]]);
+  assert.deepStrictEqual([fns.tplAddItems().map((it) => it.icon), fns.tplMoreItems().map((it) => it.icon)], [[MI.docPlus, MI.slidePlus], [MI.calendar, MI.pencil, MI.pencil, MI.trash, MI.trash]]);
   fns.go({ name: "client", id: TPL }); assert.deepStrictEqual([fns.tplAddItems().map((it) => it.icon), fns.tplMoreItems().map((it) => it.icon)], [[MI.docPlus, MI.folderPlus], [MI.reorder]]);
   assert.strictEqual(MI.reorder, MI.swap.replace("<path ", '<path transform="rotate(90 21.88 10)" '), "Reorder: the swap arrows a quarter turn round (up beside down)");
   for (const k of ["folderPlus", "slidePlus", "docPlus"]) assert.ok(/^<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M[^"]+Z"\/><\/svg>$/.test(MI[k]) && !MI[k].includes("stroke"), k + ": our own filled glyph, its plus cut through it");
@@ -608,4 +609,223 @@ test("the page: the name field in the question sheet, the + alone at the foot's 
   assert.ok(html.includes("\n  .seg.stages button { min-width: 0; }\n  .seg.stages button > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }"), "cut in a span: the key keeps its 44 pt halo (a clip on the key would cut it)");
   assert.ok(src.includes('const nm = document.createElement("span"); nm.textContent = x.name; b.appendChild(nm);'), "his slide's name in that span");
   assert.ok(src.includes('if (input) f.focus({ preventScroll: true }); else n.focus({ preventScroll: true });'), "the field takes the focus in the tap that opened the sheet, so the phone gives its keyboard");
+});
+
+// His ask, 12 Nov: "every time there is more than one workout in one folder I want to be able to add the whole folder / slide to the calendar
+// ... I pick Monday then Monday through Friday will have all the workouts there". His picks: from both places (Use all while choosing a
+// template for a client, Use for a client in a folder's "…"), every day in a row, one week at a time.
+const W0 = (extra = {}) => ({ id: "w0", clientId: "c1", date: "2026-11-27", createdAt: "2026-11-10T10:00:00.000Z", title: "", completedAt: null, skippedAt: null, rows: [], ...extra });
+const theirs = (cid, but) => [...maps.trainings.values()].filter((t) => t.clientId === cid && t.id !== but).sort((x, y) => x.date.localeCompare(y.date)).map((t) => [t.date, t.title, t.fromTemplate, t.rows.map((r) => r.name).join()]);
+const pickDays = (day) => { const dp = fns.datePicker(), pick = dp.onPick; fns.closeDatePicker(); pick(day); };   // a day tapped: the days close, then the pick (as the picker's own click)
+
+test("Use all, choosing a template for a client's empty workout: the slide's workouts in their order, Workout 1 into that workout, the rest a day each after it, from the day picked; then their page, where Back goes as before", async () => {
+  setup(FOLDERS, TPLS, { name: "client", id: "c1" }); await tick();
+  maps.trainings.get("t2").rows[0].name = "Deadlift"; maps.trainings.get("t4").rows[0].name = "Bench press";   // each template its own exercise
+  const d0 = fns.navState().depth;
+  maps.trainings.set("w0", W0({ inPerson: true }));                     // In person, set on it
+  fns.go({ name: "training", id: "w0" }); await tick();
+  fns.fromTemplate(maps.trainings.get("w0")); await tick();             // From template on it
+  assert.deepStrictEqual([fns.choosing().pickFor, fns.choosing().fillFor, fns.choosing().pickHome, app.get().view], ["c1", "w0", d0, { name: "client", id: TPL, program: null, phase: null, stage: null }], "choosing for it, the client's own step noted");
+  fns.go(fns.tplPage("B")); await tick();
+  const kids = drawing((got) => { fns.render(); return got(); });
+  assert.deepStrictEqual(read(kids), ["tabs [Week 1] Week 2", "bar 3 workouts · Use all", "tpl t1", "tpl t2", "tpl t4"], "how many, and Use all, above the slide's list (Workout 1, 2, 3: the one in the folder itself counts with the first slide)");
+  const use = kids.find((e) => e.className === "listbar").kids[1];
+  assert.deepStrictEqual([use.style.color, use.className], ["var(--brand-text)", "btn quiet use-all"], "the purple as text, as the pick note's Cancel above it (the v282 review: the fill purple reads 4.2:1 on the dark page)");
+  app.set({ tab: "notes" });                                          // their page was last left on another tab
+  use.on.click[0]();
+  const dp = fns.datePicker();
+  assert.deepStrictEqual(dp && [dp.title, dp.selected, dp.moving, dp.clientId], ["Add Week 1 to Jane", "2026-11-27", "w0", "c1"], "the client's calendar, on the workout's own day, its chip outlined: it moves to the first day picked");
+  for (const k of ["trainings/w0"]) { maps.dirty.delete(k); clearTimeout(maps.timers.get(k)); maps.timers.delete(k); }   // nothing of it waiting before the pick
+  pickDays("2026-11-30");
+  assert.deepStrictEqual(theirs("c1"), [["2026-11-30", "Workout 1", "t1", "Back squat"], ["2026-12-01", "Workout 2", "t2", "Deadlift"], ["2026-12-02", "Workout 3", "t4", "Bench press"]], "Workout 1 on the day picked, the rest a day each after it, across the month's end, each with its own exercises");
+  const w0 = maps.trainings.get("w0");
+  assert.deepStrictEqual([w0 && w0.date, w0 && w0.title, w0 && w0.fromTemplate, w0 && w0.inPerson], ["2026-11-30", "Workout 1", "t1", true], "the empty workout is Workout 1, where it is: on the day picked, its In person kept");
+  assert.ok((maps.trainerState.get("w0") || new Set()).has("date"), "its new day is his: it wins when the save meets a newer server copy");
+  assert.deepStrictEqual([...maps.trainings.values()].filter((t) => t.clientId === "c1").sort((x, y) => x.date.localeCompare(y.date)).map((t) => !!t.inPerson), [true, false, false], "In person on it only (a new one gets the client's package's)");
+  const made = [...maps.trainings.values()].filter((t) => t.clientId === "c1");
+  assert.ok(made.length === 3 && made.every((t) => maps.dirty.has("trainings/" + t.id) && maps.timers.has("trainings/" + t.id)), "it and the two new ones, each queued for its save");
+  const row = w0.rows[0], tr = maps.trainings.get("t1").rows[0];
+  assert.ok(row !== tr && row.id !== tr.id && row.weights !== tr.weights, "the exercises copied, not shared with the template");
+  assert.deepStrictEqual([app.get().view, app.get().tab], [{ name: "client", id: "c1" }, "workouts"], "then their page, on Workouts, where the calendar shows them");
+  assert.deepStrictEqual(fns.choosing().pickFor, null, "no longer choosing");
+  assert.strictEqual(fns.choosing().fillFor, null);
+  await tick();
+  assert.strictEqual(fns.navState().depth, d0, "their page on its own step: Back from it goes where it went before, not through the templates");
+  assert.strictEqual(fns.choosing().pickHome, null);
+  quiet();
+});
+
+test("From template on a workout opened from History: Use all lands on the client's own step, under History's", async () => {
+  setup(FOLDERS, TPLS, { name: "client", id: "c1" });
+  maps.trainings.set("w0", W0({ skippedAt: "2026-11-27T10:00:00.000Z" }));
+  app.set({ view: { name: "training", id: "w0", from: "history" } }); await tick(); const d = fns.navState().depth;
+  fns.fromTemplate(maps.trainings.get("w0")); await tick();
+  assert.strictEqual(fns.choosing().pickHome, d - 2, "the workout's step, History's, then the client's");
+  fns.go(fns.tplPage("B")); await tick();
+  drawing((got) => { fns.render(); return got(); }).find((e) => e.className === "listbar").kids[1].on.click[0]();
+  pickDays("2026-11-30"); await tick();
+  assert.deepStrictEqual([app.get().view, fns.navState().depth, theirs("c1", "w0").length, maps.trainings.get("w0").skippedAt], [{ name: "client", id: "c1" }, Math.max(1, d - 2), 3, "2026-11-27T10:00:00.000Z"], "their page on that step; the week beside the skipped one, which stays as it was");
+  setup(FOLDERS, TPLS, { name: "client", id: "c1" }); maps.trainings.set("w0", W0());
+  app.set({ view: { name: "training", id: "w0" } }); const e = fns.navState().depth;
+  fns.fromTemplate(maps.trainings.get("w0"));
+  assert.strictEqual(fns.choosing().pickHome, e - 1, "opened from their page: the step under it");
+  setup(FOLDERS, TPLS, { name: "client", id: "c1" }); maps.trainings.set("w0", W0({ skippedAt: "2026-11-27T10:00:00.000Z" }));
+  fns.go({ name: "clients" }); await tick(); fns.go({ name: "training", id: "w0", from: "history" }); await tick();
+  fns.fromTemplate(maps.trainings.get("w0")); await tick();
+  assert.deepStrictEqual([fns.navState().depth, fns.choosing().pickHome], [2, -1], "a fresh tab opened on the workout from History: too short a history to hold History's step");
+  fns.go(fns.tplPage("B")); await tick();
+  drawing((got) => { fns.render(); return got(); }).find((e) => e.className === "listbar").kids[1].on.click[0]();
+  pickDays("2026-12-07"); await tick();
+  assert.deepStrictEqual([app.get().view, fns.navState().depth], [{ name: "client", id: "c1" }, 1], "their page on the first step, never before it");
+  quiet();
+});
+
+test("Use all shows only while choosing, and only for two or more; a slide's name or the folder's names the days; a template or the client gone while the days are up", async () => {
+  const two = [...TPLS, T("h2", MINE(2, "H")), T("h1", MINE(1, "H"))];   // (made out of their order: listed by their number)
+  setup(FOLDERS, two, { name: "client", id: TPL, folder: "B" });
+  assert.deepStrictEqual(drawing((got) => { fns.render(); return read(got()); }), ["tabs [Week 1] Week 2", "tpl t1", "tpl t2", "tpl t4"], "not while he is only looking");
+  fns.setPickFor("c1"); fns.setFillFor(null);
+  app.set({ view: { name: "client", id: TPL, folder: "B", slide: "S2" } });
+  assert.deepStrictEqual(drawing((got) => { fns.render(); return read(got()); }), ["tabs Week 1 [Week 2]", "tpl t3"], "one workout: its Use is all there is");
+  maps.trainings.set("a1", T("a1", MINE(1, "A"))); maps.trainings.set("a2", T("a2", MINE(2, "A"))); app.set({ view: { name: "client", id: TPL, folder: "A" } });
+  const top = drawing((got) => { fns.render(); return got(); });
+  assert.deepStrictEqual(read(top), ["# Folders", "> Phase 1 · 4 workouts", "bar 2 workouts · Use all", "tpl a1", "tpl a2"], "a folder with folders and templates of its own: the bar stands in for the Templates heading (two headings in a row read as one too many: the v282 review)");
+  assert.strictEqual(top[2].style.marginTop, "24px", "where that heading stood");
+  fns.setPickFor(null);
+  assert.deepStrictEqual(drawing((got) => { fns.render(); return read(got()); }), ["# Folders", "> Phase 1 · 4 workouts", "# Templates", "tpl a1", "tpl a2"], "only looking: the heading as before");
+  fns.setPickFor("c1");
+  maps.trainings.delete("a1"); maps.trainings.delete("a2");
+  app.set({ view: { name: "client", id: TPL, folder: "H" } });
+  const kids = drawing((got) => { fns.render(); return got(); });
+  assert.deepStrictEqual(read(kids), ["bar 2 workouts · Use all", "tpl h1", "tpl h2"], "a folder with no slides: its own, Workout 1 first");
+  kids[0].kids[1].on.click[0]();
+  assert.deepStrictEqual([fns.datePicker().title, fns.datePicker().moving, fns.datePicker().selected], ["Add Rehab to Jane", null, fns.today()], "named by the folder; no workout of theirs to fill, so none moves, and it opens on today");
+  maps.trainings.delete("h1");
+  pickDays("2026-10-31");
+  assert.deepStrictEqual(theirs("c1"), [["2026-10-31", "Workout 2", "h2", "Back squat"]], "a template deleted on another device while the days were up: the rest, from the day picked");
+  maps.trainings.set("w0", W0({ skippedAt: "2026-11-27T10:00:00.000Z" })); fns.setPickFor("c1"); fns.setFillFor("w0"); app.set({ view: { name: "client", id: TPL, folder: "B" } });
+  drawing((got) => { fns.render(); return got(); }).find((e) => e.className === "listbar").kids[1].on.click[0]();
+  assert.deepStrictEqual([fns.datePicker().moving, fns.datePicker().selected], [null, fns.today()], "From template on a skipped one (History): it stays as it is, so nothing outlined, and the days open on today");
+  maps.clients.delete("c1");
+  assert.strictEqual(fns.datePicker().ok(), false, "the client deleted meanwhile: the days close at the next redraw");
+  pickDays("2026-11-30");
+  assert.deepStrictEqual(theirs("c1", "w0").length, 1, "and nothing more is added");
+  quiet();
+});
+
+test("Use all into an empty workout across the clock change, one finished or filled meanwhile, one with a name and In person of its own", () => {
+  setup();
+  const tp = ["t1", "t2", "t4"].map((id) => maps.trainings.get(id));
+  maps.trainings.set("w0", W0({ title: "Legs day", date: "2026-10-31", inPerson: true }));
+  fns.useWeek(tp, "c1", "2026-10-31", "w0");
+  const w0 = maps.trainings.get("w0");
+  assert.deepStrictEqual([w0.title, w0.date, w0.rows.length, w0.inPerson, w0.fromTemplate], ["Legs day", "2026-10-31", 1, true, "t1"], "Workout 1 where it is, its own name and In person kept");
+  assert.ok((maps.trainerState.get("w0") || new Set()).has("date"), "its day claimed even when it was there already: a move made on another device meanwhile does not pull it out of the week (the v282 review)");
+  assert.deepStrictEqual(theirs("c1").map((x) => x[0]), ["2026-10-31", "2026-11-01", "2026-11-02"], "a day each, over the night the clocks go back");
+  assert.ok(theirs("c1", "w0").every((x) => x[1] !== "Legs day"), "its name on Workout 1 only");
+  setup(); maps.trainings.set("w0", W0());
+  fns.useWeek(["t1"].map((id) => maps.trainings.get(id)), "c1", "2026-11-30", "w0");
+  assert.deepStrictEqual([maps.trainings.get("w0").title, "inPerson" in maps.trainings.get("w0"), theirs("c1", "w0").length], ["Workout 1", false, 0], "no name of its own: the template's; nothing added beside it");
+  for (const [why, extra] of [["finished", { completedAt: "2026-11-27T10:00:00.000Z" }], ["skipped", { skippedAt: "2026-11-27T10:00:00.000Z" }], ["filled on another device", { rows: [{ id: "x", label: "1", name: "Deadlift", sets: 3, reps: "5" }] }], ["another client's", { clientId: "c2" }]]) {
+    setup(); maps.trainings.set("w0", W0({ title: "Legs day", inPerson: true, ...extra })); const before = JSON.stringify(maps.trainings.get("w0"));
+    fns.useWeek(["t1", "t2"].map((id) => maps.trainings.get(id)), "c1", "2026-11-30", "w0");
+    assert.strictEqual(JSON.stringify(maps.trainings.get("w0")), before, why + ": left as it is");
+    assert.strictEqual(fns.canFill(maps.trainings.get("w0"), "c1"), false, why + ": not one to fill");
+    assert.deepStrictEqual(theirs("c1", "w0").map((x) => [x[0], x[1], x[2]]), [["2026-11-30", "Workout 1", "t1"], ["2026-12-01", "Workout 2", "t2"]], why + ": the whole week goes in beside it, by the templates' own names");
+    assert.ok([...maps.trainings.values()].filter((t) => t.clientId === "c1" && t.id !== "w0").every((t) => !t.inPerson), why + ": its In person not borrowed");
+  }
+  quiet();
+});
+
+test("Use for a client, first in a folder's \"…\" when its page shows two templates or more: which client (the last one used first), the first day, then the week and their page; nothing from a page left meanwhile", async () => {
+  setup(FOLDERS, TPLS, { name: "client", id: TPL, folder: "B" });
+  maps.clients.set("c2", { id: "c2", name: "Bob", unit: "lb", sort: 9 }); maps.clients.get("c1").sort = 1;   // his Clients list: Jane, then Bob
+  assert.deepStrictEqual(menu(), ["Use for a client", "Rename slide", "Rename folder", "red Delete slide", "red Delete folder"]);
+  assert.strictEqual(fns.tplMoreItems()[0].icon, fns.menuIcons().calendar, "the calendar, as Reschedule's");
+  app.set({ view: { name: "client", id: TPL, folder: "B", slide: "S2" } });
+  assert.ok(!menu().includes("Use for a client"), "Week 2 has one workout: nothing to add at once");
+  for (const view of [{ name: "client", id: TPL, folder: "A" }, { name: "client", id: TPL, folder: "H" }, { name: "client", id: TPL }]) { app.set({ view }); assert.ok(!menu().includes("Use for a client"), JSON.stringify(view)); }
+  app.set({ view: { name: "client", id: TPL, folder: "B" } }); fns.setPickFor("c1");
+  assert.deepStrictEqual(menu(), [], "choosing for a client: no \"…\", Use all instead");
+  fns.setPickFor(null);
+  let rows = [], onRow = null, onNo = null; const pl = $("pickList"), pn = $("pickNo"), cid = (id) => onRow({ target: { closest: () => ({ dataset: { id } }) } });
+  pl.replaceChildren = (...k) => { rows = k; }; pl.addEventListener = (t, f) => { if (t === "click") onRow = f; }; pn.addEventListener = (t, f) => { if (t === "click") onNo = f; };
+  const people = () => rows.map((li) => [li.kids[0].dataset.id, li.kids[0].firstChild.textContent, li.kids[0].lastChild.textContent]);
+  try {
+    $("pickSheet").hidden = true; app.set({ view: { name: "client", id: TPL, folder: "B", slide: "S2" } });
+    await fns.useWeekFor("B");
+    assert.strictEqual($("pickSheet").hidden, true, "a page with one workout left on it (a sync took the rest): nothing asked");
+    app.set({ view: { name: "client", id: TPL, folder: "B" }, tab: "notes" });
+    let p = drawing(() => fns.tplMoreItems()[0].onPick());
+    assert.deepStrictEqual([$("pickSheet").hidden, $("pickTitle").textContent], [false, "Add Week 1 to"], "which client");
+    await tick(400); cid("c2"); await p;
+    assert.deepStrictEqual([fns.datePicker().title, fns.datePicker().selected, fns.datePicker().moving], ["Add Week 1 to Bob", fns.today(), null], "the first day, in Bob's calendar");
+    pickDays("2026-11-30");
+    assert.deepStrictEqual(theirs("c2"), [["2026-11-30", "Workout 1", "t1", "Back squat"], ["2026-12-01", "Workout 2", "t2", "Back squat"], ["2026-12-02", "Workout 3", "t4", "Back squat"]], "Week 1, a day each from the one picked");
+    assert.deepStrictEqual([app.get().view, app.get().tab], [{ name: "client", id: "c2" }, "workouts"], "then Bob's page, on Workouts");
+    app.set({ view: { name: "client", id: TPL, folder: "B" } }); fns.render();
+    p = drawing(() => fns.tplMoreItems()[0].onPick());
+    assert.deepStrictEqual(people(), [["c2", "Bob", "last used"], ["c1", "Jane", ""]], "the last one used first, then his list's order");
+    await tick(400); app.set({ view: { name: "client", id: "c1" } }); cid("c1"); await p;
+    assert.strictEqual(fns.datePicker(), null, "Back while the clients were up: no days, nothing added");
+    assert.strictEqual(theirs("c1").length, 0);
+    app.set({ view: { name: "client", id: TPL, folder: "B" } }); fns.render();
+    p = drawing(() => fns.tplMoreItems()[0].onPick()); await tick(400); app.set({ view: { name: "client", id: TPL, folder: "A" } }); cid("c1"); await p;
+    assert.strictEqual(fns.datePicker(), null, "Back up to its folder meanwhile: no days");
+    app.set({ view: { name: "client", id: TPL, folder: "B" } }); fns.render();
+    p = drawing(() => fns.tplMoreItems()[0].onPick()); await tick(400); maps.clients.get(TPL).folders = maps.clients.get(TPL).folders.filter((x) => x.id !== "B" && x.parent !== "B"); fns.render(); cid("c1"); await p;
+    assert.strictEqual(fns.datePicker(), null, "the folder deleted on another device meanwhile: no days");
+    setup(FOLDERS, TPLS, { name: "client", id: TPL, folder: "B" }); maps.clients.set("c2", { id: "c2", name: "Bob", unit: "lb", sort: 9 }); maps.clients.get("c1").sort = 1;
+    p = drawing(() => fns.tplMoreItems()[0].onPick()); await tick(400); maps.clients.delete("c2"); cid("c2"); await p;
+    assert.strictEqual(fns.datePicker(), null, "Bob deleted while the clients were up: no days");
+    let focused = 0; const more = $("tMore"), sheetEl = $("pickSheet"); more.hidden = false; more.focus = () => { focused++; document.activeElement = more; }; sheetEl.contains = () => true;
+    p = drawing(() => fns.tplMoreItems()[0].onPick()); await tick(400); cid("c1"); await p;
+    delete more.focus; delete sheetEl.contains; const handed = fns.datePicker().back; fns.datePicker().back = null; document.activeElement = null;   // (the stand-in page cannot take the focus back)
+    assert.deepStrictEqual([focused, handed === more], [1, true], "a keyboard's place back on the \u2026 once the sheet has gone, and the days hand it back there");
+    maps.trainings.delete("t2"); pickDays("2026-11-30");
+    assert.deepStrictEqual(theirs("c1").map((x) => [x[0], x[2]]), [["2026-11-30", "t1"], ["2026-12-01", "t4"]], "a template deleted while the days were up: the rest, a day each");
+    app.set({ view: { name: "client", id: TPL, folder: "B", slide: "S2" } }); maps.trainings.set("t5", { ...maps.trainings.get("t5"), template: MINE(2, "S2") });
+    assert.deepStrictEqual([menu()[0], fns.weekName(fns.tplNode("B"))], ["Use for a client", "Week 2"], "Week 2 with two: its own name");
+    let again = 0; more.hidden = false; more.focus = () => { again++; }; sheetEl.contains = () => true; onNo = null;   // (the "\u2026" shown, as on the page)
+    p = drawing(() => fns.tplMoreItems()[0].onPick()); await tick(400); onNo(); await p;
+    delete more.focus; delete sheetEl.contains;
+    assert.deepStrictEqual([again, fns.datePicker()], [1, null], "Cancel on the clients: the keyboard's place back on the \u2026 too, and no days");
+    app.set({ view: { name: "client", id: TPL, folder: "B" } }); fns.render();
+    p = drawing(() => fns.tplMoreItems()[0].onPick()); await tick(400); cid("c1"); await p;
+    assert.strictEqual(fns.datePicker().ok(), true, "Jane's days");
+    maps.clients.delete("c1"); const had = theirs("c1").length;
+    assert.strictEqual(fns.datePicker().ok(), false, "Jane deleted on another device: her days close at the next redraw");
+    pickDays("2026-11-30");
+    assert.strictEqual(theirs("c1").length, had, "and nothing is added for her");
+    maps.clients.delete("c2"); onNo = null;
+    p = drawing(() => fns.tplMoreItems()[0].onPick());
+    assert.deepStrictEqual(rows.map((li) => [li.className, li.textContent, li.kids.length]), [["empty", "Add a client first.", 0]], "no clients yet: a word, nothing to pick");
+    onNo(); assert.strictEqual(await p, undefined, "Cancel");
+    assert.strictEqual(fns.datePicker(), null);
+  } finally { delete pl.replaceChildren; delete pl.addEventListener; delete pn.addEventListener; }
+  quiet();
+});
+
+test("Use on one template while choosing for an empty workout still fills it where it is, on its own day, and lands back on its page's own step (From template keeps its steps)", async () => {
+  setup(FOLDERS, TPLS, { name: "client", id: "c1" }); await tick();
+  maps.trainings.set("w0", W0());
+  fns.go({ name: "training", id: "w0" }); await tick(); const dw = fns.navState().depth;
+  fns.fromTemplate(maps.trainings.get("w0")); await tick();
+  fns.go(fns.tplPage("B")); await tick(); maps.trainings.get("t2").rows = [];   // (the stand-in page cannot draw a workout's exercises)
+  const list = drawing((got) => { fns.render(); return got(); }).find((e) => e.className === "list");
+  list.kids.find((li) => li.dataset.tid === "t2").kids[0].on.click[0](); await tick();
+  const w0 = maps.trainings.get("w0");
+  assert.deepStrictEqual([app.get().view, w0.title, w0.date, w0.fromTemplate, fns.navState().depth, fns.choosing().fillFor, theirs("c1", "w0").length], [{ name: "training", id: "w0" }, "Workout 2", "2026-11-27", "t2", dw, null, 0], "Workout 2 into it, on its own day, nothing else added; back on its own step");
+  quiet();
+});
+
+test("Use all with every template of the page deleted while the days are up adds nothing and leaves the empty workout as it was", () => {
+  setup(FOLDERS, TPLS, { name: "client", id: TPL, folder: "B" });
+  maps.trainings.set("w0", W0()); fns.setPickFor("c1"); fns.setFillFor("w0");
+  drawing((got) => { fns.render(); return got(); }).find((e) => e.className === "listbar").kids[1].on.click[0]();
+  for (const id of ["t1", "t2", "t4"]) maps.trainings.delete(id);
+  const before = JSON.stringify(maps.trainings.get("w0"));
+  pickDays("2026-11-30");
+  assert.deepStrictEqual([JSON.stringify(maps.trainings.get("w0")), theirs("c1", "w0").length, fns.choosing().pickFor], [before, 0, "c1"], "nothing to add: the workout as it was, still choosing");
+  quiet();
 });

@@ -843,7 +843,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   function newRow(label) { return { id: uid(), label, name: "", sets: 4, reps: "", tempo: "", rest: "", weights: [], repsDone: [], setsDone: 0, note: "" }; }
   function nextLabel(t) { let max = 0; for (const r of t.rows) { const n = labelKey(r.label)[0]; if (Number.isFinite(n)) max = Math.max(max, n); } return String(max + 1); }
-  function addTraining(clientId, from, date) {
+  function addTraining(clientId, from, date, stay) {
     const t = {
       id: uid(), clientId, date: date || today(), createdAt: now(),
       title: from ? from.title : "", completedAt: null, skippedAt: null,
@@ -853,7 +853,7 @@ import { reportRange, buildReport } from "./report.js";
     if (from && from.inPerson) t.inPerson = true;
     const pk = packageOf(clients.get(clientId)); if (pk && pk.inPerson && !isTemplateClient(clientId)) t.inPerson = true;   // the package's default
     trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
-    go({ name: "training", id: t.id });
+    if (!stay) go({ name: "training", id: t.id });                   // stay: one of a week added at once (useWeek), the page stays where it is
   }
   function newWorkoutHere() { if (S.view.name === "client" && isTemplateClient(S.view.id)) { newTemplateHere(); return; } setTab("workouts"); addTraining(S.view.id, null, today()); }   // the round + beside the bar, on any tab: a new workout for this client, today — and Back lands on Workouts, where it shows
   function deleteTraining(id) {
@@ -1792,6 +1792,8 @@ import { reportRange, buildReport } from "./report.js";
   const lastSlide = new Map();                                         // folder id -> the slide its page was left on: Back from a folder inside it lands there again
   const tplUp = (fid) => { const p = tplPage(fid), s = p.folder && lastSlide.get(p.folder); return s && tplKids(p.folder, "slide").some((x) => x.id === s) ? { ...p, slide: s } : p; };   // up to a folder, on the slide it was left on (keep runBack and backKey in step)
   const tplSlide = (f) => { const sl = tplKids(f.id, "slide"); return sl.find((x) => x.id === S.view.slide) || sl[0] || null; };   // the slide shown on a folder's page
+  const tplHere = (f) => { const sl = tplKids(f.id, "slide"), cur = tplSlide(f); return (cur ? [...tplIn(new Set([cur.id])), ...(cur === sl[0] ? tplIn(new Set([f.id])) : [])] : tplIn(new Set([f.id]))).sort(byN); };   // the templates a folder's page shows: the slide shown (the first also has what is in the folder itself), or the folder's own, in their order
+  const weekName = (f) => (tplSlide(f) || f).name;                   // what "Use all" adds, by its name: the slide shown ("Week 1"), or the folder
   const nextN = (place) => 1 + Math.max(0, ...[...trainings.values()].filter((t) => isTemplateClient(t.clientId) && ((tplHome(t) || {}).id || null) === (place || null) && (place || templateMeta(t).program === MY_TEMPLATES)).map((t) => Number(templateMeta(t).n) || 0));   // the next "Workout N" in a place (loose: among My templates)
   const saveFolders = () => { tplClient(); scheduleSave("clients", TEMPLATES_ID); };
   const placeTemplate = (t, place) => {                                // a template into a folder or a slide, or loose again (place null), numbered next there; saved past a clean template draft, never into it
@@ -1841,6 +1843,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!tplPageOn()) return [];
     const f = tplNode(S.view.folder), items = [];
     if (!f) { if (tplRootList().length > 1) items.push({ label: "Reorder", icon: MI.reorder, onPick: () => { tplOrdering = ""; render(); } }); return items; }   // the Templates page: the whole Programs list, the built-in programs too (his ask, 12 Nov: "in this slide I should have already been able to see reorder")
+    if (tplHere(f).length > 1) items.push({ label: "Use for a client", icon: MI.calendar, onPick: () => useWeekFor(f.id) });   // the whole slide shown into a client's calendar (his ask, 12 Nov: "add the whole folder / slide to the calendar")
     if (tplKids(f.id, "folder").length > 1) items.push({ label: "Reorder folders", icon: MI.reorder, onPick: () => { tplOrdering = f.id; render(); } });   // two folders or more in this folder
     const sl = tplSlide(f);
     if (sl) items.push({ label: "Rename slide", icon: MI.pencil, onPick: () => renameNode(sl.id) });
@@ -2175,6 +2178,55 @@ import { reportRange, buildReport } from "./report.js";
     $("dpPrev").disabled = dpIdx <= 0; $("dpNext").disabled = dpIdx >= dp.months.length - 1;
     const t = dpTrack(); if (t) [...t.children].forEach((p, i) => { p.inert = i !== dpIdx; });   // only the month shown takes focus, a tap or VoiceOver: Tab never lands on a day off screen
   }
+  // ---- a week into a client's calendar (his ask, 12 Nov: "I want to be able to add the whole folder / slide to the calendar ... I pick Monday
+  // then Monday through Friday will have all the workouts"; his picks: from both places, "Use all" while choosing a template for a client
+  // and "Use for a client" in a folder's "…"; every day in a row; "one week at the time ... I will have to add each week separately")
+  const canFill = (t, cid) => !!t && t.clientId === cid && !t.completedAt && !t.skippedAt && !(t.rows || []).length;   // the empty workout From template was tapped on, still empty and still to do (a sync may have filled, finished or skipped it meanwhile: then the week goes in beside it)
+  function useWeek(list, cid, start, fillId) {                         // the templates, in their order, one a day from the day picked; fillId: the empty workout From template was tapped on, which takes the first where it is (its name and In person kept; a stamped save, so a skip the client made meanwhile survives the merge: the v282 review found a new workout in its place lost it. A skip that reached the server after this device's last read goes with it to the first day picked, as with Reschedule; Undo brings it back)
+    const day = (i) => { const d = new Date(start + "T12:00:00"); d.setDate(d.getDate() + i); return localIso(d); };
+    const target = fillId ? trainings.get(fillId) : null, fill = canFill(target, cid);
+    list.forEach((T, i) => {
+      const title = T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : "");
+      if (i === 0 && fill) {
+        if (!String(target.title || "").trim()) target.title = title;
+        target.rows = (T.rows || []).map((r) => freshRow(r)); target.fromTemplate = T.id;
+        target.date = day(0); touchState(target.id, "date");             // on the first day picked, claimed even when it was there already: a move made on another device meanwhile must not pull Workout 1 out of the week (the v282 review)
+        scheduleSave("trainings", target.id, 0);
+      } else addTraining(cid, { ...T, title, fromTemplate: T.id }, day(i), true);
+    });
+    lastUse.template = list[0].id; lastUse.client = cid; lsSet("fiala.templates.last", lastUse);
+  }
+  function useAllBar(f, n) {                                           // above the list while a template is chosen for a client: how many, and Use all (the purple as text, var(--brand-text), as the pick note's Cancel above it: the fill purple reads 4.2:1 on the dark page, the v282 review; each row's Use still has the fill purple, var(--brand), until the coach decides)
+    const bar = document.createElement("div"), count = document.createElement("span"), b = document.createElement("button");
+    bar.className = "listbar"; count.className = "muted"; count.textContent = n + " workouts";
+    b.type = "button"; b.className = "btn quiet use-all"; b.textContent = "Use all"; b.style.color = "var(--brand-text)"; b.addEventListener("click", () => useAll(f.id));
+    bar.append(count, b); return bar;
+  }
+  function useAll(fid) {                                               // Use all: the first day, in the client's calendar opened on the workout's own day (its chip outlined), then the week, and their page
+    const f = tplNode(fid), cid = pickFor, fillId = fillFor; if (!f || !cid || !clients.has(cid)) return;
+    const ids = tplHere(f).map((t) => t.id), target = fillId ? trainings.get(fillId) : null, fillable = canFill(target, cid), who = clients.get(cid);
+    openDatePicker({ clientId: cid, moving: fillable ? fillId : null, title: "Add " + weekName(f) + " to " + (who.name || "client"), selected: (fillable && effDate(target)) || today(), ok: () => clients.has(cid), onPick: (date) => {   // (one skipped, or filed as missed, stays as it is: nothing outlined, the days from today)
+      const list = ids.map((id) => trainings.get(id)).filter((t) => t && isTemplateClient(t.clientId)); if (!list.length || !clients.has(cid) || pickFor !== cid) return;   // read again: a sync may have taken a template or the client meanwhile
+      const home = nav.pickHome; nav.pickDepth = null; nav.pickHome = null; fillFor = null; pickFor = null;
+      useWeek(list, cid, date, fillId);
+      if (typeof home === "number") navLandAt(Math.max(0, home));   // back on the client's own step: Back from their page goes where it went before, not through the templates
+      setTab("workouts"); go({ name: "client", id: cid });
+    } });
+  }
+  async function useWeekFor(fid) {                                     // Use for a client, in a folder's "…": which client (the last one used first), the first day in their calendar, then the week and their page
+    const f = tplNode(fid); if (!f) return;
+    const ids = tplHere(f).map((t) => t.id), name = weekName(f); if (ids.length < 2) return;
+    const people = peopleList(); if (lastUse.client) { const i = people.findIndex((c) => c.id === lastUse.client); if (i > 0) people.unshift(people.splice(i, 1)[0]); }
+    const none = () => { const li = document.createElement("li"); li.className = "empty"; li.style.padding = "12px 16px"; li.textContent = "Add a client first."; return li; };
+    const cid = await (people.length ? pickOne({ title: "Add " + name + " to", items: people.map((c) => ({ id: c.id, label: c.name || "Unnamed", sub: c.id === lastUse.client ? "last used" : c.paused ? "Paused" : "" })) }) : sheetList({ title: "Add " + name + " to", rows: [none()] }));
+    if ($("pickSheet").contains(document.activeElement) && !$("tMore").hidden) $("tMore").focus({ preventScroll: true });   // a keyboard's or VoiceOver's place, left on a row of the sheet that has gone: back on the "…" (and the days give it back there), as showDay's
+    if (!cid || !clients.has(cid) || !tplPageOn() || S.view.folder !== fid) return;   // still this folder's page: Back, or a sync that took the folder away, adds nothing
+    const who = clients.get(cid);
+    openDatePicker({ clientId: cid, title: "Add " + name + " to " + (who.name || "client"), ok: () => clients.has(cid), onPick: (date) => {
+      const list = ids.map((id) => trainings.get(id)).filter((t) => t && isTemplateClient(t.clientId)); if (!list.length || !clients.has(cid)) return;
+      useWeek(list, cid, date, null); setTab("workouts"); go({ name: "client", id: cid });
+    } });
+  }
   function applyTemplate(T, clientId, date) {
     lastUse.template = T.id; lastUse.client = clientId; lsSet("fiala.templates.last", lastUse);
     addTraining(clientId, { ...T, title: T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : ""), fromTemplate: T.id }, date || today());
@@ -2256,9 +2308,9 @@ import { reportRange, buildReport } from "./report.js";
         for (const x of slides) { const b = document.createElement("button"); b.type = "button"; const nm = document.createElement("span"); nm.textContent = x.name; b.appendChild(nm); b.classList.toggle("on", x === cur); b.addEventListener("click", () => { S.view = { ...S.view, slide: x.id }; lsSet("fiala.trainings.view", S.view); renderTemplates(c); nav.curKey = screenKey(); }); seg.appendChild(b); }   // (in place, as a week tab: the screen's picture is filed under this slide)
         wrap.appendChild(seg);
       }
-      const here = cur ? [...tplIn(new Set([cur.id])), ...(cur === slides[0] ? tplIn(new Set([f.id])) : [])] : tplIn(new Set([f.id]));   // the slide shown (the first also has what is in the folder itself), or the folder's own
-      here.sort(byN);
-      if (here.length) { if (subs.length && !slides.length) wrap.appendChild(h2("Templates")); const ul = document.createElement("ul"); ul.className = "list"; if (slides.length) ul.style.marginTop = "16px"; ul.replaceChildren(...here.map((t) => tplRow(t, !!pickFor))); wrap.appendChild(ul); }
+      const here = tplHere(f);                                // the slide shown (the first also has what is in the folder itself), or the folder's own, in their order
+      const whole = !!pickFor && here.length > 1;            // choosing a template for a client: the whole slide at once too ("Use all")
+      if (here.length) { const bar = whole ? useAllBar(f, here.length) : null; if (subs.length && !slides.length) { if (bar) bar.style.marginTop = "24px"; else wrap.appendChild(h2("Templates")); } if (bar) wrap.appendChild(bar); const ul = document.createElement("ul"); ul.className = "list"; if (slides.length && !whole) ul.style.marginTop = "16px"; ul.replaceChildren(...here.map((t) => tplRow(t, !!pickFor))); wrap.appendChild(ul); }
       if (!subs.length && !slides.length && !here.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = !tplPageOn() ? "Nothing here yet." : f.parent ? "Nothing here yet. Tap + for a template or a slide." : "Nothing here yet. Tap + for a template, a folder or a slide."; wrap.appendChild(e); }   // (choosing a template for a client: no + and no \u2026 on screen, so no word of them)
       else if (slides.length && !here.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = !tplPageOn() ? "Nothing here yet." : "Nothing here yet. Tap + for a template."; wrap.appendChild(e); }   // a new slide of his, still empty (a built-in week never is)
       return;
@@ -5012,7 +5064,12 @@ import { reportRange, buildReport } from "./report.js";
     const to = await copyTarget(t); if (!to || !clients.has(to) || !trainings.has(id) || !(S.view.name === "training" && S.view.id === id)) return;   // still this workout's page: a sync that took it away, or Back, copies nothing
     addTraining(to, trainings.get(id));
   }
-  $("tplFill").addEventListener("click", () => { const t = trainings.get(S.view.id); if (!t) return; fillFor = t.id; pickFor = t.clientId; nav.pickDepth = nav.depth; if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); } go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null }); });
+  function fromTemplate(t) {                                          // From template on an empty workout: the Templates pages, choosing one for it (pickHome, where Use all lands: the client's own step, the one under the workout's, or under History's when the workout was opened from there)
+    fillFor = t.id; pickFor = t.clientId; nav.pickDepth = nav.depth; nav.pickHome = nav.depth - (fromHistory(t) ? 2 : 1);
+    if (!clients.has(TEMPLATES_ID)) { clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", notes: "", email: "", unit: "lb", createdAt: now(), kind: "templates" }); scheduleSave("clients", TEMPLATES_ID, 0); }
+    go({ name: "client", id: TEMPLATES_ID, program: null, phase: null, stage: null });
+  }
+  $("tplFill").addEventListener("click", () => { const t = trainings.get(S.view.id); if (t) fromTemplate(t); });
   $("useBtn").addEventListener("click", () => {
     const t = trainings.get(S.view.id); if (!t) return;
     const ul = $("usePick"); if (!ul.hidden) { ul.hidden = true; return; }
@@ -5164,7 +5221,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
