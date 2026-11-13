@@ -51,13 +51,13 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
   - `import_odboj.py`, `import_bodytype.py` (with `pdfstr.swift`) and `merge_templates.py` rebuild `templates.json` from program PDFs in the parent folder. Two of the `tools/*.json` files are hand-made inputs: `bodytype-manual.json` (name mappings) and `bodytype-cues-en.json` (a translation). The others are the scripts' outputs.
   - `clean_names.py` and `match_videos.py` are one-offs over the parent folder's spreadsheets.
 - `supabase/*.sql`: the server's tables and rules, run by hand (see Database).
-- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 38 `*.test.js` files and 17 `*-probe.mjs` scripts (see Tests).
+- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 39 `*.test.js` files and 18 `*-probe.mjs` scripts (see Tests).
 
 ## Releasing
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (287 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (288 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -190,6 +190,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - the Templates pages' top bar has a `+` (`#tAdd`, `tplAddItems`) and the `…` (`tplMoreItems`) in one capsule (CSS on `#tAdd`);
   - a folder page's templates (`tplHere`: the slide shown, or the folder's own) go into a client's calendar at once, one a day in their order from the day picked (v282, `useWeek`): "Use all" above the list while a template is chosen for a client's empty workout (`pickFor`/`fillFor`; while that workout is still empty and to do (`canFill`), it takes the first where it is and moves to the first day; one skipped or finished, or changed by a sync meanwhile, stays as it is and the week goes in beside it), and "Use for a client" in the folder's `…`. Both end on the client's page;
   - on the Templates pages (not while choosing for a client, nor in Reorder), template rows and folder rows swipe like the client page's workout rows (`tplSwipe`): red Delete (asks first) and, outermost, purple Move to (the full swipe's), the same two in the touch-and-hold and right-click menu (v283). A folder that has folders inside can only stay at the top, so its row has Delete alone (`folderPlaces`). Move to for a template goes step by step through `sheetList`, whose `up` option shows a step back over the title (`moveTemplate`); `placeTemplate` numbers it next in its new place. A template's page has Move to in its `…` too (not while its draft has unsaved changes), and a folder page's `…` has Move folder.
+  - a template row's tap opens the workout preview (v288), as does the tap on its lifted card after a touch and hold. A template's preview has Edit (`#pvEdit`, left of the arrows as a workout's `…` is; its own page in the coach's view; none while choosing for a client) and no `…` (`pvItems` gives a template none), and its purple button says Use for client (`useForClient`: which client, the last one used first, then the day in their calendar, then the new workout opens). While choosing for a client (From template on their empty workout) the button says Use, and a row has its own Use button (`.tpl-use`), not a chevron; both run `tplUse`, which asks the day first (`useOne`: the client's days opened on the empty workout's day, it outlined, as Use all's), then `fillFromTemplate` fills it on the day picked (the date claimed with `touchState`) and opens it as the coach, on the workout's own step (`nav.pickDepth`); one finished, skipped or filled meanwhile (`canFill`) stays as it is and the template goes in beside it. The arrows and the finger walk only what the page under the preview lists (`tplWalk`, keep it in step with `drawTemplates`); the line under its name says where (`tplPlace`, "Phase 1 · Week 1"). A redraw repaints the preview, or closes it with its template or once another device has moved it off that page (`renderTemplates`, as `renderClient` does for a client's).
 - `templates.json` reaches an existing coach account only when its Templates record's `templatesVersion` is below `TEMPLATES_VERSION` in `main.js`: after a raise, or after restoring an older backup. Ask the owner before raising it. Each time, the app:
   - adds every built-in template the account lacks, so templates the coach deleted come back;
   - never replaces a template the account already holds. It only re-runs the old version-3 repair on them (reps saved as the built-in's plus " sec" get the built-in's reps back).
@@ -199,7 +200,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v286 it ends "523 passed, 0 failed" after about 60 s.
+- At v288 it ends "533 passed, 0 failed" after about 60 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
@@ -216,7 +217,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 
 - `*-probe.mjs` scripts test what in-process tests cannot: gestures, document and window listeners, and import-time variants (the home-screen app, phone or Mac).
 - Each probe runs in its own Node process (`execFileSync` from its test file). It sets up its stand-ins before it imports `main.js`, then prints one JSON line that the test parses.
-- Nine probes run every timer and `performance.now` on their own clock: row-swipe, hold-menu, month-menu, preview-swipe, preview-pager, cal-drag, cal-fold, cal-fold-reload and week-pager. The others use real timers.
+- Ten probes run every timer and `performance.now` on their own clock: row-swipe, hold-menu, month-menu, preview-swipe, preview-pager, template-preview, cal-drag, cal-fold, cal-fold-reload and week-pager. The others use real timers.
 - Most probes record whether a document listener is capture. hold-menu, cal-drag and week-pager also record whether it is passive.
 - All probes start from `env.js`. One that needs `held()` to be false hides `#whenBg` (an `env.js` stub starts visible), and makes `document.querySelector` return null for `.sheet-bg` and `.crop-view`.
 - Start a new probe from the nearest existing one.

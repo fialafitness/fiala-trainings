@@ -67,7 +67,7 @@ test("the month's 1-point line over each week, across its days only, as Calendar
   assert.ok(picker.includes('b.setAttribute("aria-label", fmt.format(d) + (dayWorkouts.length ? ": " + dayNames(dayWorkouts) : ""));'), "VoiceOver hears a day's workouts by name, as in the month");
   assert.ok(!/\.sheet \.cal button\.(today|sel)/.test(html) && !/\.cal \.dots?\b/.test(html), "no purple today or chosen day of its own, and no bars left: today is the month's white circle");
   assert.ok(html.includes("  .day-ev.moving { box-shadow: inset 0 0 0 1.5px var(--brand-text); }"), "the workout being moved: its chip outlined in purple (his pick)");
-  assert.strictEqual((js.match(/openDatePicker\(\{ clientId: [^,]+, moving: /g) || []).length, 5, "the five that move a workout say which (a row's Reschedule, the page's two, Move to, and Use all's empty workout, which takes the first day picked); Add to a client moves none");
+  assert.strictEqual((js.match(/openDatePicker\(\{ clientId: [^,]+, moving: /g) || []).length, 6, "the six that move a workout say which (a row's Reschedule, the page's two, Move to, Use all's empty workout, which takes the first day picked, and one template's Use while choosing for it, v288); Add to a client moves none");
   assert.ok(html.includes("  .cal button.off { cursor: default; opacity: 0.35; }"), "a day it cannot go to: grey, as the days gone by in the month's drag");
 });
 

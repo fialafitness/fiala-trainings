@@ -2255,17 +2255,44 @@ import { reportRange, buildReport } from "./report.js";
       useWeek(list, cid, date, null); setTab("workouts"); go({ name: "client", id: cid });
     } });
   }
+  function tplUse(id) {                                               // a template used: while choosing one for a client (From template on their empty workout), its row's Use or the preview's; else Use for client
+    const T = trainings.get(id); if (!T || !isTemplateClient(T.clientId)) return;
+    if (pickFor) { useOne(id); return; }
+    useForClient(id);
+  }
+  function useOne(id) {                                               // Use while choosing (his pick, 13 Nov: "if I click use it will take me to pick a date and then opens up in my coaches view"): the day in the client's calendar, opened on the empty workout's own day, its chip outlined, as Use all's; then it takes the template on the day picked and opens (fillFromTemplate)
+    const T = trainings.get(id), cid = pickFor, fillId = fillFor; if (!T || !cid || !clients.has(cid)) return;
+    const target = fillId ? trainings.get(fillId) : null, fillable = canFill(target, cid), who = clients.get(cid);
+    openDatePicker({ clientId: cid, moving: fillable ? fillId : null, title: "Add " + tplName(T) + " to " + (who.name || "client"), selected: (fillable && effDate(target)) || today(), ok: () => clients.has(cid) && trainings.has(id), onPick: (date) => {   // (one finished or skipped meanwhile: nothing outlined, the days from today)
+      const cur = trainings.get(id); if (!cur || !isTemplateClient(cur.clientId) || !clients.has(cid) || pickFor !== cid) return;   // read again: a sync may have taken the template or the client meanwhile
+      fillFromTemplate(cur, date);
+    } });
+  }
+  async function useForClient(id) {                                   // Use for client (his pick, 13 Nov): which client (the last one used first), the day in their calendar, then the new workout opens
+    const T = trainings.get(id); if (!T) return; const name = tplName(T);
+    const people = peopleList(); if (lastUse.client) { const i = people.findIndex((c) => c.id === lastUse.client); if (i > 0) people.unshift(people.splice(i, 1)[0]); }
+    const none = () => { const li = document.createElement("li"); li.className = "empty"; li.style.padding = "12px 16px"; li.textContent = "Add a client first."; return li; };
+    const cid = await (people.length ? pickOne({ title: "Add " + name + " to", items: people.map((c) => ({ id: c.id, label: c.name || "Unnamed", sub: c.id === lastUse.client ? "last used" : c.paused ? "Paused" : "" })) }) : sheetList({ title: "Add " + name + " to", rows: [none()] }));
+    if ($("pickSheet").contains(document.activeElement)) { const row = $("tplList").querySelector('li[data-tid="' + String(id).replace(/["\\]/g, "") + '"] > button'); if (row && typeof row.focus === "function") row.focus({ preventScroll: true }); }   // a keyboard's or VoiceOver's place, left on the sheet that has gone: back on the template's row (and the days give it back there), as useWeekFor's on the "\u2026" (the v288 review)
+    if (!cid || !clients.has(cid) || !trainings.has(id) || S.view.name !== "client" || !isTemplateClient(S.view.id)) return;   // Back meanwhile, or the client or the template gone: nothing added
+    const who = clients.get(cid);
+    openDatePicker({ clientId: cid, title: "Add " + name + " to " + (who.name || "client"), ok: () => clients.has(cid) && trainings.has(id), onPick: (date) => { const cur = trainings.get(id); if (cur && clients.has(cid)) applyTemplate(cur, cid, date); } });
+  }
   function applyTemplate(T, clientId, date) {
     lastUse.template = T.id; lastUse.client = clientId; lsSet("fiala.templates.last", lastUse);
     addTraining(clientId, { ...T, title: T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : ""), fromTemplate: T.id }, date || today());
   }
-  function fillFromTemplate(T) {                                        // an empty workout takes the template's exercises and name, and stays on its day
-    const id = fillFor, target = trainings.get(id); fillFor = null; pickFor = null;
-    if (!target) { render(); return; }
+  function fillFromTemplate(T, date) {                                  // the empty workout takes the template's exercises and name, on the day picked
+    const id = fillFor, target = trainings.get(id), cid = pickFor; fillFor = null; pickFor = null; nav.pickHome = null;
+    if (!canFill(target, cid)) {                                       // gone, or finished, skipped or filled on another device while the templates were up (the v288 review): it stays as it is and the template goes in beside it, on the day picked, as Use all's week does; the new one takes the workout's own step, so Back from it goes to the client
+      if (typeof nav.pickDepth === "number") { navLandAt(nav.pickDepth); nav.pickDepth = null; }
+      if (cid && clients.has(cid)) applyTemplate(T, cid, date || today()); else render(); return;
+    }
     lastUse.template = T.id; lastUse.client = target.clientId; lsSet("fiala.templates.last", lastUse);
     if (!String(target.title || "").trim()) target.title = T.title || (templateMeta(T).n ? "Workout " + templateMeta(T).n : "");
     target.rows = (T.rows || []).map((r) => freshRow(r));
     target.fromTemplate = T.id;
+    if (date) { target.date = date; touchState(target.id, "date"); }   // claimed even when it is its own day, as Use all's first: a move made on another device meanwhile must not pull it off the day picked
     scheduleSave("trainings", target.id, 0); S.renderedTraining = null;
     if (typeof nav.pickDepth === "number") { navLandAt(nav.pickDepth); nav.pickDepth = null; }   // back on the workout's own step: Back from it goes to the client, not through the templates
     freshWorkout = id; go({ name: "training", id });                   // still being made: as the coach
@@ -2295,11 +2322,14 @@ import { reportRange, buildReport } from "./report.js";
     const pri = document.createElement("span"); pri.className = "pri"; pri.textContent = m.n ? "Workout " + m.n : (t.title || "Template");
     const sec = document.createElement("span"); sec.className = "sec"; sec.textContent = m.n ? (t.title || "") : (t.rows.length + (t.rows.length === 1 ? " exercise" : " exercises"));
     const left = document.createElement("span"); left.style.minWidth = "0"; left.append(pri); if (sec.textContent) left.append(sec);
-    const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = pick ? "Use" : "›"; if (pick) chev.style.color = "var(--brand-text)";   // the purple as text, as every other text button of his (his pick, 13 Nov: "keep it consistent"; the fill purple read 3.4:1 on the dark card)
-    b.append(left, chev);
-    b.addEventListener("click", () => { if (pick) { if (fillFor) { fillFromTemplate(trainings.get(t.id) || t); return; } const cid = pickFor; const who = clients.get(cid); openDatePicker({ clientId: cid, title: "Add to " + ((who && who.name) || "client"), onPick: (date) => { pickFor = null; applyTemplate(trainings.get(t.id) || t, cid, date); } }); } else go({ name: "training", id: t.id }); });
+    b.addEventListener("click", () => openPreview(t.id));            // the card: its preview (his ask, 13 Nov: "if I click just on the workouts card it opens up the preview"); Edit there opens its page
+    if (pick) {                                                       // choosing for a client: Use, its own button at the row's end, uses it (his pick, 13 Nov: "if I click use it will take me to pick a date"), in the purple as text as every other text button of his ("keep it consistent": the fill purple read 3.4:1 on the dark card)
+      const use = document.createElement("button"); use.type = "button"; use.className = "tpl-use"; use.textContent = "Use"; use.addEventListener("click", () => tplUse(t.id));
+      b.append(left); li.classList.add("pick-row"); li.append(b, use); return li;
+    }
+    const chev = document.createElement("span"); chev.className = "chev"; chev.textContent = "\u203a"; b.append(left, chev);
     li.appendChild(b);
-    if (!pick && tplPageOn()) tplSwipe(li, { move: () => moveTemplate(t.id), del: () => deleteTemplateRow(t.id), ok: () => isTemplateClient((trainings.get(t.id) || {}).clientId) && tplPageOn(), open: () => go({ name: "training", id: t.id }) });
+    if (tplPageOn()) tplSwipe(li, { move: () => moveTemplate(t.id), del: () => deleteTemplateRow(t.id), ok: () => isTemplateClient((trainings.get(t.id) || {}).clientId) && tplPageOn(), open: () => openPreview(t.id) });   // (its touch and hold's lifted card, tapped: what a tap on the card does, as Apple's open what they lift)
     return li;
   }
   function navRow(title, sub, onClick) {
@@ -2384,6 +2414,7 @@ import { reportRange, buildReport } from "./report.js";
     if (mine) rsForget();
     drawTemplates(c);
     if (keep) { const li = [...$("tplList").querySelectorAll("li.swipe-row")].find((x) => (x.dataset.tid || x.dataset.fid) === keep), r = li && rsBegin(li, true); if (r) { rsPaint(r, r.w, null); r.open = true; } }
+    if (pv && !pg) { const pt = trainings.get(pv.id); if (pt && pt.clientId === c.id && tplWalk().some((x) => x.id === pt.id)) paintPreview(pt); else closePreview(); } else if (pv) pvArrows();   // a sync's redraw under a template's preview (v288), as the client page's: the template as it is now, or the preview goes with it, as it does when another device moves it off this page (its line would name a page it is not on, its arrows lead nowhere: the v288 review); a slide under way paints where it lands, its arrows at once
   }
   function drawTemplates(c) {
     if (dragging) return;                                    // a folder of his under the finger (Reorder folders): the list is drawn again once it is put down
@@ -4812,13 +4843,38 @@ import { reportRange, buildReport } from "./report.js";
   }
   const pvReps = (v) => { const t = String(v == null ? "" : v).trim() || REPS_DEFAULT; const w = repsWord(t); return showReps(t) + (w ? " " + w : ""); };   // blank: the page's own grey "10"   // "10, 8, 6 reps", "30 sec", "8 reps / side": as the workout's cards write them
   const pvName = (t) => String((t && t.title) || "").trim() || "Workout";
+  const pvTplName = (t) => { const n = templateMeta(t).n, title = String((t && t.title) || "").trim(); return n ? "Workout " + n + (title ? " \u00b7 " + title : "") : title || "Template"; };   // a template's preview names it as its row does: "Workout 2 · Legs", or its name
   const pvMissed = (t) => canSwipeRow(t) && !!effDate(t) && effDate(t) < today();   // its day gone, still to do (the Missed card's)
   const pvState = (t) => (t.completedAt ? "done" : t.skippedAt ? (t.missed ? "miss" : "skip") : pvMissed(t) ? "miss" : "todo");   // what the preview marks (his picks, 11 Nov): finished green, skipped grey, missed red (this week's, or filed to History after a week), still to do plain
+  // a template's preview (his ask, 13 Nov: "Make Template workouts open in preview … on top right corner Apple button edit … that takes you
+  // to coaches view as it is now … bellow use for client purple button … we don't need no 3 dots button .. just edit … sliding between
+  // workouts but only in that folder / slide .. for example week one"; his picks: Edit plus the ‹ › arrows; Use for client asks the client,
+  // then the day, then the new workout opens; choosing for a client, the row's Use still uses it and the card opens the preview, whose
+  // purple button then says Use). The walk is the list the Templates page under it shows (tplWalk); the line under its name, the page's own.
+  const pvTpl = (t) => !!t && isTemplateClient(t.clientId);
+  function tplWalk() {                                                 // the templates of the Templates page under the preview, in its order (keep in step with drawTemplates)
+    if (S.view.name !== "client" || !isTemplateClient(S.view.id)) return [];
+    const f = !S.view.program && tplNode(S.view.folder);
+    if (f) return tplHere(f);                                          // a folder's page: the slide shown (the first has the folder's own too), or the folder's own
+    const all = clientTrainings(S.view.id).filter((t) => !tplHome(t)), byN = (x, y) => templateMeta(x).n - templateMeta(y).n;
+    if (!S.view.program) return all.filter((t) => templateMeta(t).program === MY_TEMPLATES).sort(byN);   // the Templates page: My templates
+    const ph = S.view.phase, pitems = ph ? all.filter((t) => templateMeta(t).program === S.view.program && templateMeta(t).phase === ph) : [];   // a program's week
+    const stages = [...new Set(pitems.map((t) => templateMeta(t).stage))].sort((x, y) => x - y), cur = stages.includes(S.view.stage) ? S.view.stage : stages[0];
+    return pitems.filter((t) => templateMeta(t).stage === cur).sort(byN);
+  }
+  function tplPlace() {                                                // where the walk is: "Fat Burn · Week 1", a folder's name, My templates
+    if (S.view.name !== "client" || !isTemplateClient(S.view.id)) return "";
+    const f = !S.view.program && tplNode(S.view.folder);
+    if (f) { const sl = tplSlide(f); return sl ? f.name + " \u00b7 " + sl.name : f.name; }
+    if (!S.view.program) return "My templates";
+    const w = tplWalk(), m = w.length ? templateMeta(w[0]) : null, pn = m && ((w.find((t) => t.template && t.template.phaseName) || { template: {} }).template.phaseName || "");   // a program's week page kept from before the programs became folders (as drawTemplates names it)
+    return m ? "Phase " + m.phase + (pn ? " \u00b7 " + pn : "") + " \u00b7 Week " + m.stage : S.view.program;
+  }
   function pvFill(t, titleEl, dayEl, cardsEl) {                        // a workout's page: its title, its day, its cards (the list's own, or the one sliding in beside it)
     const span = (cls, text) => { const s = document.createElement("span"); s.className = cls; s.textContent = text; return s; };
-    titleEl.textContent = pvName(t);
-    const day = fmtDayLong(effDate(t) || "");
-    const state = pvState(t), word = { done: "\u2713 Finished", skip: "Skipped", miss: "Missed" }[state];
+    const tpl = pvTpl(t); titleEl.textContent = tpl ? pvTplName(t) : pvName(t);
+    const day = tpl ? tplPlace() : fmtDayLong(effDate(t) || "");     // a template has no day (its stored date is a placeholder): the page it is on
+    const state = tpl ? "todo" : pvState(t), word = { done: "\u2713 Finished", skip: "Skipped", miss: "Missed" }[state];
     dayEl.className = "pv-day" + (word ? " st-" + state : ""); cardsEl.className = "pv-cards" + (word ? " st-" + state : "");   // History's and the missed ones in their colour (his picks, 11 Nov): the day line and the cards, as History's own page draws a finished one; one still to do plain
     if (word) dayEl.replaceChildren(span(state === "done" ? "finished" : state === "skip" ? "skipped" : "missed", word), document.createTextNode(day ? " \u00b7 " + day : ""));   // it says what it is first (a missed one in red, as its row does)
     else dayEl.textContent = day;
@@ -4844,14 +4900,15 @@ import { reportRange, buildReport } from "./report.js";
     cardsEl.replaceChildren(...cards);
   }
   function paintPreview(t) {
-    const gb = $("pvGo"), hist = !canSwipeRow(t); gb.textContent = hist ? "Show in History" : "Start workout";   // Start workout is a planned one's (Apple's Fitness word); a finished one, from its green chip in the calendar (v262), is shown in History (his pick, 11 Nov)
+    const tpl = pvTpl(t), gb = $("pvGo"), hist = !tpl && !canSwipeRow(t); gb.textContent = tpl ? (pickFor ? "Use" : "Use for client") : hist ? "Show in History" : "Start workout";   // a template: Use for client (purple), or Use while choosing for one   // Start workout is a planned one's (Apple's Fitness word); a finished one, from its green chip in the calendar (v262), is shown in History (his pick, 11 Nov)
     for (const k of ["tint", "wide", "soft"]) gb.classList.toggle(k, hist);   // Show in History goes somewhere, it does nothing: the grey capsule (Skip workout's, Undo's), never the purple of an act (his ask, 11 Nov: "not purple but our Apple transparent because it's not an action")
-    pvFill(t, $("pvTitle"), $("pvDay"), $("pvCards")); $("pvBarTitle").textContent = pvName(t);
+    $("pvEdit").hidden = !tpl || !!pickFor;                           // a template's Edit, top right (no "…" on a template: pvItems has none); none while choosing one for a client, whose own copy opens to be changed once it is used
+    pvFill(t, $("pvTitle"), $("pvDay"), $("pvCards")); $("pvBarTitle").textContent = tpl ? pvTplName(t) : pvName(t);
     const say = $("pvSay"); if (say.textContent && say.textContent !== pvLine(t)) say.textContent = "";   // VoiceOver's line never tells of another workout or an old day
     pvFit(); pvArrows(); pvTitleRoom();                               // (a sync's redraw: it may scroll now, or no longer; the workouts either side may have changed)
   }
   function openPreview(id) {                                           // its swipe's Preview, its touch and hold, a missed workout's "…"
-    const t = trainings.get(id); if (!t || isTemplateClient(t.clientId) || pv || S.asking) return false;   // (another question up: it waits for that one)
+    const t = trainings.get(id); if (!t || pv || S.asking) return false;   // (another question up: it waits for that one; a template's from its row on the Templates pages)
     paintPreview(t);
     const bg = $("pvSheet"); pv = { id, at: performance.now(), back: document.activeElement, behind: [...document.body.children].filter((el) => el !== bg && !el.inert && !(el.hidden && (el.id === "whenBg" || (el.classList && el.classList.contains("sheet-bg"))))) };   // (what was inert already, as #ctxLift, stays so; the menu layer and the other sheets, hidden, stay usable: the preview's "…" opens them over it)
     for (const el of pv.behind) el.inert = true;                       // the page behind is out of reach until the sheet goes, as every sheet's
@@ -4866,7 +4923,8 @@ import { reportRange, buildReport } from "./report.js";
     return true;
   }
   const pvSettled = (e) => !!pv && (performance.now() - pv.at >= 350 || (!!e && e.detail === 0));   // the second tap of a double tap (on Preview in a menu or on the row) lands on nothing in its first 350 ms, as askFirst's buttons; a keyboard's Enter (detail 0) acts at once
-  $("pvGo").addEventListener("click", (e) => { if (!pvSettled(e)) return; if (pg && pg.finish) pg.finish(); if (!pv || pg) return; const id = pv.id, t = trainings.get(id); closePreview(); if (t && !canSwipeRow(t) && !isTemplateClient(t.clientId)) showInHistory(t); else if (t) go({ name: "training", id }); });   // (a slide still landing lands first: a Mac's click or a key has no touch to land it); a finished one (its green chip in the calendar, v262): its place in History
+  $("pvGo").addEventListener("click", (e) => { if (!pvSettled(e)) return; if (pg && pg.finish) pg.finish(); if (!pv || pg) return; const id = pv.id, t = trainings.get(id), tpl = !!t && pvTpl(t); closePreview(tpl && e.detail === 0); if (tpl) tplUse(id); else if (t && !canSwipeRow(t)) showInHistory(t); else if (t) go({ name: "training", id }); });   // (a slide still landing lands first: a Mac's click or a key has no touch to land it); a template's Use for client (or Use, choosing for one); a finished one (its green chip in the calendar, v262): its place in History
+  $("pvEdit").addEventListener("click", (e) => { if (!pvSettled(e)) return; if (pg && pg.finish) pg.finish(); if (!pv || pg) return; const id = pv.id; closePreview(); if (trainings.has(id)) go({ name: "training", id }); });   // a template's Edit: its own page in the coach's view, as a tap on its row opened it before v288
   function showInHistory(t) {                                        // a finished (or skipped) workout's place in History, as Apple's "Show in …" (his pick, 11 Nov: "show in history or same thing apple would say"): History opens as its card opens it, the workout's group open and its row in the middle, lit a moment as a template's row is when Back to templates finds it
     const e = effDate(t) || "";
     if (e) for (const k of e >= weekStart() ? ["week"] : [e.slice(0, 4), e.slice(0, 7)]) openGroups.set(t.clientId + "/" + k, true);
@@ -5029,6 +5087,7 @@ import { reportRange, buildReport } from "./report.js";
   const pvWalk = (cid) => clientTrainings(cid).filter((t) => canSwipeRow(t) || !!effDate(t)).sort(pvOrder);   // every workout of the client by its day, then as made: History's too (his ask, 11 Nov: "let the slider go even to the history"), the missed, today's, the ones to come
   function pvNear(id) {                                              // the workouts either side of this one in the walk (it may have left it, finished or skipped meanwhile: where it would sort)
     const t = trainings.get(id); if (!t) return { prev: null, next: null };
+    if (pvTpl(t)) { const w = tplWalk().map((x) => x.id), i = w.indexOf(id); return i < 0 ? { prev: null, next: null } : { prev: i > 0 ? w[i - 1] : null, next: i < w.length - 1 ? w[i + 1] : null }; }   // a template: only its slide's (or folder's) others, in their order
     const w = pvWalk(t.clientId).filter((x) => x.id !== id), i = w.findIndex((x) => pvOrder(x, t) > 0), k = i < 0 ? w.length : i;
     return { prev: k > 0 ? w[k - 1].id : null, next: k < w.length ? w[k].id : null };
   }
@@ -5048,7 +5107,8 @@ import { reportRange, buildReport } from "./report.js";
     const w = Math.ceil(pvNum(rg.getBoundingClientRect().width));
     if (w / 2 <= half) { el.style.left = el.style.right = Math.round(W / 2 - half) + "px"; } else { el.style.left = L + "px"; el.style.right = Math.round(W - R) + "px"; }
   }
-  const pvLine = (t) => { const day = fmtDayLong(effDate(t) || ""), w = { done: ", finished", skip: ", skipped", miss: ", missed" }[pvState(t)] || ""; return pvName(t) + w + (day ? ", " + day : ""); };   // what VoiceOver hears of a workout
+  const pvLine = (t) => pvTpl(t) ? pvTplName(t) + (tplPlace() ? ", " + tplPlace() : "") : pvLineDay(t);
+  const pvLineDay = (t) => { const day = fmtDayLong(effDate(t) || ""), w = { done: ", finished", skip: ", skipped", miss: ", missed" }[pvState(t)] || ""; return pvName(t) + w + (day ? ", " + day : ""); };   // what VoiceOver hears of a workout
   const pvSay = () => { const t = pv && trainings.get(pv.id); if (t) $("pvSay").textContent = pvLine(t); };   // VoiceOver hears the workout it went to
   let pg = null, pvEatUntil = 0;                                     // a slide under way: { dir: the side it shows (-1 the workout before, 1 the next), to: that workout, x: where it is, peek: that workout's page, out: a copy of the page going out (once let go on), top/foot: the list's place in the sheet as the slide began, settling, finish }
   const PV_CURVE = "280ms cubic-bezier(0.22, 1, 0.36, 1)";           // the month view's own settle
