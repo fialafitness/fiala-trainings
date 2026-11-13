@@ -101,8 +101,8 @@ test("Delete workout (the coach's): asked over the preview, then gone and on to 
 });
 
 test("Copy workout (the coach's): which client gets it, over the preview; then the preview closes and the copy opens, as the workout page's Copy workout does", () => {
-  assert.deepStrictEqual(r.copy, { asked: true, open: false, view: "training", client: "c2", title: "A", n: 1, asking: false });
-  assert.deepStrictEqual(r.copyDone, { asked: true, open: false, view: "training", client: "c2", title: "F2", finished: false, n: 1 }, "from a finished one too (his ask, 12 Nov): the copy is a workout to do, of the workout as it is now (a sync brought a newer copy while the clients were up)");
+  assert.deepStrictEqual(r.copy, { asked: true, days: "Copy to Kim", waiting: true, open: false, view: "training", client: "c2", title: "A", day: "2026-12-07", n: 1, asking: false }, "which client, then the day in Kim's calendar over the preview (his ask, 12 Nov), then the copy on it");
+  assert.deepStrictEqual(r.copyDone, { days: "Copy to Kim", day: "2026-12-08", asked: true, open: false, view: "training", client: "c2", title: "F2", finished: false, n: 1 }, "from a finished one too (his ask, 12 Nov): the copy is a workout to do, of the workout as it is now (a sync brought a newer copy while the clients were up)");
   assert.deepStrictEqual(r.saveStale, { on: "s", open: true, n: 0 }, "a Save as template row from a menu that outlived its workout saves nothing");
   assert.deepStrictEqual(r.save, { f: { open: false, view: "training", template: true, title: "F", finished: false, n: 1 }, a: { open: false, view: "training", template: true, title: "A", finished: false, n: 1 } }, "Save as template from a finished one's \"…\" and from one still to do: the preview closes, the new template opens");
 });

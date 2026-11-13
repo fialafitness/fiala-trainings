@@ -40,7 +40,7 @@ test("the coach's own view: the \"…\" on every workout and template; Reschedul
   quiet();
 });
 
-test("Copy workout from the \"…\": which client gets it (this one first), then a copy of the workout as it is now opens; Save as template opens the new template; nothing from a page left behind; the page's foot keeps only Delete workout", async () => {
+test("Copy workout from the \"…\": which client gets it (this one first), then the day in that client's calendar (his ask, 12 Nov), then a copy of the workout as it is now opens; Save as template opens the new template; nothing from a page left behind; the page's foot keeps only Delete workout", async () => {
   let onRow = null; const pl = $("pickList"); pl.addEventListener = (t, f) => { if (t === "click") onRow = f; };
   const bob = () => maps.clients.set("c2", { id: "c2", name: "Bob", unit: "lb" }), pickBob = () => onRow({ target: { closest: () => ({ dataset: { id: "c2" } }) } });
   const item = (label) => fns.moreItems(maps.trainings.get("w1")).find((it) => it.label === label);
@@ -50,10 +50,13 @@ test("Copy workout from the \"…\": which client gets it (this one first), then
     $("pickSheet").hidden = true; const p = item("Copy workout").onPick();
     assert.deepStrictEqual([$("pickSheet").hidden, $("pickTitle").textContent], [false, "Copy workout to"], "which client gets it");
     await tick(400);
-    maps.trainings.set("w1", { ...maps.trainings.get("w1"), title: "Legs and calves" });   // a sync brings a newer copy of the workout while the clients are up
     pickBob(); await p;
+    const dp = fns.datePicker();
+    assert.deepStrictEqual([dp && dp.title, dp && dp.clientId, dp && dp.moving, [...maps.trainings.values()].filter((t) => t.clientId === "c2").length], ["Copy to Bob", "c2", null, 0], "then the day, in Bob's calendar; nothing copied yet");
+    maps.trainings.set("w1", { ...maps.trainings.get("w1"), title: "Legs and calves" });   // a sync brings a newer copy of the workout while the days are up
+    const pick = dp.onPick; fns.closeDatePicker(); pick(day(4));
     const made = [...maps.trainings.values()].filter((t) => t.clientId === "c2"), v = app.get().view;
-    assert.deepStrictEqual([made.length, made[0] && made[0].title, v.name, v.id], [1, "Legs and calves", "training", made[0] && made[0].id], "a copy for Bob, of the workout as it is now, and it opens");
+    assert.deepStrictEqual([made.length, made[0] && made[0].title, made[0] && made[0].date, v.name, v.id], [1, "Legs and calves", day(4), "training", made[0] && made[0].id], "a copy for Bob on the day picked, of the workout as it is now, and it opens");
     page("w1"); const save = item("Save as template"); app.set({ view: { name: "client", id: "c1" } }); save.onPick();
     assert.strictEqual([...maps.trainings.values()].filter((t) => t.clientId === TEMPLATES_ID && t.id !== "tp").length, 0, "a menu from a page left behind saves nothing");
     page("w1"); item("Save as template").onPick();
@@ -61,7 +64,22 @@ test("Copy workout from the \"…\": which client gets it (this one first), then
     assert.deepStrictEqual([tpl.length, tpl[0] && tpl[0].title, w.name, w.id], [1, "Legs", "training", tpl[0] && tpl[0].id], "a new template, and it opens");
     page("w1"); bob(); $("pickSheet").hidden = true; const q = item("Copy workout").onPick();
     await tick(400); app.set({ view: { name: "client", id: "c1" } }); const before = maps.trainings.size; pickBob(); await q;
-    assert.strictEqual(maps.trainings.size, before, "Back while the clients were up: nothing copied");
+    assert.deepStrictEqual([maps.trainings.size, fns.datePicker()], [before, null], "Back while the clients were up: no days, nothing copied");
+    page("w1"); bob(); const r2 = item("Copy workout").onPick(); await tick(400); pickBob(); await r2;
+    const dp2 = fns.datePicker(); app.set({ view: { name: "client", id: "c1" } });
+    assert.strictEqual(dp2.ok(), false, "Back while the days were up: they are for nothing now (the picker closes them at its next redraw)");
+    const n2 = maps.trainings.size, pick2 = dp2.onPick; fns.closeDatePicker(); pick2(day(4));
+    assert.strictEqual(maps.trainings.size, n2, "and nothing is copied");
+    for (const [why, gone] of [["Bob deleted on another device", () => maps.clients.delete("c2")], ["the workout deleted on another device", () => maps.trainings.delete("w1")]]) {
+      page("w1"); bob(); const r3 = item("Copy workout").onPick(); await tick(400); pickBob(); await r3;
+      const dp3 = fns.datePicker(); gone();
+      const n3 = maps.trainings.size; assert.strictEqual(dp3.ok(), false, why + " while the days were up: they are for nothing now");
+      const pick3 = dp3.onPick; fns.closeDatePicker(); pick3(day(4)); assert.strictEqual(maps.trainings.size, n3, why + ": nothing copied");
+    }
+    page("w1"); bob(); let focused = 0; const more = $("tMore"), sheetEl = $("pickSheet"); more.hidden = false; more.focus = () => { focused++; document.activeElement = more; }; sheetEl.contains = () => true;
+    const r4 = item("Copy workout").onPick(); await tick(400); pickBob(); await r4;
+    delete more.focus; delete sheetEl.contains; const back = fns.datePicker().back; fns.datePicker().back = null; document.activeElement = null; fns.closeDatePicker();
+    assert.deepStrictEqual([focused, back === more], [1, true], "a keyboard's place back on the \u2026 once the clients' sheet has gone, and the days give it back there (the v284 review)");
   } finally { delete pl.addEventListener; quiet(); }
   assert.ok(!html.includes('id="copyTraining"') && !html.includes('id="saveTemplate"'), "no longer at the page's foot");
   assert.ok(html.includes('<div class="foot stack trainer-only">\n      <button class="btn tint wide soft danger" id="delTraining" type="button">Delete workout</button>\n    </div>'), "the foot keeps the red Delete workout alone");
@@ -153,4 +171,47 @@ test("the client page's tabs: filled, as Apple's tab bars show a symbol that has
   assert.strictEqual((svgs.profile.match(/Z/g) || []).length, 3, "three bars");
   assert.match(svgs.notes, /fill-rule="evenodd"/, "the page with its corner and lines cut out");
   assert.ok(html.includes("#tabbar button svg { width: 22px; height: 22px; overflow: visible; }"), "the dumbbell and the bars a little wider than the box, as Apple draws them");
+});
+
+// His ask, 12 Nov: "add to my coaches setting a toggle where I can switch in what view workouts open automatically ... coach and client ... I
+// want to be able to set it so even from coaches profile when I open a workout it automatically opens in clients view ... that obviously doesnt
+// apply when I am creating a brand new workout". His picks: the Coach | Client control, as Appearance's, kept on each device.
+test("Open workouts in: Coach | Client in his Settings, kept on this device; a workout he opens comes up in the view set there, a brand-new one as the coach; the page's own switch still flips the one open; never a template, never the client's own app", async () => {
+  const opened = (id) => { fns.go({ name: "training", id }); return fns.previewOn(); };
+  const onPage = () => { app.set({ view: { name: "client", id: "c1" } }); fns.render(); };
+  assert.ok(html.includes('<li class="trainer-only"><div class="srow wrap"><span>Open workouts in</span><div class="seg" id="openSeg" role="radiogroup" aria-label="Open workouts in"><button type="button" role="radio" data-open="coach" class="on">Coach</button><button type="button" role="radio" data-open="client">Client</button></div></div></li>'), "under Appearance, the same kind of control, the coach's only");
+  assert.ok(html.includes("\n  body.client .settings-list li.trainer-only:first-child + li { border-top: 0; }"), "the client's Settings: only the hidden top row (My number) takes the line under it away; the new one, hidden between Appearance and Change password, leaves theirs (the v284 review)");
+  try {
+    page("w1"); onPage();
+    const b1 = el("button"), b2 = el("button"); b1.dataset.open = "coach"; b2.dataset.open = "client"; $("openSeg").querySelectorAll = () => [b1, b2];
+    assert.deepStrictEqual([fns.openAs(), opened("w1")], ["coach", false], "as before until he sets it");
+    fns.setOpenAs("client");
+    assert.deepStrictEqual([fns.openAs(), JSON.parse(localStorage.getItem("fiala.openAs"))], ["client", "client"], "kept on this device");
+    assert.deepStrictEqual([b1.classList.contains("on"), b2.classList.contains("on")], [false, true], "the control shows it");
+    onPage(); assert.strictEqual(opened("w1"), true, "a workout of hers he opens: as the client sees it");
+    assert.ok(document.body.classList.contains("client"), "drawn in the client's look");
+    fns.setPreview(false); assert.strictEqual(opened("w1"), false, "switched to Coach on its page: the same workout drawn again stays so");
+    onPage(); assert.strictEqual(opened("w1"), true, "opened again later: as set");
+    onPage(); fns.addTraining("c1", { title: "Arms", rows: [] }, day(3)); const made = [...maps.trainings.values()].find((t) => t.clientId === "c1" && t.date === day(3));   // (named: an empty one left behind would be tidied away)
+    assert.deepStrictEqual([app.get().view, fns.previewOn()], [{ name: "training", id: made.id }, false], "a brand-new one (the +, a day tapped, a copy, a template used): as the coach, to fill it in");
+    onPage(); assert.strictEqual(opened(made.id), true, "and the next time it is opened, as set");
+    onPage(); fns.addTraining("c1", { title: "Back day", rows: [] }, day(5)); const nw = app.get().view.id;
+    fns.fromTemplate(maps.trainings.get(nw)); await tick(); await fns.goBackNow(); await tick();
+    assert.deepStrictEqual([app.get().view, fns.previewOn()], [{ name: "training", id: nw }, false], "Back from choosing a template for a new one: still being made, as the coach (the v284 review)");
+    const W = { name: "training", id: "w1" };
+    assert.deepStrictEqual([fns.firstPreview("1", W), fns.firstPreview("0", W), fns.firstPreview(null, W), fns.firstPreview(null, { name: "training", id: "tp" }), fns.firstPreview(null, { name: "client", id: "c1" })], [true, false, true, false, false], "a workout page opened anew: this tab's own view on a reload, else (a new session) the one set in Settings; never a template, nor another page");
+    assert.ok(src.includes("    try { previewClient = firstPreview(sessionStorage.getItem(PREVIEW_KEY), S.view); } catch (_) {}"), "the app asks it for the page it opens on");
+    const ss = new Map(); globalThis.sessionStorage = { getItem: (k) => (ss.has(k) ? ss.get(k) : null), setItem: (k, v) => { ss.set(k, String(v)); }, removeItem: (k) => { ss.delete(k); } };
+    try {
+      onPage(); opened("w1"); const kept1 = ss.get("fiala.preview");
+      fns.setOpenAs("coach"); onPage(); opened("w1"); const kept0 = ss.get("fiala.preview"); fns.setOpenAs("client");
+      assert.deepStrictEqual([kept1, kept0, fns.firstPreview(kept0, W)], ["1", "0", false], "this tab keeps the view the workout came up in, a Coach one too: a reload keeps it, whatever Settings say");
+    } finally { delete globalThis.sessionStorage; }
+    assert.strictEqual(opened("tp"), false, "a template has no client's view");
+    fns.setOpenAs("coach"); onPage();
+    assert.strictEqual(opened("w1"), false, "set back to Coach");
+    page("w1", {}, { client: true }); fns.setOpenAs("client"); app.set({ view: { name: "client", id: "c1" } });
+    assert.strictEqual(opened("w1"), false, "the client's own app is the client's already");
+  } finally { fns.setOpenAs("coach"); localStorage.removeItem("fiala.openAs"); fns.setPreview(false); delete $("openSeg").querySelectorAll; }
+  quiet();
 });

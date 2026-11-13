@@ -1441,7 +1441,7 @@
   .settings-list .seg button { width: auto; min-height: 32px; padding: 0 12px; font-size: 0.8125rem; letter-spacing: 0; display: inline-flex; justify-content: center; color: var(--text-secondary); transition: background-color 150ms ease, color 150ms ease; }
   .settings-list .seg button:hover { opacity: 1; }
   .settings-list .seg button.on { background: var(--seg-on); color: var(--text-primary); box-shadow: 0 1px 3px var(--seg-shadow); }
-  body.client .settings-list .trainer-only + li { border-top: 0; }
+  body.client .settings-list li.trainer-only:first-child + li { border-top: 0; }
   @supports (corner-shape: squircle) { #ctxLift, .list, .list li.swipe-row > :not(.swipe-acts), .list li.swipe-row.ctx-on::after, .group, .paused-card, .sheet, .card-head, .month > button, .btn, .pill, .msg-pill, .seg, input, textarea, .datefield, .numpick, .sugg, .alt-menu { corner-shape: squircle; } }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -1555,6 +1555,7 @@
       <li class="trainer-only"><button type="button" id="setNumber"><span>My number</span><span class="sub"><span class="val" id="setNumberVal"></span><span class="chev">&rsaquo;</span></span></button></li>
       <li><div class="srow"><span>Email</span><span class="sub"><span class="val" id="setEmail"></span></span></div></li>
       <li><div class="srow wrap"><span>Appearance</span><div class="seg" id="themeSeg" role="radiogroup" aria-label="Appearance"><button type="button" role="radio" data-theme="auto" class="on">Auto</button><button type="button" role="radio" data-theme="light">Light</button><button type="button" role="radio" data-theme="dark">Dark</button></div></div></li>
+      <li class="trainer-only"><div class="srow wrap"><span>Open workouts in</span><div class="seg" id="openSeg" role="radiogroup" aria-label="Open workouts in"><button type="button" role="radio" data-open="coach" class="on">Coach</button><button type="button" role="radio" data-open="client">Client</button></div></div></li>
       <li><button type="button" id="changePw"><span>Change password</span><span class="sub"><span class="chev">&rsaquo;</span></span></button></li>
     </ul>
     <div class="foot"><button class="btn tint" id="signout" type="button">Sign out</button></div>
@@ -1801,7 +1802,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=283";
+  import { boot } from "./app/main.js?v=284";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
