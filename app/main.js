@@ -4797,6 +4797,28 @@ import { reportRange, buildReport } from "./report.js";
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") typingWatch(); });
   document.addEventListener("focusout", typingOff);
   document.addEventListener("blur", typingOff, true);                // a field whose own blur redraws the page (an exercise's new number) is off the page before its focusout, which then never reaches here: the tab bar stayed hidden after it. Its blur is heard on the way down, while it is still on the page
+  // The phone turned (his find, 13 Nov: "when I put my phone into horizontal view and then back to normal that's when the glass bar stays in
+  // the middle of the screen sometimes"). His screenshot had the bar 361 points up and the header gone above the screen, both by the same
+  // amount: WebKit left its pinned layers where the page had been before the turn moved it (its bug 144913; the iOS 27.2 Simulator would not
+  // show it). Once a turn has settled (no new size for 400 ms, the page still), the page goes a point and back: a scroll, which WebKit answers
+  // by putting the header and the bar where the page is now. Only for a turn (the width changed): a keyboard changes the height alone, and
+  // the page is never moved for it ("one scroll for the keyboard"). A home-screen app cannot be kept upright instead: iOS 27.2 turns it
+  // whatever its manifest's "orientation" says (measured).
+  let turnW = window.innerWidth, turnT = 0, turnScrollAt = 0;
+  window.addEventListener("scroll", () => { turnScrollAt = performance.now(); }, { passive: true });
+  window.addEventListener("resize", () => {
+    const w = window.innerWidth; if (w === turnW && !turnT) return;   // (the second size of a turn, the clock's strip back: the wait starts again)
+    turnW = w; clearTimeout(turnT); turnT = setTimeout(turnSettle, 400);
+  });
+  function turnSettle() {
+    if (performance.now() - turnScrollAt < 200) { turnT = setTimeout(turnSettle, 200); return; }   // the page still moving (a fling, or the turn's own): after it
+    turnT = 0;
+    const x = Number(window.scrollX) || 0, y = Number(window.scrollY) || 0, room = (Number(document.documentElement.scrollHeight) || 0) - (Number(window.innerHeight) || 0);
+    if (!(room > 0)) return;                                          // a page that does not scroll: nothing pinned can be out of place
+    const d = y > 0 ? -1 : 1;
+    window.scrollTo(x, y + d);
+    requestAnimationFrame(() => { if ((Number(window.scrollY) || 0) === y + d) window.scrollTo(x, y); });   // back where it was, unless a finger has taken the page meanwhile
+  }
   $("newTraining").addEventListener("click", () => addTraining(S.view.id, null, today()));
   $("addBtn").addEventListener("click", newWorkoutHere);
   $("dayMore").addEventListener("click", () => { const t = trainings.get(S.view.id); const c = t && clients.get(t.clientId); if (c && effDate(t)) showDay(c, effDate(t)); });
