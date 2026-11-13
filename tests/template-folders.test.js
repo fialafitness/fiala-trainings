@@ -631,8 +631,8 @@ test("Use all, choosing a template for a client's empty workout: the slide's wor
   assert.deepStrictEqual(read(kids), ["tabs [Week 1] Week 2", "bar 3 workouts · Use all", "tpl t1", "tpl t2", "tpl t4"], "how many, and Use all, above the slide's list (Workout 1, 2, 3: the one in the folder itself counts with the first slide)");
   const use = kids.find((e) => e.className === "listbar").kids[1];
   assert.deepStrictEqual([use.style.color, use.className], ["var(--brand-text)", "btn quiet use-all"], "the purple as text, as the pick note's Cancel above it (the v282 review: the fill purple reads 4.2:1 on the dark page)");
-  const find = (e, c) => (e.className === c ? e : (e.kids || []).reduce((f, k) => f || find(k, c), null)), chevs = kids.find((e) => e.className === "list").kids.map((li) => find(li, "chev"));
-  assert.deepStrictEqual(chevs.map((c) => [c.textContent, c.style.color]), [["Use", "var(--brand-text)"], ["Use", "var(--brand-text)"], ["Use", "var(--brand-text)"]], "and each row's Use in the same purple (his ask, 13 Nov: \"keep it consistent\": the fill purple read 3.4:1 on the dark card)");
+  const find = (e, c) => (e.className === c ? e : (e.kids || []).reduce((f, k) => f || find(k, c), null)), chevs = kids.find((e) => e.className === "list").kids.map((li) => find(li, "tpl-use"));   // (its own button since v288: the card opens the preview)
+  assert.deepStrictEqual(chevs.map((c) => c.textContent), ["Use", "Use", "Use"], "and each row's Use, its own button in the purple as text (his ask, 13 Nov: \"keep it consistent\"; index.html .tpl-use)");
   app.set({ tab: "notes" });                                          // their page was last left on another tab
   use.on.click[0]();
   const dp = fns.datePicker();
@@ -808,18 +808,27 @@ test("Use for a client, first in a folder's \"…\" when its page shows two temp
   quiet();
 });
 
-test("Use on one template while choosing for an empty workout still fills it where it is, on its own day, and lands back on its page's own step (From template keeps its steps)", async () => {
-  setup(FOLDERS, TPLS, { name: "client", id: "c1" }); await tick();
-  maps.trainings.set("w0", W0());
-  fns.go({ name: "training", id: "w0" }); await tick(); const dw = fns.navState().depth;
-  fns.fromTemplate(maps.trainings.get("w0")); await tick();
-  fns.go(fns.tplPage("B")); await tick(); maps.trainings.get("t2").rows = [];   // (the stand-in page cannot draw a workout's exercises)
-  const list = drawing((got) => { fns.render(); return got(); }).find((e) => e.className === "list");
+test("Use on one template while choosing for an empty workout asks the day first (his pick, 13 Nov: \"if I click use it will take me to pick a date and then opens up in my coaches view\"): the client's days open on the workout's own, its chip outlined; it takes the template there, or on another day picked, and lands back on its page's own step (From template keeps its steps)", async () => {
+  const choose = async () => {
+    setup(FOLDERS, TPLS, { name: "client", id: "c1" }); await tick();
+    maps.trainings.set("w0", W0());
+    fns.go({ name: "training", id: "w0" }); await tick(); const dw = fns.navState().depth;
+    fns.fromTemplate(maps.trainings.get("w0")); await tick();
+    fns.go(fns.tplPage("B")); await tick(); maps.trainings.get("t2").rows = [];   // (the stand-in page cannot draw a workout's exercises)
+    const list = drawing((got) => { fns.render(); return got(); }).find((e) => e.className === "list");
+    list.kids.find((li) => li.dataset.tid === "t2").kids[1].on.click[0](); await tick();   // its Use (the card opens the preview since v288)
+    return dw;
+  };
+  let dw = await choose();
+  const dp = fns.datePicker();
+  assert.deepStrictEqual([dp && dp.title, dp && dp.selected, dp && dp.moving, maps.trainings.get("w0").rows.length], ["Add Workout 2 to Jane", "2026-11-27", "w0", 0], "the days first: Jane's, on the workout's own day, it outlined; nothing filled yet");
   fns.setOpenAs("client");                                                 // (his Settings: workouts open as the client; v284)
-  try { list.kids.find((li) => li.dataset.tid === "t2").kids[0].on.click[0](); await tick(); } finally { fns.setOpenAs("coach"); localStorage.removeItem("fiala.openAs"); }
+  try { pickDays("2026-11-27"); await tick(); } finally { fns.setOpenAs("coach"); localStorage.removeItem("fiala.openAs"); }
   assert.strictEqual(fns.previewOn(), false, "filled from a template, it is still being made: as the coach, whatever Settings say");
-  const w0 = maps.trainings.get("w0");
+  let w0 = maps.trainings.get("w0");
   assert.deepStrictEqual([app.get().view, w0.title, w0.date, w0.fromTemplate, fns.navState().depth, fns.choosing().fillFor, theirs("c1", "w0").length], [{ name: "training", id: "w0" }, "Workout 2", "2026-11-27", "t2", dw, null, 0], "Workout 2 into it, on its own day, nothing else added; back on its own step");
+  dw = await choose(); pickDays("2026-12-02"); await tick(); w0 = maps.trainings.get("w0");
+  assert.deepStrictEqual([app.get().view, w0.title, w0.date, w0.fromTemplate, fns.navState().depth, theirs("c1", "w0").length], [{ name: "training", id: "w0" }, "Workout 2", "2026-12-02", "t2", dw, 0], "another day picked: it moves there with the template");
   quiet();
 });
 
