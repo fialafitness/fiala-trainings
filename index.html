@@ -653,15 +653,16 @@
   body:not(.client) .ex-icons button[hidden] { display: none; }
   body:not(.client) .ex-icons svg { width: 20px; height: 20px; }
   .ex-icons .more-btn { color: var(--text-primary); order: 1; }                                      /* the "…" disc, last, after the play disc: the overflow at the end, as Apple puts it */
-  body:not(.client) .ex-icons .ramp-btn { background: transparent; box-shadow: inset 0 0 0 1.5px var(--card-disc); color: var(--text-secondary); }   /* add weight each set, off: an outline (his pick, 13 Nov: "another round button to the left of play ... solid ... transparent") */
-  body:not(.client) .ex-icons .ramp-btn.on { background: var(--ink); box-shadow: none; color: var(--ink-on); }   /* on: solid, as the play disc */
-  body:not(.client) .ex-icons .ramp-btn svg { width: 18px; height: 18px; }
+  body:not(.client) .ex-icons .ramp-btn, body:not(.client) .ex-icons .pyr-btn { background: transparent; box-shadow: inset 0 0 0 1.5px var(--card-disc); color: var(--text-secondary); }   /* add weight each set, and beside it fewer reps, more weight (his ask, 14 Nov: "keep both buttons arrow and this one next to each other"), off: an outline (his pick, 13 Nov: "another round button to the left of play ... solid ... transparent") */
+  body:not(.client) .ex-icons .ramp-btn.on, body:not(.client) .ex-icons .pyr-btn.on { background: var(--ink); box-shadow: none; color: var(--ink-on); }   /* on: solid, as the play disc */
+  body:not(.client) .ex-icons .ramp-btn svg, body:not(.client) .ex-icons .pyr-btn svg { width: 18px; height: 18px; }
   .ramp-mark { display: inline-block; width: 0.85em; height: 0.85em; margin-left: 0.3em; vertical-align: -0.08em; color: inherit; }   /* its arrow after the reps, in the reps' own colour */
+  .ramp-tip .sign { display: inline-block; width: 0.85em; height: 0.85em; margin-left: 0.3em; vertical-align: -0.08em; }   /* the client's sign after the reps' words, as the preview's */
   .ramp-mark svg, .ramp-tip svg { display: block; width: 100%; height: 100%; }
-  .ramp-tip { position: relative; display: inline-block; width: 0.85em; height: 0.85em; margin: 0 0 0 0.3em; padding: 0; border: 0; background: none; appearance: none; vertical-align: -0.08em; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }   /* the client's: a tap tells what it means, as Last and Best do */
-  .ramp-tip::before { content: ""; position: absolute; inset: -0.33em -16.5px -0.3em; }   /* a finger's width round the small arrow (44 points at the folded card's 13 px), and no taller than its line: the name ends where the line begins and Instructions begins where it ends (measured on the simulator: a 23.25-point line, the arrow 5.6 below its top and 5.0 above its foot), so a tap meant for either stays theirs (a review's catch: 9 points of each went to the bubble) */
+  .ramp-tip { display: inline; margin: 0; padding: 0; border: 0; border-radius: 4px; background: none; appearance: none; font: inherit; color: inherit; letter-spacing: inherit; text-align: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }   /* the client's: the reps' words and the sign after them, one button (his ask, 13 Nov: "make the whole rep touchable not just the sign so it's easier for people to touch it"); a tap tells what the sign means, as Last and Best do. No taller than its words: the name above and Instructions below keep their taps */
+  .ramp-tip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }   /* the keyboard's place */
   .ramp-tip:active { opacity: 0.6; }
-  @media (hover: none) { .ex-icons .ramp-btn:hover { opacity: 1; } }   /* a touch screen keeps a tap's hover until the next tap elsewhere: the switch just turned on reads solid, not dimmed (measured on the simulator: 0.7 after the tap) */
+  @media (hover: none) { .ex-icons .ramp-btn:hover, .ex-icons .pyr-btn:hover { opacity: 1; } }   /* a touch screen keeps a tap's hover until the next tap elsewhere: the switch just turned on reads solid, not dimmed (measured on the simulator: 0.7 after the tap) */
   .ex-icons .vid-btn .i-play { width: 18px; height: 18px; margin: 0; }   /* one play disc in both views; the triangle is drawn a hair right of the box's middle, which is where a triangle looks centred */
   .ex-icons .vid-btn .i-play path { stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }   /* softly rounded corners, like the TV app's play */
   body:not(.client) .block.done:not(.open) .ex-icons { display: none; }
@@ -683,7 +684,7 @@
   .sum-set.skip .sum-val { color: var(--text-tertiary); font-weight: 500; }
   .sum-set.skip .sum-ok { visibility: hidden; }
   .block.done:not(.open) .card-chev { bottom: 11px; }                   /* chevron down, centred on the status row */
-  .block.done.open .card-chev { bottom: 14px; }                         /* chevron up, bottom corner of the open card (the Sets line keeps − and +) */
+  .block.done.open .card-chev { bottom: 14px; }                         /* chevron up, bottom corner of the open card (the Sets line keeps its count) */
   /* client: the card being done is open; the ones still to come fold to a line each, a tap opens one for a look */
   .row .sum { display: none; flex-wrap: wrap; align-items: center; font-size: 0.8125rem; color: var(--text-tertiary); margin: 4px 0 0 64px; letter-spacing: 0; }
   .row .sum .si + .si::before { content: "\00b7"; margin: 0 6px; }
@@ -877,7 +878,8 @@
   body.client .row .specs { display: none; }
   body.client .row .sum { display: flex; margin: 0 0 0 var(--numw); font-size: 0.9375rem; color: var(--text-primary); }   /* reps and rest in the same ink as the name; the tempo line below is lighter */
   body.client .block:not(.ahead) .row .sum .sum-sets { display: none; }                      /* the chips above say how many sets */
-  body.client .block:not(.ahead) .row .sum .si + .si::before { content: "\2022"; margin: 0 9px; color: var(--text-tertiary); font-size: 0.85em; }   /* reps • rest: a real bullet, room to breathe, wraps cleanly when long */
+  body.client .block:not(.ahead) .row .sum { column-gap: 22px; clip-path: inset(-40px -40px -40px -6px); }   /* reps • rest wrapping onto a second line: no bullet starts it (his screenshot, 13 Nov: "• 10 sec transition" alone on the second line, "I don't like how it brakes"). Each bullet sits in the gap before its words, so one at the start of a line falls left of the line, where it is clipped away: its dot is 8 or more points out at every Text Size; the 6 left show the phrase's focus ring (2 and 2 out; a review's catch) */
+  body.client .block:not(.ahead) .row .sum .si + .si::before { content: "\2022"; display: inline-block; width: 22px; margin: 0 0 0 -22px; text-align: center; color: var(--text-tertiary); font-size: 0.85em; }   /* reps • rest: a real bullet in the 22 between them (it was 9, the bullet and 9), pulled back into the gap by its own width; on the words' baseline, as it was */
   body.client .block:not(.ahead) .row .sum .si.sum-sets + .si::before { content: none; }
   body.client .block.ahead .row .sum { margin-top: 2px; font-size: 0.8125rem; color: var(--text-tertiary); }
   body.client .block.ahead .row .sum .sum-rest { display: none; }                          /* folded: sets and reps are enough */
@@ -920,10 +922,9 @@
   #kbbar .kb-chips { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   #kbbar .kb-chips::-webkit-scrollbar { display: none; }
   /* client view: one set at a time */
-  .tracker { padding: 14px 16px 0; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px; }   /* one row: the track, and for the coach the − / + at its end; when the sets would not fit beside them, the steppers take the next line */
+  .tracker { padding: 14px 16px 0; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px; }   /* one row: the track, and for the coach the count's pop-up at its end (below); a template in the client's look keeps its words there, and they take the next line when the sets would not fit beside them */
   .tracker .tr-chips { position: relative; display: flex; flex: 1 1 auto; min-width: 0; gap: 5px; padding: 4px; border-radius: var(--r-field); background: var(--glyph-fill); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; scroll-padding-inline: 4px; --fr: 0px; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fr)), transparent 100%); mask-image: linear-gradient(to right, #000 calc(100% - var(--fr)), transparent 100%); }   /* one track: the set you are on a worded tile, the ones ahead numbered, the ones done fern squares; past the width it scrolls. Squared (his ask, 11 Nov): the corner of the Weight and Reps boxes under it */
   .tracker .tr-chips::-webkit-scrollbar { display: none; }
-  .tracker .tr-steps { display: flex; gap: 6px; flex: none; align-self: center; margin-left: auto; }
   .tracker .tr-pos { flex: none; align-self: center; font-size: 0.8125rem; letter-spacing: 0; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap; }   /* "4 of 12": the count the track cannot always show */
   .tracker button { appearance: none; cursor: pointer; width: auto; min-width: 44px; height: 40px; padding: 0 12px; border-radius: var(--r-chip); border: 1.5px solid var(--card-border); background: var(--field); color: var(--text-secondary); font-size: 0.9375rem; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 2px; transition: opacity 300ms ease; }
   .tracker .tr-chips button { flex: 1 0 0px; min-width: 40px; height: 40px; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--text-tertiary); font-size: 1rem; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; scroll-snap-align: start; transition: background-color 150ms ease, color 150ms ease; }   /* a set: a square (10, the track's 14 less its 4 inset: the corners run parallel), every set an equal share of the track, the one you are on included, so the fewer they are the wider (two sets: half each), never narrower than the old disc's 40 (his asks, 11 Nov: "dynamic size based on number of set … not smaller than current size of the circle"; "make the set 2 of 2 also dynamic … should look 50:50"); past the width the track scrolls; one ahead is its number on the track (his pick: no tile) */
@@ -934,9 +935,11 @@
   .tracker button:hover { opacity: 0.85; }
   .tracker .tr-chips button:hover { opacity: 1; }
   .tracker button.static { cursor: default; }                           /* a template just shows the count */
-  .tracker .step { position: relative; width: 36px; height: 30px; background: transparent; color: var(--text-secondary); font-size: 1.125rem; font-weight: 400; }
-  .tracker .step:disabled { opacity: 0.35; cursor: default; }
-  .tracker .step::before { content: ""; position: absolute; inset: -7px; }   /* the − / + steppers: thumb-sized targets */
+  .tracker:has(> .tr-count) { flex-wrap: nowrap; }   /* the coach's row: always one line, the count at its end; sets that do not fit scroll in the track, as they do today past five */
+  .tracker .tr-count { position: relative; display: flex; align-items: center; justify-content: center; flex: none; align-self: center; width: 48px; min-width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: var(--ink); color: var(--ink-on); font-size: 1.0625rem; font-weight: 600; letter-spacing: 0; font-variant-numeric: tabular-nums; white-space: nowrap; -webkit-tap-highlight-color: transparent; }   /* how many sets: his pick A (14 Nov), then his ask the same day, "circled button .. probably white .. matching the height of the set bar ... all number fit there nicely from 1 to 99": a disc as tall as the bar, in the ink of the play disc and the 1a badge (white on his dark phone, black in light), the number in its middle (99 is 20 wide in it, measured on the simulator) */
+  @media (hover: none) { .tracker .tr-count:hover { opacity: 1; } }   /* a phone keeps no hover dim after the tap (an iPhone left the ramp disc at 0.7, v294); before :active, which wins the tie */
+  .tracker .tr-count:active { opacity: 0.6; }
+  .tracker .tr-count:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }   /* the keyboard's place, a ring round the disc */
   .setlog { margin-top: 14px; }
   .setlog .chip.stack { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: 74px; padding: 10px 14px; text-align: left; }   /* a label on top, the number below */
   .setlog .chip.stack .lab { font-size: 0.8125rem; line-height: 1.2; color: var(--text-secondary); }
@@ -1084,6 +1087,9 @@
   #whenPop .wopt.danger { color: var(--danger); }                              /* Remove photo: red, as Apple marks a destructive row */
   #whenPop.menu.checks .wopt { position: relative; padding-left: 32px; }       /* a choice of one: every row keeps room for the tick, the words 45 from the menu's edge (Calendar's Repeat and Files, measured: both 45.3) */
   #whenPop.menu .wopt .ck { position: absolute; left: 10.7px; top: 50%; width: 0.647em; height: 0.618em; margin-top: -0.309em; overflow: visible; }   /* the tick 23 from the menu's edge, 10 points across at 17 */
+  #whenPop.menu.long { max-height: 528px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; box-shadow: 0 10px 30px var(--glass-menu-shadow), 0 0 0 0.5px var(--glass-menu-edge), inset 0 0.5px 0 var(--glass-menu-rim), inset 0 -0.5px 0 var(--glass-menu-rim-b); }   /* a list longer than a menu shows (the sets, 1 to 20): twelve rows in view (12 × 42 and its 12 above and below), and it scrolls inside while the page stays still; Apple's own list of 20 shows 12 (measured on iOS 27.2). A Mac set to show scroll bars gets none in it, as a Mac's menu has none */
+  #whenPop.menu.long::-webkit-scrollbar { display: none; }
+  #whenPop.menu.long::after { display: none; }   /* its rim drawn on the bubble itself (the inset shadows above), as the names' list draws its own: the ring of its own scrolled away with the rows (seen on the simulator, a line across the list) */
   #whenPop .msep { flex: none; height: 1px; margin: 10px 12px; background: var(--menu-sep); }   /* a line between the menu's groups, 24 in from either edge, 10 clear above and below (Files, measured) */
   /* touch and hold (the phone's right-click), as iOS 27.2 does it (measured on Contacts and the Home Screen): the item lifts where it is, growing a
      little with a shadow while the finger stays; at 0.4 s the page dims, the item stays lifted over it and its menu opens 16 under it */
@@ -1856,7 +1862,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=295";
+  import { boot } from "./app/main.js?v=296";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

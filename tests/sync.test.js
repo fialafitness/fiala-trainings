@@ -108,6 +108,20 @@ test("add weight each set (13 Nov) is the coach's: on a conflict his on and his 
   fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: JSON.parse(JSON.stringify(saved)), updated_at: "S9" }], true, Date.now());
   assert.strictEqual(maps.trainings.get("T").rows[0].ramp, true, "the client's phone gets his on"); assert.ok(!("ramp" in maps.trainings.get("T").rows[1]), "and his off");
 });
+test("fewer reps, more weight (14 Nov) is the coach's too: on a conflict his switch from the arrow to the pyramid lands whole, the client's logged sets stay, and the client's phone takes it", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const server = training("T", { rows: [{ ...row("r1", ["100", "105"], ["5", "5"], 2), ramp: true }, { ...row("r2"), pyramid: true }] });   // the client logged two sets meanwhile; r1 had the arrow, r2 the pyramid
+  sb.seed("ft_trainings", "T", server, { client_id: "c1" }); maps.seenAt.set("trainings/T", "S0");
+  const local = training("T", { rows: [{ ...row("r1"), pyramid: true }, row("r2")] }); maps.trainings.set("T", local);   // the coach's older copy: r1 switched to the pyramid (the arrow gone), r2's off
+  await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(local)));
+  const saved = sb.tables.ft_trainings.get("T").data;
+  assert.strictEqual(saved.rows[0].pyramid, true, "his pyramid lands"); assert.ok(!("ramp" in saved.rows[0]), "and the arrow it replaced is gone: one sign"); assert.deepStrictEqual(saved.rows[0].weights, ["100", "105"], "the client's sets stay");
+  assert.ok(!("pyramid" in saved.rows[1]), "his off lands: no key");
+  app.reset(); app.set({ clientMode: true, myClientId: "c1" });
+  maps.trainings.set("T", training("T", { rows: [{ ...row("r1"), ramp: true }, { ...row("r2"), pyramid: true }] }));   // the phone's older copy
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: JSON.parse(JSON.stringify(saved)), updated_at: "S9" }], true, Date.now());
+  const ph = maps.trainings.get("T").rows; assert.ok(ph[0].pyramid === true && !("ramp" in ph[0]), "the client's phone gets his pyramid, not the old arrow"); assert.ok(!("pyramid" in ph[1]), "and his off");
+});
 test("a save with no stamp reads first and still keeps the client's finish", async () => {
   const sb = makeSupabase(); coach(sb);
   sb.seed("ft_trainings", "T", training("T", { completedAt: "2026-10-12T18:00:00.000Z" }), { client_id: "c1" });

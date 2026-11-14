@@ -1,4 +1,4 @@
-// Run by ramp.test.js in its own process: "add weight each set" (his ask, 13 Nov, with the RP app's arrow as his example; his picks: Apple's
+// Run by ramp.test.js in its own process: the exercise's sign. "Add weight each set" (his ask, 13 Nov, with the RP app's arrow as his example; his picks:
 // arrow up and to the right, and "just the 3rd button" left of play, solid when on, an outline when off). The coach's round button turns it on
 // and off; when on, the arrow follows the reps in the client's line under the name and in the preview (the coach's reps box shows none, his
 // pick "button only"), and the client's tells what it means in a bubble, as Last and Best do. The stand-ins are alternatives-probe.mjs's, with the markup's parts walked as the element's own descendants.
@@ -63,11 +63,12 @@ function mk(tag) {
     let p = e.qs[base]; if (!p) { p = mk(PART_TAG(base)); p.className = base.split(/\s+/).pop().split(".").filter(Boolean).join(" "); p.parent = e; e.nodes.push(p); e.qs[base] = p; }   // (a part is one of its children, so what goes after it lands beside it)
     return nh && p.hidden ? null : p;
   };
-  e.querySelectorAll = (sel) => { if (sel === ".specs .chip") { e.chips = e.chips || [0, 1].map(() => { const c = mk("div"); c.className = "chip"; c.innerHTML = "chip"; c.parent = e; e.nodes.push(c); return c; }); return e.chips; } return findAll(e, sel); };   // (the chips the row asked for, kept: its reps chip is looked at again)
+  e.querySelectorAll = (sel) => { if (sel === ".specs .chip") { e.chips = e.chips || [0, 1].map((k) => { const c = mk("div"); c.className = "chip"; c.innerHTML = "chip"; c.parent = e; e.nodes.push(c); const none = !k && repsOf(e) === ""; c.querySelector(".val").textContent = k ? "60 sec" : none ? "10" : "4-6"; const x = c.querySelector(".suffix"); x.textContent = k ? "rest" : "reps"; x.hidden = false; return c; }); return e.chips; } return findAll(e, sel); };   // (the chips the row asked for, kept: its reps chip is looked at again)
   e.getBoundingClientRect = () => e.rect || { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 };
   MK.add(e); made.push(e); return e;
 }
 document.createElement = mk;
+const repsOf = (e) => { try { const t = maps.trainings.get("t1"), row = t && (t.rows || []).find((x) => x.id === (e.dataset || {}).id); return row ? String(row.reps || "") : null; } catch (_) { return null; } };   // a row's reps box: its words, or the box's own grey 10 when the coach left it empty (wireChip writes the placeholder, REPS_DEFAULT)
 const fire = (e, type, extra = {}) => {                                     // capture on the document, then the target and up through its parents, then the document's own
   const ev = { type, target: e, detail: 1, clientX: 0, clientY: 0, button: 0, isPrimary: true, ...extra, stopped: false, defaultPrevented: false, stopPropagation() { this.stopped = true; }, preventDefault() { this.defaultPrevented = true; }, composedPath() { const path = []; for (let n = e; n && MK.has(n); n = n.parent) path.push(n); return path; } };
   for (const l of [...(L[type] || [])].filter((x) => x.capture)) l.fn(ev);
@@ -95,35 +96,47 @@ function seed({ client = false, preview = false, rows = null } = {}) {
   app.set({ signedIn: true, clientMode: client, myClientId: client ? "c1" : null, tab: "workouts" });
   maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" });
   maps.trainings.set("t1", { id: "t1", clientId: "c1", title: "Arms", date: today(), createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: null,
-    rows: rows || [R("a", "1", "Close-grip bench press", { ramp: true }), R("b", "2", "Curl")] });
+    rows: rows || [R("a", "1", "Close-grip bench press", { ramp: true }), R("b", "2", "Curl"), R("c", "3", "Leg press", { reps: "12-4", pyramid: true }), R("d", "4", "Row", { ramp: true, pyramid: true })] });
   byId.get("whenPop").replaceChildren(); fns.setPreview(preview); app.set({ view: { name: "training", id: "t1" }, renderedTraining: null }); fns.render();
   byId.get("whenPop").offsetWidth = 250; byId.get("whenPop").offsetHeight = 60; whenBg.hidden = true;
 }
 const rowOf = (id) => made.filter((x) => x.className === "row" && x.dataset && x.dataset.id === id).pop() || null;
 const rowNow = (id) => maps.trainings.get("t1").rows.find((r) => r.id === id);
-const look = (id) => { const el = rowOf(id), b = el.qs[".ramp-btn"], sum = el.qs[".sum"];
-  return { on: b.classList.contains("on"), pressed: b.attrs["aria-pressed"] || null, boxMark: findAll(el, ".ramp-mark").length,   // the coach's reps box (and anywhere on the card): no arrow drawn, only the client's to tap
-    tip: !!sum && findAll(sum, ".ramp-tip").length, tipInReps: !!sum && findAll(sum, ".sum-reps").some((s) => findAll(s, ".ramp-tip").length > 0),
-    tipAfterWords: !!sum && findAll(sum, ".sum-reps").some((s) => { const n = s.nodes, i = n.findIndex((c) => classesOf(c).has("ramp-tip")); return i > 0 && i === n.length - 1 && n[i - 1].nodeType === 3; }), data: rowNow(id).ramp === undefined ? "none" : rowNow(id).ramp }; };
+const kindOf = (h) => (/M4\.2 11\.8/.test(h) ? "ramp" : /M5\.85 3\.95/.test(h) ? "pyramid" : "?");   // which glyph: the arrow's path, or the pyramid's
+const look = (id) => { const el = rowOf(id), rb = el.qs[".ramp-btn"], pb = el.qs[".pyr-btn"], sum = el.qs[".sum"];
+  const tips = sum ? findAll(sum, ".ramp-tip") : [], tip = tips[0] || null, sign = tip ? findAll(tip, ".sign")[0] || null : null, row = rowNow(id);
+  return { buttons: [rb.attrs["aria-pressed"], pb.attrs["aria-pressed"]], lit: [rb.classList.contains("on"), pb.classList.contains("on")], boxMark: findAll(el, ".ramp-mark").length,   // the coach's reps box (and anywhere on the card): no sign drawn, only the client's line
+    tips: tips.length, sign: sign ? kindOf(sign.innerHTML) : null,
+    phrase: tip ? { tag: [tip.tagName, tip.type || null], inReps: classesOf(tip.parent).has("sum-reps"), alone: tip.parent.nodes.length === 1, words: tip.nodes[0] && tip.nodes[0].nodeType === 3 ? tip.nodes[0].textContent : null, signLast: tip.nodes[tip.nodes.length - 1] === sign, label: tip.attrs["aria-label"] } : null,
+    reps: sum ? (findAll(sum, ".sum-reps")[0] || {}).textContent : null, data: [!!row.ramp, !!row.pyramid], keys: ["ramp", "pyramid"].filter((k) => k in row) }; };
 const out = {};
-{ seed();
-  out.coachStart = { a: look("a"), b: look("b") };
-  maps.dirty.clear(); const b = rowOf("b").qs[".ramp-btn"]; const down = fire(b, "mousedown"); const ev = fire(b, "click");
-  out.coachOn = { ...look("b"), saved: maps.dirty.has("trainings/t1"), keptFocus: down.defaultPrevented, stopped: ev.stopped };
-  maps.dirty.clear(); fire(b, "click"); out.coachOff = { ...look("b"), saved: maps.dirty.has("trainings/t1"), keys: Object.keys(rowNow("b")).includes("ramp") };
+{ seed();   // the coach's two round buttons: each solid when its sign is on, an outline when off
+  out.coachStart = { a: look("a"), b: look("b"), c: look("c"), d: look("d") };
+  const tap = (id, cls) => { const b = rowOf(id).qs[cls], down = fire(b, "mousedown"), ev = fire(b, "click"); return { keptFocus: down.defaultPrevented, stopped: ev.stopped }; };
+  maps.dirty.clear(); const t1 = tap("b", ".pyr-btn"); out.pyrOn = { ...look("b"), ...t1, saved: maps.dirty.has("trainings/t1") };
+  maps.dirty.clear(); const t2 = tap("b", ".ramp-btn"); out.rampOverPyr = { ...look("b"), ...t2, saved: maps.dirty.has("trainings/t1") };   // the arrow on takes the pyramid off: one sign at a time
+  maps.dirty.clear(); tap("b", ".pyr-btn"); out.pyrOverRamp = { ...look("b"), saved: maps.dirty.has("trainings/t1") };
+  maps.dirty.clear(); tap("b", ".pyr-btn"); out.pyrOff = { ...look("b"), saved: maps.dirty.has("trainings/t1") };   // the one on, tapped again: none, and no trace on the exercise
+  tap("b", ".ramp-btn"); maps.dirty.clear(); tap("b", ".ramp-btn"); out.rampOff = { ...look("b"), saved: maps.dirty.has("trainings/t1") };
+  tap("d", ".ramp-btn"); out.bothArrow = look("d");   // both on (the arrow shown, the newer choice): tapping the arrow leaves none
 }
-{ seed({ client: true });
-  const t = rowOf("a").qs[".sum"], tip = findAll(t, ".ramp-tip")[0];
-  out.clientStart = { a: look("a"), b: look("b"), tipLabel: tip ? tip.attrs["aria-label"] : null };
-  const ev = fire(tip, "click"); const pop = byId.get("whenPop");
-  out.clientTip = { open: !whenBg.hidden, stopped: ev.stopped, words: pop.children.map((r) => r.children.map((c) => String(c.textContent || "")).filter(Boolean).join(" | ")) };
-  whenBg.hidden = true; maps.dirty.clear(); fire(rowOf("b").qs[".ramp-btn"], "click"); out.clientCannot = { data: look("b").data, saved: maps.dirty.has("trainings/t1") };
+{ seed(); const tapP = (id, cls) => fire(rowOf(id).qs[cls], "click"); tapP("d", ".pyr-btn"); out.bothPyr = look("d");   // both on, the pyramid tapped: the pyramid alone
 }
-{ seed({ preview: true }); out.previewView = { a: look("a").tip, b: look("b").tip }; maps.dirty.clear(); fire(rowOf("b").qs[".ramp-btn"], "click"); out.previewCannot = { data: look("b").data, saved: maps.dirty.has("trainings/t1") }; }   // the coach's Client view: the client's look and limits
+{ seed({ rows: [R("e", "1", "Plank", { reps: "", pyramid: true })] }); out.noReps = look("e"); }   // no reps written: the box's grey 10 is the phrase, as the app draws it
+{ seed({ client: true });   // the client: the sign after the reps' words, the whole phrase one button; a tap tells what it means
+  out.clientStart = { a: look("a"), b: look("b"), c: look("c") };
+  const words = (tip) => { const ev = fire(tip, "click"); const pop = byId.get("whenPop"); return { open: !whenBg.hidden, stopped: ev.stopped, words: pop.children.map((r) => r.children.map((c) => String(c.textContent || "")).filter(Boolean).join(" | ")) }; };
+  out.clientRamp = words(findAll(rowOf("a").qs[".sum"], ".ramp-tip")[0]); whenBg.hidden = true;
+  out.clientPyr = words(findAll(rowOf("c").qs[".sum"], ".ramp-tip")[0]); whenBg.hidden = true;
+  maps.dirty.clear(); fire(rowOf("b").qs[".ramp-btn"], "click"); fire(rowOf("b").qs[".pyr-btn"], "click"); out.clientCannot = { data: look("b").data, saved: maps.dirty.has("trainings/t1") };
+}
+{ seed({ preview: true }); out.previewView = { a: look("a").sign, b: look("b").sign, c: look("c").sign };   // the coach's Client view: the client's look and limits
+  maps.dirty.clear(); fire(rowOf("b").qs[".pyr-btn"], "click"); out.previewCannot = { data: look("b").data, saved: maps.dirty.has("trainings/t1") };
+  const pt = findAll(rowOf("c").qs[".sum"], ".ramp-tip")[0], pev = fire(pt, "click"); out.previewTip = { open: !whenBg.hidden, stopped: pev.stopped, words: byId.get("whenPop").children.map((x) => x.children.map((c) => String(c.textContent || "")).filter(Boolean).join(" | ")) }; whenBg.hidden = true; }   // the coach, looking through the client's eyes, reads what the sign says
 { seed(); fns.openPreview("t1"); await advance(400);
   const sums = made.filter((x) => classesOf(x).has("pv-sum"));
-  const holder = (s) => s.children.find((c) => findAll(c, ".ramp-mark").length > 0) || null;   // the words the arrow sits in, and where among them
-  out.preview = sums.map((s) => ({ words: s.children.map((c) => String(c.textContent || "")), mark: findAll(s, ".ramp-mark").length, silent: findAll(s, ".ramp-mark").map((m) => m.attrs["aria-hidden"] || null), markIn: s.children.indexOf(holder(s)),
+  const holder = (s) => s.children.find((c) => findAll(c, ".ramp-mark").length > 0) || null;   // the words the sign sits in, and where among them
+  out.preview = sums.map((s) => ({ words: s.children.map((c) => String(c.textContent || "")), marks: findAll(s, ".ramp-mark").map((m) => kindOf(m.innerHTML)), silent: findAll(s, ".ramp-mark").map((m) => m.attrs["aria-hidden"] || null), markIn: s.children.indexOf(holder(s)),
     markAfterWords: holder(s) ? (() => { const n = holder(s).nodes, i = n.findIndex((c) => classesOf(c).has("ramp-mark")); return i > 0 && n[i - 1].nodeType === 3; })() : null, said: findAll(s, ".vh").map((v) => v.textContent) }));
   fns.closePreview();
 }

@@ -100,7 +100,7 @@ const text = (n) => (typeof n === "string" ? n : n && typeof n === "object" ? St
 const menu = () => byId.get("whenPop").children.map((b) => (classesOf(b).has("msep") ? "—" : (b.attrs["aria-current"] === "true" ? "✓ " : "") + text(b.children.find((c) => c.tagName === "SPAN"))));
 const menuLook = () => { const p = byId.get("whenPop"); return { open: !whenBg.hidden, rows: menu(), classes: ["menu", "checks", "hung", "above"].filter((c) => p.classList.contains(c)), left: p.style.left, top: p.style.top,
   tick: p.children.filter((b) => /class="ck"/.test(b.html || "")).map((b) => text(b.children.find((c) => c.tagName === "SPAN"))), seps: p.children.filter((b) => classesOf(b).has("msep")).map((b) => b.attrs.role || null) }; };
-const pick = (label, extra = {}) => { const b = byId.get("whenPop").children.find((x) => !classesOf(x).has("msep") && text(x.children.find((c) => c.tagName === "SPAN")) === label); return b ? fire(b, "click", extra) : null; };
+const pick = (label, extra = {}) => { const b = byId.get("whenPop").children.find((x) => !classesOf(x).has("msep") && text(x.children.find((c) => c.tagName === "SPAN")) === label); if (b) NOW += 400; return b ? fire(b, "click", extra) : null; };   // a tap well after the one that opened the list (a pop-up's list takes no tap in its first 350 ms: a double tap's second, v296)
 const sheet = () => ({ open: !altSheet.hidden, lead: byId.get("altLead").textContent, rows: altRows.children.map((li) => {
   const k = classesOf(li);
   if (k.has("alt-row")) { const minus = li.children[0], del = li.children[2]; return text(li.children[1]) + (del.hidden ? "" : " [Delete]") + (minus.attrs["aria-expanded"] === "true" ? " (open)" : ""); }

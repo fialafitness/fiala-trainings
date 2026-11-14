@@ -3665,25 +3665,32 @@ import { reportRange, buildReport } from "./report.js";
           }
           fades();
         });
-        if (isTpl) { const pos = document.createElement("span"); pos.className = "tr-pos"; pos.textContent = total + (total === 1 ? " set" : " sets"); tr.appendChild(pos); }   // a template: the numbers, and how many
+        if (isTpl && asClient) { const pos = document.createElement("span"); pos.className = "tr-pos"; pos.textContent = total + (total === 1 ? " set" : " sets"); tr.appendChild(pos); }   // a template in the client's look: the numbers, and how many
         if (!asClient) {                                     // the trainer changes the number of sets right here, for every exercise in the card
-          const setCount = async (n) => {
+          const setCount = async (n, keys) => {
+            const back = () => { if (!keys) return; const b = [...$("rows").children].find((x) => x.dataset && x.dataset.key === g.key), folded = !!b && b.classList.contains("done") && !b.classList.contains("open"), c = b && b.querySelector(folded ? ".card-chev" : ".tr-count"); if (c) c.focus({ preventScroll: true }); };   // a pick from the keyboard: its place back on the count (drawn anew), as the menus give it back to their button; a card the pick finished folds and hides its count, so on its chevron (a review's catch)
             n = clamp(n, 1, 20); if (n === total) return;
-            const logged = n < total && g.rows.some((r) => [r.weights, r.repsDone].some((a) => String((a || [])[n] || "").trim()) || (parseInt(r.setsDone, 10) || 0) > n);
-            if (logged && !(await askFirst({ title: "Drop set " + total + "?", text: "What was logged on it goes with it.", yes: "Drop" }))) return;
-            for (const r of g.rows) {
+            const gone = (r) => [r.weights, r.repsDone].some((a) => (a || []).slice(n).some((v) => String(v || "").trim())) || (parseInt(r.setsDone, 10) || 0) > n;   // anything logged on a set that goes: a pick from the list can drop several at once
+            if (n < total && g.rows.some(gone)) {
+              const one = total - n === 1, which = one ? "set " + total : total - n === 2 ? "sets " + (n + 1) + " and " + total : "sets " + (n + 1) + " to " + total;   // every set that would go, named
+              if (!(await askFirst({ title: "Drop " + which + "?", text: one ? "What was logged on it goes with it." : "What was logged on them goes with them.", yes: "Drop" }))) { back(); return; }
+            }
+            const T = trainings.get(t.id); if (!T) return;   // a sync can replace the record while the question is up: the change goes into the one there now
+            const rows = T === t ? g.rows : g.rows.map((r) => (T.rows || []).find((x) => x.id === r.id)).filter(Boolean);
+            for (const r of rows) {
               const was = setsOf(r), sd = clamp(parseInt(r.setsDone, 10) || 0, 0, 20), wasDone = !!r.done;
               r.sets = n;
               if (sd > n) r.setsDone = n;
-              if (sd >= n) r.done = true; else if (r.done && sd >= was) { r.done = false; markEarly(t, r, ""); }   // a set added to a finished exercise reopens it; "finished early" stays finished
+              if (sd >= n) r.done = true; else if (r.done && sd >= was) { r.done = false; markEarly(T, r, ""); }   // a set added to a finished exercise reopens it; "finished early" stays finished
               if (!isTpl && (r.done !== wasDone || sd > n)) { if (!trainerTouched.has(t.id)) trainerTouched.set(t.id, new Set()); trainerTouched.get(t.id).add(r.id); }
             }
-            setSel.delete(selKey); scheduleSave("trainings", t.id); S.renderedTraining = null; render();
+            setSel.delete(selKey); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); back();
           };
-          const minus = document.createElement("button"); minus.type = "button"; minus.className = "step minus"; minus.textContent = "\u2212"; minus.setAttribute("aria-label", "One set fewer"); minus.disabled = total <= 1;
-          const plus = document.createElement("button"); plus.type = "button"; plus.className = "step plus"; plus.textContent = "+"; plus.setAttribute("aria-label", "One set more"); plus.disabled = total >= 20;
-          minus.addEventListener("click", () => setCount(total - 1)); plus.addEventListener("click", () => setCount(total + 1));
-          const steps = document.createElement("div"); steps.className = "tr-steps"; steps.append(minus, plus); tr.appendChild(steps);   // the coach's − / + sit at the end of the same row
+          const count = document.createElement("button"); count.type = "button"; count.className = "tr-count";   // his pick A (14 Nov, after pictures): how many sets at the end of the set bar, in place of the − / + that sat on a line of their own ("only change how I add sets nothing else"); a tap opens Calendar's Repeat menu with 1 to 20
+          count.textContent = String(total);   // the number alone, in a disc as tall as the bar (his ask, 14 Nov: "circled button .. probably white"), on a workout and a template alike
+          count.setAttribute("aria-haspopup", "menu"); count.setAttribute("aria-label", total + (total === 1 ? " set" : " sets"));
+          count.addEventListener("click", (e) => { e.stopPropagation(); showMenu(count, Array.from({ length: 20 }, (_, i) => ({ label: i + 1 + (i ? " sets" : " set"), checked: i + 1 === total, onPick: (ev) => setCount(i + 1, byKeys(ev)) })), { align: "right", over: true, long: true, focus: byKeys(e) }); });
+          tr.appendChild(count);
         }
         tracker = tr;
       }
@@ -3966,20 +3973,23 @@ import { reportRange, buildReport } from "./report.js";
   }
   function showMenu(anchor, items, opts) {                           // the same frosted bubble with rows to tap: [{ label, icon?, onPick }]; opts.align "right" hangs it from the anchor's right edge (a disc at the edge of a card)
     const pop = $("whenPop"); pop.classList.remove("plain"); pop.classList.add("menu");
-    let close = null;
+    let close = null; const openedAt = performance.now();   // a pop-up button's list opens over its button, so a double tap's second tap lands on a row: in its first 350 ms a tap there picks nothing, as the question sheets' buttons (a review's catch: a double tap on the sets' count picked "1 set"); a keyboard's pick is never held
     const checks = items.some((it) => typeof it.checked === "boolean"); pop.classList.toggle("checks", checks);   // a choice of one (Apple's pop-up menu, Calendar's Repeat measured): every row keeps room for the tick, the one in effect wears it
+    pop.classList.toggle("long", !!(opts && opts.long));              // a list of more rows than a menu shows (the sets, 1 to 20): twelve in view and it scrolls, as Apple's own list of 20 (measured on iOS 27.2: 12 rows, then it scrolls)
     pop.replaceChildren(...items.flatMap((it, i) => {
       const b = document.createElement("button"); b.type = "button"; b.className = "wopt" + (it.danger ? " danger" : "");
       if (it.icon) b.innerHTML = it.icon;
       if (it.checked) { b.insertAdjacentHTML("afterbegin", MENU_CHECK); b.setAttribute("aria-current", "true"); }
       const s = document.createElement("span"); s.textContent = it.label; b.appendChild(s);
       b.addEventListener("mousedown", (e) => e.preventDefault());   // pressing a row moves no focus: a field typed in keeps it (and its redraw waits) until the row is picked
-      b.addEventListener("click", (e) => { e.stopPropagation(); if (close) close(); if (opts && opts.lift && opts.lift.drop) opts.lift.drop(); it.onPick(e); });   // close() first: a keyboard's focus is back on the anchor, so a sheet the row opens returns there (a held item's copy goes at once: what the pick opens, or the page it glides, is not under a copy of the item as it was)
+      b.addEventListener("click", (e) => { e.stopPropagation(); if (opts && opts.over && e.detail >= 1 && performance.now() - openedAt < 350) return; if (close) close(); if (opts && opts.lift && opts.lift.drop) opts.lift.drop(); it.onPick(e); });   // close() first: a keyboard's focus is back on the anchor, so a sheet the row opens returns there (a held item's copy goes at once: what the pick opens, or the page it glides, is not under a copy of the item as it was)
       if (!it.sep || !i) return [b];
       const line = document.createElement("div"); line.className = "msep"; line.setAttribute("role", "separator"); return [line, b];   // a new group: Apple's line across the menu (Files, measured)
     }));
     close = openPop(anchor, opts); popRows = menuRows(items);         // (after openPop: it closes the menu before)
-    if (opts && opts.focus) { const f = pop.querySelector(".wopt"); if (f) f.focus({ preventScroll: true }); }   // opened from the keyboard or VoiceOver: into the menu, as a system menu takes focus (a tap leaves focus where it is)
+    const rs = [...pop.querySelectorAll(".wopt")], ticked = rs.find((b) => b.getAttribute("aria-current") === "true") || null;
+    if (opts && opts.long) pop.scrollTop = ticked ? Math.max(0, ticked.offsetTop - (pop.clientHeight - ticked.offsetHeight) / 2) : 0;   // it opens with the row ticked in view, in the middle where the list allows (Safari's own list of 1 to 20, measured: reopened on 18, it opens scrolled to it)
+    if (opts && opts.focus) { const f = ticked || pop.querySelector(".wopt"); if (f) f.focus({ preventScroll: true }); }   // opened from the keyboard or VoiceOver: into the menu, as a system menu takes focus (a tap leaves focus where it is); on the row ticked, where a Mac's pop-up menu opens
   }
   const MI = {                                                         // the menu's leading glyphs, in a 1.25 em box (see #whenPop.menu .mi); swap, pencil and trash traced from Apple's and filled like theirs
     calendar: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.9" width="12" height="11.2" rx="2.2"/><path d="M2 6.5h12M5.2 1.6v2.6M10.8 1.6v2.6"/></svg>',
@@ -3999,6 +4009,10 @@ import { reportRange, buildReport } from "./report.js";
   const MENU_CHECK = '<svg class="ck" viewBox="0 0 11 10.5" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M1.15 5.45 4.33 8.9 9.85 1.1"/></svg>';   // Apple's menu tick, traced off Calendar's Repeat menu at 3x
   const RAMP_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4.2 11.8 11.6 4.4M5.6 4.2h6.2v6.2"/></svg>';   // add weight each set: Apple's arrow up and to the right (his pick, 13 Nov), as in the mockup he chose
   const RAMP_TIP = ["Add weight each set", "Start lighter and go up a little every set"];   // what a tap on the arrow tells the client, in a bubble as Last and Best do
+  const PYR_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M5.85 3.95A0.7 0.7 0 0 1 6.55 3.25L9.45 3.25A0.7 0.7 0 0 1 10.15 3.95L10.15 4.95A0.7 0.7 0 0 1 9.45 5.65L6.55 5.65A0.7 0.7 0 0 1 5.85 4.95ZM3.75 7.5A0.7 0.7 0 0 1 4.45 6.8L11.55 6.8A0.7 0.7 0 0 1 12.25 7.5L12.25 8.5A0.7 0.7 0 0 1 11.55 9.2L4.45 9.2A0.7 0.7 0 0 1 3.75 8.5ZM1.65 11.05A0.7 0.7 0 0 1 2.35 10.35L13.65 10.35A0.7 0.7 0 0 1 14.35 11.05L14.35 12.05A0.7 0.7 0 0 1 13.65 12.75L2.35 12.75A0.7 0.7 0 0 1 1.65 12.05Z"/></svg>';   // fewer reps, more weight (his ask, 13 Nov: "one more sign that will say lower the reps and add weight"; his pick A of five, 14 Nov, "Tiers"): three solid blocks stacked into a pyramid, the gym's word for it; our own path, on the arrow's 16 grid and at its height
+  const PYR_TIP = ["Fewer reps, more weight", "Each set, drop the reps and go a little heavier"];
+  const SIGNS = { ramp: { icon: RAMP_ICON, tip: RAMP_TIP }, pyramid: { icon: PYR_ICON, tip: PYR_TIP } };   // an exercise wears one sign at most: the row's ramp or its pyramid, each true or no key
+  const signOf = (r) => (r.ramp ? "ramp" : r.pyramid ? "pyramid" : null);   // (both: the arrow, the newer choice. Only a device still on v295, which knows no pyramid, can add the arrow to an exercise with one; a review's catch)
   const POP_CHEV = '<svg class="pop-chev" viewBox="0 0 9 13" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.1 4.5 4.5 1.2 7.9 4.5M1.1 8.83 4.5 12.13 7.9 8.83"/></svg>';   // a pop-up button's up-and-down chevrons, traced off Calendar's "None" at 3x: 9 by 13 at 17 points, standing on the baseline
   const ALT_MINUS = '<svg class="alt-ic" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="11" fill="currentColor"/><path d="M6.5 11h9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
   const ALT_PLUS = '<svg class="alt-ic" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="11" fill="currentColor"/><path d="M11 6.5v9M6.5 11h9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -4026,7 +4040,7 @@ import { reportRange, buildReport } from "./report.js";
     const at = opts && opts.at;                                       // a right-click's menu: from the pointer itself, no pointer drawn (opts.at { x, y })
     const lift = opts && opts.lift;                                   // a touch and hold's: under the item it lifted (opts.lift { box, rect, grow, open })
     bg.hidden = false; pop.classList.remove("above"); pop.classList.toggle("hung", !!(opts && (opts.align === "right" || at || lift || opts.over))); pop.classList.toggle("lift", !!lift);
-    pop.style.left = "0px"; pop.style.top = "0px";                   // measured at its own size: where the last bubble was, a menu would be squeezed by the screen's edge (taller, its rows wrapped) and placed by that
+    pop.style.left = "0px"; pop.style.top = "0px"; pop.style.maxHeight = "";   // measured at its own size: where the last bubble was, a menu would be squeezed by the screen's edge (taller, its rows wrapped) and placed by that; and at its own height (a long list's cap is set again below, from what shows now)
     const r = (opts && opts.rect) || anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, pw = pop.offsetWidth, ph = pop.offsetHeight;
     const box = anchor.closest(".group, .card, .plan-card, .overview"), bb = box ? box.getBoundingClientRect() : null;   // the bubble stays inside the card it belongs to, as Apple keeps a popover inside its content's margins, never out at the screen's edge
     let minL = 8, maxL = vw - pw - 8; if (bb && bb.right - bb.left >= pw) { minL = Math.max(minL, bb.left); maxL = Math.min(maxL, bb.right - pw); }
@@ -4041,21 +4055,23 @@ import { reportRange, buildReport } from "./report.js";
     else if (opts && opts.over) {                                     // a pop-up button's menu: over the button from its top (Calendar's Repeat, measured: the menu's top at the button's); with no room under it, up from the button's foot (its Alert)
       const dcs = getComputedStyle($("ctxDim")), vv = window.visualViewport, vt = vv ? Math.max(0, Number(vv.offsetTop) || 0) : 0, vb = vv && Number(vv.height) ? vt + Number(vv.height) : vh;   // what shows: the keyboard's top, when it is up (the coach's name being typed keeps it up)
       const lo = vt + (parseFloat(dcs.paddingTop) || 0) + 8, hi = (vb < vh - 1 ? vb : vh - (parseFloat(dcs.paddingBottom) || 0)) - 8;
-      top = Math.max(lo, r.top); if (top + ph > hi) top = Math.max(lo, Math.min(r.bottom, hi) - ph);   // never under the status bar (a name scrolled up under it)
+      const fit = opts.long && ph > hi - lo ? Math.max(0, hi - lo) : ph; if (fit < ph) pop.style.maxHeight = fit + "px";   // a list longer than what shows (the sets' 1 to 20 on a phone turned sideways, or a short window): it scrolls inside the room there is
+      top = Math.max(lo, r.top); if (top + fit > hi) top = Math.max(lo, Math.min(r.bottom, hi) - fit);   // never under the status bar (a name scrolled up under it)
     }
     else if (top + ph > vh - 8) { top = r.top - 8 - ph; pop.classList.add("above"); }
     pop.style.left = left + "px"; pop.style.top = top + "px"; pop.style.setProperty("--caret", Math.max(12, Math.min(r.left + r.width / 2 - left, pw - 12)) + "px");
     const close = () => {
       if (popClose === close) { popClose = null; popAnchor = null; } const inPop = pop.contains(document.activeElement);
       if (lift) { liftClick = null; clearTimeout(liftLate); }
-      bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); document.removeEventListener("contextmenu", onCtx, true); window.removeEventListener("scroll", close, true); window.removeEventListener("resize", close);
+      bg.hidden = true; document.removeEventListener("pointerdown", onDown, true); document.removeEventListener("pointerup", onUp, true); document.removeEventListener("keydown", onKey); document.removeEventListener("contextmenu", onCtx, true); window.removeEventListener("scroll", onScroll, true); window.removeEventListener("resize", close);
       const back = opts && opts.back && document.contains(opts.back) ? opts.back : anchor;
       if (inPop && document.contains(back)) back.focus({ preventScroll: true });   // focus was in the bubble (a keyboard, VoiceOver): back on the button it hangs from (a right-click's: what had it), never lost to the page
       if (opts && opts.onClose) opts.onClose();                       // (a right-click's ring comes off its item)
     };
     const isMenu = pop.classList.contains("menu");                  // (showMenu sets it before it opens; a bubble of numbers has none)
     const onCtx = (e) => { if (lift && /^(touch|pen)$/.test(ctxBy(e))) { e.preventDefault(); return; } if (!pop.contains(e.target)) close(); else if (isMenu) e.preventDefault(); };   // (a touch and hold's own long press, Android's contextmenu coming after its menu: it keeps the menu, and its browser's own never shows)   // a right-click anywhere else closes the bubble (the browser's own menu, or the next item's, opens there); in a menu it does nothing; in a bubble of numbers the browser's own stays (Copy, Look Up)
-    const onKey = (e) => { if (e.key === "Escape") close(); };
+    const onKey = (e) => { if (e.key === "Escape") close(); else if (isMenu && (e.key === "ArrowDown" || e.key === "ArrowUp") && pop.contains(document.activeElement)) { const rs = [...pop.querySelectorAll(".wopt")], i = rs.indexOf(document.activeElement), to = rs[i < 0 ? 0 : clamp(i + (e.key === "ArrowDown" ? 1 : -1), 0, rs.length - 1)]; e.preventDefault(); if (to) to.focus(); } };   // ↑ ↓ go from row to row, as in a Mac's menu (the sets' list has 20)
+    const onScroll = (e) => { if (e && pop.contains(e.target)) return; close(); };   // the page scrolled: the bubble goes; a long list scrolling inside itself stays (a scroll listened for in capture hears every scroll)
     let down = null, eat = null;                                     // a tap outside closes the bubble and goes no further (as a system menu's dismissing tap): nothing under it is pressed or given focus; a finger that drags the page does not close it
     const uneat = () => { if (eat) { document.removeEventListener("mousedown", eat, true); eat = null; } };
     const onDown = (e) => {
@@ -4077,7 +4093,7 @@ import { reportRange, buildReport } from "./report.js";
       const v = lift.vis, onItem = !!(v && e.clientX >= v.left && e.clientX <= v.right && e.clientY >= v.top && e.clientY <= v.bottom);
       close(); if (onItem && lift.open) { if (lift.hide) lift.hide(); lift.open(); }   // (the copy and the dim go at once, not over the workout that opens)
     };
-    document.addEventListener("pointerdown", onDown, true); document.addEventListener("pointerup", onUp, true); document.addEventListener("keydown", onKey); document.addEventListener("contextmenu", onCtx, true); window.addEventListener("scroll", close, true);
+    document.addEventListener("pointerdown", onDown, true); document.addEventListener("pointerup", onUp, true); document.addEventListener("keydown", onKey); document.addEventListener("contextmenu", onCtx, true); window.addEventListener("scroll", onScroll, true);
     if (lift) window.addEventListener("resize", close);              // (the lifted item would no longer sit over its place)
     popClose = close; popAnchor = anchor;
     return close;
@@ -4365,7 +4381,7 @@ import { reportRange, buildReport } from "./report.js";
     el.innerHTML = `
       <div class="top">
         <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
-        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><button class="alt-pop trainer-only" type="button" hidden aria-label="Alternatives" aria-haspopup="menu">${POP_CHEV}</button><div class="ex-icons"><button class="ramp-btn trainer-only" type="button" aria-pressed="false" aria-label="Add weight each set" title="Add weight each set">${RAMP_ICON}</button><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg class="i-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg><svg class="i-up" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></button><button class="more-btn trainer-only" type="button" aria-label="More" title="More"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" fill="currentColor"><circle cx="3.8" cy="10" r="1.75"/><circle cx="10" cy="10" r="1.75"/><circle cx="16.2" cy="10" r="1.75"/></svg></button></div><ul class="sugg" hidden></ul></div>
+        <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><button class="alt-pop trainer-only" type="button" hidden aria-label="Alternatives" aria-haspopup="menu">${POP_CHEV}</button><div class="ex-icons"><button class="ramp-btn trainer-only" type="button" aria-pressed="false" aria-label="Add weight each set" title="Add weight each set">${RAMP_ICON}</button><button class="pyr-btn trainer-only" type="button" aria-pressed="false" aria-label="Fewer reps, more weight" title="Fewer reps, more weight">${PYR_ICON}</button><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg class="i-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg><svg class="i-up" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></button><button class="more-btn trainer-only" type="button" aria-label="More" title="More"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" fill="currentColor"><circle cx="3.8" cy="10" r="1.75"/><circle cx="10" cy="10" r="1.75"/><circle cx="16.2" cy="10" r="1.75"/></svg></button></div><ul class="sugg" hidden></ul></div>
       </div>
       <div class="sum"></div>
       <div class="newname trainer-only" hidden><span>New exercise</span><button class="btn tint addname" type="button">Add to database</button></div>
@@ -4689,16 +4705,20 @@ import { reportRange, buildReport } from "./report.js";
     const nSets = setsOf(r), sumEl = q(".sum"); sumEl.replaceChildren();   // "3 sets · 8–10 reps · 60 sec transition" (the open card hides the sets part: the chips above say it)
     const chips = [...el.querySelectorAll(".specs .chip")];
     for (const [text, cls] of [[nSets + (nSets === 1 ? " set" : " sets"), "si sum-sets"], [chipText(chips[0]), "si sum-reps"], [chipText(chips[1]), "si sum-rest"]]) { if (!text) continue; const e = document.createElement("span"); e.className = cls; e.textContent = text; sumEl.appendChild(e); }
-    const rampBtn = q(".ramp-btn");
-    const paintRamp = () => {                                          // add weight each set (his ask, 13 Nov): the coach's round button solid when on, an outline when off; when on, the arrow after the reps in the client's line under the name, to tap for what it means. The coach's reps box shows none (his pick the same day, "button only": in it the arrow pushed a long pyramid's last numbers out on a phone, 13 of the templates' 144 reps; the solid button says it is on)
-      const on = !!r.ramp; rampBtn.classList.toggle("on", on); rampBtn.setAttribute("aria-pressed", on ? "true" : "false");
-      for (const m of el.querySelectorAll(".ramp-tip")) m.remove();
-      if (!on) return;
-      const reps = sumEl.querySelector(".sum-reps");
-      if (reps) { const b = document.createElement("button"); b.type = "button"; b.className = "ramp-tip"; b.setAttribute("aria-label", RAMP_TIP[0]); b.innerHTML = RAMP_ICON; b.addEventListener("click", (e) => { e.stopPropagation(); showWhen(b, RAMP_TIP[0], RAMP_TIP[1]); }); reps.appendChild(b); }   // inside the reps' words: the bullet after them stays
+    const rampBtn = q(".ramp-btn"), pyrBtn = q(".pyr-btn");
+    const paintRamp = () => {                                          // the exercise's sign (his asks, 13-14 Nov): add weight each set (↗), or fewer reps, more weight (the pyramid), each the coach's round button, solid when on, an outline when off; when on, the sign follows the reps in the client's line under the name. The coach's reps box shows none (his pick, 13 Nov, "button only": in it the arrow pushed a long pyramid's last numbers out on a phone, 13 of the templates' 144 reps; the solid button says it is on)
+      const kind = signOf(r);
+      for (const [b, k] of [[rampBtn, "ramp"], [pyrBtn, "pyramid"]]) { b.classList.toggle("on", kind === k); b.setAttribute("aria-pressed", kind === k ? "true" : "false"); }
+      const reps = sumEl.querySelector(".sum-reps"); if (!reps) return;
+      const words = reps.textContent; reps.textContent = words;   // the words alone again (a sign's button holds them, and gives them back as its text)
+      if (!kind) return;
+      const sg = SIGNS[kind], b = document.createElement("button"); b.type = "button"; b.className = "ramp-tip"; b.setAttribute("aria-label", words + ", " + sg.tip[0].toLowerCase());
+      const ic = document.createElement("span"); ic.className = "sign"; ic.innerHTML = sg.icon; b.textContent = words; b.appendChild(ic);   // the whole phrase is the button, the sign after its words (his ask, 13 Nov: "make the whole rep touchable not just the sign")
+      b.addEventListener("click", (e) => { e.stopPropagation(); showWhen(b, sg.tip[0], sg.tip[1]); }); reps.replaceChildren(b);   // a tap tells what it means, as Last and Best do; the bullet after the words stays the line's
     };
-    rampBtn.addEventListener("mousedown", (e) => e.preventDefault());  // a field being typed in keeps its focus
-    rampBtn.addEventListener("click", (e) => { e.stopPropagation(); if (asClient) return; if (r.ramp) delete r.ramp; else r.ramp = true; save(); paintRamp(); });
+    const signTap = (k) => (e) => { e.stopPropagation(); if (asClient) return; const was = signOf(r); delete r.ramp; delete r.pyramid; if (was !== k) r[k] = true; save(); paintRamp(); };   // one tap on, one off; the other sign goes off as this one comes on (one sign at a time, said with the pictures he approved)
+    for (const b of [rampBtn, pyrBtn]) b.addEventListener("mousedown", (e) => e.preventDefault());  // a field being typed in keeps its focus
+    rampBtn.addEventListener("click", signTap("ramp")); pyrBtn.addEventListener("click", signTap("pyramid"));
     paintRamp();
     {                                                                  // the finished card, opened: every set in a cell — number, weight × reps (editable in place for a typo), a check
       const unitS = (clients.get(t.clientId) || {}).unit || "lb", tmS = measurePlan(r.reps), sumEl = document.createElement("div"); sumEl.className = "row-sum";
@@ -4985,7 +5005,7 @@ import { reportRange, buildReport } from "./report.js";
         body.appendChild(span("pv-n", parts.title || "Exercise")); if (parts.sub) body.appendChild(span("pv-sub", parts.sub));
         const sum = document.createElement("div"); sum.className = "pv-sum"; const n = setsOf(r);
         for (const text of [n + (n === 1 ? " set" : " sets"), pvReps(r.reps)]) if (text) sum.appendChild(span("si", text));
-        if (r.ramp && pvReps(r.reps) && sum.lastElementChild) { const m = document.createElement("span"); m.className = "ramp-mark"; m.setAttribute("aria-hidden", "true"); m.innerHTML = RAMP_ICON; sum.lastElementChild.append(m, span("vh", ", " + RAMP_TIP[0].toLowerCase())); }   // add weight each set: its arrow after the reps, as on the workout's card; VoiceOver hears it in words, as Last and Best (a review's catch: the arrow alone said nothing)
+        const sk = signOf(r); if (sk && pvReps(r.reps) && sum.lastElementChild) { const m = document.createElement("span"); m.className = "ramp-mark"; m.setAttribute("aria-hidden", "true"); m.innerHTML = SIGNS[sk].icon; sum.lastElementChild.append(m, span("vh", ", " + SIGNS[sk].tip[0].toLowerCase())); }   // the exercise's sign (the arrow, or the pyramid) after the reps, as on the workout's card; VoiceOver hears it in words, as Last and Best (a review's catch: the arrow alone said nothing)
         body.appendChild(sum); row.append(span("pv-l", String(r.label || "").trim()), body); card.appendChild(row);
       }
       if (st) { const foot = document.createElement("div"); foot.className = "pv-foot"; for (const line of st.lines) foot.appendChild(span("pv-line", line)); card.appendChild(foot); }   // finished: a line, as its folded card says it (green on a finished workout's cards)
