@@ -166,7 +166,7 @@ export function validateBackup(d, knownClient) {                  // the whole f
     for (const r of t.rows) {
       if (!isObj(r) || typeof r.id !== "string" || !r.id || rids.has(r.id)) throw new Error("bad row");
       if (!optStr(r.name) || !optStr(r.label) || !optStr(r.reps) || !optStr(r.rest) || !optStr(r.tempo) || !optStr(r.note) || !optStr(r.clientNote) || !optStr(r.earlyReason) || !optUnit(r.unit)) throw new Error("bad row");
-      if (!optNum(r.sets) || !optNum(r.setsDone) || !(r.logSeq === undefined || (Number.isInteger(r.logSeq) && r.logSeq >= 0 && r.logSeq < 2147483647)) || !optBool(r.done) || !optStr(r.clientNoteBy) || !optWhen(r.clientNoteAt)) throw new Error("bad row");
+      if (!optNum(r.sets) || !optNum(r.setsDone) || !optBool(r.ramp) || !(r.logSeq === undefined || (Number.isInteger(r.logSeq) && r.logSeq >= 0 && r.logSeq < 2147483647)) || !optBool(r.done) || !optStr(r.clientNoteBy) || !optWhen(r.clientNoteAt)) throw new Error("bad row");
       if (!optList(r.weights, LIMIT.sets) || !optList(r.repsDone, LIMIT.sets) || !optList(r.alts, LIMIT.alts)) throw new Error("bad row");   // read with .map and .find on every screen
       if ((r.alts || []).some((a) => typeof a !== "string") || [...(r.weights || []), ...(r.repsDone || [])].some((w) => w != null && typeof w !== "string" && typeof w !== "number")) throw new Error("bad row");
       rids.add(r.id);

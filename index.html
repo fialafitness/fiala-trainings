@@ -653,6 +653,15 @@
   body:not(.client) .ex-icons svg { width: 20px; height: 20px; }
   body:not(.client) .ex-icons .note-btn { display: none; }   /* the coach: the instructions live in the "…" menu */
   .ex-icons .more-btn { color: var(--text-primary); order: 1; }                                      /* the "…" disc, last, after the play disc: the overflow at the end, as Apple puts it */
+  body:not(.client) .ex-icons .ramp-btn { background: transparent; box-shadow: inset 0 0 0 1.5px var(--card-disc); color: var(--text-secondary); }   /* add weight each set, off: an outline (his pick, 13 Nov: "another round button to the left of play ... solid ... transparent") */
+  body:not(.client) .ex-icons .ramp-btn.on { background: var(--ink); box-shadow: none; color: var(--ink-on); }   /* on: solid, as the play disc */
+  body:not(.client) .ex-icons .ramp-btn svg { width: 18px; height: 18px; }
+  .ramp-mark { display: inline-block; width: 0.85em; height: 0.85em; margin-left: 0.3em; vertical-align: -0.08em; color: inherit; }   /* its arrow after the reps, in the reps' own colour */
+  .ramp-mark svg, .ramp-tip svg { display: block; width: 100%; height: 100%; }
+  .ramp-tip { position: relative; display: inline-block; width: 0.85em; height: 0.85em; margin: 0 0 0 0.3em; padding: 0; border: 0; background: none; appearance: none; vertical-align: -0.08em; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }   /* the client's: a tap tells what it means, as Last and Best do */
+  .ramp-tip::before { content: ""; position: absolute; inset: -0.33em -16.5px -0.3em; }   /* a finger's width round the small arrow (44 points at the folded card's 13 px), and no taller than its line: the name ends where the line begins and Instructions begins where it ends (measured on the simulator: a 23.25-point line, the arrow 5.6 below its top and 5.0 above its foot), so a tap meant for either stays theirs (a review's catch: 9 points of each went to the bubble) */
+  .ramp-tip:active { opacity: 0.6; }
+  @media (hover: none) { .ex-icons .ramp-btn:hover { opacity: 1; } }   /* a touch screen keeps a tap's hover until the next tap elsewhere: the switch just turned on reads solid, not dimmed (measured on the simulator: 0.7 after the tap) */
   .ex-icons .vid-btn .i-play { width: 18px; height: 18px; margin: 0; }   /* one play disc in both views; the triangle is drawn a hair right of the box's middle, which is where a triangle looks centred */
   .ex-icons .vid-btn .i-play path { stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }   /* softly rounded corners, like the TV app's play */
   body:not(.client) .block.done:not(.open) .ex-icons { display: none; }
@@ -1857,7 +1866,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=293";
+  import { boot } from "./app/main.js?v=294";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

@@ -93,6 +93,21 @@ test("on a conflict a field the coach changed wins, field by field", async () =>
   const saved = sb.tables.ft_trainings.get("T").data;
   assert.strictEqual(saved.completedAt, null, "the coach's undo wins"); assert.strictEqual(saved.date, day(-1), "the date was not the coach's change: the server's stays");
 });
+test("add weight each set (13 Nov) is the coach's: on a conflict his on and his off both land, the client's logged sets stay, and the client's phone takes it from the server", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const server = training("T", { rows: [row("r1", ["100", "105"], ["5", "5"], 2), { ...row("r2"), ramp: true }] });   // the client logged two sets meanwhile; r2 had it on
+  sb.seed("ft_trainings", "T", server, { client_id: "c1" }); maps.seenAt.set("trainings/T", "S0");
+  const local = training("T", { rows: [{ ...row("r1"), ramp: true }, row("r2")] }); maps.trainings.set("T", local);   // the coach's older copy: on for r1, off for r2 (no key)
+  await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(local)));
+  const saved = sb.tables.ft_trainings.get("T").data;
+  assert.strictEqual(saved.rows[0].ramp, true, "his on lands"); assert.deepStrictEqual(saved.rows[0].weights, ["100", "105"], "the client's sets stay"); assert.strictEqual(saved.rows[0].setsDone, 2);
+  assert.ok(!("ramp" in saved.rows[1]), "his off lands: no key, as on an exercise never marked");
+  assert.strictEqual(maps.trainings.get("T").rows[0].ramp, true, "the live copy keeps it");
+  app.reset(); app.set({ clientMode: true, myClientId: "c1" });
+  maps.trainings.set("T", training("T", { rows: [row("r1"), { ...row("r2"), ramp: true }] }));   // the phone's older copy: off for r1, on for r2 (a recheck's catch: an empty phone proved nothing)
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: JSON.parse(JSON.stringify(saved)), updated_at: "S9" }], true, Date.now());
+  assert.strictEqual(maps.trainings.get("T").rows[0].ramp, true, "the client's phone gets his on"); assert.ok(!("ramp" in maps.trainings.get("T").rows[1]), "and his off");
+});
 test("a save with no stamp reads first and still keeps the client's finish", async () => {
   const sb = makeSupabase(); coach(sb);
   sb.seed("ft_trainings", "T", training("T", { completedAt: "2026-10-12T18:00:00.000Z" }), { client_id: "c1" });

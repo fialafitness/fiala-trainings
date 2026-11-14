@@ -51,13 +51,13 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
   - `import_odboj.py`, `import_bodytype.py` (with `pdfstr.swift`) and `merge_templates.py` rebuild `templates.json` from program PDFs in the parent folder. Two of the `tools/*.json` files are hand-made inputs: `bodytype-manual.json` (name mappings) and `bodytype-cues-en.json` (a translation). The others are the scripts' outputs.
   - `clean_names.py` and `match_videos.py` are one-offs over the parent folder's spreadsheets.
 - `supabase/*.sql`: the server's tables and rules, run by hand (see Database).
-- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 43 `*.test.js` files and 20 `*-probe.mjs` scripts (see Tests).
+- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 44 `*.test.js` files and 21 `*-probe.mjs` scripts (see Tests).
 
 ## Releasing
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (293 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (294 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -200,7 +200,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v293 it ends "560 passed, 0 failed" after about 60 s.
+- At v294 it ends "568 passed, 0 failed" after about 60 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
@@ -217,8 +217,9 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 
 - `*-probe.mjs` scripts test what in-process tests cannot: gestures, document and window listeners, and import-time variants (the home-screen app, phone or Mac).
 - Each probe runs in its own Node process (`execFileSync` from its test file). It sets up its stand-ins before it imports `main.js`, then prints one JSON line that the test parses.
-- Twelve probes run every timer and `performance.now` on their own clock: row-swipe, hold-menu, month-menu, preview-swipe, preview-pager, template-preview, turn, cal-drag, cal-fold, cal-fold-reload, week-pager and alternatives. The others use real timers.
+- Thirteen probes run every timer and `performance.now` on their own clock: row-swipe, hold-menu, month-menu, preview-swipe, preview-pager, template-preview, turn, cal-drag, cal-fold, cal-fold-reload, week-pager, alternatives and ramp. The others use real timers.
 - `alternatives-probe.mjs` has the fullest stand-in elements: children with their parent, listeners with bubbling and `composedPath`, one class list behind `className` and `classList`, and the markup's parts looked up by selector (the same part each time). Its walks up stop at its own stand-ins, because any other `env.js` lookup answers a new element without end.
+- `ramp-probe.mjs` starts from those stand-ins and also keeps written text as a node among an element's children (`nodes`; `children` is the elements alone, as on a page), so a test can tell whether something sits before or after the words.
 - Most probes record whether a document listener is capture. hold-menu, cal-drag and week-pager also record whether it is passive.
 - All probes start from `env.js`. One that needs `held()` to be false hides `#whenBg` (an `env.js` stub starts visible), and makes `document.querySelector` return null for `.sheet-bg` and `.crop-view`.
 - Start a new probe from the nearest existing one.
@@ -283,6 +284,13 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - The client's name is the pop-up button (`.name-pop`), with the chevrons `POP_CHEV` after its last word. They were traced off Calendar's "None" (9 by 13 at 17 points, on the baseline, in Apple's secondary label `--pop-chev`). `popLive` makes it a menu button only where its chevrons show; on a card still to come, folded or finished, the name belongs to the card.
   - The coach's chevrons are `.alt-pop` at the end of the name field. Their menu ends in Edit alternatives.
   - The Alternatives sheet is `editAlts`: Apple's red minus on each alternative (a tap shows Delete, in place), Add alternative with the catalogue's names, two at most. Done and the dim keep a typed name. It never redraws the page: it updates the exercise's chevrons in place.
+- Add weight each set (v294, the owner's ask and picks, 13 Nov):
+  - The coach's round button `.ramp-btn` (`trainer-only`) sits left of play: an outline when off, the ink disc when on, `aria-pressed`. A tap sets the row's `ramp` to true or deletes the key, and saves. The client and the coach's Client view cannot change it.
+  - When on, Apple's arrow up and to the right (`RAMP_ICON`) follows the reps in the client's line under the name (`.ramp-tip`, inside `.sum-reps`). A tap on it opens Last and Best's bubble (`showWhen`) with `RAMP_TIP`. The preview shows the arrow after the reps too (`.ramp-mark`), with `.vh` words for VoiceOver.
+  - The coach's reps box shows no arrow (his pick "button only"): in the box it pushed a long pyramid's last numbers out on a phone (13 of the templates' 144 reps at 402 points). Five of the longest pyramids are cut by a hair even without it.
+  - The arrow's tap area is 44 points wide and no taller than its line. The name ends where the line begins and Instructions begins where it ends, so a taller area took their taps.
+  - On a touch screen the button never keeps the tap's hover dim (`@media (hover: none)`): an iPhone kept it at 0.7 after the tap.
+  - Server rules keep the key (they write with `jsonb_set`), `freshRow` copies it, `mergeServerRows` never takes it from the server, and a backup accepts only a boolean.
 - New icons are our own filled paths, traced from the reference the owner sends, never copied from an icon set. Stroke sketches read as cheaper. About half of the existing icons are still strokes, and the Settings gear and the Data cylinder are Feather's.
 
 ### Gestures
