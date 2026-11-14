@@ -51,13 +51,13 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
   - `import_odboj.py`, `import_bodytype.py` (with `pdfstr.swift`) and `merge_templates.py` rebuild `templates.json` from program PDFs in the parent folder. Two of the `tools/*.json` files are hand-made inputs: `bodytype-manual.json` (name mappings) and `bodytype-cues-en.json` (a translation). The others are the scripts' outputs.
   - `clean_names.py` and `match_videos.py` are one-offs over the parent folder's spreadsheets.
 - `supabase/*.sql`: the server's tables and rules, run by hand (see Database).
-- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 42 `*.test.js` files and 20 `*-probe.mjs` scripts (see Tests).
+- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 43 `*.test.js` files and 20 `*-probe.mjs` scripts (see Tests).
 
 ## Releasing
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (291 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (292 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -200,7 +200,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v291 it ends "557 passed, 0 failed" after about 60 s.
+- At v292 it ends "559 passed, 0 failed" after about 60 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
@@ -272,6 +272,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - A new colour is an addition, on the owner's OK. The brand purple and Apple's greys stay.
   - The page colour is also set in `themeColours` (`main.js`) and the `theme-color` meta tags, and the dark one (`#000000`) in `manifest.webmanifest`. It must stay a pure grey, or iOS draws a line under the clock.
 - Inter is loaded at 400, 500, 600, 700 and italic 400 only.
+- Every caption in capitals is Inter 600 with Apple's spacing for its size: 0.035em at 11 px, 0.025em at 12 px, 0.02em at 13 px (v292, the owner's ask beside his Calendar widget). These were measured, not chosen: Apple's capitals are SF semibold (stroke 18.1% of the capital height), and Inter 600 matches at 17.9%. Inter's letter gaps were fitted to SF's at each size, sub-pixel, on the simulator. `caps.test.js` holds every `text-transform: uppercase` rule to it; a new caption in capitals takes the values for its size.
 - `main.js` sets transitions, transforms, heights and opacity inline on anything that moves (sheets, rows, the month, the preview). Those override a CSS-only change, so grep `main.js` for the element's id and class too.
 - `body.client` is the client's look (client mode, or the coach previewing as the client). `body:not(.client)` is the coach's.
 - Anything that deletes or discards asks first through `askFirst()`, a sheet whose red button does it. There are two exceptions, both inline Delete/Keep confirms: Delete client, and a note in the coach's notes list.
