@@ -368,7 +368,7 @@
   .addrow input { flex: 1; }
 
   /* inside a card, a field is grey; on the page it is white (iOS grouped) */
-  .group, .list, .notice, .paused-card, .sheet, .alt-menu, .numpick, .sugg, #kbbar, #draftBar, .seg, .week, .cal { --field: var(--field-in); }
+  .group, .list, .notice, .paused-card, .sheet, .numpick, .sugg, #kbbar, #draftBar, .seg, .week, .cal { --field: var(--field-in); }
   .list { background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r-card); overflow: hidden; margin: 0; padding: 0; list-style: none; }
   .list li + li { border-top: 1px solid var(--card-border); }
   .list button {
@@ -494,6 +494,7 @@
   .sheet.confirm-sheet .lead[hidden] { display: none; }
   .sheet.confirm-sheet .ask-input { display: block; width: 100%; box-sizing: border-box; margin: 4px 0 0; min-height: 48px; padding: 0 14px; border: 0; border-radius: var(--r-field); background: var(--field); color: var(--text-primary); font: inherit; font-size: 1.0625rem; letter-spacing: 0; }   /* a name for his folder or slide (12 Nov): one field, as the sheet's other fields; 17 px, so the phone does not zoom into it */
   .sheet.confirm-sheet .ask-input[hidden] { display: none; }
+  .sheet.confirm-sheet .note-input { display: block; width: 100%; box-sizing: border-box; margin: 4px 0 0; height: calc(7em + 24px); min-height: 0; padding: 12px 14px; border: 0; border-radius: var(--r-field); background: var(--field); color: var(--text-primary); font: inherit; font-size: 1.0625rem; line-height: 1.4; letter-spacing: 0; resize: none; overflow-y: auto; }   /* an exercise's instructions (his pick, 13 Nov: a sheet as New folder's, Add or Save over Cancel): the name field's look, five lines tall; a longer text scrolls inside it */
   .pick-sheet .list { margin-top: 14px; max-height: 50vh; overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }   /* "Copy workout to": a grouped list of clients inside the sheet */
   .pick-sheet .list { background: var(--sheet-list); border-color: transparent; }
   .pick-sheet .ask-actions { margin-top: 10px; }
@@ -651,7 +652,6 @@
   body:not(.client) .ex-icons button { width: 36px; height: 36px; border-radius: 50%; background: var(--card-disc); color: var(--text-primary); }
   body:not(.client) .ex-icons button[hidden] { display: none; }
   body:not(.client) .ex-icons svg { width: 20px; height: 20px; }
-  body:not(.client) .ex-icons .note-btn { display: none; }   /* the coach: the instructions live in the "…" menu */
   .ex-icons .more-btn { color: var(--text-primary); order: 1; }                                      /* the "…" disc, last, after the play disc: the overflow at the end, as Apple puts it */
   body:not(.client) .ex-icons .ramp-btn { background: transparent; box-shadow: inset 0 0 0 1.5px var(--card-disc); color: var(--text-secondary); }   /* add weight each set, off: an outline (his pick, 13 Nov: "another round button to the left of play ... solid ... transparent") */
   body:not(.client) .ex-icons .ramp-btn.on { background: var(--ink); box-shadow: none; color: var(--ink-on); }   /* on: solid, as the play disc */
@@ -781,24 +781,24 @@
     width: 40px; height: 44px; font-size: 1.25rem; line-height: 1; border-radius: var(--r-chip); transition: opacity 300ms ease;
   }
   .row .x:hover { opacity: 0.7; }
-  .sugg, .alt-menu {                                          /* one frosted glass for every floating panel: the measured menu glass of #whenPop, here on the suggestions and the alternatives list (the number picker too); the tab bar keeps Apple's clearer bar glass */
+  .sugg {                                                     /* one frosted glass for every floating panel: the measured menu glass of #whenPop, here on the suggestions (the number picker too); the tab bar keeps Apple's clearer bar glass */
     position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 4;
     background: var(--glass-menu); -webkit-backdrop-filter: var(--glass-menu-filter); backdrop-filter: var(--glass-menu-filter); border: 0; border-radius: 16px;
     box-shadow: 0 10px 30px var(--glass-menu-shadow), 0 0 0 0.5px var(--glass-menu-edge), inset 0 0.5px 0 var(--glass-menu-rim), inset 0 -0.5px 0 var(--glass-menu-rim-b); overflow-x: hidden; overflow-y: auto; max-height: 40vh; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 6px; margin: 0; list-style: none;
   }
-  .sugg button, .alt-menu button {
+  .sugg button {
     appearance: none; border: 0; background: none; width: 100%; text-align: left; cursor: pointer;
     padding: 12px 16px; font-size: 1rem; letter-spacing: -0.01em; color: var(--text-primary);
   }
-  .sugg button, .alt-menu button { border-radius: 11px; }
-  .sugg button:hover, .sugg button:focus, .alt-menu button:hover, .alt-menu button:focus { background: var(--glass-bar-on); outline: none; }
+  .sugg button { border-radius: 11px; }
+  .sugg button:hover, .sugg button:focus { background: var(--glass-bar-on); outline: none; }
   /* the end of the name field holds the small things: video, note, alternatives */
   .ex-icons { position: absolute; right: 4px; top: 1px; height: 42px; display: flex; align-items: center; }
   .ex-icons svg { width: 22px; height: 22px; }
   .ex-icons button { appearance: none; border: 0; background: none; padding: 0; margin: 0; width: 38px; height: 42px; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); cursor: pointer; transition: opacity 300ms ease; }
   .ex-icons button[hidden] { display: none; }
   .ex-icons button:hover { opacity: 0.7; }
-  .ex-icons .vid-btn.has, .ex-icons .note-btn.has { color: var(--text-primary); }   /* holds something: ink; empty: quiet grey */
+  .ex-icons .vid-btn.has { color: var(--text-primary); }   /* holds something: ink; empty: quiet grey */
   body:not(.client) .ex-icons .vid-btn.has, body.client .ex-icons .vid-btn { background: var(--ink); color: var(--ink-on); }   /* the play disc: white with a black glyph in the dark, black with white in the light, like + Add exercise */
   .ex-icons .vid-btn .i-up, .ex-icons .vid-btn.open .i-play { display: none; }   /* while the video is open the play becomes a chevron up: tap to tuck it away */
   .ex-icons .vid-btn.open .i-up { display: block; }
@@ -823,13 +823,6 @@
   .list:empty { display: none; }                                                 /* an emptied list draws no hairline */
   input.bad { box-shadow: inset 0 0 0 1.5px var(--danger); }
   .block.done:not(.open) .row .top .name { padding-right: 16px !important; }
-  .alt-menu { left: -64px; right: 0; }
-  .alt-menu { max-height: none; overflow: hidden; }
-  .alt-menu.add { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--elevated); }   /* while typing an alternative: a solid panel, since iPhone's glass flickers under a caret */
-  .alt-menu .remove { color: var(--danger); }
-  .alt-menu .alt-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; padding: 10px 4px 4px; border-top: 1px solid var(--glass-bar-edge); }   /* one line: Done on the right (Delete exercise is in the exercise's "…" menu) */
-  .alt-menu .alt-foot button { flex: 0 0 auto; width: auto; white-space: nowrap; min-height: 44px; padding: 10px 18px; text-align: center; font-size: 1rem; font-weight: 500; border-radius: 50px; background: var(--glass-bar-on); color: var(--text-primary); }
-  .alt-menu .alt-foot .done { font-weight: 600; min-width: 96px; margin-left: auto; }
   .newname { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 0.8125rem; color: var(--text-tertiary); }
   .newname[hidden] { display: none; }
   .newname .btn.quiet.link { font-size: 0.875rem; min-height: 36px; padding: 0 6px; }
@@ -1151,8 +1144,6 @@
   #kbbar .kb-next[hidden] + .kb-done { margin-left: auto; }
 
   .note[hidden] { display: none; }
-  .note-field { font-style: italic; min-height: 44px; resize: none; overflow: hidden; }
-  .alt-menu.note-pop .note-field { width: calc(100% - 24px); margin: 8px 12px 6px; box-sizing: border-box; }   /* the instructions panel: the same field inset as the alternative's */
   .add { margin-top: 16px; }
   .pill.big { min-height: 44px; padding: 0 22px; font-size: 1rem; }   /* the one pill that starts a workout: a size up */
   #tplFill { display: block; margin-top: 10px; }                     /* on its own line under the pill; gone once the first exercise is in */
@@ -1505,15 +1496,13 @@
   .settings-list .seg button:hover { opacity: 1; }
   .settings-list .seg button.on { background: var(--seg-on); color: var(--text-primary); box-shadow: 0 1px 3px var(--seg-shadow); }
   body.client .settings-list li.trainer-only:first-child + li { border-top: 0; }
-  @supports (corner-shape: squircle) { #ctxLift, .list, .list li.swipe-row > :not(.swipe-acts), .list li.swipe-row.ctx-on::after, .group, .paused-card, .sheet, .card-head, .month > button, .btn, .pill, .msg-pill, .seg, input, textarea, .datefield, .numpick, .sugg, .alt-menu { corner-shape: squircle; } }
+  @supports (corner-shape: squircle) { #ctxLift, .list, .list li.swipe-row > :not(.swipe-acts), .list li.swipe-row.ctx-on::after, .group, .paused-card, .sheet, .card-head, .month > button, .btn, .pill, .msg-pill, .seg, input, textarea, .datefield, .numpick, .sugg { corner-shape: squircle; } }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   @media (max-width: 400px) {
-    .alt-menu { left: -60px; }
     .setlog .chip.stack { padding: 10px 10px; }
     .setlog .chip.stack .valrow { font-size: 1.25rem; }                      /* "Bodyweight" fits the box whole */
     .chip .suffix { font-size: 0.8125rem; }
-    .alt-menu .alt-foot { flex-wrap: wrap; }
     .field-row { flex-wrap: wrap; }
     .sum-val { flex-wrap: wrap; white-space: normal; }
     .setlog .chip.stack.editing .valrow input { font-size: 1.25rem; }       /* the number does not pop when the box is tapped */
@@ -1826,6 +1815,7 @@
 <div class="sheet-bg" id="pvSheet" hidden><div class="sheet pv-sheet" id="pvBox" role="dialog" aria-modal="true" aria-labelledby="pvTitle" tabindex="-1"><div class="pv-bar" id="pvBar"><button class="pv-x" id="pvX" type="button" aria-label="Close"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M1.7 1.7 16.3 16.3M16.3 1.7 1.7 16.3"/></svg></button><p class="pv-bar-title" id="pvBarTitle" aria-hidden="true"></p><div class="pv-tools"><button class="pv-x pv-more" id="pvMore" type="button" aria-label="More" aria-haspopup="menu"><svg viewBox="0 0 22 22" aria-hidden="true" fill="currentColor"><circle cx="3.13" cy="11" r="1.97"/><circle cx="11" cy="11" r="1.97"/><circle cx="18.87" cy="11" r="1.97"/></svg></button><button class="pv-edit" id="pvEdit" type="button" hidden>Edit</button><div class="pv-pager" role="group" aria-label="Workouts"><button id="pvPrev" type="button" aria-label="Previous workout"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 3.2 5.7 9l5.8 5.8"/></svg></button><button id="pvNext" type="button" aria-label="Next workout"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.2 12.3 9l-5.8 5.8"/></svg></button></div></div></div><div class="pv-scroll" id="pvScroll" tabindex="0" role="group" aria-labelledby="pvTitle"><h3 id="pvTitle"></h3><p class="pv-day" id="pvDay"></p><div class="pv-cards" id="pvCards" role="group" aria-label="Exercises"></div></div><div class="ask-actions"><button class="btn" id="pvGo" type="button">Start workout</button></div><p class="vh" id="pvSay" aria-live="polite"></p></div></div>
 <div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><input class="ask-input" id="askInput" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" aria-labelledby="askTitle" hidden><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="altSheet" hidden><div class="sheet ask confirm-sheet pick-sheet alt-sheet" role="dialog" aria-modal="true" aria-labelledby="altTitle" tabindex="-1"><h3 id="altTitle">Alternatives</h3><p class="lead" id="altLead"></p><ul class="list" id="altRows"></ul><div class="ask-actions"><button class="btn quiet" id="altDone" type="button">Done</button></div></div></div>
+<div class="sheet-bg" id="noteSheet" hidden><div class="sheet ask confirm-sheet note-sheet" role="dialog" aria-modal="true" aria-labelledby="noteTitle"><h3 id="noteTitle">Add instructions</h3><p class="lead" id="noteLead"></p><textarea class="note-input" id="noteField" rows="5" maxlength="500" placeholder="Instructions for the client" autocomplete="off" autocapitalize="sentences" aria-labelledby="noteTitle" aria-describedby="noteLead"></textarea><div class="ask-actions"><button class="btn" id="noteOk" type="button">Add</button><button class="btn quiet" id="noteNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="pickSheet" hidden><div class="sheet ask confirm-sheet pick-sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle"><button class="pick-up" id="pickUp" type="button" hidden></button><h3 id="pickTitle"></h3><ul class="list" id="pickList"></ul><div class="ask-actions"><button class="btn quiet" id="pickNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="skipSheet" hidden>
   <div class="sheet ask" role="dialog" aria-modal="true" aria-labelledby="skTitle">
@@ -1866,7 +1856,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=294";
+  import { boot } from "./app/main.js?v=295";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

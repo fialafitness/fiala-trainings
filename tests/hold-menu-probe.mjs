@@ -376,7 +376,7 @@ const exerciseOnPage = (o = {}) => {
   const chip = mk("div", ["chip"]), chipVal = mk("span", ["val"]), chipIn = mk("input", ["reps", "tab"]), tiles = mk("div", ["tempo-tiles"]), tile = mk("button");   // a box that is a field (its words, then its field on a tap), and the tempo's tiles
   chip.append(chipVal, chipIn); tiles.append(tile);
   num.value = "2b"; name.value = "Wide-grip dip"; chipIn.value = "12";
-  const setlog = mk("div", ["setlog"]), alt = mk("div", ["alt-menu"]); setlog.gone = !!o.template; row.append(setlog, alt);   // the set log a template's page hides; the alternatives list, open
+  const setlog = mk("div", ["setlog"]), alt = mk("div", ["sugg"]); setlog.gone = !!o.template; row.append(setlog, alt);   // the set log a template's page hides; the names suggested under the name, open (v295: the instructions' panel, the last other, became a sheet)
   frame.offsetWidth = 315; frame.offsetHeight = 177; player.append(frame); icons.append(more); row.append(num, name, icons, player, tag, chip, tiles); group.append(row); block.append(group);
   row._ctx = () => fns.exerciseMenu({ id: "r1", label: "2b", name: "Wide-grip dip", note: "" }, { swap: () => picked.push("swap"), note: () => picked.push("note"), remove: () => picked.push("remove") }); row._ctx.ok = () => true;
   return { block, group, row, num, name, icons, more, player, chipVal, tile };
@@ -391,7 +391,7 @@ const exerciseOnPage = (o = {}) => {
   await advance(300); out.ex.hold.picked = picked.slice(); out.ex.hold.after = { ...state(), dimShown: dim.hidden === false }; }
 { const x = exerciseOnPage({ done: true, template: true }); down(x.icons, 150, 493); await advance(401);   // a finished card opened again, in a template: its wash, its page's hidden parts, its open list closed
   const walk = (n) => (n && n.classes && n.classes.has("lp-wrap") ? walk(n.children[0]) : n), copy = walk(box.children[0]);
-  out.ex.washed = { platter: box.style.background, setlog: copy && copy.querySelector(".setlog") && copy.querySelector(".setlog").style.display, altHidden: !!copy && !!copy.querySelector(".alt-menu") && copy.querySelector(".alt-menu").hidden === true, liveAlt: x.row.querySelector(".alt-menu").hidden === true };
+  out.ex.washed = { platter: box.style.background, setlog: copy && copy.querySelector(".setlog") && copy.querySelector(".setlog").style.display, altHidden: !!copy && !!copy.querySelector(".sugg") && copy.querySelector(".sugg").hidden === true, liveAlt: x.row.querySelector(".sugg").hidden === true };
   up(x.icons, 150, 493); await reset(); }
 { const x = exerciseOnPage(); down(x.name, 150, 440); await advance(600); out.ex.onField = state(); up(x.name, 150, 440); await reset(); }   // on a field: iOS's own (its loupe and caret)
 { const x = exerciseOnPage(); down(x.player, 150, 600); await advance(600); out.ex.inPlayer = state(); up(x.player, 150, 600); await reset(); }   // in its open video: not the exercise
