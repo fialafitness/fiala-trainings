@@ -81,13 +81,18 @@ import { reportRange, buildReport } from "./report.js";
     const d = S.templateDraft; if (!d) return;
     const t = trainings.get(d.id); if (!t) { S.templateDraft = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); return; }
     d.dirty = false; d.saving = true; scheduleSave("trainings", d.id, 0); d.saving = false; d.snapshot = JSON.stringify(t); lsSet("fiala.trainings.draft", null);
-    paintDraftBar(); const n = S.pendingGo; S.pendingGo = null; if (n) go(n.next, n.back);
+    paintDraftBar(); const n = S.pendingGo; S.pendingGo = null; if (n) leaveDraft(n, d.id);
   }
   function discardDraft() {
     const d = S.templateDraft; if (!d) return;
     if (trainings.has(d.id)) trainings.set(d.id, JSON.parse(d.snapshot));
     d.dirty = false; lsSet("fiala.trainings.draft", null); localBackend.save(); S.renderedTraining = null; paintDraftBar();
-    const n = S.pendingGo; S.pendingGo = null; if (n) go(n.next, n.back); else render();
+    const n = S.pendingGo; S.pendingGo = null; if (n) leaveDraft(n, d.id); else render();
+  }
+  function leaveDraft(n, id) {                                        // the move the unsaved template held up, once saved or discarded: a Back at once; a page opened from it (Use for a client's new workout) in a phone's browser tab once the template is drawn as it now is (no bar, no question, the client list folded: the browser's picture of it, leaveClean)
+    if (n.back || !browserShots()) { go(n.next, n.back); return; }
+    S.renderedTraining = null; render();                              // (drawn anew: as it now is, Use for a client's list folded with it)
+    leaveClean(() => { const x = n.next, there = x.name === "training" ? trainings.has(x.id) : x.name === "client" ? clients.has(x.id) : true; if (there && S.view.name === "training" && S.view.id === id) go(x, n.back); });
   }
   $("draftSave").addEventListener("click", saveDraft);
   $("draftDiscard").addEventListener("click", async () => { if (await askFirst({ title: "Discard the unsaved changes?", text: "The template stays as it was.", yes: "Discard" })) discardDraft(); });
@@ -1148,6 +1153,21 @@ import { reportRange, buildReport } from "./report.js";
   const lookNow = () => (document.body.classList.contains("client") ? "client" : "coach") + "@" + (Number(window.innerWidth) || 0);
   const SHOT_SKIP = ["typing", "kb", "rs-drag", "swipe-busy", "pv-up", "cal-drag"];   // the body's passing states (a keyboard, a finger, a sheet): never part of a page's picture
   const bodyState = (also = []) => Array.from(document.body.classList || []).filter((c) => !SHOT_SKIP.includes(c) && !also.includes(c)).join(" ");
+  // ---------- the browser's own pictures (a phone's browser tab, v297) ----------
+  // In a phone's Safari tab (Chrome's on Android alike) the swipe back from the left edge is the browser's, and it slides in the browser's own
+  // picture of the page underneath: WebKit takes it as the next step is added (addItem), from the screen as last drawn. A page left from a
+  // sheet, a menu or a picker was last drawn with it on top, and a page passed through on the way was never drawn at all (measured on the
+  // simulator, 14 Nov: after Start workout and after Show in History the swipe back showed the preview sheet over the client's page). There a
+  // page is left only once it has been drawn as it is to be remembered: leaveClean waits for that, two frames (the first draws it, the second
+  // begins once it is on the screen). The home-screen app keeps no steps, and the Mac's swipe is the app's own, with its own pictures
+  // (captureScreen): there nothing waits. Nor in the tests, which say no to every media query.
+  const browserShots = () => { try { return hasState() && !swipeOn && !deskOn && typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches; } catch (_) { return false; } };
+  function whenDrawn(fn, extra = 0) {                                 // fn once the screen as it is now has been drawn, and extra ms after that; never if the page changed meanwhile or a question or menu came up
+    const key = screenKey(), run = () => { if (screenKey() === key && !held()) fn(); };
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (extra > 0) setTimeout(run, extra); else run(); }));
+  }
+  const HIST_BEAT = 250;                                              // Show in History in a phone's browser tab: History, its row lit, this long before the workout opens from it
+  const leaveClean = (fn) => { if (!browserShots()) { fn(); return; } calFold(); whenDrawn(fn); };   // a page left from a sheet, a menu or a picker (already closed): in a phone's browser tab, once the page has been drawn without it, as Back brings it back (its month folded to the week, as leaving it does)
   function lookBack(bk) {                                           // the look the screen Back goes to will have (v286): the client's own app always theirs; the coach's the client's only on a workout shown as the client (the one open, from its exercise page; another one by his Settings' Open workouts in)
     const w = Number(window.innerWidth) || 0;
     if (S.clientMode) return "client@" + w;
@@ -1882,7 +1902,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   function tplAddItems() {                                            // the "+" beside it: everything he can add there (his ask, 12 Nov: "another one with + and that one will have all the things I can add ... it will also have add template"): a template where he is (as the round + at the foot), a folder (at the top and inside a top folder), a slide in a folder
     if (!tplPageOn()) return [];
-    const f = tplNode(S.view.folder), items = [{ label: "New template", icon: MI.docPlus, onPick: () => newTemplateHere() }];
+    const f = tplNode(S.view.folder), items = [{ label: "New template", icon: MI.docPlus, onPick: () => leaveClean(() => { if (tplPageOn()) newTemplateHere(); }) }];   // (made once the page is drawn without the menu, in a phone's browser tab: leaveClean)
     if (!f || !f.parent) items.push({ label: "New folder", icon: MI.folderPlus, onPick: () => newFolder(f ? f.id : null) });
     if (f) items.push({ label: "New slide", icon: MI.slidePlus, onPick: () => newSlide(f.id) });
     return items;
@@ -2237,7 +2257,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!S.clientMode) { const li = document.createElement("li"); li.className = "more"; const box = document.createElement("div"); const b = document.createElement("button"); b.type = "button"; b.dataset.id = "+"; b.textContent = "Add a workout"; box.appendChild(b); li.appendChild(box); rows.push(li); }
     const id = await sheetList({ title: d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }), rows });
     if (preview && preview.isConnected && $("pickSheet").contains(document.activeElement)) preview.focus({ preventScroll: true });   // a keyboard's or VoiceOver's place, left in the list that has gone: back on the day, so the preview gives it back there
-    if (id === "+") addTraining(c.id, null, key); else if (id) { if (preview) openPreview(id); else go({ name: "training", id }); }
+    if (id === "+") leaveClean(() => { if (clients.has(c.id)) addTraining(c.id, null, key); }); else if (id) { if (preview) openPreview(id); else leaveClean(() => { if (trainings.has(id)) go({ name: "training", id }); }); }   // (a page opened from the list: in a phone's browser tab once the page is drawn without it, leaveClean; the new workout made then, as an empty one made earlier would be swept away by a redraw meanwhile)
   }
   function finishEarlyNow() {
     if (!es) return;
@@ -2376,7 +2396,7 @@ import { reportRange, buildReport } from "./report.js";
     const who = clients.get(cid);
     openDatePicker({ clientId: cid, title: "Add " + name + " to " + (who.name || "client"), ok: () => clients.has(cid), onPick: (date) => {
       const list = ids.map((id) => trainings.get(id)).filter((t) => t && isTemplateClient(t.clientId)); if (!list.length || !clients.has(cid)) return;
-      useWeek(list, cid, date, null); setTab("workouts"); go({ name: "client", id: cid });
+      useWeek(list, cid, date, null); leaveClean(() => { if (clients.has(cid)) { setTab("workouts"); go({ name: "client", id: cid }); } });   // (their page once this one is drawn without the days, in a phone's browser tab)
     } });
   }
   function tplUse(id) {                                               // a template used: while choosing one for a client (From template on their empty workout), its row's Use or the preview's; else Use for client
@@ -2400,7 +2420,7 @@ import { reportRange, buildReport } from "./report.js";
     if ($("pickSheet").contains(document.activeElement)) { const row = $("tplList").querySelector('li[data-tid="' + String(id).replace(/["\\]/g, "") + '"] > button'); if (row && typeof row.focus === "function") row.focus({ preventScroll: true }); }   // a keyboard's or VoiceOver's place, left on the sheet that has gone: back on the template's row (and the days give it back there), as useWeekFor's on the "\u2026" (the v288 review)
     if (!cid || !clients.has(cid) || !trainings.has(id) || S.view.name !== "client" || !isTemplateClient(S.view.id)) return;   // Back meanwhile, or the client or the template gone: nothing added
     const who = clients.get(cid);
-    openDatePicker({ clientId: cid, title: "Add " + name + " to " + (who.name || "client"), ok: () => clients.has(cid) && trainings.has(id), onPick: (date) => { const cur = trainings.get(id); if (cur && clients.has(cid)) applyTemplate(cur, cid, date); } });
+    openDatePicker({ clientId: cid, title: "Add " + name + " to " + (who.name || "client"), ok: () => clients.has(cid) && trainings.has(id), onPick: (date) => leaveClean(() => { const cur = trainings.get(id); if (cur && clients.has(cid)) applyTemplate(cur, cid, date); }) });   // (the workout made and opened once the page is drawn without the days, in a phone browser tab: leaveClean)
   }
   function applyTemplate(T, clientId, date) {
     lastUse.template = T.id; lastUse.client = clientId; lsSet("fiala.templates.last", lastUse);
@@ -4091,7 +4111,7 @@ import { reportRange, buildReport } from "./report.js";
     };
     if (lift) liftClick = (e) => {                                    // the dimmed page's click: the menu closes; on the lifted workout it opens it, as Apple's open what they lift (measured: Contacts opens the contact)
       const v = lift.vis, onItem = !!(v && e.clientX >= v.left && e.clientX <= v.right && e.clientY >= v.top && e.clientY <= v.bottom);
-      close(); if (onItem && lift.open) { if (lift.hide) lift.hide(); lift.open(); }   // (the copy and the dim go at once, not over the workout that opens)
+      close(); if (onItem && lift.open) { if (lift.hide) lift.hide(); leaveClean(lift.open); }   // (the copy and the dim go at once, not over the workout that opens; in a phone's browser tab it opens once the page is drawn without them, leaveClean)
     };
     document.addEventListener("pointerdown", onDown, true); document.addEventListener("pointerup", onUp, true); document.addEventListener("keydown", onKey); document.addEventListener("contextmenu", onCtx, true); window.addEventListener("scroll", onScroll, true);
     if (lift) window.addEventListener("resize", close);              // (the lifted item would no longer sit over its place)
@@ -5041,14 +5061,22 @@ import { reportRange, buildReport } from "./report.js";
     return true;
   }
   const pvSettled = (e) => !!pv && (performance.now() - pv.at >= 350 || (!!e && e.detail === 0));   // the second tap of a double tap (on Preview in a menu or on the row) lands on nothing in its first 350 ms, as askFirst's buttons; a keyboard's Enter (detail 0) acts at once
-  $("pvGo").addEventListener("click", (e) => { if (!pvSettled(e)) return; if (pg && pg.finish) pg.finish(); if (!pv || pg) return; const id = pv.id, t = trainings.get(id), tpl = !!t && pvTpl(t); closePreview(tpl && e.detail === 0); if (tpl) tplUse(id); else if (t && !canSwipeRow(t)) showInHistory(t); else if (t) go({ name: "training", id }); });   // (a slide still landing lands first: a Mac's click or a key has no touch to land it); a template's Use for client (or Use, choosing for one); a finished one (its green chip in the calendar, v262): its place in History
-  $("pvEdit").addEventListener("click", (e) => { if (!pvSettled(e)) return; if (pg && pg.finish) pg.finish(); if (!pv || pg) return; const id = pv.id; closePreview(); if (trainings.has(id)) go({ name: "training", id }); });   // a template's Edit: its own page in the coach's view, as a tap on its row opened it before v288
-  function showInHistory(t) {                                        // a finished (or skipped) workout's place in History, as Apple's "Show in …" (his pick, 11 Nov: "show in history or same thing apple would say"): History opens as its card opens it, the workout's group open and its row in the middle, lit a moment as a template's row is when Back to templates finds it
+  $("pvGo").addEventListener("click", (e) => { if (!pvSettled(e)) return; if (pg && pg.finish) pg.finish(); if (!pv || pg) return; const id = pv.id, t = trainings.get(id), tpl = !!t && pvTpl(t); closePreview(tpl && e.detail === 0); if (tpl) tplUse(id); else if (t && !canSwipeRow(t)) showInHistory(t); else if (t) leaveClean(() => { if (trainings.has(id)) go({ name: "training", id }); }); });   // (a slide still landing lands first: a Mac's click or a key has no touch to land it); a template's Use for client (or Use, choosing for one); one in History (its green chip in the calendar, v262): the workout itself, opened in History (v297); Start workout: in a phone's browser tab once the page is drawn without the preview (leaveClean)
+  $("pvEdit").addEventListener("click", (e) => { if (!pvSettled(e)) return; if (pg && pg.finish) pg.finish(); if (!pv || pg) return; const id = pv.id; closePreview(); leaveClean(() => { if (trainings.has(id)) go({ name: "training", id }); }); });   // a template's Edit: its own page in the coach's view, as a tap on its row opened it before v288 (leaveClean: the page drawn without the preview first, in a phone's browser tab)
+  function showInHistory(t) {                                        // a workout in History (finished, skipped, or missed and filed there) shown there, as Apple's "Show in …" (his pick, 11 Nov: "show in history or same thing apple would say"), and since v297 the workout itself (his ask, 14 Nov: "I want it to show the actual workout in the history so it opens up the workout in the history"): History opens as its card opens it, the workout's group open and its row in the middle, and the workout opens from that row at once, as a tap on the row opens it; Back is History at the row, Back again the client's page where it was
     const e = effDate(t) || "";
     if (e) for (const k of e >= weekStart() ? ["week"] : [e.slice(0, 4), e.slice(0, 7)]) openGroups.set(t.clientId + "/" + k, true);
-    openHistoryPage();
-    const row = $("histList").querySelector('[data-tid="' + String(t.id).replace(/["\\]/g, "") + '"]');
-    if (row && typeof row.getClientRects === "function" && row.getClientRects().length) { row.scrollIntoView({ block: "center" }); row.classList.add("flash"); setTimeout(() => row.classList.remove("flash"), 1300); }
+    leaveClean(() => {                                                // (a phone's browser tab: once the client's page is drawn without the preview, the browser's picture of it)
+      if (!trainings.has(t.id) || !(S.view.name === "client" && S.view.id === t.clientId)) return;
+      openHistoryPage();
+      const row = $("histList").querySelector('[data-tid="' + String(t.id).replace(/["\\]/g, "") + '"]');
+      const seen = !!row && typeof row.getClientRects === "function" && row.getClientRects().length > 0;
+      if (seen) row.scrollIntoView({ block: "center" });
+      if (!browserShots()) { navDidChange(); openFromHistory(t.id); return; }   // History is the screen now (its own step, and the key its picture is kept under, taken as the workout opens: the app's own swipe back from the workout shows History at the row), unlit: nobody sees it; left pending, the two changes would be one, the client's page to the workout
+      const page = $("vHistory"); page.inert = true; setTimeout(() => { page.inert = false; }, HIST_BEAT + 400);   // a phone's browser tab: the browser's picture of History is the screen, so History is drawn on the way; it takes no tap meanwhile (a double tap's second lands on nothing, not on another workout: a review's catch)
+      if (seen) { row.classList.add("flash"); setTimeout(() => row.classList.remove("flash"), 1300); }   // its row lit as a tap on it lights it, and the workout opens a beat later
+      whenDrawn(() => { if (seen) row.classList.remove("flash"); whenDrawn(() => { page.inert = false; if (trainings.has(t.id)) openFromHistory(t.id); }); }, HIST_BEAT);   // unlit again, and drawn so, before it is left: the browser files History as Back brings it back (a review's catch)
+    });
   }
   $("pvX").addEventListener("click", (e) => { if (pvSettled(e)) closePreview(e.detail === 0); });   // the close cross (his ask, 10 Nov: no Cancel, Apple's cross as in Calendar's event sheet); its Enter or VoiceOver (detail 0) gives the keyboard its place back
   $("pvSheet").addEventListener("click", (e) => { if (e.target === $("pvSheet") && pvSettled(e)) closePreview(); });
@@ -5342,7 +5370,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   function pvSave(id) {                                              // the coach's Save as template: the preview closes and the new template opens, as the workout page's Save as template does
     const t = trainings.get(id); if (!coachMore(t) || !pv || pv.id !== id) return;
-    closePreview(); saveAsTemplate(t);
+    closePreview(); leaveClean(() => { const cur = trainings.get(id); if (coachMore(cur)) saveAsTemplate(cur); });   // (once the page is drawn without the preview, in a phone's browser tab)
   }
   function doToday(id) {                                             // a missed workout comes to today (its "…" and its touch and hold): the client's by the server's own rule (client_move_training), the coach's an ordinary save. Not marked as decided: missed again, it files itself after a week like any other (his rule, 10 Nov)
     const t = trainings.get(id); if (!canSwipeRow(t) || !effDate(t) || effDate(t) >= today()) return false;   // asked again at the pick: a sync may have finished, skipped or moved it meanwhile
@@ -5378,7 +5406,7 @@ import { reportRange, buildReport } from "./report.js";
     }
     const items = [];
     if (canSwipeRow(t)) { const still = () => page() && coachMore(trainings.get(id)) && canSwipeRow(trainings.get(id)); items.push({ label: "Reschedule", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, moving: id, title: "Reschedule", selected: cur.date || today(), min: null, ok: still, onPick: (date) => moveWorkout(id, date) }); } }); }
-    if (!isTemplateClient(cid)) items.push({ label: "Copy workout", icon: MI.copy, onPick: () => copyWorkout(id) }, { label: "Save as template", icon: MI.save, onPick: () => { const cur = trainings.get(id); if (cur && page() && coachMore(cur)) saveAsTemplate(cur); } });   // moved here from the page's foot, the coach's own view only (his ask, 12 Nov: "copy workout and save as template will go to '...' button only for coaches view")
+    if (!isTemplateClient(cid)) items.push({ label: "Copy workout", icon: MI.copy, onPick: () => copyWorkout(id) }, { label: "Save as template", icon: MI.save, onPick: () => leaveClean(() => { const cur = trainings.get(id); if (cur && page() && coachMore(cur)) saveAsTemplate(cur); }) });   // moved here from the page's foot, the coach's own view only (his ask, 12 Nov: "copy workout and save as template will go to '...' button only for coaches view")
     if (isTemplateClient(cid) && !draftOpen(id)) items.push({ label: "Move to", icon: MI.folder, onPick: () => { if (page()) moveTemplate(id); } });   // a template's place, as its row's swipe moves it (Apple never keeps an action in a gesture only); not while it has unsaved changes, which Discard would take the move back with (the v283 review)
     items.push({ label: isTemplateClient(cid) ? "Delete template" : "Delete workout", icon: MI.trash, danger: true, onPick: () => askDelete(id) });
     return items;
@@ -5457,7 +5485,7 @@ import { reportRange, buildReport } from "./report.js";
   $("unfinishBtn").addEventListener("click", undoTap(() => setFinished(false)));
   function copyDay(id, to, still, before) {                          // Copy workout's second step (his ask, 12 Nov: "I first pic a client and now I also want to pick a day"): the day in that client's calendar, then the copy (the workout as it is now, a sync's newer copy included) on it, opened as new
     const who = clients.get(to), ok = () => clients.has(to) && trainings.has(id) && still();   // asked at each redraw: the workout, the client and the page it came from still there
-    openDatePicker({ clientId: to, title: "Copy to " + ((who && who.name) || "client"), ok, onPick: (date) => { if (!ok()) return; before(); addTraining(to, trainings.get(id), date); } });
+    openDatePicker({ clientId: to, title: "Copy to " + ((who && who.name) || "client"), ok, onPick: (date) => { if (!ok()) return; before(); leaveClean(() => { if (clients.has(to) && trainings.has(id)) addTraining(to, trainings.get(id), date); }); } });   // (made and opened once the page is drawn without the days and the preview, in a phone's browser tab: leaveClean)
   }
   function copyTarget(t) {                                            // "Copy workout" asks which client gets the copy; this client is the first row
     const me = clients.get(t.clientId), others = peopleList().filter((c) => c.id !== t.clientId);
@@ -5481,7 +5509,7 @@ import { reportRange, buildReport } from "./report.js";
     const t = trainings.get(S.view.id); if (!t) return;
     const ul = $("usePick"); if (!ul.hidden) { ul.hidden = true; return; }
     const people = peopleList(); if (lastUse.client) { const i = people.findIndex((c) => c.id === lastUse.client); if (i > 0) people.unshift(people.splice(i, 1)[0]); }
-    ul.replaceChildren(...people.map((c) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = c.name || "Unnamed"; b.lastChild.textContent = c.id === lastUse.client ? "last used" : ""; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>'); b.addEventListener("click", () => openDatePicker({ clientId: c.id, title: "Add to " + (c.name || "client"), onPick: (date) => applyTemplate(trainings.get(t.id) || t, c.id, date) })); li.appendChild(b); return li; }));
+    ul.replaceChildren(...people.map((c) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = c.name || "Unnamed"; b.lastChild.textContent = c.id === lastUse.client ? "last used" : ""; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>'); b.addEventListener("click", () => openDatePicker({ clientId: c.id, title: "Add to " + (c.name || "client"), onPick: (date) => { if (browserShots()) $("usePick").hidden = true; leaveClean(() => { if (clients.has(c.id)) applyTemplate(trainings.get(t.id) || t, c.id, date); }); } })); li.appendChild(b); return li; }));
     if (!people.length) { const li = document.createElement("li"); li.className = "empty"; li.style.padding = "12px 16px"; li.textContent = "Add a client first."; ul.appendChild(li); }
     ul.hidden = false;
   });

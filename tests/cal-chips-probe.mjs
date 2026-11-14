@@ -60,12 +60,12 @@ const chipOf = (b, i) => { const box = (b.children || []).find((x) => /day-evs/.
 const onChip = (chip) => ({ target: { closest: (sel) => (sel === ".day-ev" ? chip : null) } });   // the tap's target: the chip's words, inside the chip
 { const b = monthCells.get(label(-1)); b.fire("click", {}); out.tap = seen(); fns.closePreview(); }
 { const b = monthCells.get(label(3)); b.fire("click", onChip(chipOf(b, 1))); out.tapChip = seen(); fns.closePreview(); }
-// a finished workout's green chip opens its preview too, whose foot shows it in History (his pick, 11 Nov), as Apple's "Show in …"; one still to do says Start workout
+// a finished workout's green chip opens its preview too, whose foot shows it in History (his pick, 11 Nov), as Apple's "Show in …" (since v297 the workout itself, opened from History); one still to do says Start workout
 { const b = monthCells.get(label(-1)); b.fire("click", onChip(chipOf(b, 0))); out.tapLate = { ...seen(), go: byId.get("pvGo").textContent }; fns.closePreview(); }
 { const b = monthCells.get(label(-2)); b.fire("click", onChip(chipOf(b, 0))); out.tapDone = { ...seen(), go: byId.get("pvGo").textContent };
   byId.get("pvGo").fire("click", { detail: 0 });                                    // pressed (a keyboard's Enter: at once)
   const row = byId.get("histList").querySelector('[data-tid="done"]');
-  out.showInHistory = { history: !byId.get("vHistory").hidden, ...seen(), row: !!row, lit: !!(row && row.classList.contains("flash")), scrolled: !!(row && row.scrolled) };
+  out.showInHistory = { history: !byId.get("vHistory").hidden, ...seen(), id: app.get().view.id, from: app.get().view.from || null, row: !!row, lit: !!(row && row.classList.contains("flash")), scrolled: !!(row && row.scrolled) };   // (since v297 the workout itself, opened from History)
   fns.leaveSettings(); app.set({ view: { name: "client", id: "c1" } }); fns.render(); if (!fns.calState().open) toggle.fire("click", {}); }   // off History, back on the client's page (as Back does), its month open again (History, as any page, folded it)
 toggle.fire("click", {});                                                          // Week
 { const b = byLabel(cellsOf(byId.get("week"))).get(label(0)); b.fire("click", onChip(chipOf(b, 1))); out.tapWeekChip = seen(); fns.closePreview(); }

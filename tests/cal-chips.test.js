@@ -87,8 +87,8 @@ test("the keyboard's place: a preview opened from the calendar (Escape, the cros
   assert.deepStrictEqual(r.keys, { busy: { id: "f3", place: "day" }, redraw: { id: "done", place: "new day" } });
 });
 
-test("a finished workout's green chip opens its preview too, whose foot shows it in History (his pick, 11 Nov: \"show in history or same thing apple would say\"), as Apple's \"Show in …\": History opens, the workout's row found, scrolled into the middle and lit a moment; one still to do (or missed) says Start workout", () => {
+test("a finished workout's green chip opens its preview too, whose foot shows it in History (his pick, 11 Nov: \"show in history or same thing apple would say\"), as Apple's \"Show in …\", and since v297 the workout itself (his ask, 14 Nov: \"I want it to show the actual workout in the history\"): History came up with the workout's row found and scrolled into the middle (where Back comes back to), and the workout opened from it, the row unlit; one still to do (or missed) says Start workout", () => {
   assert.deepStrictEqual(r.tapLate, { view: "client", preview: "late", go: "Start workout" });
   assert.deepStrictEqual(r.tapDone, { view: "client", preview: "done", go: "Show in History" });
-  assert.deepStrictEqual(r.showInHistory, { history: true, view: "client", preview: null, row: true, lit: true, scrolled: true });
+  assert.deepStrictEqual(r.showInHistory, { history: false, view: "training", preview: null, id: "done", from: "history", row: true, lit: false, scrolled: true });
 });
