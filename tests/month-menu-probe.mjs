@@ -294,7 +294,7 @@ let exPicked = [];
 const exerciseOnPage = (rowExtra = {}) => {
   clientPage(false); exPicked = [];
   const r = { id: "r1", label: "2a", name: "Wide-grip dip", note: "", ...rowExtra };
-  const row = onPage(mk("div", ["row"])), num = mk("input", ["label"]), name = mk("textarea", ["name"]), reps = mk("input", ["reps"]), panel = mk("div", ["alt-menu"]), inPanel = mk("button");
+  const row = onPage(mk("div", ["row"])), num = mk("input", ["label"]), name = mk("textarea", ["name"]), reps = mk("input", ["reps"]), panel = mk("div", ["sugg"]), inPanel = mk("button");   // a panel open in the exercise: the names suggested (v295: the instructions' panel became a sheet)
   const more = mk("button", ["more-btn"]); panel.append(inPanel); row.append(num, name, reps, more, panel);
   row._ctx = () => fns.exerciseMenu(r, { swap: () => exPicked.push("swap"), note: () => exPicked.push("note"), remove: () => exPicked.push("remove") }); row._ctx.ok = () => true;
   return { row, num, name, reps, inPanel, more };
