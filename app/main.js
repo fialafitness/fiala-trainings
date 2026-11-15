@@ -2072,6 +2072,10 @@ import { reportRange, buildReport } from "./report.js";
   }
   function closeFinishEarly() { $("earlySheet").hidden = true; es = null; S.asking = false; }
   let askOpen = null;                                               // the sheet that is up, if any: a second ask closes it as "no" first
+  let keysLast = false, askEatUntil = 0;                              // the last thing pressed was a key; a question answered by a press, until when its next click is eaten
+  document.addEventListener("keydown", () => { keysLast = true; }, true); document.addEventListener("pointerdown", () => { keysLast = false; }, true);   // a question's first button takes the keyboard's ring only after a key (the v298 safety check: after a right-click's or a hold's menu, whose presses are all cancelled, WebKit drew it round Cancel for a finger, in a page not yet clicked)
+  const askEat = (e) => { if (e && e.isTrusted === true && e.detail >= 1) askEatUntil = performance.now() + 350; };   // answered by a person's press (a key's click counts none; a script's is no press)
+  document.addEventListener("click", (e) => { if (e.isTrusted === true && e.detail >= 1 && performance.now() < askEatUntil) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);   // the second press of a double press on its button: the question gone, the page behind would take it (a list closed up under it opened the workout that came up); eaten for 350 ms, as a pop-up's first rows wait (the v298 safety check)
   function askFirst({ title, text, yes = "Delete", red = true, input = null }) {   // nothing is deleted or discarded by accident: a sheet asks, and only its red button does it; red: false for an act that loses nothing (Finish early, his ask, 12 Nov), its button then the sheets' purple
     return new Promise((resolve) => {                                // input: { value, placeholder, max }: a name typed in the sheet (New folder, New slide, Rename: his ask, 12 Nov, "let me name it"); it resolves with the name, or false
       if (askOpen) askOpen(false);
@@ -2084,12 +2088,12 @@ import { reportRange, buildReport } from "./report.js";
       const vv = window.visualViewport, sh = bg.firstElementChild, lift = () => { const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0; sh.style.paddingBottom = kb ? kb + 16 + "px" : ""; };   // the phone's keyboard up: what the sheet holds sits above it, and the sheet itself runs on down behind it, as an iPhone sheet does (measured on the simulator, iOS 27: the keyboard's bar of arrows floats over the page, which showed round it while the sheet stopped at the keys)
       const onInput = () => { if (armed) y.disabled = !named(); };
       const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = !!pv; bg.hidden = true; y.disabled = false; for (const el of behind) el.inert = false; y.removeEventListener("click", onYes); n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); document.removeEventListener("keydown", onKey); f.removeEventListener("input", onInput); if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); } sh.style.paddingBottom = ""; if (input && document.activeElement === f) f.blur(); resolve(input ? (v && named()) || false : v); };
-      const onYes = () => { if (armed && (!input || named())) done(true); }, onNo = () => done(false), onBg = (e) => { if (armed && e.target === bg) done(false); }, onKey = (e) => { if (e.key === "Escape") done(false); else if (input && e.key === "Enter" && e.target === f) { e.preventDefault(); onYes(); } };
+      const onYes = (e) => { if (armed && (!input || named())) { askEat(e); done(true); } }, onNo = (e) => { askEat(e); done(false); }, onBg = (e) => { if (armed && e.target === bg) { askEat(e); done(false); } }, onKey = (e) => { if (e.key === "Escape") done(false); else if (input && e.key === "Enter" && e.target === f) { e.preventDefault(); onYes(); } };
       askOpen = done; S.asking = true;
       y.addEventListener("click", onYes); n.addEventListener("click", onNo); bg.addEventListener("click", onBg); document.addEventListener("keydown", onKey);
       if (input) { f.addEventListener("input", onInput); if (vv) { vv.addEventListener("resize", lift); vv.addEventListener("scroll", lift); } }
       for (const el of behind) el.inert = true;                                              // the page behind is out of reach until the question is answered
-      bg.hidden = false; if (input) f.focus({ preventScroll: true }); else n.focus({ preventScroll: true });   // (the name field takes the focus in the tap that opened the sheet, so the phone gives the keyboard)
+      bg.hidden = false; if (input) f.focus({ preventScroll: true }); else n.focus({ preventScroll: true, focusVisible: keysLast });   // (the name field takes the focus in the tap that opened the sheet, so the phone gives the keyboard)
     });
   }
   const askName = (title, value, yes) => askFirst({ title, yes: yes || "Add", red: false, input: { value: value || "", placeholder: "Name", max: 40 } });
@@ -4157,13 +4161,31 @@ import { reportRange, buildReport } from "./report.js";
     { label: "Reschedule", icon: MI.calendar, onPick: () => rowReschedule(id) },
     { label: "Skip", icon: MI.skip, onPick: () => rowSkip(id) },
     { label: "Preview", icon: MI.eye, onPick: () => openPreview(id) },
+    ...rowDeleteItem(id),
   ];
+  const rowDeleteItem = (id) => (S.clientMode ? [] : [{ label: "Delete", icon: MI.trash, danger: true, sep: true, onPick: () => rowDelete(id) }]);   // the coach's own, last and red after a line, as Apple ends a menu with its destructive row (the owner's ask, 14 Nov: "press and hold will have one more option and that is to delete ... only coach"; the Missed card's too, the owner's pick); never the client's
+  async function rowDelete(id) {                                     // a workout row's Delete: asked first, as the workout page's own Delete asks; then gone from its list, the page staying where it is
+    if (S.clientMode || !canSwipeRow(trainings.get(id))) return false;   // still to do, as when the menu offered it: one left open while a sync brought in the client's finish or skip deletes nothing (the v298 review)
+    const lists = ["missList", "todayList", "nextList"].map((k) => $(k)), rowsOf = (l) => [...l.querySelectorAll(":scope > li[data-tid]")], find = (tid) => lists.map((l) => rowsOf(l).find((x) => x.dataset.tid === tid)).find(Boolean) || null;
+    const back = document.activeElement, inMenu = !!back && $("whenPop").contains(back);   // still on the menu's own row: a sync drew the lists anew while the menu was up, so its close had no row to put the focus back on (the second v298 review)
+    const li = inMenu ? find(id) : back && back.closest ? back.closest("li[data-tid]") : null, list = li && lists.includes(li.parentElement) ? li.parentElement : null;   // a keyboard's or VoiceOver's place: a row's button or its "…", where the menu's close puts it, and not always this row's (a right-click or a hold moves no focus); a pointer's is the page
+    const at = li ? li.dataset.tid : "", slot = list ? rowsOf(list).indexOf(li) : -1, more = inMenu ? list === lists[0] : !!(back && back.classList && back.classList.contains("miss-more"));
+    const ok = !!(await askFirst({ title: "Delete this workout?", text: "It goes for good, with everything logged on it.", yes: "Delete" })) && canSwipeRow(trainings.get(id));   // read again: a sync may have taken it away, or brought in the client's finish or skip, while the question was up
+    if (ok) { trainings.delete(id); scheduleSave("trainings", id, 0); render(); }
+    const lost = !document.activeElement || document.activeElement === document.body || $("askSheet").contains(document.activeElement);
+    if (list && lost) {                                                // that place, left on the closed question's button: its own row wherever it is drawn now; gone (this one deleted, or a sync took it), the row now in its slot, as a list closes up; none left, off the closed sheet
+      const rows = rowsOf(list), to = find(at) || rows[Math.min(slot, rows.length - 1)] || null, b = to && ((more && to.querySelector(":scope > .miss-more")) || to.querySelector(":scope > button"));
+      if (b) b.focus({ preventScroll: true }); else if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    }
+    return ok;
+  }
   const miToday = () => MI.calendar.replace("</svg>", '<text x="8" y="12.3" text-anchor="middle" font-size="5.6" font-weight="600" fill="currentColor" stroke="none">' + Number(today().slice(8)) + "</text></svg>");   // Do it today: the calendar with today's date on it, as Reminders marks its Today
   const missItems = (id) => [                                        // a missed workout's "…", touch and hold and right-click (his pick B, 10 Nov): Do it today (the likeliest; only here, not on its swipe), then the swipe's own, outermost first: Reschedule (the days), Skip (its reasons), Preview
     { label: "Do it today", icon: miToday(), onPick: () => doToday(id) },
     { label: "Reschedule", icon: MI.calendar, onPick: () => rowReschedule(id) },
     { label: "Skip", icon: MI.skip, onPick: () => rowSkip(id) },
-    { label: "Preview", icon: MI.eye, onPick: () => openPreview(id) },   // last, as on its swipe: the innermost
+    { label: "Preview", icon: MI.eye, onPick: () => openPreview(id) },   // last of the swipe's, as on it: the innermost
+    ...rowDeleteItem(id),
   ];
   // touch and hold: the phone's right-click (his pick, 10 Nov: "do 4"), with the same menus, opened the way iOS 27.2 opens them (measured on
   // its Contacts and Home Screen). A finger held still on a workout row, or on an exercise in the coach's view, lifts it a little where it is,
@@ -5455,13 +5477,13 @@ import { reportRange, buildReport } from "./report.js";
     const t = trainings.get(id || S.view.id); if (!t) return; sk = { t, reason: "", at: performance.now(), after: after || null }; S.asking = true; if (pv) $("pvSheet").inert = true;   // (over the preview, the preview waits)
     for (const b of $("skReasons").querySelectorAll("button")) { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); }
     $("skFor").hidden = !(S.clientMode || previewing());               // the client's Undo lasts 24 hours (the coach's, always), and the question says so
-    $("skipSheet").hidden = false; setTimeout(() => { if (sk) $("skGo").focus({ preventScroll: true }); }, 0);
+    $("skipSheet").hidden = false; setTimeout(() => { if (sk) $("skGo").focus({ preventScroll: true, focusVisible: keysLast }); }, 0);
   }
   function closeSkip() { $("skipSheet").hidden = true; sk = null; S.asking = !!pv; if (pv) $("pvSheet").inert = false; }   // (over the preview: back to it, still a question up)
   const skSettled = (e) => !!sk && (performance.now() - sk.at >= 350 || (!!e && e.detail === 0));   // the second tap of a double tap (on Skip, on a row low on the screen) must not land on Skip workout, as askFirst's red button, nor pick a reason or close the question (a keyboard's Enter or VoiceOver, detail 0, acts at once on those)
-  $("skGo").addEventListener("click", () => { if (!skSettled()) return; const reason = sk.reason, id = sk.t.id, after = sk.after; closeSkip(); if (after) after(); setSkipped(true, reason, id); });   // (the preview's: on to the next workout first, then the skip, as its Delete does)
-  $("skKeep").addEventListener("click", (e) => { if (skSettled(e)) closeSkip(); });
-  $("skipSheet").addEventListener("click", (e) => { if (e.target === $("skipSheet") && skSettled()) closeSkip(); });
+  $("skGo").addEventListener("click", (e) => { if (!skSettled()) return; const reason = sk.reason, id = sk.t.id, after = sk.after; askEat(e); closeSkip(); if (after) after(); setSkipped(true, reason, id); });   // (the preview's: on to the next workout first, then the skip, as its Delete does)
+  $("skKeep").addEventListener("click", (e) => { if (skSettled(e)) { askEat(e); closeSkip(); } });
+  $("skipSheet").addEventListener("click", (e) => { if (e.target === $("skipSheet") && skSettled()) { askEat(e); closeSkip(); } });   // (both, and Skip workout, as a question's buttons: the next click of a double press is eaten)
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && sk) closeSkip(); });   // Escape is Cancel, as the other sheets take it
   $("skReasons").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b || !sk || !skSettled(e)) return;

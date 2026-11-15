@@ -37,7 +37,7 @@ function drawing(fn) {
   try { return fn(got); } finally { document.createElement = make; for (const l of lists) { delete l.replaceChildren; delete l.appendChild; } }
 }
 const tids = (lis) => lis.filter((li) => li.dataset && li.dataset.tid).map((li) => li.dataset.tid);
-const isMissedRow = (li) => /\bmiss\b/.test(li.className) && li.classList.contains("swipe-row") && li.kids.some((k) => k.className === "miss-more") && li._ctx().map((it) => it.label).join() === "Do it today,Reschedule,Skip,Preview" && li.kids.find((k) => k.className === "swipe-acts").kids.map((a) => a.className).join() === "swipe-act sa-prev,swipe-act sa-skip,swipe-act sa-resched";
+const isMissedRow = (li) => /\bmiss\b/.test(li.className) && li.classList.contains("swipe-row") && li.kids.some((k) => k.className === "miss-more") && li._ctx().map((it) => it.label).join() === "Do it today,Reschedule,Skip,Preview" + (app.get().clientMode ? "" : ",Delete") && li.kids.find((k) => k.className === "swipe-acts").kids.map((a) => a.className).join() === "swipe-act sa-prev,swipe-act sa-skip,swipe-act sa-resched";
 const foldOf = (lis) => { const li = lis.find((x) => x.className === "more only"); if (!li) return null; const f = li.kids[0].kids[0]; return { cls: f.className, label: f.attrs["aria-label"], expanded: f.attrs["aria-expanded"], text: f.firstChild.textContent, click: () => f.on.click[0]({}) }; };
 
 test("one Missed card above Today, the newest first; Today and Up next keep only what is still ahead; one: its row alone; two or more: the newest, \"2 more\" and Skip all; \"2 more\" opens them all and the up chevron folds them back; another client's page folds it again", () => {
@@ -90,10 +90,10 @@ test("a missed workout's row: its day in red, how long ago; a \"…\" where the 
       const more = li.kids[1];
       assert.deepStrictEqual([more.tagName, more.className, more.attrs["aria-label"], more.type], ["BUTTON", "miss-more", "More", "button"], "the \"…\": its own button after the row's, named More");
       const items = fns.missItems("m1");
-      assert.deepStrictEqual(items.map((it) => it.label), ["Do it today", "Reschedule", "Skip", "Preview"], "the menu: Do it today first (the likeliest), then Reschedule, Skip, and Preview (his ask, 10 Nov), as the swipe has them outermost first");
+      assert.deepStrictEqual(items.map((it) => it.label), ["Do it today", "Reschedule", "Skip", "Preview", ...(client ? [] : ["Delete"])], "the menu: Do it today first (the likeliest), then Reschedule, Skip, and Preview (his ask, 10 Nov), as the swipe has them outermost first; the coach's Delete last (v298)");
       assert.ok(items[0].icon.includes(">" + Number(fns.today().slice(8)) + "</text>"), "Do it today: the calendar with today's date on it, as Reminders marks its Today");
-      assert.deepStrictEqual(items.slice(1).map((it) => it.icon), [fns.menuIcons().calendar, fns.menuIcons().skip, fns.menuIcons().eye], "Reschedule's calendar, Skip's glyph and Preview's eye, as the row's other menus");
-      assert.deepStrictEqual(li._ctx().map((it) => it.label), ["Do it today", "Reschedule", "Skip", "Preview"], "touch and hold, right-click: the same four");
+      assert.deepStrictEqual(items.slice(1, 4).map((it) => it.icon), [fns.menuIcons().calendar, fns.menuIcons().skip, fns.menuIcons().eye], "Reschedule's calendar, Skip's glyph and Preview's eye, as the row's other menus");
+      assert.deepStrictEqual(li._ctx().map((it) => it.label), ["Do it today", "Reschedule", "Skip", "Preview", ...(client ? [] : ["Delete"])], "touch and hold, right-click: the same");
       const acts = li.kids.find((k) => k.className === "swipe-acts").kids;
       assert.deepStrictEqual(acts.map((a) => a.className), ["swipe-act sa-prev", "swipe-act sa-skip", "swipe-act sa-resched"], "the swipe: every row's three, Preview innermost, Reschedule outermost; Do it today only in the \"…\" and touch and hold");
       assert.ok(acts.every((a) => a.tabIndex === -1), "out of the keyboard's way: the \"…\" holds all four");
@@ -111,7 +111,7 @@ test("a missed workout's row: its day in red, how long ago; a \"…\" where the 
   drawing(() => {
     const li = fns.workoutRow(maps.trainings.get("u1"), "next", true);
     assert.deepStrictEqual(li.kids.find((k) => k.className === "swipe-acts").kids.map((a) => a.className), ["swipe-act sa-prev", "swipe-act sa-skip", "swipe-act sa-resched"], "a workout still ahead: its two and Preview (no Today: that is a missed one's, his rule 10 Nov)");
-    assert.deepStrictEqual(li._ctx().map((it) => it.label), ["Reschedule", "Skip", "Preview"]);
+    assert.deepStrictEqual(li._ctx().map((it) => it.label), ["Reschedule", "Skip", "Preview", "Delete"], "(the coach's own Delete last, v298)");
     assert.ok(!li.kids.some((k) => k.className === "miss-more") && !/\bmiss\b/.test(li.className) && li.kids[0].kids.some((k) => k.className === "chev"), "and its chevron");
     for (const mode of ["today", "past"]) assert.ok(fns.workoutRow(maps.trainings.get("u1"), mode, true).kids[0].kids.some((k) => k.className === "chev"), mode + ": its chevron");
     li._full(); assert.strictEqual(fns.datePicker() && fns.datePicker().title, "Reschedule", "its full swipe: the days"); fns.closeDatePicker();

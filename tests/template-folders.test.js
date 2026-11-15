@@ -608,7 +608,7 @@ test("the page: the name field in the question sheet, the + alone at the foot's 
   assert.ok(html.includes('<button class="disc hdr-disc bar-more" id="tAdd" type="button" aria-label="Add" aria-haspopup="menu" hidden>'), "the + at the top: the …'s grey circle, named for VoiceOver, opening a menu");
   assert.ok(html.includes("\n  .seg.stages button { min-width: 0; }\n  .seg.stages button > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }"), "cut in a span: the key keeps its 44 pt halo (a clip on the key would cut it)");
   assert.ok(src.includes('const nm = document.createElement("span"); nm.textContent = x.name; b.appendChild(nm);'), "his slide's name in that span");
-  assert.ok(src.includes('if (input) f.focus({ preventScroll: true }); else n.focus({ preventScroll: true });'), "the field takes the focus in the tap that opened the sheet, so the phone gives its keyboard");
+  assert.ok(src.includes('if (input) f.focus({ preventScroll: true }); else n.focus({ preventScroll: true, focusVisible: keysLast });'), "the field takes the focus in the tap that opened the sheet, so the phone gives its keyboard (Cancel's keyboard ring only after a key, v298)");
 });
 
 // His ask, 12 Nov: "every time there is more than one workout in one folder I want to be able to add the whole folder / slide to the calendar

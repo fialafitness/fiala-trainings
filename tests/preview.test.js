@@ -116,10 +116,10 @@ test("a sync's redraw while it is up: it shows the workout as it is now, and goe
 
 test("Preview on the same swipe as Skip and Reschedule (his pick, 10 Nov), innermost; last in the row's touch and hold and right-click and in a missed workout's \u2026, as the swipe lists them outermost first; each opens the preview", () => {
   page(false, [row("a", "1", "Squat", 3, "5")]);
-  const menu = fns.rowMenu("w1"); assert.deepStrictEqual(menu.map((it) => it.label), ["Reschedule", "Skip", "Preview"]); assert.strictEqual(menu[2].icon, fns.menuIcons().eye);
+  const menu = fns.rowMenu("w1"); assert.deepStrictEqual(menu.map((it) => it.label), ["Reschedule", "Skip", "Preview", "Delete"]); assert.strictEqual(menu[2].icon, fns.menuIcons().eye);   // (the coach's own Delete after it, v298)
   menu[2].onPick(); assert.deepStrictEqual(fns.previewState(), { id: "w1" }, "its pick opens the preview"); fns.closePreview();
   maps.trainings.get("w1").date = day(-2); const miss = fns.missItems("w1");
-  assert.deepStrictEqual(miss.map((it) => it.label), ["Do it today", "Reschedule", "Skip", "Preview"]);
+  assert.deepStrictEqual(miss.map((it) => it.label), ["Do it today", "Reschedule", "Skip", "Preview", "Delete"]);
   miss[3].onPick(); assert.deepStrictEqual(fns.previewState(), { id: "w1" }); fns.closePreview();
   const make = document.createElement; document.createElement = (tag) => { const e = make(tag); e.kids = []; e.on = {}; e.appendChild = (c) => { e.kids.push(c); return c; }; e.append = (...k) => { e.kids.push(...k); }; e.addEventListener = (t, f) => { (e.on[t] ||= []).push(f); }; return e; };
   try {

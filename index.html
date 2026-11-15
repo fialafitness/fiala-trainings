@@ -404,6 +404,7 @@
   .list li.pick-row > button:first-child { flex: 1 1 auto; min-width: 0; padding-right: 8px; }
   .list li.pick-row > .tpl-use { flex: none; justify-content: center; padding: 12px 20px 12px 12px; color: var(--brand-text); }   /* the purple as text in the row's own type, as it was in the chevron's place (v285, his pick: "keep it consistent") */
   .list li.pick-row > button:focus-visible { outline-offset: -2px; }   /* the card and its Use side by side: each ring inside its own button, or the list's clip leaves two lines at their seam (the v288 review) */
+  .list li[data-fid] > button { min-height: calc(26px + 1.55 * 1.0625rem + 1.55 * 0.8125rem); }   /* a folder's row as tall as a template's two-line row, 72.5 (the owner's pick A, 14 Nov: its sliding Delete and Move to fit, word and all, as on the templates inside it) */
   .btn.soft, .btn.tint.wide.soft { font-weight: 400; }        /* the quiet pills under Finish workout: regular weight, the way an alert stacks its buttons */
   .foot.stack { display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin-top: 32px; padding-top: 24px; max-width: none; }   /* not the login form's narrow .stack: this one spans the page */
   .list.form li { padding: 0; }                                                /* a form: a label and its field in each cell */
@@ -1862,7 +1863,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=297";
+  import { boot } from "./app/main.js?v=298";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

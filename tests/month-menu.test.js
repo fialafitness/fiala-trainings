@@ -90,10 +90,10 @@ test("two fingers over the day picker's months: they follow, settle on the neare
   assert.strictEqual(r.dp.behind.after, r.dp.behind.before, "the client page's month under the sheet does not move");
 });
 
-test("a right-click on a workout row: Reschedule and Skip at the pointer, the row ringed while it is open, in the client's view and the coach's", () => {
+test("a right-click on a workout row: Reschedule and Skip at the pointer, the row ringed while it is open, in the client's view and the coach's (the coach's own Delete last, since v298)", () => {
   for (const k of ["client", "coach"]) {
     const m = r.row[k];
-    assert.deepStrictEqual({ press: m.pressKept, menu: m.menuKept, open: m.open, labels: m.labels }, { press: true, menu: true, open: true, labels: ["Reschedule", "Skip", "Preview"] }, k);
+    assert.deepStrictEqual({ press: m.pressKept, menu: m.menuKept, open: m.open, labels: m.labels, seps: m.seps }, { press: true, menu: true, open: true, labels: ["Reschedule", "Skip", "Preview", ...(k === "coach" ? ["Delete"] : [])], seps: k === "coach" ? 1 : 0 }, k + " (the coach's Delete after a line)");
   }
   assert.deepStrictEqual([r.row.client.left, r.row.client.top], ["300px", "200px"], "its corner at the pointer");
   assert.deepStrictEqual([r.row.coach.left, r.row.coach.top], ["657px", "550px"], "near the window's corner it opens to the left of the pointer and above it");
@@ -153,11 +153,12 @@ test("where a right-click's menu goes: its corner at the pointer, turned left or
 
 test("a workout row's menu: Reschedule (the calendar) then Skip (the skip glyph in outline, as a menu has it); the let-go rule both months share", () => {
   const m = fns.rowMenu("w1");
-  assert.deepStrictEqual(m.map((x) => x.label), ["Reschedule", "Skip", "Preview"], "the swipe's, outermost first: Preview last (innermost on the swipe, his pick 10 Nov)");
-  assert.deepStrictEqual(m.map((x) => x.icon), [fns.menuIcons().calendar, fns.menuIcons().skip, fns.menuIcons().eye]);
+  assert.deepStrictEqual(m.map((x) => x.label), ["Reschedule", "Skip", "Preview", "Delete"], "the swipe's, outermost first: Preview last of them (innermost on the swipe, his pick 10 Nov); then the coach's Delete (v298)");
+  assert.deepStrictEqual(m.map((x) => x.icon), [fns.menuIcons().calendar, fns.menuIcons().skip, fns.menuIcons().eye, fns.menuIcons().trash]);
   assert.ok(/fill="none"/.test(fns.menuIcons().eye) && /stroke-width="1.5"/.test(fns.menuIcons().eye), "the eye in outline, of the same weight");
   assert.ok(/fill="none"/.test(fns.menuIcons().skip) && /stroke-width="1.5"/.test(fns.menuIcons().skip), "drawn as the calendar beside it is: an outline of the same weight");
-  assert.ok(m.every((x) => !x.danger), "nothing red: neither deletes anything");
+  assert.ok(m.slice(0, 3).every((x) => !x.danger && !x.sep), "nothing red among the swipe's: none deletes anything");
+  assert.deepStrictEqual([m[3].danger, m[3].sep], [true, true], "the coach's Delete red, after a line (v298)");
   assert.deepStrictEqual([fns.monthLetGo("cal", -49, 350), fns.monthLetGo("cal", -48, 350), fns.monthLetGo("cal", 49, 350)], [1, 0, -1], "the client page's month: past 48 px");
   assert.deepStrictEqual([fns.monthLetGo("dp", -176, 350), fns.monthLetGo("dp", -175, 350), fns.monthLetGo("dp", 176, 350)], [1, 0, -1], "the day picker's: past half");
 });

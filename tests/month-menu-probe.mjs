@@ -227,7 +227,7 @@ const right = (target, x = 300, y = 200, extra = {}) => {
   const down = fire("pointerdown", { target, pointerType: "mouse", pointerId: 1, button: 2, buttons: 2, clientX: x, clientY: y, ...extra });
   const menu = fire("contextmenu", { target, clientX: x, clientY: y, button: 2 });
   fire("pointerup", { target, pointerType: "mouse", pointerId: 1, button: 2, buttons: 0, clientX: x, clientY: y });
-  return { pressKept: down.defaultPrevented, menuKept: menu.defaultPrevented, open: bg.hidden === false, labels: pop.children.map((c) => c.textContent || (c.children.at(-1) || {}).textContent), left: pop.style.left, top: pop.style.top };
+  return { pressKept: down.defaultPrevented, menuKept: menu.defaultPrevented, open: bg.hidden === false, labels: pop.children.filter((c) => c.className !== "msep").map((c) => c.textContent || (c.children.at(-1) || {}).textContent), seps: pop.children.filter((c) => c.className === "msep").length, left: pop.style.left, top: pop.style.top };
 };
 const menuOff = () => fire("keydown", { key: "Escape" });
 // a workout row on Up next, the real one's menu on a row that knows where it is
