@@ -280,3 +280,24 @@ test("the client's workouts are read in each answer's own unit: a copy that did 
   assert.strictEqual(maps.trainings.get("p1").rows[0].unit, "lb", "the older read still reads 135 as lb");
   app.set({ view: { name: "client", id: "c1" }, renderedTraining: null }); quiet();
 });
+
+test("Back from a page opened from a list lands the list where it was, as the swipe's picture shows it (v300: it jumped to the top as the finger let go)", async () => {
+  const was = window.scrollTo, wasY = window.scrollY; const to = []; window.scrollTo = (x, y) => { to.push(y); };
+  try {
+    const sb = makeSupabase(); clientOn(sb); fns.showSettings();
+    window.scrollY = 240; fns.openSub("health", "settings", {}); window.scrollY = 0;
+    assert.strictEqual(to.at(-1), 0, "the page opens at its top");
+    await fns.goBackNow(); assert.deepStrictEqual([fns.settingsPage().open, to.at(-1)], ["settings", 240], "Settings where it was");
+    coachOn(sb); app.set({ view: { name: "client", id: "c1" } }); fns.showClientCard();
+    window.scrollY = 130; fns.openSub("safety", "card", {}); window.scrollY = 0;
+    await fns.goBackNow(); assert.deepStrictEqual([fns.settingsPage().open, to.at(-1)], ["card", 130], "the client's card where it was");
+    window.scrollY = 130; fns.openSub("health", "card", {}); fns.leaveSettings(); assert.strictEqual(fns.subPlace(), null, "leaving the settings pages forgets the place");
+    fns.showClientCard(); fns.showSub("health", "card"); window.scrollY = 0; await fns.goBackNow();   // opened with no place of its own (as a reload reopens it)
+    assert.strictEqual(to.at(-1), 0, "a place from before a page was left is never reused");
+  } finally { window.scrollTo = was; window.scrollY = wasY; fns.leaveSettings(); quiet(); }
+});
+
+test("the card's email and phone: grey while not typed in, as the card's other values (v300, the owner's ask)", () => {
+  assert.ok(html.includes("  #cEmail:not(:focus), #cPhone:not(:focus) { color: var(--text-tertiary); }"));
+  assert.ok(!/\.hd-it \{[^}]*will-change/.test(html), "no layer per wheel row (hundreds of them)");
+});

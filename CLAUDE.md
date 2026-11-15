@@ -57,7 +57,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (299 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (300 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -203,7 +203,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v299 it ends "647 passed, 0 failed" after about 70 s.
+- At v300 it ends "655 passed, 0 failed" after about 70 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
@@ -312,6 +312,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - Server rules keep both keys (they write with `jsonb_set`), `freshRow` copies them, `mergeServerRows` never takes them from the server, and a backup accepts only booleans. A client's phone on a release before v296 shows no sign for `pyramid` until it updates.
 - Settings, a client's Health details and Health & safety (v299, the owner's asks, 15 Nov 2026: "more professional .. Apple like", "asking more health data from client", lb/kg and cm; the owner's picks after the pictures: the photo kept on top with Add photo under it, the rest Apple's way):
   - Settings and the client card are rounded cards 20 apart (Fitness's Account page, measured: 52-point rows). The client's Settings: the client's photo, then Health details and Health & safety, then Weights in and Appearance, then Email and Change password. The card: Name, Sign-in email and Phone as fields at the row's end; Health details and Health & safety with a summary ("36 · 5′ 7″ · 142 lb", "Left knee"); Weights in, Messages via, Access; the Plan as a native select drawn as Apple's pop-up button. The Birthday lives in Health details. A US phone number reads "(310) 555-0142" (`fmtPhone`; the record keeps what was typed).
+  - Back from any sub-page (these two, My number, Change password, Exercises, Packages) lands its list page where it was scrolled when the sub-page opened (`subY`, v300, the owner's report "swiping back doesnt work smooth": the swipe's picture showed the list where it was, then it jumped to the top as the finger let go; measured on the simulator). The card's email and phone are grey while not typed in (v300, the owner's ask: "slightly gray" as Apple's).
   - The two pages are settings sub-pages (`settingsOpen` "health" / "safety", sections `#vHealth` / `#vSafety`, `showSub(page, from)`): the client's from the client's Settings (`from` "settings"), the coach's from the card ("card": `parentLabel`, `showParent` and `backKey` know it) or from the note on the client's workout (false: Back returns to the workout). `healthId()` says whose; a page whose client is gone leaves itself at the next `render()`.
   - Health details is Fitness's page: Date of birth, Sex, Height, Weight, grey values, no chevrons; a tap opens Apple's inline wheel under the row (`openWheel`/`fillWheel`/`wheelCol`), one at a time. Measured on iOS 27.2 (the owner's screenshots and a native probe): the cell 230, the band a 32-point capsule centred 108 down and 29 in (two columns: two pills 18 apart; the date: one band), rows on a cylinder (87.3·sin(k·20°), height ·cos), the ink off the band at `--wheel-dim` (0.39 light, 0.355 dark) fading by `WH_FADE`. Each column is a native scroller (snapping, momentum, a trackpad) drawn on the cylinder as it turns; keys move it; `.hd-col` is in `NO_SWIPE`. A value is kept only once a person turns the wheel (an accidental tap saves nothing; the row shows the wheel while open). Height and weight each have their own unit switch on top of the open wheel (the owner's ask: "switch to cm and feet as they are adding the height and lbs and kg as they are adding body weight"): the values are kept as entered, `{ v, u }`, and shown in `heightUnit` / `bodyUnit` (`heightAs`, `weightAs` in `model.js`), so a switch never drifts a value. Starts when nothing is set, as Fitness's: 30 years ago, 5′ 3″ or 162 cm, 158 lb or 72 kg.
   - Health & safety is Apple's Medical ID made calm (no red titles): Training (Injuries and limits, with the line that the coach sees them at the top of the client's workouts), Medical (Conditions, Medications, Allergies, a Pregnant switch: iOS 27's, measured, on in the brand purple), In an emergency (Emergency contact, Doctor). Each text opens `editText`, the instructions' own sheet (`#textSheet`, 500 characters); the coach's view puts a call button on the emergency contact when its text holds a number (`phoneIn`).
