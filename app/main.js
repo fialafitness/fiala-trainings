@@ -1,8 +1,8 @@
 // Fiala Trainings — the app. Loaded by index.html as an ES module; boot() starts it.
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
-import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows, ui, planTouched } from "./state.js";
+import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows, pendingProfile, profileTouched, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, fmtDayLong, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, labelKey, cmpLabel, validateBackup, doneCount, timedPlan, measurePlan, convertWeight, stampUnit, toUnit, toTimeUnit, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
+import { TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, labelKey, cmpLabel, validateBackup, doneCount, timedPlan, measurePlan, convertWeight, stampUnit, toUnit, toTimeUnit, heightAs, weightAs, heightUnitOf, bodyUnitOf, fmtHeight, fmtBodyWeight, ageOn, profileGet, profilePut, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { seenDoc, moveOut, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -195,11 +195,11 @@ import { reportRange, buildReport } from "./report.js";
     rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
     $("tabbar").hidden = true; $("addBtn").hidden = true; document.body.classList.remove("tabs", "tplus"); $("dock").classList.remove("tp");
     $("viewSeg").hidden = true; $("addExBtn").hidden = true; document.body.classList.remove("wsdock"); $("dock").classList.remove("ws");   // the workout page's bar too: Coach | Client and its +
-    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vClientCard", "vHistory", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
+    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vClientCard", "vHealth", "vSafety", "vHistory", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
     $("navDone").hidden = true;
   }
   function showLogin(msg) {
-    dropWake();
+    dropWake(); if (askOpen) askOpen(false);                        // a sheet left up (v299's Health & safety editor, any question) never stays over the sign-in
     S.signedIn = false; S.clientMode = false; S.myClientId = null; reordering = false; tplOrdering = null; document.body.classList.remove("client");
     $("localFoot").hidden = true; $("myExercises").hidden = true; $("packagesBtn").hidden = true; $("settingsBtn").hidden = true; $("catalogBtn").hidden = true; $("dataBtn").hidden = true; settingsOpen = false; fromSettings = false;
     hideAllViews(); $("vLogin").hidden = false;
@@ -217,11 +217,11 @@ import { reportRange, buildReport } from "./report.js";
   let kbSwitching = false;               // the keyboard bar's Aa/123 switch is re-focusing the box: that blur is not a leave
   let exPainted = null;                  // { name, sub, video } the exercise page was painted with: edits are measured against these, not against data that may arrive later
   let backScroll = null;                 // where the Clients page (or the client's profile) was scrolled when Settings, Catalog or Data was opened: Back returns there, not to the top
-  let settingsOpen = false;              // false | "settings" | "password" | "exercises" | "packages" | "number"
-  let fromSettings = false;              // false | "settings" | "catalog": the list page a sub-page (number, password, exercises, packages) was opened from; Back returns there
+  let settingsOpen = false;              // false | "settings" | "card" | "health" | "safety" | "history" | "catalog" | "data" | "password" | "exercises" | "exercise" | "packages" | "number"
+  let fromSettings = false;              // false | "settings" | "catalog" | "card": the list page a sub-page (number, password, exercises, packages; v299: Health details, Health & safety) was opened from; Back returns there
   let pendingPage = null;                // the settings page that was open when the page was last refreshed: it comes back after sign-in
   let exStale = false;                   // the exercise pages came back before the first sync: painted once more when the custom names, videos and subtitles are in
-  const leaveSettings = () => { settingsOpen = false; fromSettings = false; exCurrent = null; exPainted = null; hideAllViews(); };   // off the settings pages (tests use it; Back does the same with a render)
+  const leaveSettings = () => { settingsOpen = false; fromSettings = false; exCurrent = null; exPainted = null; wheelOpen = null; stopWheels(); hideAllViews(); };   // off the settings pages (tests use it; Back does the same with a render)
   const rememberPage = () => lsSet("fiala.trainings.page", settingsOpen ? { open: settingsOpen, from: fromSettings || false, ...(settingsOpen === "exercise" && exCurrent ? { name: exCurrent.name, key: exCurrent.key } : {}) } : null);
   // ---- appearance: auto (follow the phone) | light | dark. Saved on this device only.
   const THEME_KEY = "fiala.theme";
@@ -277,8 +277,8 @@ import { reportRange, buildReport } from "./report.js";
   let freshWorkout = null;                                           // a workout just made (the +, a day tapped, a copy, a template used or filled in): it opens as the coach, to be filled in
   function showSettings() {
     settingsOpen = "settings"; fromSettings = false; hideAllViews(); $("vSettings").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
-    const p = trainerPhone(); $("setNumberVal").textContent = p || "Not set"; $("setEmail").textContent = S.sessionEmail || "";
-    paintHeroes();
+    const p = trainerPhone(); $("setNumberVal").textContent = fmtPhone(p) || "Not set"; $("setEmail").textContent = S.sessionEmail || ""; $("meEmail").textContent = S.sessionEmail || "";
+    paintHeroes(); paintUnitSegs();
   }
   function showClientCard() {                                       // the coach's card for this client: everything about the person on one page, like a contact's card
     const c = clients.get(S.view.id); if (!c || S.clientMode || isTemplateClient(c.id)) return;
@@ -291,14 +291,269 @@ import { reportRange, buildReport } from "./report.js";
     $("cardName").textContent = c.name || "Client"; paintHeroes();
     if (document.activeElement !== $("cNameField")) $("cNameField").value = c.name || "";
     if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
-    if (document.activeElement !== $("cPhone")) $("cPhone").value = c.phone || "";
-    if (document.activeElement !== $("cBirthday")) $("cBirthday").value = c.birthday || "";
+    if (document.activeElement !== $("cPhone")) $("cPhone").value = fmtPhone(c.phone);   // written as Apple writes a US number, "(310) 555-0142" (the record keeps what was typed)
+    $("cardHealthVal").textContent = healthSummary(c); $("cardSafetyVal").textContent = safetySummary(c);   // v299: the two pages' rows with what the coach must see at a glance (the Birthday moved into Health details)
     for (const b of $("chatSeg").querySelectorAll("button")) b.classList.toggle("on", (c.chat || "sms") === b.dataset.chat);
     for (const b of $("unitSeg").querySelectorAll("button")) b.classList.toggle("on", (c.unit || "lb") === b.dataset.unit);
     for (const b of $("accessSeg").querySelectorAll("button")) b.classList.toggle("on", (c.paused ? "paused" : "active") === b.dataset.access);
     paintPlanDetails(c); syncRadios();
     $("delClientConfirm").hidden = true; $("delClient").hidden = false;
   }
+  // ---------- health details, health & safety, the units (v299) ----------
+  // The owner's asks (15 Nov 2026): Settings "more professional .. Apple like" in both views, "maybe asking more health data from client .. something a high
+  // end trainer would", "for client weight and height make sure there is options for lbs and cm"; after the pictures, "switch to cm and feet as they are adding
+  // the height and lbs and kg as they are adding body weight ... units for workouts are separate", and "I want clients to be able to switch workout units by
+  // themselves ... clients who travel to Europe". The owner's picks: the photo kept on top with its Edit under it, the rest Apple's way; Health details is Fitness's own
+  // page (Date of birth, Sex, Height, Weight on inline wheels, measured on iOS 27.2), each measure with its own unit switch on its wheel; Health & safety a calm
+  // Medical ID (red means missed or delete here, so no red titles); the workout's lb | kg named "Weights in" (one constant: UNIT_LABEL).
+  const UNIT_LABEL = "Weights in";
+  const healthId = () => { const id = S.clientMode ? S.myClientId : S.view.name === "training" ? ((trainings.get(S.view.id) || {}).clientId || null) : S.view.id; return id && clients.has(id) && !isTemplateClient(id) ? id : null; };   // whose details the page shows: the client's own (the client), or the client the coach is looking at (the client's card, or the note on the client's workout)
+  const fmtPhone = (p) => { const t = String(p || "").trim(), d = t.replace(/\D/g, ""), n = d.length === 11 && d[0] === "1" && !t.startsWith("+") ? d.slice(1) : d; return n.length === 10 && !t.startsWith("+") ? "(" + n.slice(0, 3) + ") " + n.slice(3, 6) + "-" + n.slice(6) : t; };   // v299 (the approved pictures): a US number as Apple writes it; any other stays as typed
+  const firstOf = (c) => String((c && c.name) || "").trim().split(/\s+/)[0] || "your client";
+  function setProfile(cid, k, v) {                                   // one field of a client's own profile, by the key client_set_profile takes ("sex", "height", "health.limits", …): the coach saves the whole record as ever, the client sends the field through the client's own rule, from a queue that waits out no signal (sync.js)
+    const c = clients.get(cid); if (!c || isTemplateClient(cid)) return false;
+    const was = profileGet(c, k), now = v === undefined || v === "" ? null : v;
+    if (JSON.stringify(was) === JSON.stringify(now)) return false;
+    profilePut(c, k, now);
+    if (S.clientMode) { if (!pendingProfile.has(cid)) pendingProfile.set(cid, new Set()); pendingProfile.get(cid).add(k); localBackend.save(); }   // the client's phone shows it at once and keeps it across a relaunch
+    else { if (!profileTouched.has(cid)) profileTouched.set(cid, new Set()); profileTouched.get(cid).add(k); }   // the coach's mark: a save with nothing read to merge against keeps the server's value of every field the coach did not change (sync.js, takeProfile)
+    scheduleSave("clients", cid);                                    // the client: marks the client's record dirty, and its save sends the client's queue
+    return true;
+  }
+  const paintUnitSegs = () => {                                       // "Weights in": the card's (the coach) and the client's own Settings' (the client) lb | kg
+    for (const [seg, id] of [["unitSeg", S.clientMode ? null : S.view.id], ["meUnitSeg", S.clientMode ? S.myClientId : null]]) {
+      const c = id && clients.get(id); if (!c) continue; const u = c.unit === "kg" ? "kg" : "lb";
+      for (const b of $(seg).querySelectorAll("button")) { b.classList.toggle("on", b.dataset.unit === u); b.setAttribute("aria-checked", String(b.dataset.unit === u)); }
+    }
+  };
+  function setLiftUnit(cid, unit) {                                  // the unit the client's workout weights are logged in: the card, the client's Settings, and the "…" of the client's workout (the client's ask on a trip: kg at once)
+    const c = clients.get(cid); if (!c || isTemplateClient(cid) || (unit !== "lb" && unit !== "kg")) return false;
+    const was = c.unit === "kg" ? "kg" : "lb"; if (was === unit) return false;
+    for (const t of clientTrainings(cid)) if (stampUnit(t, was) && !S.clientMode) scheduleSave("trainings", t.id);   // what was logged stays what it was: 100 lb does not become 100 kg (on the client's phone the copy is stamped here and the server's by the client's rule, in the same step as the unit)
+    setProfile(cid, "unit", unit);
+    paintUnitSegs(); S.renderedTraining = null; render();           // the client's workout's cards drawn again in the new unit (Last time and Best convert; an exercise already begun keeps its own)
+    return true;
+  }
+  const fmtBirthday = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ""); if (!m) return ""; const a = ageOn(iso, today()); return new Date(+m[1], +m[2] - 1, +m[3], 12).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + (a != null ? " (" + a + ")" : ""); };   // "Mar 14, 1990 (36)": the age after the day, as Apple's Health details write it
+  const heightText = (c) => { const u = heightUnitOf(c); return fmtHeight(heightAs(c.height, u), u); };
+  const weightText = (c) => { const u = bodyUnitOf(c); return fmtBodyWeight(weightAs(c.bodyWeight, u), u); };
+  const healthSummary = (c) => [ageOn(c.birthday, today()), heightText(c), weightText(c)].filter((x) => x != null && x !== "").join(" · ");   // the card's row: "36 · 5′ 7″ · 142 lb"
+  const clause = (v) => String(v || "").trim().split(/[\n:.,;]/)[0].trim();
+  const safetySummary = (c) => { const h = c && c.health && typeof c.health === "object" ? c.health : {}; return [h.pregnant ? "Pregnant" : "", clause(h.limits), clause(h.conditions)].filter(Boolean).join(" · "); };   // the card's row: what the coach must not miss, "Left knee"
+  const SUB_PAGE = { health: "vHealth", safety: "vSafety" };
+  function showSub(page, from = fromSettings) {                      // Health details or Health & safety: the client's from the client's Settings, the coach's from the card or from the note on the client's workout; false when there is nobody to show (the record gone) or it is not this role's way in
+    if (!SUB_PAGE[page] || !healthId() || (from === "card" && S.clientMode) || (from === "settings" && !S.clientMode)) return false;
+    closeWheel(false); safetySig = "";
+    fromSettings = from; settingsOpen = page; hideAllViews(); $(SUB_PAGE[page]).hidden = false; $("back").hidden = false; $("backLabel").textContent = parentLabel(); $("brand").hidden = true; $("status").textContent = "";
+    paintSub(page); return true;
+  }
+  const openSub = (page, from, e) => { if (!showSub(page, from)) return; askEat(e); window.scrollTo(0, 0); };   // a double tap's second must not land on the row now under the finger (it would open its editor)
+  const paintSub = (page) => { if (page === "health") paintHealth(); else if (page === "safety") paintSafety(); };
+  // Health details: Fitness's page (measured on iOS 27.2): the four values grey with no chevron; a tap opens Apple's wheel right under the row, one at a time,
+  // and a second tap folds it. A value is kept only once the wheel is turned by a person (an accidental tap saves nothing); the row shows the wheel while it is open.
+  let wheelOpen = null;                                              // the row whose wheel is open: "dob" | "sex" | "height" | "weight"
+  let openCols = [];                                                 // its turning columns: stopped before they are taken away, so one still coasting saves nothing
+  const stopWheels = () => { for (const w of openCols) w.stop(); openCols = []; };
+  const HD_ROWS = [["dob", "Date of birth"], ["sex", "Sex"], ["height", "Height"], ["weight", "Weight"]];
+  const SEXES = [["", "Not set"], ["female", "Female"], ["male", "Male"], ["other", "Other"]];
+  const hdText = (c, k) => (k === "dob" ? fmtBirthday(c.birthday) : k === "sex" ? (c.sex ? (SEXES.find((x) => x[0] === c.sex) || SEXES[0])[1] : "") : k === "height" ? heightText(c) : weightText(c)) || "Not set";
+  function paintHealth() {
+    const id = healthId(), c = id && clients.get(id); if (!c) return;
+    $("healthIntro").textContent = S.clientMode ? "Helps your coach plan your training. Only you and your coach can see these details." : "Only you and " + firstOf(c) + " can see these details.";
+    const list = $("healthList"), have = HD_ROWS.map(([k]) => list.querySelector('li[data-k="' + k + '"]'));
+    if (list.dataset.cid === id && have.every((r) => r && r.isConnected)) { for (const [k] of HD_ROWS) if (k !== wheelOpen) { const v = list.querySelector('li[data-k="' + k + '"] .hd-val'); if (v) v.textContent = hdText(c, k); } return; }   // drawn already: a sync changes the values in place, never a wheel under the finger nor a keyboard's place on a row
+    stopWheels(); wheelOpen = null; list.dataset.cid = id;
+    list.replaceChildren(...HD_ROWS.map(([k, label]) => {
+      const li = document.createElement("li"); li.className = "hd-row"; li.dataset.k = k;
+      const b = document.createElement("button"); b.type = "button"; b.setAttribute("aria-expanded", "false");
+      const l = document.createElement("span"); l.textContent = label; const v = document.createElement("span"); v.className = "hd-val"; v.textContent = hdText(c, k);
+      b.append(l, v); b.addEventListener("click", () => toggleWheel(k)); li.appendChild(b); return li;
+    }));
+  }
+  function toggleWheel(k) { const id = healthId(), c = id && clients.get(id); if (!c) return; if (wheelOpen === k) { closeWheel(true); return; } closeWheel(false); openWheel(k, id); }
+  function closeWheel(repaint) {
+    stopWheels(); const list = $("healthList"); for (const w of list.querySelectorAll(".hd-wheel-li")) w.remove();
+    for (const r of list.querySelectorAll(".hd-open")) { r.classList.remove("hd-open"); const b = r.querySelector("button"); if (b) b.setAttribute("aria-expanded", "false"); }
+    const was = wheelOpen; wheelOpen = null; if (!was) return;
+    const id = healthId(), c = id && clients.get(id), v = list.querySelector('li[data-k="' + was + '"] .hd-val'); if (c && v) v.textContent = hdText(c, was);   // the row shows what is kept, not where the wheel last stood
+    if (repaint) paintHealth();
+  }
+  // Apple's inline wheel (UIPickerView as Fitness > Health Details draws it; measured on the owner's iPhone screenshots and a native probe on iOS 27.2): the cell
+  // 230 under its row, the band a 32-point capsule centred 108 down and 29 in from the card (two columns: two pills 18 apart; a date: one band); the rows lie on a
+  // cylinder, centre 87.3·sin(k·20°) from the band's and squashed by cos(k·20°), the one on the band in full ink and the rest at --wheel-dim, fading to 8% at the edge.
+  // Each column is a native scroller (the phone's own momentum and snapping, a trackpad's two fingers on the Mac), drawn on the cylinder as it turns.
+  const WH = { cy: 108, r: 87.3, th: Math.PI / 9 }; WH.p = Math.round(WH.r * WH.th * 64) / 64;   // the rows' pitch at the band, 30.47 points, in whole 64ths of a point: the browser lays the rows out to the 64th, so every row stops exactly where the arithmetic puts it (a fraction off, and Chrome's snapping took a script's or a key's move one row further)
+  const WH_FADE = [[0, 1], [40, 1], [50, 0.918], [57, 0.901], [64, 0.783], [66, 0.741], [72.5, 0.575], [74, 0.541], [81, 0.397], [82.5, 0.375], [86, 0.254], [88, 0.231]];   // the ink off the band by distance from its centre (measured row by row on vertical strokes, the same in light and dark)
+  const whFade = (d) => { if (d >= 88) return Math.max(0, 0.231 * (1 - (d - 88) / 4)); for (let i = 1; i < WH_FADE.length; i++) if (d <= WH_FADE[i][0]) { const [a, fa] = WH_FADE[i - 1], [b, fb] = WH_FADE[i]; return fa + ((fb - fa) * (d - a)) / (b - a); } return 0; };
+  function wheelCol(o) {                                              // o: { items, sel, label, pos (its place in the cell, CSS), onPick(i) (a person turned it), onTurn(i) (as it turns) }
+    const col = document.createElement("div"); col.className = "hd-col"; col.tabIndex = 0; col.setAttribute("role", "spinbutton"); col.setAttribute("aria-label", o.label); col.style.cssText = o.pos;
+    const pad = (h) => { const d = document.createElement("div"); d.className = "hd-pad"; d.style.height = h + "px"; return d; };
+    const its = o.items.map((t, i) => { const d = document.createElement("div"); d.className = "hd-it"; d.style.height = WH.p + "px"; d.style.lineHeight = WH.p + "px"; d.textContent = t; d.addEventListener("click", () => { touched = true; to(i, true); }); return d; });
+    col.append(pad(WH.cy - WH.p / 2), ...its, pad(230 - WH.cy - WH.p / 2));   // the first and the last row can come to the band
+    let cur = o.sel, touched = false, frame = 0, settleT = 0, near = cur, dead = false, fingerDown = false;
+    const dim = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--wheel-dim")) || 0.39;
+    const gone = () => dead || !col.isConnected || !col.clientHeight;   // taken away, or its page left: a column with no box reads 0, its first row
+    const draw = () => {
+      frame = 0; if (gone()) return; const f = (Number(col.scrollTop) || 0) / WH.p;
+      for (let i = Math.max(0, Math.floor(f) - 8); i <= Math.min(its.length - 1, Math.ceil(f) + 8); i++) {
+        const k = i - f, s = its[i].style;
+        if (Math.abs(k) > 4.5) { s.opacity = "0"; continue; }
+        const a = k * WH.th, y = WH.r * Math.sin(a), off = dim * whFade(Math.abs(y));
+        s.transform = "translateY(" + (y - k * WH.p).toFixed(2) + "px) scaleY(" + Math.cos(a).toFixed(3) + ")";
+        s.opacity = String(Math.abs(k) < 0.5 ? 1 - (1 - off) * Math.abs(k) * 2 : off);
+      }
+      const n = Math.max(0, Math.min(its.length - 1, Math.round(f))); if (n !== near) { near = n; if (o.onTurn) o.onTurn(n); }
+    };
+    const settle = () => {
+      clearTimeout(settleT); if (gone() || fingerDown) return;       // a finger resting mid-drag sends no scroll: the value is the one under the band when it lets go
+      const i = Math.max(0, Math.min(its.length - 1, Math.round((Number(col.scrollTop) || 0) / WH.p)));
+      col.setAttribute("aria-valuetext", o.items[i]); col.setAttribute("aria-valuenow", String(i));
+      if (touched) { cur = i; o.onPick(i); }                         // turned by a person: kept (the same value turned back to is kept too: a value never set takes the wheel's); once a person has turned it, every later stop is theirs
+    };
+    const to = (i, smooth) => { i = Math.max(0, Math.min(its.length - 1, i)); const top = i * WH.p; if (Math.abs((Number(col.scrollTop) || 0) - top) < 0.5) { settle(); return; } try { col.scrollTo({ top, behavior: smooth && !calmMotion() ? "smooth" : "auto" }); } catch (_) { col.scrollTop = top; } if (!smooth) { draw(); settle(); } };
+    col.addEventListener("scroll", () => { if (!frame) frame = requestAnimationFrame(draw); clearTimeout(settleT); settleT = setTimeout(settle, 140); }, { passive: true });
+    col.addEventListener("scrollend", settle);
+    for (const ev of ["pointerdown", "wheel"]) col.addEventListener(ev, () => { touched = true; }, { passive: true });
+    col.addEventListener("touchstart", () => { touched = true; fingerDown = true; }, { passive: true });
+    for (const ev of ["touchend", "touchcancel"]) col.addEventListener(ev, () => { fingerDown = false; clearTimeout(settleT); settleT = setTimeout(settle, 140); }, { passive: true });
+    col.addEventListener("keydown", (e) => { const step = { ArrowUp: -1, ArrowDown: 1, PageUp: -5, PageDown: 5 }[e.key]; const i = Math.round((Number(col.scrollTop) || 0) / WH.p); if (step == null && e.key !== "Home" && e.key !== "End") return; e.preventDefault(); touched = true; to(e.key === "Home" ? 0 : e.key === "End" ? its.length - 1 : i + step, false); });
+    col.setAttribute("aria-valuetext", o.items[cur]); col.setAttribute("aria-valuenow", String(cur));
+    return { el: col, place: () => { col.scrollTop = cur * WH.p; draw(); }, stop: () => { dead = true; clearTimeout(settleT); if (frame) cancelAnimationFrame(frame); frame = 0; } };
+  }
+  const band = (pos) => { const d = document.createElement("div"); d.className = "hd-band"; d.style.cssText = pos; return d; };
+  const POS1 = "left:28px;right:28px", POS2 = ["left:28px;width:calc((100% - 74px) / 2)", "right:28px;width:calc((100% - 74px) / 2)"];   // one pill across; two pills 18 apart (feet | inches)
+  const POS3 = ["left:28px;width:calc((100% - 56px) * 0.46)", "left:calc(28px + (100% - 56px) * 0.46);width:calc((100% - 56px) * 0.2)", "left:calc(28px + (100% - 56px) * 0.66);width:calc((100% - 56px) * 0.34)"];   // month | day | year under one band, as Apple's date wheel
+  const MONTHS = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1, 12).toLocaleDateString("en-US", { month: "long" }));
+  const HT = { in: [12, 119], cm: [30, 272] }, WT = { lb: [20, 700], kg: [10, 320] };   // the wheels' ranges (the server takes 1-120 in, 1-300 cm, 1-1500 lb, 1-700 kg)
+  function openWheel(k, id) {
+    const list = $("healthList"), row = list.querySelector('li[data-k="' + k + '"]'); if (!row) return;
+    wheelOpen = k; row.classList.add("hd-open"); const rb = row.querySelector("button"); if (rb) rb.setAttribute("aria-expanded", "true");
+    const li = document.createElement("li"); li.className = "hd-wheel-li"; row.after(li); fillWheel(li, k, id);
+  }
+  function fillWheel(li, k, id) {                                    // the wheel (and the measure's unit switch on top of it) for one row, drawn anew when its unit is switched
+    const c = clients.get(id); if (!c) return;
+    const show = (t) => { const v = $("healthList").querySelector('li[data-k="' + k + '"] .hd-val'); if (v) v.textContent = t; };   // the row shows the wheel as it turns (Fitness)
+    const cell = document.createElement("div"); cell.className = "hd-wheel"; const cols = [];
+    const unitSwitch = (opts, on, pick) => { const wrap = document.createElement("div"); wrap.className = "hd-unit"; const seg = document.createElement("div"); seg.className = "seg"; seg.setAttribute("role", "radiogroup"); seg.setAttribute("aria-label", k === "height" ? "Height in" : "Weight in");
+      for (const [u, text] of opts) { const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "radio"); b.dataset.u = u; b.textContent = text; b.classList.toggle("on", u === on); b.setAttribute("aria-checked", String(u === on)); b.addEventListener("click", () => { if (u !== on) pick(u); }); seg.appendChild(b); }
+      wrap.appendChild(seg); return wrap; };
+    const redo = () => { stopWheels(); li.replaceChildren(); fillWheel(li, k, id); };
+    if (k === "dob") {
+      const now = today(), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(c.birthday || "") || /^(\d{4})-(\d{2})-(\d{2})$/.exec((+now.slice(0, 4) - 30) + now.slice(4)) || [];   // nothing set: today 30 years ago (Fitness's own start, measured)
+      const y0 = 1900, yN = +now.slice(0, 4), years = Array.from({ length: yN - y0 + 1 }, (_, i) => String(y0 + i)), days = Array.from({ length: 31 }, (_, i) => String(i + 1));
+      const val = [+m[2] - 1, +m[3] - 1, Math.max(0, Math.min(years.length - 1, +m[1] - y0))];
+      const iso = () => { const y = y0 + val[2], mo = val[0] + 1, last = new Date(y, mo, 0, 12).getDate(), d = Math.min(val[1] + 1, last); return y + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0"); };   // the 31st of a short month is its last day
+      const turn = (j) => (i) => { val[j] = i; show(fmtBirthday(iso())); };
+      const pick = (j) => (i) => { val[j] = i; const v = iso(); if (v > today()) { const cc = clients.get(id); show((cc && fmtBirthday(cc.birthday)) || "Not set"); return; } setProfile(id, "birthday", v); show(fmtBirthday(v)); };   // never a day to come: the row keeps what is kept
+      cell.append(band(POS1)); [[MONTHS, "Month"], [days, "Day"], [years, "Year"]].forEach(([items, label], j) => cols.push(wheelCol({ items, sel: val[j], label, pos: POS3[j], onPick: pick(j), onTurn: turn(j) })));
+      show(fmtBirthday(iso()));
+    } else if (k === "sex") {
+      const sel = Math.max(0, SEXES.findIndex((x) => x[0] === (c.sex || "")));
+      cell.append(band(POS1)); cols.push(wheelCol({ items: SEXES.map((x) => x[1]), sel, label: "Sex", pos: POS1, onPick: (i) => { setProfile(id, "sex", SEXES[i][0] || null); show(SEXES[i][1]); }, onTurn: (i) => show(SEXES[i][1]) }));
+    } else if (k === "height") {
+      const u = heightUnitOf(c), [lo, hi] = HT[u], had = heightAs(c.height, u), v = Math.max(lo, Math.min(hi, had == null ? (u === "cm" ? 162 : 63) : had));   // nothing set: 5' 3" or 162 cm (Fitness's own starts, measured)
+      li.appendChild(unitSwitch([["in", "ft & in"], ["cm", "cm"]], u, (nu) => { setProfile(id, "heightUnit", nu); redo(); }));
+      if (u === "cm") {
+        const items = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i + " cm");
+        cell.append(band(POS1)); cols.push(wheelCol({ items, sel: v - lo, label: "Centimeters", pos: POS1, onPick: (i) => { setProfile(id, "height", { v: lo + i, u: "cm" }); show(fmtHeight(lo + i, "cm")); }, onTurn: (i) => show(fmtHeight(lo + i, "cm")) }));
+      } else {
+        const ft = [Math.floor(v / 12), v % 12], total = () => Math.max(lo, Math.min(hi, ft[0] * 12 + ft[1]));
+        const feet = Array.from({ length: 9 }, (_, i) => i + 1 + "′"), inches = Array.from({ length: 12 }, (_, i) => i + "″");
+        cell.append(band(POS2[0]), band(POS2[1]));
+        cols.push(wheelCol({ items: feet, sel: ft[0] - 1, label: "Feet", pos: POS2[0], onPick: (i) => { ft[0] = i + 1; setProfile(id, "height", { v: total(), u: "in" }); show(fmtHeight(total(), "in")); }, onTurn: (i) => { ft[0] = i + 1; show(fmtHeight(total(), "in")); } }));
+        cols.push(wheelCol({ items: inches, sel: ft[1], label: "Inches", pos: POS2[1], onPick: (i) => { ft[1] = i; setProfile(id, "height", { v: total(), u: "in" }); show(fmtHeight(total(), "in")); }, onTurn: (i) => { ft[1] = i; show(fmtHeight(total(), "in")); } }));
+      }
+      show(fmtHeight(v, u));
+    } else {
+      const u = bodyUnitOf(c), [lo, hi] = WT[u], had = weightAs(c.bodyWeight, u), v = Math.max(lo, Math.min(hi, had == null ? (u === "kg" ? 72 : 158) : had));   // nothing set: 158 lb or 72 kg (Fitness's own starts, measured)
+      li.appendChild(unitSwitch([["lb", "lb"], ["kg", "kg"]], u, (nu) => { setProfile(id, "bodyUnit", nu); redo(); }));
+      const items = Array.from({ length: hi - lo + 1 }, (_, i) => fmtBodyWeight(lo + i, u));
+      cell.append(band(POS1)); cols.push(wheelCol({ items, sel: v - lo, label: u === "kg" ? "Kilograms" : "Pounds", pos: POS1, onPick: (i) => { setProfile(id, "bodyWeight", { v: lo + i, u }); show(fmtBodyWeight(lo + i, u)); }, onTurn: (i) => show(fmtBodyWeight(lo + i, u)) }));
+      show(fmtBodyWeight(v, u));
+    }
+    for (const w of cols) cell.appendChild(w.el);
+    li.appendChild(cell); for (const w of cols) w.place(); openCols.push(...cols);          // in the page first: a scroller takes its place only once it has a height
+  }
+  // Health & safety: Apple's Medical ID made calm (the owner's pick): the client's injuries and limits first, under "Training" (the coach sees them at the top of the client
+  // workouts), the client's medical notes, a Pregnant switch, and who to call. Each row opens the instructions' own sheet (the approved picture): a box of 500 characters.
+  const SAFETY = { limits: "Injuries and limits", conditions: "Conditions", medications: "Medications", allergies: "Allergies", emergency: "Emergency contact", doctor: "Doctor" };
+  const SAFETY_LEAD = { limits: "Helps your coach keep your training safe.", conditions: "Helps your coach plan your training around them.", medications: "Some medications change how the body responds to exercise.", allergies: "So your coach knows what to avoid.", emergency: "Who your coach calls if something happens during a session: their name, how you know them, and their number.", doctor: "Your doctor's name and number, in case your coach needs them." };
+  const SAFETY_HINT = { limits: "Left knee: no deep lunges", conditions: "Asthma", medications: "Inhaler, as needed", allergies: "None", emergency: "Name, relationship and phone", doctor: "Name and phone" };
+  const PHONE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.6 10.8a15.2 15.2 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.6a1 1 0 0 1-.25 1z"/></svg>';
+  const phoneIn = (text) => {                                        // the number in what was written ("David Carter (husband) · (310) 555-0187"): a US number of ten digits (one before it allowed) or one written with a +, on one line; none, or two run together: no call button (the v299 review's catch: a wrong number dialled)
+    const t = String(text || ""), intl = /\+\d[\d ().\u2010-\u2015-]{6,}\d/.exec(t);
+    if (intl) { const d = intl[0].replace(/\D/g, ""); if (d.length >= 8 && d.length <= 15) return d; }
+    const us = /(?:^|[^\d+])((?:1[ .\u2010-\u2015-]?)?\(?\d{3}\)?[ .\u2010-\u2015-]?\d{3}[ .\u2010-\u2015-]?\d{4})(?!\d)/.exec(t);
+    return us ? phoneDigits(us[1]) : "";
+  };
+  let safetySig = "";
+  function paintSafety() {
+    const id = healthId(), c = id && clients.get(id); if (!c) return;
+    const h = c.health && typeof c.health === "object" ? c.health : {}, who = firstOf(c), sig = JSON.stringify([id, h, S.clientMode, who]);
+    if (sig === safetySig) return; safetySig = sig;                 // a sync that changed nothing here draws nothing (a row keeps the keyboard's place)
+    $("safetyIntro").textContent = S.clientMode ? "Helps your coach keep your training safe. Only you and your coach can see this." : "Only you and " + who + " can see this.";
+    $("safetyFoot").textContent = S.clientMode ? "Your coach sees these at the top of your workouts." : "Shown at the top of " + who + "’s workouts while you build them.";
+    const row = (f) => {
+      const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; b.className = "two-row"; b.dataset.f = f;
+      const two = document.createElement("span"); two.className = "two"; const l = document.createElement("span"); l.textContent = SAFETY[f]; const sub = document.createElement("span"); sub.className = "two-sub"; sub.textContent = String(h[f] || "").trim() || "Not set"; two.append(l, sub);
+      b.appendChild(two); b.addEventListener("click", (e) => editSafety(id, f, e)); li.appendChild(b);
+      const digits = f === "emergency" && !S.clientMode ? phoneIn(h[f]) : "";   // the coach can call the client's emergency contact from here (the approved picture: a round button in place of the chevron)
+      if (digits) { li.className = "call-row"; const a = document.createElement("a"); a.className = "call-disc"; a.href = "tel:+" + digits; a.setAttribute("aria-label", "Call " + (String(h[f]).split(/[(·,\n]/)[0].trim() || "emergency contact")); a.innerHTML = PHONE_ICON; li.appendChild(a); }
+      else { const ch = document.createElement("span"); ch.className = "sub"; ch.innerHTML = '<span class="chev">&rsaquo;</span>'; b.appendChild(ch); }
+      return li;
+    };
+    const preg = document.createElement("li"), pr = document.createElement("div"); pr.className = "srow sw-row"; const pl = document.createElement("span"); pl.textContent = "Pregnant"; pl.id = "pregLabel";
+    const sw = document.createElement("button"); sw.type = "button"; sw.className = "ios-switch"; sw.setAttribute("role", "switch"); sw.setAttribute("aria-labelledby", "pregLabel"); sw.setAttribute("aria-checked", String(!!h.pregnant));
+    sw.addEventListener("click", () => { const cc = clients.get(id); if (!cc) return; const on = !(cc.health && cc.health.pregnant); setProfile(id, "health.pregnant", on ? true : null); sw.setAttribute("aria-checked", String(on)); const hh = cc.health && typeof cc.health === "object" ? cc.health : {}; safetySig = JSON.stringify([id, hh, S.clientMode, firstOf(cc)]); });   // the switch shows it already: the page is not drawn again (the keyboard keeps its place)
+    pr.append(pl, sw); preg.appendChild(pr);
+    $("safetyTraining").replaceChildren(row("limits"));
+    $("safetyMedical").replaceChildren(row("conditions"), row("medications"), row("allergies"), preg);
+    $("safetyEmergency").replaceChildren(row("emergency"), row("doctor"));
+  }
+  function editSafety(id, f, e) {
+    const c = clients.get(id); if (!c) return; const who = firstOf(c);
+    editText({ title: SAFETY[f], lead: S.clientMode ? SAFETY_LEAD[f] : f === "limits" ? "Shown at the top of " + who + "’s workouts while you build them." : who + " sees this too.", value: String(profileGet(c, "health." + f) || ""), placeholder: SAFETY_HINT[f], max: 500, keys: byKeys(e),
+      onSave: (v) => { if (setProfile(id, "health." + f, v || null)) { safetySig = ""; paintSafety(); } },
+      back: () => document.querySelector('#vSafety button.two-row[data-f="' + f + '"]') });
+  }
+  function editText(o) {                                              // a text in the instructions' own sheet (the approved picture): the title, a line saying why, a box; Add, or Save when there is something, over Cancel; nothing changes until then, and Save with the box emptied takes it away
+    if (askOpen) askOpen(false);
+    const bg = $("textSheet"), sh = bg.firstElementChild, f = $("textField"), ok = $("textOk"), no = $("textNo"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert);
+    const had = !!String(o.value || "").trim();
+    $("textTitle").textContent = o.title; $("textLead").textContent = o.lead || ""; $("textLead").hidden = !o.lead; ok.textContent = had ? "Save" : "Add";
+    f.maxLength = o.max || 500; f.placeholder = o.placeholder || ""; f.value = String(o.value || ""); f.style.maxHeight = "";
+    const typed = () => String(f.value || "").trim().slice(0, o.max || 500);   // a script's value is not cut by maxlength: the server's limit, kept here
+    let armed = false; ok.disabled = true;
+    const settle = setTimeout(() => { armed = true; ok.disabled = !had && !typed(); }, 350);
+    const onInput = () => { if (armed) ok.disabled = !had && !typed(); };
+    const vv = window.visualViewport, lift = () => {
+      const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0; sh.style.paddingBottom = kb ? kb + 16 + "px" : ""; f.style.maxHeight = ""; if (!kb) return;
+      const tall = f.offsetHeight; f.style.maxHeight = "0px"; const rest = (Number(sh.scrollHeight) || 0) - (Number(f.offsetHeight) || 0), top = parseFloat(getComputedStyle($("ctxDim")).paddingTop) || 0;
+      f.style.maxHeight = Math.max(96, Math.min(tall, Math.floor(window.innerHeight - top - 24 - rest))) + "px";
+    };
+    const refocus = () => { if (o.keys && o.back) { const b = o.back(); if (b) b.focus({ preventScroll: true }); } };   // a keyboard's place: back on its row
+    const done = (back = true) => {
+      clearTimeout(settle); askOpen = null; S.asking = !!pv; if (document.activeElement === f) f.blur(); bg.hidden = true; ok.disabled = false; sh.style.paddingBottom = ""; f.style.maxHeight = "";
+      for (const el of behind) el.inert = false;
+      ok.removeEventListener("click", onOk); no.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); bg.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey); f.removeEventListener("input", onInput);
+      if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
+      if (back) refocus();
+    };
+    const onOk = (e) => { if (!armed || (!had && !typed())) return; askEat(e); const v = typed(); done(false); o.onSave(v); refocus(); };   // saved and drawn first, then the place: on the row as it is drawn now
+    let downOnBg = false; const onDown = (e) => { downOnBg = e.target === bg; };
+    const onNo = (e) => { askEat(e); done(); }, onBg = (e) => { if (armed && downOnBg && e.target === bg) { askEat(e); done(); } };   // a double press's second must not land on the row under the buttons
+    const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); done(); } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onOk(); } };
+    askOpen = done; S.asking = true;
+    ok.addEventListener("click", onOk); no.addEventListener("click", onNo); bg.addEventListener("click", onBg); bg.addEventListener("pointerdown", onDown); document.addEventListener("keydown", onKey); f.addEventListener("input", onInput);
+    if (vv) { vv.addEventListener("resize", lift); vv.addEventListener("scroll", lift); }
+    for (const el of behind) el.inert = true;
+    bg.hidden = false; f.focus({ preventScroll: true }); const n = f.value.length; try { f.setSelectionRange(n, n); } catch (_) {}   // in the tap that asked for it, so the phone gives the keyboard
+  }
+  const unitRows = (cid, still) => { const u = (clients.get(cid) || {}).unit === "kg" ? "kg" : "lb"; return ["lb", "kg"].map((x, i) => ({ label: UNIT_LABEL + " " + x, checked: u === x, sep: i === 0, onPick: () => { if (still()) setLiftUnit(cid, x); } })); };   // the workout's "…": "Weights in lb" / "Weights in kg", a choice of one after a line (the approved picture A)
+  const paintLimits = (t) => {                                       // the client's injuries and limits at the top of the client's workout, in the coach's own look only (never a template, never the client's look)
+    const asClient = S.clientMode || previewClient, h = !t || asClient || isTemplateClient(t.clientId) ? null : (clients.get(t.clientId) || {}).health, lim = h && typeof h === "object" && typeof h.limits === "string" ? h.limits.trim() : "";
+    $("limitsNote").hidden = !lim; $("limitsText").textContent = lim; $("limitsNote").setAttribute("aria-label", lim ? "Injuries and limits: " + lim : "Injuries and limits");
+  };
   const openGroups = new Map();                                     // "<client>/<group>" -> opened or folded by hand this session
   let histMemo = null;                                              // a workout opened from History: { client, id, y: where History was scrolled, under: where the client's page under it was }
   const fromHistory = (t) => !!t && S.view.name === "training" && S.view.id === t.id && S.view.from === "history" && !isTemplateClient(t.clientId) && clients.has(t.clientId);   // this workout was opened from its client's History (the view says so, a reload included): Back goes there
@@ -364,8 +619,8 @@ import { reportRange, buildReport } from "./report.js";
   function showData() {                                             // the backup and the restore
     settingsOpen = "data"; fromSettings = false; hideAllViews(); $("vData").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
   }
-  const parentLabel = () => (fromSettings === "catalog" ? "Catalog" : fromSettings ? "Settings" : "Back");
-  const showParent = () => (fromSettings === "catalog" ? showCatalog : showSettings)();
+  const parentLabel = () => (fromSettings === "catalog" ? "Catalog" : fromSettings === "card" ? ((clients.get(S.view.id) || {}).name || "Client") : fromSettings ? "Settings" : "Back");
+  const showParent = () => (fromSettings === "catalog" ? showCatalog : fromSettings === "card" ? showClientCard : showSettings)();   // v299: the client's card is the parent of the client's Health details and Health & safety
   function showNumber() {
     settingsOpen = "number"; hideAllViews(); $("vNumber").hidden = false; $("back").hidden = false; $("backLabel").textContent = parentLabel(); $("brand").hidden = true; $("status").textContent = "";
     $("myPhone").value = trainerPhone(); $("myPhoneMsg").textContent = "";
@@ -680,7 +935,7 @@ import { reportRange, buildReport } from "./report.js";
     if (quiet && S.clientMode !== (trainer !== true)) { quiet = false; settingsOpen = false; }   // painted as the other role: start the pages over
     if (S.pendingOwner && S.pendingOwner !== S.sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
       resetPhotos();                                                 // the photos queued and kept by the last account go too
-      dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); folderTouched.clear(); deletedFolders.clear(); fromFile.clear();
+      dirty.clear(); pendingProfile.clear(); profileTouched.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); folderTouched.clear(); deletedFolders.clear(); fromFile.clear();
     }
     S.pendingOwner = S.sessionEmail; persistPending();
     S.clientMode = trainer !== true;
@@ -776,6 +1031,12 @@ import { reportRange, buildReport } from "./report.js";
   const openHistoryPage = () => { backScroll = window.scrollY; showHistory(); window.scrollTo(0, 0); };
   $("histBtn").addEventListener("click", openHistoryPage);
   $("meDisc").addEventListener("click", () => { backScroll = window.scrollY; if (S.clientMode) showSettings(); else showClientCard(); window.scrollTo(0, 0); });   // the client's person disc in the bar: Settings, where Apple keeps the person
+  $("meHealth").addEventListener("click", (e) => openSub("health", "settings", e));   // v299: the client's own Health details and Health & safety, from the client's Settings
+  $("meSafety").addEventListener("click", (e) => openSub("safety", "settings", e));
+  $("cardHealth").addEventListener("click", (e) => openSub("health", "card", e));     // the coach's, from the client's card
+  $("cardSafety").addEventListener("click", (e) => openSub("safety", "card", e));
+  $("meUnitSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-unit]"); if (b && S.clientMode && S.myClientId) setLiftUnit(S.myClientId, b.dataset.unit); });   // the client's own "Weights in" (v299: the client switches it, on a trip to Europe)
+  $("limitsNote").addEventListener("click", (e) => { if (S.view.name !== "training" || S.clientMode || previewClient) return; backScroll = window.scrollY; if (!showSub("safety", false)) { backScroll = null; return; } askEat(e); window.scrollTo(0, 0); });   // the note on the client's workout opens the client's Health & safety; Back returns to the workout where it was
   $("forgotBtn").addEventListener("click", async () => {
     const email = $("loginEmail").value.trim();
     if (!email) { $("loginMsg").textContent = "Type your email first, then tap Forgot password."; return; }
@@ -797,10 +1058,10 @@ import { reportRange, buildReport } from "./report.js";
   });
   const signOutClient = async () => {
     await flushNow();
-    if (dirty.size) { $("status").textContent = "Some weights are not saved yet \u00b7 try again when online"; return; }
+    if (dirty.size) { $("status").textContent = "Some changes are not saved yet \u00b7 try again when online"; return; }
     const finish = () => {
       for (const tm of timers.values()) clearTimeout(tm);
-      timers.clear(); chains.clear(); dirty.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); S.failed = false;
+      timers.clear(); chains.clear(); dirty.clear(); pendingProfile.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); S.failed = false;
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
       S.offline = false; S.offlineEntry = null; S.pendingOwner = "";
@@ -829,7 +1090,7 @@ import { reportRange, buildReport } from "./report.js";
     if (dirty.size) { $("status").textContent = "Some changes are not saved yet \u00b7 try again when online"; return; }
     const finish = () => {
       for (const tm of timers.values()) clearTimeout(tm);
-      timers.clear(); chains.clear(); dirty.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); folderTouched.clear(); deletedFolders.clear(); fromFile.clear(); S.failed = false;
+      timers.clear(); chains.clear(); dirty.clear(); pendingProfile.clear(); profileTouched.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); folderTouched.clear(); deletedFolders.clear(); fromFile.clear(); S.failed = false;
       clients.clear(); trainings.clear(); localBackend.save();
       try { localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
       S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar();
@@ -895,7 +1156,7 @@ import { reportRange, buildReport } from "./report.js";
       if (effDate(other) === effDate(t) && (other.createdAt || "") >= (t.createdAt || "")) continue;
       const r = other.rows.find((x) => canon(x.name) === name && ((x.weights || []).some((w, i) => setCounts(x, i) && String(w || "").trim() !== "") || (x.repsDone || []).some((v, i) => setCounts(x, i) && String(v || "").trim() !== "")));   // a session where a set of it really happened (a plank has no weight: its time counts)
       if (r) {
-        const cu = (clients.get(t.clientId) || {}).unit || "lb"; const only = (arr) => (arr || []).map((v, i) => (setCounts(r, i) ? v : ""));
+        const cu = row.unit || (clients.get(t.clientId) || {}).unit || "lb"; const only = (arr) => (arr || []).map((v, i) => (setCounts(r, i) ? v : ""));
         const was = measurePlan(r.reps), is = measurePlan(row.reps);                       // the plan's measure then and now: seconds suggested into a minutes box, or into a meters box, would be logged as they stand
         const reps = (was ? was.unit : "") === (is ? is.unit : "") ? only(r.repsDone) : (!was || !is || was.unit === "m" || is.unit === "m") ? [] : only(r.repsDone).map((v) => { const n = parseFloat(String(v || "").replace(",", ".")); if (!Number.isFinite(n)) return ""; const c = was.unit === "min" ? n * 60 : n / 60; return Number.isInteger(c) ? String(c) : ""; });
         return { date: effDate(other) || other.date, weights: only(r.weights).map((v) => (r.unit && r.unit !== cu ? String(convertWeight(v, r.unit, cu)) : v)), reps };
@@ -955,7 +1216,7 @@ import { reportRange, buildReport } from "./report.js";
   async function runBack() {                                       // where Back goes, from every page: the Back circle, Safari's swipe and the edge swipe all come here
     if (settingsOpen === "exercise") { if (exDirty() && !(await askFirst({ title: "Discard the changes?", text: "The exercise stays as it was.", yes: "Discard" }))) return; showExercises(true); return; }
     if (settingsOpen) {
-      if (fromSettings) { showParent(); window.scrollTo(0, 0); return; }
+      if (fromSettings) { const sub = settingsOpen; showParent(); if (settingsOpen !== sub) { window.scrollTo(0, 0); return; } }   // the parent could not open (the client's card, with the client's record gone): off the settings pages, as below
       settingsOpen = false; fromSettings = false; $("exPlayer").replaceChildren(); hideAllViews(); render();
       if (backScroll != null) window.scrollTo(0, backScroll); else { const foot = $("localFoot"); if (!S.clientMode && !foot.hidden) foot.scrollIntoView({ block: "end" }); else window.scrollTo(0, 0); }   // back where the page was; after a refresh, at the pills it was opened from
       backScroll = null; return;
@@ -1086,7 +1347,7 @@ import { reportRange, buildReport } from "./report.js";
   function backKey() {                                              // the screen runBack() would go to, without going (keep in step with runBack)
     const k = (v, s) => viewKey(v) + "|" + (s || "") + "|";
     if (settingsOpen === "exercise") return k(S.view, "exercises");
-    if (settingsOpen) return fromSettings ? k(S.view, fromSettings === "catalog" ? "catalog" : "settings") : k(S.view, "");
+    if (settingsOpen) return fromSettings ? k(S.view, fromSettings === "catalog" ? "catalog" : fromSettings === "card" ? "card" : "settings") : k(S.view, "");
     if (S.view.name === "training") { const t = trainings.get(S.view.id); if (fromHistory(t)) return k({ name: "client", id: t.clientId }, "history"); return k(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }, ""); }
     if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.folder) { const f = tplNode(S.view.folder); return k(tplUp(f && f.parent), ""); }
     if (S.view.name === "client" && isTemplateClient(S.view.id) && !S.view.program && pickFor) return k(fillFor ? { name: "training", id: fillFor } : { name: "client", id: pickFor }, "");
@@ -1108,7 +1369,7 @@ import { reportRange, buildReport } from "./report.js";
   // The move that holds does nothing else, so its answer reaches WebKit at once; should the page scroll anyway, the swipe settles back.
   let swipeOn = (() => { try { return (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || (typeof navigator !== "undefined" && navigator.standalone === true); } catch (_) { return false; } })();
   const deskOn = (() => { try { return typeof matchMedia === "function" && matchMedia("(hover: hover) and (pointer: fine)").matches; } catch (_) { return false; } })();   // a computer (mouse or trackpad): two fingers swipe the page back there too, in a browser tab as in the Dock's web app (the web app's own swipe has no page behind it, and Chrome's is off under overscroll-behavior-x: none)
-  const SWIPE_EDGE = 24, SWIPE_GO = 8, NO_SWIPE = "#calView, #week, #weekView, #dpGrid, .tr-chips, .kb-chips, .grip, .sugg, input, textarea, select, [contenteditable], li.swipe-row.swiped";   // things that drag sideways or scroll themselves keep the touch (Apple's rule for its swipe from anywhere)
+  const SWIPE_EDGE = 24, SWIPE_GO = 8, NO_SWIPE = "#calView, #week, #weekView, #dpGrid, .tr-chips, .kb-chips, .grip, .sugg, input, textarea, select, [contenteditable], li.swipe-row.swiped, .hd-col";   // things that drag sideways or scroll themselves keep the touch (Apple's rule for its swipe from anywhere)
   const GLASS_RES = 0.416, GLASS_DAMP = 0.75, GLASS = ["back", "meDisc", "navDone", "tMore", "tAdd", "barMsg"];   // the bar's buttons, and their change on release
   const easeMemo = new Map();
   const springEase = (v0, response, damping) => {                   // a spring (from rest at 0 to 1, starting at speed v0 in "whole distances per second") as a CSS easing and its length,
@@ -2640,13 +2901,14 @@ import { reportRange, buildReport } from "./report.js";
     if (S.recovering) { showRecovery(); return; }
     if (pendingPage && S.signedIn && !(S.clientMode && !S.myClientId)) {   // a refresh on a settings page lands back on it at the first paint: no glimpse of the Clients page on the way
       const p = pendingPage; pendingPage = null; exStale = !!S.sb && !S.syncedOnce && (p.open === "exercises" || p.open === "exercise");
-      const open = { settings: showSettings, card: showClientCard, history: showHistory, catalog: showCatalog, data: showData, number: showNumber, packages: showPackages, exercises: showExercises, password: showPassword }[p.open];
+      const open = { settings: showSettings, card: showClientCard, history: showHistory, catalog: showCatalog, data: showData, number: showNumber, packages: showPackages, exercises: showExercises, password: showPassword, health: () => showSub("health"), safety: () => showSub("safety") }[p.open];
       const from = p.from === true ? "settings" : (p.from || false);   // older devices wrote a yes/no
       if (p.open === "exercise" && p.name) { fromSettings = from; showExercise(p.name, p.key || squash(p.name)); return; }
-      if (open) { fromSettings = from; open(); return; }
+      if (open) { fromSettings = from; if (open() !== false) return; fromSettings = false; }   // an opener that refuses (the client gone, or not this role's page) leaves nothing half drawn
     }
+    if (SUB_PAGE[settingsOpen] && !healthId()) { settingsOpen = false; fromSettings = false; wheelOpen = null; hideAllViews(); }   // v299: the client of a Health page gone (deleted, or the client's record no longer sent): off it, to where the normal drawing puts the page
     if (settingsOpen === "settings" || settingsOpen === "card") paintHeroes();   // a photo that went up meanwhile shows on the page that is open
-    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $("navDone").hidden = settingsOpen !== "exercise"; $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : settingsOpen === "card" ? "vClientCard" : settingsOpen === "history" ? "vHistory" : settingsOpen === "catalog" ? "vCatalog" : settingsOpen === "data" ? "vData" : "vPassword").hidden = false; if (settingsOpen === "packages") renderPackages(); if (settingsOpen === "card") paintCard(); if (settingsOpen === "history") paintHistory(); if (exStale && S.syncedOnce) { exStale = false; if (settingsOpen === "exercises") renderExercises(); else if (settingsOpen === "exercise" && exCurrent && !exDirty()) showExercise(exCurrent.name, exCurrent.key); } $("back").hidden = false; $("brand").hidden = true; } return; }
+    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $("navDone").hidden = settingsOpen !== "exercise"; $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : settingsOpen === "card" ? "vClientCard" : settingsOpen === "history" ? "vHistory" : settingsOpen === "catalog" ? "vCatalog" : settingsOpen === "data" ? "vData" : SUB_PAGE[settingsOpen] || "vPassword").hidden = false; if (SUB_PAGE[settingsOpen]) paintSub(settingsOpen); if (settingsOpen === "settings") paintUnitSegs(); if (settingsOpen === "packages") renderPackages(); if (settingsOpen === "card") paintCard(); if (settingsOpen === "history") paintHistory(); if (exStale && S.syncedOnce) { exStale = false; if (settingsOpen === "exercises") renderExercises(); else if (settingsOpen === "exercise" && exCurrent && !exDirty()) showExercise(exCurrent.name, exCurrent.key); } $("back").hidden = false; $("brand").hidden = true; } return; }
     if (S.sb && !S.signedIn) { showLogin($("loginMsg").textContent); return; }
     if (S.clientMode && !S.myClientId) { showWaiting(); return; }
     if (celebrating) { hideAllViews(); $("vCelebrate").hidden = false; $("back").hidden = true; $("brand").hidden = false; return; }   // "Nice work" stays up until it hands over to the client page, whatever refreshes meanwhile
@@ -3613,6 +3875,7 @@ import { reportRange, buildReport } from "./report.js";
     $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || S.clientMode;
     $("viewSeg").hidden = S.clientMode || isTpl; for (const b of $("viewSeg").querySelectorAll("button")) { const on = (b.dataset.view === "client") === previewClient; b.classList.toggle("on", on); b.setAttribute("aria-checked", String(on)); } if (!isTpl || S.renderedTraining !== t.id) $("usePick").hidden = true;   // the client list built for another template must not survive onto this one
     $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
+    paintLimits(t);                                                 // v299: the client's injuries and limits at the top, the coach's own look (a sync that changes only the client's record draws it too: it is outside the cards)
     paintFinish(t);
     const rowsEl = $("rows");
     const active = document.activeElement;
@@ -4013,7 +4276,7 @@ import { reportRange, buildReport } from "./report.js";
     close = openPop(anchor, opts); popRows = menuRows(items);         // (after openPop: it closes the menu before)
     const rs = [...pop.querySelectorAll(".wopt")], ticked = rs.find((b) => b.getAttribute("aria-current") === "true") || null;
     if (opts && opts.long) pop.scrollTop = ticked ? Math.max(0, ticked.offsetTop - (pop.clientHeight - ticked.offsetHeight) / 2) : 0;   // it opens with the row ticked in view, in the middle where the list allows (Safari's own list of 1 to 20, measured: reopened on 18, it opens scrolled to it)
-    if (opts && opts.focus) { const f = ticked || pop.querySelector(".wopt"); if (f) f.focus({ preventScroll: true }); }   // opened from the keyboard or VoiceOver: into the menu, as a system menu takes focus (a tap leaves focus where it is); on the row ticked, where a Mac's pop-up menu opens
+    if (opts && opts.focus) { const f = (opts.over && ticked) || pop.querySelector(".wopt"); if (f) f.focus({ preventScroll: true }); }   // opened from the keyboard or VoiceOver: into the menu, as a system menu takes focus (a tap leaves focus where it is); on the row ticked, where a Mac's pop-up menu opens (a pop-up's; a "…" with a choice in it, as the workout's Weights in, opens on its first row)
   }
   const MI = {                                                         // the menu's leading glyphs, in a 1.25 em box (see #whenPop.menu .mi); swap, pencil and trash traced from Apple's and filled like theirs
     calendar: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.9" width="12" height="11.2" rx="2.2"/><path d="M2 6.5h12M5.2 1.6v2.6M10.8 1.6v2.6"/></svg>',
@@ -4854,12 +5117,7 @@ import { reportRange, buildReport } from "./report.js";
   $("ovClear").addEventListener("click", () => { ovPick = ""; $("ovEx").value = ""; $("ovClear").hidden = true; $("ovSugg").hidden = true; paintOvBest(); });
   $("ovBestBtn").addEventListener("click", (e) => { const x = $("ovBest")._e; if (x && x.best) showWhen(e.currentTarget, whenDay(x.best.date, true), x.best.title || "Workout"); });
   $("noteDiscard").addEventListener("click", async () => { if ($("cNotes").value.trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; const c = clients.get(S.view.id); if (c) noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox(); });
-  $("unitSeg").addEventListener("click", (e) => {
-    const b = e.target.closest("button[data-unit]"); const c = clients.get(S.view.id); if (!b || !c) return;
-    const was = c.unit || "lb"; c.unit = b.dataset.unit; scheduleSave("clients", c.id);
-    if (was !== c.unit) for (const t of clientTrainings(c.id)) if (stampUnit(t, was)) scheduleSave("trainings", t.id);   // what was logged stays what it was: 100 lb does not become 100 kg
-    for (const x of $("unitSeg").querySelectorAll("button")) x.classList.toggle("on", x === b);
-  });
+  $("unitSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-unit]"); if (b && !S.clientMode && clients.has(S.view.id)) setLiftUnit(S.view.id, b.dataset.unit); });   // "Weights in" on the client's card (v299: one setter with the client's own Settings and the client's workout's "…"; what was logged stays what it was)
   $("cEmail").addEventListener("input", (e) => {
     const c = clients.get(S.view.id); if (!c) return; const v = e.target.value.trim().toLowerCase();
     const dup = v && [...clients.values()].find((o) => o.id !== c.id && !isTemplateClient(o.id) && norm(o.email) === norm(v));   // one email, one client: the server refuses a second, so the box does too
@@ -4869,7 +5127,6 @@ import { reportRange, buildReport } from "./report.js";
   });
   $("cEmail").addEventListener("blur", () => { const c = clients.get(S.view.id); if (c) $("meDisc").classList.toggle("needs", !c.email); });
   $("cPhone").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.phone = e.target.value.trim(); scheduleSave("clients", c.id); });
-  $("cBirthday").addEventListener("change", (e) => { const c = clients.get(S.view.id); if (!c) return; c.birthday = e.target.value || ""; scheduleSave("clients", c.id); });
   // phone -> international digits for sms: and wa.me (US numbers without a country code get +1)
   const phoneDigits = (p) => { let d = String(p || "").replace(/\D/g, ""); if (!d) return ""; if (String(p).trim().startsWith("+")) return d; if (d.length === 10) return "1" + d; if (d.length === 11 && d[0] === "1") return d; return d.length >= 7 ? d : ""; };
 
@@ -5424,7 +5681,7 @@ import { reportRange, buildReport } from "./report.js";
     const id = t.id, cid = t.clientId, page = () => S.view.name === "training" && S.view.id === id;
     if (canReschedule(t)) {
       const still = () => page() && canReschedule(trainings.get(id));   // the page is still this workout, still to do
-      return [{ label: "Reschedule", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, moving: id, title: "Reschedule", selected: cur.date || today(), min: today, ok: still, onPick: (date) => applyReschedule(id, date) }); } }];   // min: today itself, asked at each redraw (days left open past midnight grey yesterday)
+      return [{ label: "Reschedule", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, moving: id, title: "Reschedule", selected: cur.date || today(), min: today, ok: still, onPick: (date) => applyReschedule(id, date) }); } }, ...unitRows(cid, still)];   // min: today itself, asked at each redraw (days left open past midnight grey yesterday); then "Weights in lb / kg" (v299, the approved picture A: the client switches on a trip)
     }
     const items = [];
     if (canSwipeRow(t)) { const still = () => page() && coachMore(trainings.get(id)) && canSwipeRow(trainings.get(id)); items.push({ label: "Reschedule", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, moving: id, title: "Reschedule", selected: cur.date || today(), min: null, ok: still, onPick: (date) => moveWorkout(id, date) }); } }); }
@@ -5679,8 +5936,8 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, editAlts, editNote, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, weekOffNow: () => weekOff, setWeekOff: (v) => { weekOff = v; }, weekWheelNow: () => weekWheel, weekPageNow: () => weekPage, wkMonth, calFold, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates },
-      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, planTouched, deletedNotes, deletedPackages, fromFile },
+      fns: { boot, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, editAlts, editNote, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, weekOffNow: () => weekOff, setWeekOff: (v) => { weekOff = v; }, weekWheelNow: () => weekWheel, weekPageNow: () => weekPage, wkMonth, calFold, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates, setProfile, setLiftUnit, showSub, openSub, paintHealth, paintSafety, healthSummary, safetySummary, healthId, toggleWheel, closeWheel, wheelState: () => wheelOpen, editText, editSafety, unitRows, paintLimits, fmtBirthday, phoneIn, fmtPhone, unitLabel: () => UNIT_LABEL, settingsPage: () => ({ open: settingsOpen, from: fromSettings }) },
+      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, pendingProfile, profileTouched, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
       reset: () => { resetState(); seenDoc.clear(); moveOut.clear(); localStorage.clear(); },

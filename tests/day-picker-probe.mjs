@@ -21,7 +21,9 @@ const g = recorder("dpGrid", { clientWidth: W, setPointerCapture() {} });
 recorder("dpPrev"); const next = recorder("dpNext"); recorder("dpToday"); const pickBg = recorder("datePick"), pickCancel = recorder("dpCancel");
 const pop = recorder("whenPop"); pop.querySelector = (sel) => (sel === ".wopt" ? pop.children.find((c) => /\bwopt\b/.test(c.className)) || null : null); pop.contains = (x) => !!x && pop.children.includes(x);
 const bg = recorder("whenBg"); const more = recorder("tMore");
-const make = document.createElement; document.createElement = (t) => listens(kids(make(t)));
+const attrs = (e) => { const A = {}; e.setAttribute = (k, v) => { A[k] = String(v); }; e.getAttribute = (k) => (k in A ? A[k] : null); return e; };   // a row keeps its aria-current (v299: the "…" with a ticked choice in it)
+const make = document.createElement; document.createElement = (t) => attrs(listens(kids(make(t))));
+pop.querySelectorAll = (sel) => (sel === ".wopt" ? pop.children.filter((c) => /\bwopt\b/.test(c.className)) : []);
 document.contains = (x) => !!x;
 globalThis.getComputedStyle = (node) => {                                // where the track stands: its last written transform
   const m = /translate3d\(([-\d.e]+)px/.exec((node && node.style && node.style.transform) || "");
@@ -152,7 +154,7 @@ fns.closeDatePicker(); out.menu.focusBack = document.activeElement === more;
 document.activeElement = null; more.fire("click", { detail: 1, stopPropagation() {} }); out.menu.tapLeavesFocus = document.activeElement === null && bg.hidden === false;
 // the coach's own "…" (his ask, 10 Nov), tapped: its rows as drawn, the red one marked; a workout still to do, a finished one, a template, his Client view
 { const { TEMPLATES_ID } = await import("../app/model.js");
-  const tap = () => { more.fire("click", { detail: 1, stopPropagation() {} }); return bg.hidden === false ? pop.children.map((r) => (/\bdanger\b/.test(r.className) ? "red " : "") + (r.children.at(-1) || {}).textContent) : []; };
+  const tap = () => { more.fire("click", { detail: 1, stopPropagation() {} }); return bg.hidden === false ? pop.children.map((r) => (/\bmsep\b/.test(r.className) ? "\u2014" : (/\bdanger\b/.test(r.className) ? "red " : "") + (r.children.at(-1) || {}).textContent)) : []; };   // a line between groups reads as a dash
   out.coach = {};
   workout(false); out.coach.toDo = tap();
   maps.trainings.get("w1").completedAt = "2026-11-02T18:00:00.000Z"; fns.render(); out.coach.finishedClosed = bg.hidden === true; out.coach.finished = tap();

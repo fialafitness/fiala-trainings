@@ -1,9 +1,9 @@
 // Saving and syncing: the device copy, the debounced save queue, the cloud backend (coach), the client backend (RPCs),
 // the paged read of the server and the merge back into the local maps. Screens are reached only through `ui`.
 import { lsGet, lsSet, norm, clamp, today } from "./util.js";
-import { isTemplateClient, planActive, repairTimed, timedPlan, cmpLabel } from "./model.js";
+import { isTemplateClient, planActive, repairTimed, timedPlan, cmpLabel, stampUnit, profileGet, profilePut } from "./model.js";
 import { mergeNotes } from "./notes.js";
-import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, planTouched, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows } from "./state.js";
+import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, planTouched, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows, pendingProfile, profileTouched } from "./state.js";
 
 // ---------- persistence ----------
 const isNetwork = (error) => /load failed|failed to fetch|network|fetch/i.test((error && error.message) || "");
@@ -21,10 +21,10 @@ const seenDoc = new Map();                                        // "kind/id" -
 function markDirty(kind, id) { const k = key(kind, id); dirty.set(k, (dirty.get(k) || 0) + 1); }
 // what still has to reach the server is written to the device too, so closing the app with no signal loses nothing
 function persistPending() {
-  lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]), rownotes: [...pendingNoteRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]),
+  lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]), rownotes: [...pendingNoteRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]), profile: [...pendingProfile].filter(([, f]) => f.size).map(([id, f]) => [id, [...f]]),
     finish: [...pendingFinish], skip: [...pendingSkip], move: [...pendingMove], miss: [...pendingMiss], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]), order: [...pendingOrder],
     touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]), noted: [...trainerNoted].map(([id, r]) => [id, [...r]]), state: [...trainerState].map(([id, f]) => [id, [...f]]),
-    plans: [...planTouched], notesGone: [...deletedNotes], packagesGone: [...deletedPackages], foldersGone: [...deletedFolders], foldersTouched: [...folderTouched], fromFile: [...fromFile],   // the coach's intent about a client record: a plan changed, a note or package removed, a backup restored
+    plans: [...planTouched], profTouched: [...profileTouched].filter(([, f]) => f.size).map(([id, f]) => [id, [...f]]), notesGone: [...deletedNotes], packagesGone: [...deletedPackages], foldersGone: [...deletedFolders], foldersTouched: [...folderTouched], fromFile: [...fromFile],   // the coach's intent about a client record: a plan changed, a note or package removed, a backup restored
     stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), docs: [...dirty.keys()].filter((k) => seenDoc.has(k)).map((k) => [k, seenDoc.get(k)]),   // the stamp and the copy it describes: a save sent after a relaunch still merges against what this device last read
     owner: S.sessionEmail || S.pendingOwner || "" });
   if (S.sessionEmail) S.pendingOwner = S.sessionEmail;
@@ -41,6 +41,7 @@ function restorePending() {
   for (const id of p.move || []) pendingMove.add(id);
   for (const id of p.miss || []) pendingMiss.add(id);
   for (const id of p.order || []) pendingOrder.add(id);
+  for (const [id, ks] of p.profile || []) { pendingProfile.set(id, new Set([...(pendingProfile.get(id) || []), ...ks])); markDirty("clients", id); }   // the client's own profile fields (v299): sent again on this launch (the rule may have been missing last time)
   for (const id of new Set([...pendingMove, ...pendingMiss, ...pendingOrder, ...[...pendingNoteRows].filter(([, r]) => r.size).map(([id]) => id), ...[...pendingEarlyRows].filter(([, r]) => r.size).map(([id]) => id)])) markDirty("trainings", id);   // sent again on this launch (the rule may have been missing last time)
   for (const [id, picks] of p.swap || []) pendingSwap.set(id, new Map([...(pendingSwap.get(id) || []), ...picks]));
   for (const [id, rows] of p.touched || []) trainerTouched.set(id, new Set([...(trainerTouched.get(id) || []), ...rows]));
@@ -50,6 +51,7 @@ function restorePending() {
   for (const [k, stamp] of p.stamps || []) if (stamp && !seenAt.has(k)) seenAt.set(k, stamp);
   for (const [k, doc] of p.docs || []) if (doc && !seenDoc.has(k)) seenDoc.set(k, doc);
   for (const id of p.plans || []) planTouched.add(id);
+  for (const [id, ks] of p.profTouched || []) profileTouched.set(id, new Set([...(profileTouched.get(id) || []), ...ks]));   // v299: the coach's own changes to the client's profile fields, so a save after a relaunch keeps the client's for the rest
   for (const [n, cid] of p.notesGone || []) deletedNotes.set(n, cid);
   for (const [pk, cid] of p.packagesGone || []) deletedPackages.set(pk, cid);
   for (const [n, cid] of p.foldersGone || []) deletedFolders.set(n, cid);
@@ -67,7 +69,7 @@ function scheduleSave(kind, id, delay = 500) {
   ui.setStatus();
 }
 
-const dropIntent = (id) => { planTouched.delete(id); for (const [n, cid] of [...deletedNotes]) if (cid === id) deletedNotes.delete(n); for (const [pk, cid] of [...deletedPackages]) if (cid === id) deletedPackages.delete(pk); for (const [n, cid] of [...deletedFolders]) if (cid === id) deletedFolders.delete(n); for (const [n, cid] of [...folderTouched]) if (cid === id) folderTouched.delete(n); };   // the save that carried them is on the server: the markers have done their work
+const dropIntent = (id) => { planTouched.delete(id); profileTouched.delete(id); for (const [n, cid] of [...deletedNotes]) if (cid === id) deletedNotes.delete(n); for (const [pk, cid] of [...deletedPackages]) if (cid === id) deletedPackages.delete(pk); for (const [n, cid] of [...deletedFolders]) if (cid === id) deletedFolders.delete(n); for (const [n, cid] of [...folderTouched]) if (cid === id) folderTouched.delete(n); };   // the save that carried them is on the server: the markers have done their work
 function flushAll() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); flushOne(kind, id); } }
 function flushOne(kind, id) {
   const k = key(kind, id);
@@ -127,14 +129,37 @@ const cloudBackend = {
     if (kind === "trainings") row.client_id = data.clientId;
     let base = seenDoc.get(k) ? JSON.parse(seenDoc.get(k)) : null; const map = kind === "clients" ? clients : trainings;
     const takeFields = (serverData) => {                      // two of his own devices: a field this one did not change since it last read the record takes the other device's value
+      if (kind === "clients" && serverData && !base) { takeProfile(serverData); return; }   // v299: nothing read to measure against (a save made before this session's first sync, after a relaunch with no signal): the fields the client writes themselves stay the server's unless this device changed them (the v299 review's catch: the client's Health & safety was overwritten by the coach's device copy)
       if (!base || !serverData) return;
-      const skip = kind === "clients" ? ["id", "notes", "packages", "folders", "rootOrder", "plan", "planHistory"] : ["id", ...(isTemplateClient(data.clientId) ? [] : ["rows"]), "completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"];   // the fields with their own merge rules (a template's exercises have none: no client logs on one, so rows this copy did not change take the other device's, as a field does; else Move to on a stale copy undid an edit made there, the v283 review)
+      const skip = kind === "clients" ? ["id", "notes", "packages", "folders", "rootOrder", "plan", "planHistory", "health"] : ["id", ...(isTemplateClient(data.clientId) ? [] : ["rows"]), "completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"];   // the fields with their own merge rules (a template's exercises have none: no client logs on one, so rows this copy did not change take the other device's, as a field does; else Move to on a stale copy undid an edit made there, the v283 review)
       for (const target of [data, map.get(id)]) {
         if (!target) continue;
         for (const f of new Set([...Object.keys(serverData), ...Object.keys(base)])) {
           if (skip.includes(f) || JSON.stringify(target[f]) !== JSON.stringify(base[f]) || JSON.stringify(serverData[f]) === JSON.stringify(target[f])) continue;   // changed here (in this copy): ours stands
           if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f];
         }
+      }
+      if (kind === "clients") {                                 // Health & safety (v299) field by field: the client writes one of its fields with the client's own rule while the coach edits another on the client's card, and neither may undo the other
+        const o = (x) => (x && typeof x === "object" && !Array.isArray(x) ? x : {}), bh = o(base.health), sh = o(serverData.health);
+        for (const target of [data, map.get(id)]) {
+          if (!target) continue;
+          const th = { ...o(target.health) }; let moved = false;
+          for (const f of new Set([...Object.keys(sh), ...Object.keys(bh)])) {
+            if (JSON.stringify(th[f]) !== JSON.stringify(bh[f]) || JSON.stringify(sh[f]) === JSON.stringify(th[f])) continue;   // changed here: ours stands
+            if (sh[f] === undefined) delete th[f]; else th[f] = sh[f]; moved = true;
+          }
+          if (moved) target.health = th;
+        }
+      }
+    };
+    const takeProfile = (serverData) => {                     // the client's own fields (Health details, Health & safety, the units): the server's, field by field, except those this device changed (profileTouched, marked by setProfile)
+      const mine = profileTouched.get(id) || new Set(), o = (x) => (x && typeof x === "object" && !Array.isArray(x) ? x : {});
+      for (const target of [data, map.get(id)]) {
+        if (!target) continue;
+        for (const f of ["birthday", "sex", "height", "bodyWeight", "heightUnit", "bodyUnit", "unit"]) { if (mine.has(f)) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; }
+        const th = { ...o(target.health) }, sh = o(serverData.health); let moved = false;
+        for (const f of new Set([...Object.keys(sh), ...Object.keys(th)])) { if (mine.has("health." + f) || JSON.stringify(sh[f]) === JSON.stringify(th[f])) continue; if (sh[f] === undefined) delete th[f]; else th[f] = sh[f]; moved = true; }
+        if (moved) target.health = th;
       }
     };
     const verbatim = () => fromFile.has(k);                    // restored from a backup: the file's copy replaces what the server holds, nothing of the server's is merged in (asked at merge time: a save already out when Restore was tapped must not merge into the restored record either)
@@ -235,6 +260,20 @@ const clientBackend = {
   // (row or workout gone): the item is dropped and the server's version comes back on the next sync. Sending twice is harmless: every rule
   // writes the whole value it is given.
   async set(kind, id, data) {
+    if (kind === "clients") {                                     // the client's own profile (v299: Health details, Health & safety, the units the client lifts in), one field per request through client_set_profile
+      const q = pendingProfile.get(id); if (!q || !q.size || S.profileMissing) return;
+      for (const k of [...q]) {
+        const sent = profileGet(data, k);                           // null clears the field: always sent, so the rule's three arguments are always there
+        const { error } = await rpc("client_set_profile", { p_client: id, p_key: k, p_value: sent });
+        if (error && (error.code === "PGRST202" || /client_set_profile/.test(error.message || ""))) { S.profileMissing = true; break; }   // rule not installed yet (supabase/client-profile.sql): kept on the phone and shown there, sent on a later launch
+        if (error && error.code === "P0001") { q.delete(k); scheduleSync(); continue; }   // refused for good: the server's value comes back with the next sync
+        if (error) throw error;
+        confirmedAt.set(key("clients", id), Date.now());            // a read that began before this landed must not bring the old value back
+        if (JSON.stringify(profileGet(clients.get(id) || data, k)) === JSON.stringify(sent)) q.delete(k);   // changed again while this was out: it goes again
+      }
+      if (!q.size) pendingProfile.delete(id);
+      persistPending(); return;
+    }
     if (kind !== "trainings") return;
     const live = () => trainings.get(id) || data;
     const rowOf = (t, rid) => ((t && t.rows) || []).find((x) => x.id === rid);
@@ -359,6 +398,7 @@ function mergeDown(map, kind, rows, complete, startedAt) {        // the server'
     if (kind === "trainings" && S.templateDraft && S.templateDraft.dirty && S.templateDraft.id === r.id) continue;   // unsaved template edits
     if (kind === "trainings" && S.renderedTraining === r.id && (S.asking || ui.$("rows").contains(document.activeElement))) continue; // being edited right now, or a confirm sheet is up over it: next sync, stamp and all
     const rec = { ...r.data, id: r.id }, cur = map.get(r.id);
+    if (kind === "clients" && cur && (pendingProfile.get(r.id) || new Set()).size) for (const k of pendingProfile.get(r.id)) profilePut(rec, k, profileGet(cur, k));   // the client's own profile fields still on their way ride on the server's copy (the coach's edits land, the client's stand)
     if (kind === "trainings") { repairTimed(rec); if (cur && pendingOrder.has(r.id)) carryOrder(cur, rec); if (Array.isArray(rec.rows)) rec.rows.sort((a, b) => cmpLabel(a.label, b.label)); }   // her new order still on its way rides on the server's copy (his edits land, her numbers stand); rows in the order the cards show, so a copy that changed nothing reads as the same
     if (!(cur && JSON.stringify(cur) === JSON.stringify(rec))) { if (kind === "trainings" && cur && ui.relabeled) ui.relabeled(r.id, cur, rec); map.set(r.id, rec); if (kind === "trainings" && viewedClient && rec.clientId === viewedClient && r.id !== S.renderedTraining) S.renderedTraining = null; }   // the same record stays the same object (the cards on screen hold it); another workout of the viewed client changed: its last/best lines are read again
     if (!S.clientMode && r.updated_at) { seenAt.set(key(kind, r.id), r.updated_at); seenDoc.set(key(kind, r.id), JSON.stringify(r.data)); }   // the stamp, and the copy it describes, travel with the record
@@ -384,7 +424,8 @@ async function syncDownNow() {
       ui.showProblem("Couldn\u2019t load your workouts \u00b7 " + (res.error.message || "server error") + " \u00b7 tap Try again"); return false;
     }
     c = { data: res.data.clients || [] }; t = { data: res.data.trainings || [] };
-    const me = c.data[0], authoritative = !!me && !(me.data && me.data.paused) && planActive(me.data && me.data.plan, today());   // paused, or a monthly plan past its day: the server hides the workouts, it has not deleted them, so nothing queued is dropped
+    const me = c.data[0]; { const was = (me && me.data && me.data.unit) || "lb"; for (const r of t.data) if (r && r.data) stampUnit(r.data, was); }   // v299: each answer read in its own unit: an exercise logged with no unit of its own was logged in the unit the client's record had when this was read (the client's rule stamps them so before the client's unit changes), so a read from before the client's switch never shows lb as kg, and a copy that did not change compares the same (no redraw under the client's finger: the v299 review's catches)
+    const authoritative = !!me && !(me.data && me.data.paused) && planActive(me.data && me.data.plan, today());   // paused, or a monthly plan past its day: the server hides the workouts, it has not deleted them, so nothing queued is dropped
     if (authoritative) {                                                   // a training the trainer deleted: nothing queued for it can land
       const serverIds = new Set(t.data.map((r) => r.id));
       for (const k of [...dirty.keys()]) { const [kind, id] = k.split("/"); if (kind === "trainings" && !serverIds.has(id)) { dirty.delete(k); pendingWeightRows.delete(id); pendingDoneRows.delete(id); pendingEarlyRows.delete(id); pendingNoteRows.delete(id); pendingFinish.delete(id); pendingSkip.delete(id); pendingMove.delete(id); pendingMiss.delete(id); pendingSwap.delete(id); pendingOrder.delete(id); } }
@@ -402,6 +443,7 @@ async function syncDownNow() {
     for (const id of [...trainerNamed.keys()]) if (!dirty.has(key("trainings", id))) trainerNamed.delete(id);
     for (const id of [...trainerNoted.keys()]) if (!dirty.has(key("trainings", id))) trainerNoted.delete(id);
     for (const id of [...planTouched]) if (!dirty.has(key("clients", id))) planTouched.delete(id);
+    for (const id of [...profileTouched.keys()]) if (!dirty.has(key("clients", id))) profileTouched.delete(id);
     for (const [n, cid] of [...folderTouched]) if (!dirty.has(key("clients", cid))) folderTouched.delete(n);
   }
   const migrated = lsGet("fiala.trainings.migrated");
@@ -410,6 +452,9 @@ async function syncDownNow() {
     for (const id of trainings.keys()) scheduleSave("trainings", id, 0);
   } else {
     mergeDown(clients, "clients", c.data, c.complete !== false, startedAt); mergeDown(trainings, "trainings", t.data, t.complete !== false, startedAt);
+    if (S.clientMode && c.data.length) {                          // the client's own profile queue (v299): a record the server no longer sends the client can take nothing
+      const mine = new Set(c.data.map((r) => r.id)); for (const id of [...pendingProfile.keys()]) if (!mine.has(id)) pendingProfile.delete(id);
+    }
   }
   lsSet("fiala.trainings.migrated", true); S.syncedOnce = true; S.syncedOn = today();
   localBackend.save();

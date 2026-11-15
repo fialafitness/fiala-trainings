@@ -62,6 +62,21 @@ export const LB_PER_KG = 2.2046226218;
 export const convertWeight = (v, from, to) => { if (!from || !to || from === to) return v; const n = num(v); if (n == null) return v; return Math.round((from === "kg" ? n * LB_PER_KG : n / LB_PER_KG) * 2) / 2; };
 export const stampUnit = (t, unit) => { let changed = false; for (const r of (t && t.rows) || []) { if (r.unit || !(r.weights || []).some((w) => num(w) != null)) continue; r.unit = unit; changed = true; } return changed; };
 export const toUnit = (st, from, to) => (st && from && to && from !== to && st.w != null ? { ...st, w: convertWeight(st.w, from, to) } : st);   // a top set read in another unit
+// Health details (v299; the owner's asks, 15 Nov 2026: Apple's Health details in both views, "options for lbs and cm", and "switch to cm and feet as they are adding the height and lbs and kg as they are adding body weight ... units for workouts are separate").
+// Height and body weight are kept as entered on their wheels, { v, u }: whole inches or centimetres, whole pounds or kilograms (Apple's own wheels, measured on iOS 27.2: 1-inch, 1-cm, 1-lb and 1-kg steps).
+// Each is shown in the unit picked on its own switch (heightUnit, bodyUnit), so flipping a switch back and forth never drifts a value: 142 lb shows as 64 kg, and as 142 lb again.
+export const CM_PER_IN = 2.54;
+const okMeasure = (m, a, b) => !!m && typeof m === "object" && (m.u === a || m.u === b) && typeof m.v === "number" && isFinite(m.v) && m.v > 0;
+export const heightAs = (h, u) => (!okMeasure(h, "in", "cm") ? null : !u || h.u === u ? Math.round(h.v) : u === "cm" ? Math.round(h.v * CM_PER_IN) : Math.round(h.v / CM_PER_IN));
+export const weightAs = (w, u) => (!okMeasure(w, "lb", "kg") ? null : !u || w.u === u ? Math.round(w.v) : u === "kg" ? Math.round(w.v / LB_PER_KG) : Math.round(w.v * LB_PER_KG));
+export const heightUnitOf = (c) => (c && (c.heightUnit === "in" || c.heightUnit === "cm") ? c.heightUnit : c && okMeasure(c.height, "in", "cm") ? c.height.u : c && c.unit === "kg" ? "cm" : "in");   // nothing chosen yet: the unit the client lifts in says which side of the Atlantic
+export const bodyUnitOf = (c) => (c && (c.bodyUnit === "lb" || c.bodyUnit === "kg") ? c.bodyUnit : c && okMeasure(c.bodyWeight, "lb", "kg") ? c.bodyWeight.u : c && c.unit === "kg" ? "kg" : "lb");
+export const fmtHeight = (v, u) => (v == null ? "" : u === "cm" ? v + " cm" : Math.floor(v / 12) + "\u2032 " + (v % 12) + "\u2033");   // 5' 7" with Apple's prime marks, as Fitness writes it
+export const fmtBodyWeight = (v, u) => (v == null ? "" : v + (u === "kg" ? " kg" : " lb"));
+export const ageOn = (birthday, day) => { const b = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthday || ""), d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day || ""); if (!b || !d) return null; let a = +d[1] - +b[1]; if (+d[2] < +b[2] || (+d[2] === +b[2] && +d[3] < +b[3])) a--; return a >= 0 && a < 150 ? a : null; };
+// A client's own profile field by the key client_set_profile takes ("sex", "height", "unit", "health.limits", …): read as it is sent (an empty text or nothing is null, a clear), and written back the same way.
+export const profileGet = (c, k) => { const v = !c ? undefined : String(k).startsWith("health.") ? (c.health && typeof c.health === "object" ? c.health[k.slice(7)] : undefined) : c[k]; return v === undefined || v === null || v === "" ? null : v; };
+export const profilePut = (c, k, v) => { const none = v === undefined || v === null || v === ""; if (String(k).startsWith("health.")) { const f = k.slice(7); if (!c.health || typeof c.health !== "object" || Array.isArray(c.health)) { if (none) return; c.health = {}; } if (none) delete c.health[f]; else c.health[f] = v; } else if (none) delete c[k]; else c[k] = v; };
 export const toTimeUnit = (st, from, to) => (st && from && to && from !== to && st.rp != null && from !== "m" && to !== "m" ? { ...st, rp: from === "min" ? st.rp * 60 : Math.round(st.rp / 60 * 100) / 100 } : st);   // a hold logged in minutes against one in seconds
 export const repairTimed = (t) => {
   let changed = false;
@@ -136,6 +151,7 @@ export function validateBackup(d, knownClient) {                  // the whole f
   const optBool = (v) => v == null || typeof v === "boolean";
   const optWhen = (v) => v == null || (typeof v === "string" && !isNaN(new Date(v)));   // a moment the screens turn into a day
   const optUnit = (v) => v == null || v === "lb" || v === "kg";                           // anything else would be rescaled as if it were one of these
+  const optMeasure = (m, a, b) => m == null || (isObj(m) && (m.u === a || m.u === b) && typeof m.v === "number" && isFinite(m.v));   // v299's height and body weight, { v, u }, read with numbers on the Health details page
   const isUuid = (v) => typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);   // the server's id columns take nothing else, and would refuse the record for good
   const optList = (v, max) => v == null || (Array.isArray(v) && v.length <= max);   // a list where a list is read with .map / .find: an object here throws on the screen
   const LIMIT = { rows: 300, sets: 60, alts: 60, history: 200, packages: 200, folders: 1000 };
@@ -148,6 +164,8 @@ export function validateBackup(d, knownClient) {                  // the whole f
     if (!optList(c.seenNotes, 5000) || (c.seenNotes || []).some((x) => typeof x !== "string") || !optWhen(c.seenDoneAt)) throw new Error("bad client");
     if (!optStr(c.name) || !optStr(c.email) || !optStr(c.kind) || !optBool(c.paused) || !optNum(c.sort) || !optUnit(c.unit)) throw new Error("bad client");
     if (c.notes != null && typeof c.notes !== "string" && !(isObj(c.notes) && optList(c.notes.log, 5000))) throw new Error("bad client");
+    if (!optStr(c.birthday) || !(c.sex == null || ["female", "male", "other", ""].includes(c.sex)) || !optMeasure(c.height, "in", "cm") || !optMeasure(c.bodyWeight, "lb", "kg") || !(c.heightUnit == null || c.heightUnit === "in" || c.heightUnit === "cm") || !(c.bodyUnit == null || c.bodyUnit === "lb" || c.bodyUnit === "kg")) throw new Error("bad client");
+    if (c.health != null && !(isObj(c.health) && optStr(c.health.limits) && optStr(c.health.conditions) && optStr(c.health.medications) && optStr(c.health.allergies) && optBool(c.health.pregnant) && optStr(c.health.emergency) && optStr(c.health.doctor))) throw new Error("bad client");   // Health & safety (v299): what its page reads as text
     if (c.plan != null && !(isObj(c.plan) && optStr(c.plan.id) && optStr(c.plan.name) && optStr(c.plan.kind) && optNum(c.plan.size) && optNum(c.plan.adjust) && optStr(c.plan.startedOn) && optStr(c.plan.until))) throw new Error("bad client");
     if (!optList(c.planHistory, LIMIT.history) || (c.planHistory || []).some((h) => !isObj(h))) throw new Error("bad client");
     if (!optList(c.packages, LIMIT.packages) || (c.packages || []).some((pk) => !isObj(pk) || typeof pk.id !== "string" || !pk.id || typeof pk.name !== "string" || !pk.name.trim() || !optStr(pk.kind) || !optNum(pk.size) || !optBool(pk.inPerson) || (pk.kind !== "monthly" && !(Number(pk.size) >= 1)))) throw new Error("bad client");   // a package is shown by its name and counted by its size

@@ -51,13 +51,13 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
   - `import_odboj.py`, `import_bodytype.py` (with `pdfstr.swift`) and `merge_templates.py` rebuild `templates.json` from program PDFs in the parent folder. Two of the `tools/*.json` files are hand-made inputs: `bodytype-manual.json` (name mappings) and `bodytype-cues-en.json` (a translation). The others are the scripts' outputs.
   - `clean_names.py` and `match_videos.py` are one-offs over the parent folder's spreadsheets.
 - `supabase/*.sql`: the server's tables and rules, run by hand (see Database).
-- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 49 `*.test.js` files and 26 `*-probe.mjs` scripts (see Tests).
+- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 50 `*.test.js` files and 26 `*-probe.mjs` scripts (see Tests).
 
 ## Releasing
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (298 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (299 at the time of writing).
 - Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -123,6 +123,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   3. The rest:
      - the `client-*.sql` files are the client's RPCs;
      - `client-photos.sql` adds the private `photos` bucket and `client_set_photo`;
+     - `client-profile.sql` adds `client_set_profile` (v299): the client's own Health details, Health & safety and units, one field per call;
      - the `exercise*.sql` files hold the coach's own exercise names, videos, hidden built-ins and subtitles.
 - `client_my_data` is in four files that must stay identical: `client-access`, `client-instructions`, `client-pause` and `client-plan.sql`. `tests/deploy.test.js` checks this. It sends the client everything on their workouts, except:
   - it strips the client record's private `notes`;
@@ -142,7 +143,8 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 - Keep the app's limits equal to the rule's checks, or a refusal silently drops the change:
   - set values up to 16 characters, and up to 20 sets (`client-log-set.sql`);
   - a note up to 500 characters (`client-row-note.sql`);
-  - an early-finish reason up to 40 characters (`client-finish-early.sql`).
+  - an early-finish reason up to 40 characters (`client-finish-early.sql`);
+  - a profile text up to 500 characters, and the measures in whole numbers, 1-120 in, 1-300 cm, 1-1500 lb, 1-700 kg (`client-profile.sql`; the wheels' own ranges are inside these).
 - Keep Supabase's email confirmation on, and never suggest loosening sign-up.
 
 ## Saving and syncing
@@ -154,7 +156,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - `clientBackend.set` sends one workout's queues by RPC, in a fixed order: weights, swaps, order, finish, skip, move, miss, done, notes, early. Two workouts can be sending at once. `tests/sync.test.js` checks only that finish, skip, move and miss go in that order.
   - A P0001 refusal drops that one item, and a missing rule sets its flag; both carry on to the next queue. Any other error stops the later queues for that workout until the retry.
   - A client edit that is in no queue is replaced at the next sync.
-- `clientBackend.set` sends workouts only. A client's change to their own profile needs its own RPC and queue, as `photos.js` has for `client_set_photo`.
+- `clientBackend.set` sends workouts, and (v299) the client's own profile fields: `setProfile(cid, key, value)` writes the field (`profilePut`, by the rule's key: `sex`, `height`, `unit`, `health.limits`, …), adds the key to `pendingProfile` (clientId → Set of keys) and calls `scheduleSave("clients")`; the "clients" branch sends each key through `client_set_profile` (null clears; P0001 drops the key; PGRST202 sets `S.profileMissing` and keeps it), sets `confirmedAt` and clears a key only while the record still holds what was sent. `mergeDown` lays the client's queued fields onto the server's copy of the client's record, and while the client's `unit` is queued `syncDownNow` stamps the client's workouts with the server's unit (as the rule will). The client's photo has its own queue in `photos.js`. The coach's saves of the same fields are whole-document saves as before.
 - `previewClient` (the coach's Coach|Client switch) gives the coach the client's look, actions and limits; for one, Reschedule works only from today. Every save is still the coach's. A new client-only control needs a decision about what it does in the coach's Client view.
 - A workout the coach opens comes up in the view set in the coach's Settings, "Open workouts in: Coach | Client" (v284, `openAs`, kept per device in `fiala.openAs`): `go()` sets `previewClient` when a workout page opens, except for a brand-new one (`freshWorkout`, set by `addTraining` and `fillFromTemplate`, and a return from choosing a template for it) and for templates; the same workout drawn again keeps what the coach switched to. A workout page opened anew takes this tab's own view from `sessionStorage` (`fiala.preview`, "1" or "0"), else the setting (`firstPreview`, in `boot`). The swipe back shows a page's picture only in the look Back lands in (`lookBack`, keep it in step with `go()`): a workout shown as the client goes back over its client's page in the coach's look.
 - Copy workout (a workout's `…`, the preview's `…`) asks the client, then the day in that client's calendar ("Copy to <name>", `copyDay`); the copy goes on that day and opens.
@@ -165,6 +167,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - `folderTouched` and `deletedFolders` on the Templates record (the coach's own template folders); `folderTouched` also holds the key `":rootOrder"` when this device reordered the Programs list.
 - A new row field that clients write must also be copied in `mergeServerRows` (`sync.js`), or the coach's next save puts the old value back.
 - A template's `rows` merge in `takeFields` as a plain field (no client logs on a template): rows this copy did not change since it last read take the other device's. A client workout's rows keep their own rules (`mergeServerRows`).
+- `takeFields` merges `health` (Health & safety, v299) field by field: the client writes one of its fields with the client's rule while the coach edits another on the client's card.
 - A new shared Map or Set (a new client queue, say) also goes into:
   - `resetState`;
   - `persistPending`/`restorePending`;
@@ -200,7 +203,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v298 it ends "632 passed, 0 failed" after about 70 s.
+- At v299 it ends "647 passed, 0 failed" after about 70 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
@@ -307,12 +310,19 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - The coach's reps box shows no sign (his pick "button only"): in the box the arrow pushed a long pyramid's last numbers out on a phone (13 of the templates' 144 reps at 402 points). Five of the longest pyramids are cut by a hair even without it.
   - On a touch screen the buttons never keep the tap's hover dim (`@media (hover: none)`): an iPhone kept it at 0.7 after the tap.
   - Server rules keep both keys (they write with `jsonb_set`), `freshRow` copies them, `mergeServerRows` never takes them from the server, and a backup accepts only booleans. A client's phone on a release before v296 shows no sign for `pyramid` until it updates.
+- Settings, a client's Health details and Health & safety (v299, the owner's asks, 15 Nov 2026: "more professional .. Apple like", "asking more health data from client", lb/kg and cm; the owner's picks after the pictures: the photo kept on top with Add photo under it, the rest Apple's way):
+  - Settings and the client card are rounded cards 20 apart (Fitness's Account page, measured: 52-point rows). The client's Settings: the client's photo, then Health details and Health & safety, then Weights in and Appearance, then Email and Change password. The card: Name, Sign-in email and Phone as fields at the row's end; Health details and Health & safety with a summary ("36 · 5′ 7″ · 142 lb", "Left knee"); Weights in, Messages via, Access; the Plan as a native select drawn as Apple's pop-up button. The Birthday lives in Health details. A US phone number reads "(310) 555-0142" (`fmtPhone`; the record keeps what was typed).
+  - The two pages are settings sub-pages (`settingsOpen` "health" / "safety", sections `#vHealth` / `#vSafety`, `showSub(page, from)`): the client's from the client's Settings (`from` "settings"), the coach's from the card ("card": `parentLabel`, `showParent` and `backKey` know it) or from the note on the client's workout (false: Back returns to the workout). `healthId()` says whose; a page whose client is gone leaves itself at the next `render()`.
+  - Health details is Fitness's page: Date of birth, Sex, Height, Weight, grey values, no chevrons; a tap opens Apple's inline wheel under the row (`openWheel`/`fillWheel`/`wheelCol`), one at a time. Measured on iOS 27.2 (the owner's screenshots and a native probe): the cell 230, the band a 32-point capsule centred 108 down and 29 in (two columns: two pills 18 apart; the date: one band), rows on a cylinder (87.3·sin(k·20°), height ·cos), the ink off the band at `--wheel-dim` (0.39 light, 0.355 dark) fading by `WH_FADE`. Each column is a native scroller (snapping, momentum, a trackpad) drawn on the cylinder as it turns; keys move it; `.hd-col` is in `NO_SWIPE`. A value is kept only once a person turns the wheel (an accidental tap saves nothing; the row shows the wheel while open). Height and weight each have their own unit switch on top of the open wheel (the owner's ask: "switch to cm and feet as they are adding the height and lbs and kg as they are adding body weight"): the values are kept as entered, `{ v, u }`, and shown in `heightUnit` / `bodyUnit` (`heightAs`, `weightAs` in `model.js`), so a switch never drifts a value. Starts when nothing is set, as Fitness's: 30 years ago, 5′ 3″ or 162 cm, 158 lb or 72 kg.
+  - Health & safety is Apple's Medical ID made calm (no red titles): Training (Injuries and limits, with the line that the coach sees them at the top of the client's workouts), Medical (Conditions, Medications, Allergies, a Pregnant switch: iOS 27's, measured, on in the brand purple), In an emergency (Emergency contact, Doctor). Each text opens `editText`, the instructions' own sheet (`#textSheet`, 500 characters); the coach's view puts a call button on the emergency contact when its text holds a number (`phoneIn`).
+  - "Weights in" lb | kg (`UNIT_LABEL`, the owner's naming question: one word to change) is the unit the client's workout weights are logged in, apart from the client's body weight: on the card (`#unitSeg`), in the client's own Settings (`#meUnitSeg`), and as two ticked rows after a line in the client's workout's "…" (`unitRows`, the approved picture A; also in the coach's Client view, where the save is the coach's). All go through `setLiftUnit`: logged exercises with no unit keep the old one (`stampUnit`; on the client's phone the server's copy is stamped by the client's rule). `lastWeights` converts into a begun exercise's own unit.
+  - The client's injuries and limits sit at the top of the client's workout in the coach's own look (`#limitsNote`, `paintLimits`, a `.notice` with our own filled bandage): never in the client's look, the coach's Client view or a template; drawn as text. It opens the client's Health & safety.
 - New icons are our own filled paths, traced from the reference the owner sends, never copied from an icon set. Stroke sketches read as cheaper. About half of the existing icons are still strokes, and the Settings gear and the Data cylinder are Feather's.
 
 ### Gestures
 
 - Gestures, by prefix in `main.js`:
-  - `sw`: swipe back. Its picture of the page underneath (`captureScreen`) is drawn under a `<body>` of its own carrying the classes it was taken under (`dataset.body`, less passing states such as `typing`), in a layer beside the live body, so the live page's `body.client` restyles nothing in it;
+  - `sw`: swipe back (it never starts on a Health details wheel, `.hd-col`). Its picture of the page underneath (`captureScreen`) is drawn under a `<body>` of its own carrying the classes it was taken under (`dataset.body`, less passing states such as `typing`), in a layer beside the live body, so the live page's `body.client` restyles nothing in it;
   - `rs*`: row swipe;
   - `wg`: the trackpad's sideways two-finger swipe, which `wheelKind()` hands to a row, the swipe back or a pager;
   - `cd*`: calendar drag;

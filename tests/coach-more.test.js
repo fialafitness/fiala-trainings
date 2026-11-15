@@ -85,10 +85,10 @@ test("Copy workout from the \"…\": which client gets it (this one first), then
   assert.ok(html.includes('<div class="foot stack trainer-only">\n      <button class="btn tint wide soft danger" id="delTraining" type="button">Delete workout</button>\n    </div>'), "the foot keeps the red Delete workout alone");
 });
 
-test("the client's \"…\", and the coach's Client view of a workout: the client's Reschedule only, none once it is finished; never Delete", () => {
-  page("w1", {}, { client: true }); assert.deepStrictEqual([shown(), menu("w1")], [true, ["Reschedule"]], "the client"); agree("w1");
+test("the client's \"…\", and the coach's Client view of a workout: the client's Reschedule, then Weights in lb / kg (v299); none once it is finished; never Delete", () => {
+  page("w1", {}, { client: true }); assert.deepStrictEqual([shown(), menu("w1")], [true, ["Reschedule", "Weights in lb", "Weights in kg"]], "the client"); agree("w1");
   page("w1", { completedAt: DONE }, { client: true }); assert.deepStrictEqual([shown(), menu("w1")], [false, []], "the client, finished"); agree("w1");
-  page("w1", {}, { preview: true }); assert.deepStrictEqual([shown(), menu("w1")], [true, ["Reschedule"]], "the coach's Client view: what the client sees"); agree("w1");
+  page("w1", {}, { preview: true }); assert.deepStrictEqual([shown(), menu("w1")], [true, ["Reschedule", "Weights in lb", "Weights in kg"]], "the coach's Client view: what the client sees"); agree("w1");
   page("w1", { completedAt: DONE }, { preview: true }); assert.deepStrictEqual([shown(), menu("w1")], [false, []], "and finished, as the client sees it"); agree("w1");
   page("w1"); app.set({ view: { name: "client", id: "c1" } }); fns.render(); assert.strictEqual(shown(), false, "only on the workout page");
   quiet();
