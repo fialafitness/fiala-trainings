@@ -127,6 +127,24 @@ test("(#24) sign-in: Email and Password are labelled rows in one card, the hints
   assert.ok(/  \.sign-rows input:-webkit-autofill \{ -webkit-box-shadow: 0 0 0 40px var\(--card\) inset; -webkit-text-fill-color: var\(--text-primary\); \}/.test(html), "a filled-in password keeps the card's colours");
 });
 
+test("(v308, his ask after the pictures: \"Build and switch to verify\") Create account, Change password and New password have the sign-in's labelled rows: the passwords in a card of their own, Verify for the second, the 8-character rule in a line under them", () => {
+  assert.ok(html.includes('        <ul class="list sign-rows">\n'
+    + '          <li><label><span class="lab">Name</span><input id="suName" placeholder="First and last name" autocomplete="name" autocapitalize="words" required></label></li>\n'
+    + '          <li><label><span class="lab">Email</span><input id="suEmail" type="email" placeholder="name@example.com" autocomplete="username" inputmode="email" autocapitalize="none" required></label></li>\n'
+    + '          <li><label><span class="lab">Phone</span><input id="suPhone" type="tel" placeholder="Required" autocomplete="tel" inputmode="tel" required></label></li>\n'
+    + '        </ul>\n'), "Create account: Name, Email, Phone");
+  const pwCard = (a, b, rule, first) => new RegExp("<li><label><span class=\"lab\">" + first + "</span><input id=\"" + a + "\" type=\"password\" placeholder=\"Required\" autocomplete=\"new-password\"" + (first === "New" ? " aria-label=\"New password\"" : "") + " aria-describedby=\"" + rule + "\" required></label></li>\\n\\s*<li><label><span class=\"lab\">Verify</span><input id=\"" + b + "\" type=\"password\" placeholder=\"Required\" autocomplete=\"new-password\" aria-label=\"Verify password\" aria-describedby=\"" + rule + "\" required></label></li>\\n");
+  for (const [a, b, rule, first] of [["suPassword", "suPassword2", "suRule", "Password"], ["pwNew", "pwNew2", "pwRule", "New"], ["recoveryPassword", "recoveryPassword2", "recRule", "New"]]) {
+    assert.match(html, pwCard(a, b, rule, first), a + ": its card, Verify under it");
+    assert.ok(html.includes('<p class="sign-foot" id="' + rule + '">At least 8 characters.</p>'), a + ": the rule under its card, read with both fields");
+  }
+  assert.ok(!/placeholder="(Full name|Phone number|Password \(8\+ characters\)|Retype password|New password \(8\+ characters\)|Retype new password)"/.test(html), "no hint-only boxes left");
+  assert.ok(html.includes("  .sign-group .sign-rows { margin-bottom: 0; }"));
+  assert.ok(html.includes("  .sign-foot { margin: 8px 20px 14px; font-size: 0.8125rem; line-height: 1.35; color: var(--text-secondary); }"));
+  const src = fs.readFileSync(new URL("../app/main.js", import.meta.url), "utf8");
+  for (const id of ["suName", "suEmail", "suPhone", "suPassword", "suPassword2", "pwNew", "pwNew2", "recoveryPassword", "recoveryPassword2"]) assert.ok(src.includes('$("' + id + '")'), id + " is still the field the code reads");
+});
+
 // ---------- #6: the monthly report's sheet ----------
 test("(#6) one Monthly report button; its sheet opens on this month with the notes off, says what that means, and holds the page behind; a double tap's second tap changes nothing", () => {
   assert.ok(html.includes('<span class="rep-cap">Report PDF</span><button class="pill" type="button" id="reportBtn" aria-haspopup="dialog">Monthly report</button></div>'));

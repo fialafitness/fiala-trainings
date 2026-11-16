@@ -1492,6 +1492,8 @@
   .sign-rows .lab { flex: none; width: 92px; font-size: 1.0625rem; letter-spacing: -0.01em; color: var(--text-primary); }
   .sign-rows input { flex: 1 1 auto; width: auto; min-width: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; font-size: 1.0625rem; letter-spacing: -0.01em; color: var(--text-primary); }
   .sign-rows input::placeholder { color: var(--text-secondary); }
+  .sign-group .sign-rows { margin-bottom: 0; }   /* v308 (his ask after the pictures, 15 Nov 2026: "Build and switch to verify"): Create account, Change password and New password in the same rows; the passwords in a card of their own with what they must be under it */
+  .sign-foot { margin: 8px 20px 14px; font-size: 0.8125rem; line-height: 1.35; color: var(--text-secondary); }   /* "At least 8 characters.", as Apple's footers under a group: the old hint "(8+ characters)" went as typing began */
   .sign-rows input:-webkit-autofill { -webkit-box-shadow: 0 0 0 40px var(--card) inset; -webkit-text-fill-color: var(--text-primary); }   /* an email or password the phone filled in: WebKit's own pale yellow box with black words would show inside the row, on the dark card too */
   .btn.quiet.link { color: var(--brand-text); padding: 0 6px; font-weight: 500; }
   .foot.foot-col .muted { font-size: 0.8125rem; }
@@ -1626,11 +1628,18 @@
     <div id="suForm">
       <h1>Create your account</h1>
       <form id="signupForm" class="stack">
-        <input id="suName" placeholder="Full name" autocomplete="name" autocapitalize="words" required>
-        <input id="suEmail" type="email" placeholder="Email" autocomplete="username" inputmode="email" autocapitalize="none" required>
-        <input id="suPhone" type="tel" placeholder="Phone number" autocomplete="tel" inputmode="tel" required>
-        <input id="suPassword" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" required>
-        <input id="suPassword2" type="password" placeholder="Retype password" autocomplete="new-password" required>
+        <ul class="list sign-rows">
+          <li><label><span class="lab">Name</span><input id="suName" placeholder="First and last name" autocomplete="name" autocapitalize="words" required></label></li>
+          <li><label><span class="lab">Email</span><input id="suEmail" type="email" placeholder="name@example.com" autocomplete="username" inputmode="email" autocapitalize="none" required></label></li>
+          <li><label><span class="lab">Phone</span><input id="suPhone" type="tel" placeholder="Required" autocomplete="tel" inputmode="tel" required></label></li>
+        </ul>
+        <div class="sign-group">
+          <ul class="list sign-rows">
+            <li><label><span class="lab">Password</span><input id="suPassword" type="password" placeholder="Required" autocomplete="new-password" aria-describedby="suRule" required></label></li>
+            <li><label><span class="lab">Verify</span><input id="suPassword2" type="password" placeholder="Required" autocomplete="new-password" aria-label="Verify password" aria-describedby="suRule" required></label></li>
+          </ul>
+          <p class="sign-foot" id="suRule">At least 8 characters.</p>
+        </div>
         <button class="btn" type="submit" id="suBtn" style="width:100%">Create account</button>
         <p class="muted" id="suMsg"></p>
       </form>
@@ -1778,8 +1787,13 @@
     <h1>Change password</h1>
     <form id="passwordForm" class="stack">
       <input id="pwUser" class="vh" type="email" autocomplete="username" readonly tabindex="-1" aria-hidden="true">
-      <input id="pwNew" type="password" placeholder="New password (8+ characters)" autocomplete="new-password" required>
-      <input id="pwNew2" type="password" placeholder="Retype new password" autocomplete="new-password" required>
+      <div class="sign-group">
+        <ul class="list sign-rows">
+          <li><label><span class="lab">New</span><input id="pwNew" type="password" placeholder="Required" autocomplete="new-password" aria-label="New password" aria-describedby="pwRule" required></label></li>
+          <li><label><span class="lab">Verify</span><input id="pwNew2" type="password" placeholder="Required" autocomplete="new-password" aria-label="Verify password" aria-describedby="pwRule" required></label></li>
+        </ul>
+        <p class="sign-foot" id="pwRule">At least 8 characters.</p>
+      </div>
       <button class="btn" type="submit" id="pwBtn" style="width:100%">Save new password</button>
       <p class="muted" id="pwMsg"></p>
     </form>
@@ -1789,8 +1803,13 @@
     <h1>New password</h1>
     <form id="recoveryForm" class="stack">
       <input id="recoveryUser" class="vh" type="email" autocomplete="username" readonly tabindex="-1" aria-hidden="true">
-      <input id="recoveryPassword" type="password" placeholder="New password (8+ characters)" autocomplete="new-password" required>
-      <input id="recoveryPassword2" type="password" placeholder="Retype new password" autocomplete="new-password" required>
+      <div class="sign-group">
+        <ul class="list sign-rows">
+          <li><label><span class="lab">New</span><input id="recoveryPassword" type="password" placeholder="Required" autocomplete="new-password" aria-label="New password" aria-describedby="recRule" required></label></li>
+          <li><label><span class="lab">Verify</span><input id="recoveryPassword2" type="password" placeholder="Required" autocomplete="new-password" aria-label="Verify password" aria-describedby="recRule" required></label></li>
+        </ul>
+        <p class="sign-foot" id="recRule">At least 8 characters.</p>
+      </div>
       <button class="btn" type="submit" id="recoveryBtn" style="width:100%">Save password</button>
       <p class="muted" id="recoveryMsg"></p>
     </form>
@@ -1971,7 +1990,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=307";
+  import { boot } from "./app/main.js?v=308";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
