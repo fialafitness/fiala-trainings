@@ -1,6 +1,6 @@
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
-import { followFrom, timedPlan, distPlan, measurePlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, convertWeight, stampUnit, toUnit, toTimeUnit, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive, composeName } from "../app/model.js";
+import { followFrom, timedPlan, distPlan, measurePlan, timeAsWeight, repairTimed, planNumber, autoSubtitle, splitName, perHand, weightIn, weightStored, sameWeightText, weightNumber, kgOf, stampUnit, toTimeUnit, topSet, betterSet, sameSet, correctFrom, planProgress, sessionNo, planActive, composeName } from "../app/model.js";
 import { monthLater, daysLater } from "../app/util.js";
 const app = await load();
 const { fns, maps } = app;
@@ -200,11 +200,43 @@ test("a plan in meters logs distance the way a hold logs time; min is still time
   assert.strictEqual(planNumber("40 m"), "40"); assert.strictEqual(planNumber("20-40 m"), "40");
 });
 
-test("a logged weight keeps its unit: switching the client stamps old rows, a weight read in the other unit converts, holds compare in seconds", () => {
-  assert.strictEqual(convertWeight("100", "lb", "kg"), 45.5); assert.strictEqual(convertWeight("40", "kg", "lb"), 88); assert.strictEqual(convertWeight("BW", "lb", "kg"), "BW"); assert.strictEqual(convertWeight("100", "lb", "lb"), "100"); assert.strictEqual(convertWeight("100", null, "kg"), "100");
-  const t = { rows: [{ weights: ["100", "105"] }, { weights: ["", ""] }, { weights: ["60"], unit: "kg" }, {}] };
-  assert.strictEqual(stampUnit(t, "lb"), true); assert.strictEqual(t.rows[0].unit, "lb"); assert.strictEqual(t.rows[1].unit, undefined, "nothing logged: no unit"); assert.strictEqual(t.rows[2].unit, "kg", "already stamped"); assert.strictEqual(stampUnit(t, "lb"), false);
-  assert.deepStrictEqual(toUnit({ w: 100, rp: 5 }, "lb", "kg"), { w: 45.5, rp: 5 }); assert.deepStrictEqual(toUnit({ w: null, rp: 5 }, "lb", "kg"), { w: null, rp: 5 }); assert.deepStrictEqual(toUnit({ w: 100, rp: 5 }, undefined, "kg"), { w: 100, rp: 5 });
+test("a logged weight keeps its unit and reads in the client's at one decimal, never rewritten; a number typed in the other unit is kept so it reads back as typed; holds compare in seconds", () => {
+  // v301: shown in the unit picked (the owner's picks: one decimal, no ".0"), words as written
+  assert.strictEqual(weightIn("135", "lb", "kg"), "61.2"); assert.strictEqual(weightIn("60", "kg", "lb"), "132.3"); assert.strictEqual(weightIn("100", "kg", "lb"), "220.5"); assert.strictEqual(weightIn("2.5", "lb", "kg"), "1.1"); assert.strictEqual(weightIn("20", "kg", "lb"), "44.1");
+  assert.strictEqual(weightIn("135", "lb", "lb"), "135", "its own unit: as typed"); assert.strictEqual(weightIn("61,5", "kg", "kg"), "61,5", "a comma kept"); assert.strictEqual(weightIn("61.23", "kg", "kg"), "61.2", "a kept conversion at one decimal"); assert.strictEqual(weightIn("22,25", "kg", "kg"), "22,3");
+  assert.strictEqual(weightIn("BW", "lb", "kg"), "BW"); assert.strictEqual(weightIn("2x20", "lb", "kg"), "2x20 lb", "words with a number say the unit they were logged in"); assert.strictEqual(weightIn("2x20", "lb", "lb"), "2x20");
+  assert.strictEqual(weightIn("60kg", "lb", "kg"), "60kg", "a unit already written"); assert.strictEqual(weightIn("25s", "lb", "kg"), "25s", "a pair of 25s ends in a word"); assert.strictEqual(weightIn("1,000", "lb", "kg"), "453.6", "a thousand with a comma is never 1.0"); assert.strictEqual(weightIn("1,000", "lb", "lb"), "1,000"); assert.strictEqual(weightNumber("1,000"), 1000);
+  assert.strictEqual(weightIn("60.", "lb", "kg"), "27.2", "a point left at the end"); assert.strictEqual(weightIn("60.", "lb", "lb"), "60."); assert.strictEqual(weightIn("+20", "lb", "kg"), "+20 lb");
+  for (const w of ["Band 3", "Level 8", "#3", "1:30", "no. 4"]) assert.strictEqual(weightIn(w, "lb", "kg"), w, "a numbered thing that is not a weight stays as written: " + w);
+  assert.strictEqual(weightIn("", "lb", "kg"), ""); assert.strictEqual(weightIn(null, "lb", "kg"), ""); assert.strictEqual(weightIn("100", null, "kg"), "100");
+  // typed in the client's unit, kept in the exercise's own: the shortest number that reads back as typed, and the same weight in its own unit
+  assert.strictEqual(weightStored("60", "kg", "lb"), "132.3"); assert.strictEqual(weightStored("135", "lb", "kg"), "61.23"); assert.strictEqual(weightStored("132.3", "lb", "kg"), "60"); assert.strictEqual(weightStored("61.2", "kg", "lb"), "134.9", "61.2 kg is 134.92 lb: kept as it reads in pounds, not rounded up to 135"); assert.strictEqual(weightStored("10", "kg", "lb"), "22"); assert.strictEqual(weightStored("6.5", "lb", "kg"), "2.948", "three decimals when two do not read back"); assert.strictEqual(weightIn("1.15", "kg", "kg"), "1.2", "a half rounds up, never down by a float's hair");
+  assert.strictEqual(weightStored("BW", "kg", "lb"), "BW"); assert.strictEqual(weightStored("60", "kg", "kg"), "60"); assert.strictEqual(weightStored(" 60 ", null, "lb"), " 60 ");
+  assert.strictEqual(weightStored("2x10", "kg", "lb"), "2x10 kg", "words carry the unit they were typed in"); assert.strictEqual(weightIn("2x10 kg", "lb", "kg"), "2x10 kg"); assert.strictEqual(weightStored("Band 3", "kg", "lb"), "Band 3");
+  assert.strictEqual(weightStored("60.", "kg", "lb"), "132.3"); assert.strictEqual(weightStored("1,000", "lb", "kg"), "453.6"); assert.strictEqual(weightStored("9999999999999", "lb", "kg"), "9999999999999 lb", "never past the server's 16 characters"); assert.strictEqual(weightStored("20+20+20+20+20", "kg", "lb"), "20+20+20+20+20", "words that would pass 16 characters with their unit stay as typed");
+  assert.ok(sameWeightText("61,2", "61.2") && sameWeightText(" 135 ", "135") && !sameWeightText("61.3", "61.2") && sameWeightText("BW", "BW"), "the number shown typed back, a comma keypad too");
+  for (const [from, to] of [["lb", "kg"], ["kg", "lb"]]) for (let k = 1; k <= 30000; k += 2) {   // every hundredth ending in 5 (the halves at one decimal) up to 300: read back as typed
+    const v = (k / 200).toFixed(2), kept = weightStored(v, from, to);
+    if (weightIn(kept, to, from) !== weightIn(v, from, from) || weightIn(kept, to, to) !== weightIn(v, from, to) || kept.length > 16) assert.fail(v + " " + from + " kept as " + kept + " reads " + weightIn(kept, to, from));
+  }
+  for (const [from, to, top] of [["lb", "kg", 15000], ["kg", "lb", 5000]]) for (let k = 1; k <= top; k++) {   // every tenth of a pound to 1,500 and of a kilo to 500
+    const v = String(k / 10), kept = weightStored(v, from, to);
+    if (weightIn(kept, to, from) !== v || weightIn(kept, to, to) !== weightIn(v, from, to) || kept.length > 16) assert.fail(v + " " + from + " kept as " + kept + " reads " + weightIn(kept, to, from) + " / " + weightIn(kept, to, to));
+  }
+  // switching back and forth never moves a number: nothing is rewritten, so 135 lb is 135 lb again
+  assert.strictEqual(weightIn(weightIn("135", "lb", "lb"), "lb", "lb"), "135");
+  const t = { rows: [{ weights: ["100", "105"] }, { weights: ["", ""] }, { weights: ["60"], unit: "kg" }, { weights: ["2x20"] }, { weights: ["BW"] }, {}] };
+  assert.strictEqual(stampUnit(t, "lb"), true); assert.strictEqual(t.rows[0].unit, "lb"); assert.strictEqual(t.rows[1].unit, undefined, "nothing logged: no unit"); assert.strictEqual(t.rows[2].unit, "kg", "already stamped"); assert.strictEqual(t.rows[3].unit, undefined, "plain numbers only, as the server's rule (client-profile.sql)"); assert.strictEqual(t.rows[4].unit, undefined, "BW has no unit"); assert.strictEqual(stampUnit(t, "lb"), false);
+  // sets in two units rank in kilograms, within 0.06 kg the same weight
+  const lb = (w, rp) => ({ w, rp, u: "lb" }), kg = (w, rp) => ({ w, rp, u: "kg" });
+  assert.ok(!betterSet(kg(61.2, 5), lb(135, 5), false), "135 lb shown as 61.2 kg and lifted for as many: not a best");
+  assert.ok(betterSet(kg(61.2, 8), lb(135, 5), false), "the same weight for more reps: a best");
+  assert.ok(betterSet(kg(61.3, 5), lb(135, 5), false), "0.065 kg heavier: a best"); assert.ok(betterSet(kg(45.5, 5), lb(100, 5), false), "45.5 kg is 100.3 lb");
+  assert.ok(!betterSet(lb(135, 5), kg(61.2, 5), false)); assert.ok(sameSet(kg(61.2, 5), lb(135, 5)) && !sameSet(kg(61.2, 5), lb(135, 6)));
+  assert.ok(!betterSet(kg(9.1, 45), lb(20, 45), true), "a hold: 9.1 kg is the 20 lb (9.07 kg)"); assert.ok(betterSet(kg(9.2, 45), lb(20, 45), true)); assert.ok(betterSet(kg(null, 46), lb(20, 45), true), "longer first");
+  assert.ok(betterSet(lb(0.25, 5), lb(0, 5), false), "the smallest real step still counts");
+  assert.ok(!betterSet(kg(102.06, 5), kg(102, 5), false) && sameSet(kg(102.06, 5), kg(102, 5)), "exactly 0.06 kg is the same weight, a float's hair over too");
+  assert.ok(kgOf(lb(135, 5)) > kgOf(kg(61.2, 5)) && kgOf({ w: null, rp: 5 }) === -1, "the heavier of two the same keeps the title");
   assert.deepStrictEqual(toTimeUnit({ w: null, rp: 1 }, "min", "sec"), { w: null, rp: 60 }); assert.deepStrictEqual(toTimeUnit({ w: null, rp: 90 }, "sec", "min"), { w: null, rp: 1.5 }); assert.deepStrictEqual(toTimeUnit({ w: null, rp: 40 }, "m", "sec"), { w: null, rp: 40 }, "a carry is not a hold");
 });
 test("a backup is refused when a field a screen reads as a list or an object is something else, when ids repeat, or when a later app wrote it", () => {

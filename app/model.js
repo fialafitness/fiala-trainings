@@ -57,11 +57,33 @@ export const splitName = (name, chosen) => {
   return title ? { title, sub: s.slice(i, i + sub.length) } : { title: s, sub: "" };
 };
 // A logged weight carries the unit it was logged in (row.unit, "lb" or "kg"); rows from before that were logged in the unit the client had then,
-// which stampUnit writes onto them the moment the client's unit is switched. A weight read in the other unit converts to the nearest half.
+// which stampUnit writes onto them the moment the client's unit is switched (plain numbers, as the server's rule does: client-profile.sql).
+// v301 (the owner's ask, 15 Nov 2026: "when client or me switch the weight unit every workout past and future converts to that unit ... they come back
+// and they can see what they lifted in unit they know"; their picks: one switch for the client and the coach, one decimal): a weight is never rewritten.
+// It keeps the unit it was logged in, and every screen shows it in the client's unit at one decimal: 135 lb reads 61.2 kg, and 135 lb again, however often the switch goes.
 export const LB_PER_KG = 2.2046226218;
-export const convertWeight = (v, from, to) => { if (!from || !to || from === to) return v; const n = num(v); if (n == null) return v; return Math.round((from === "kg" ? n * LB_PER_KG : n / LB_PER_KG) * 2) / 2; };
+export const KG_PER_LB = 0.45359237;                                   // exact, by definition
+const inKg = (n, u) => (u === "lb" ? n * KG_PER_LB : n), fromKg = (kg, u) => (u === "lb" ? kg / KG_PER_LB : kg);
+const oneDecimal = (n) => String(Math.round(n * 10 + 1e-7) / 10);     // "61.2"; a whole number has no ".0" (the owner's pick: one decimal); the hair up keeps a half typed in one unit a half after the trip through the other (11.25 kg reads 11.3)
+export const weightNumber = (v) => { const s = String(v == null ? "" : v).trim(); return /^\d{1,3}(?:,\d{3})+$/.test(s) ? parseFloat(s.replace(/,/g, "")) : num(s.replace(/^(\d+)[.,]$/, "$1")); };   // a logged weight as a number: "1,000" is a thousand, never 1.0; "60." is 60 (a point left at the end)
+const NOT_WEIGHT = /(?:\b(?:bands?|levels?|lvl|setting|pin|hole|notch|no\.?)\s*|#\s*)\d+$|\d:\d\d$/i;   // numbered things that are not weights: "Band 3", "Level 8", "#3", a time "1:30"
+const saysUnit = (s) => /\d$/.test(s) && !/(lb|kg)s?\b/i.test(s) && !NOT_WEIGHT.test(s);   // words ending in a weight with no unit written: "2x20", "BW+10", "+20"
+export const sameWeightText = (a, b) => { const x = weightNumber(a), y = weightNumber(b); return x != null && y != null ? x === y : String(a == null ? "" : a).trim() === String(b == null ? "" : b).trim(); };   // the number shown typed back, a comma keypad's "61,2" for "61.2" too
+export const weightIn = (v, from, to) => {                             // a logged weight as the screens show it in the unit `to`: 135 lb in kg reads 61.2
+  const s = String(v == null ? "" : v).trim(), n = weightNumber(s); if (!s) return "";
+  if (n == null) return from && to && from !== to && saysUnit(s) ? s + " " + from : s;   // words stay as written; in the other unit one that ends in a weight says the unit it was logged in ("2x20 lb"; never "Band 3 lb")
+  if (!from || !to || from === to) return /[.,]\d\d+$/.test(s) && !/^\d{1,3}(?:,\d{3})+$/.test(s) ? oneDecimal(n).replace(".", s.includes(",") ? "," : ".") : s;   // its own unit: as typed ("1,000", "60."), a kept conversion ("61.23") at one decimal
+  return oneDecimal(fromKg(inKg(n, from), to));
+};
+export const weightStored = (v, from, to) => {                         // a number typed in `from` kept in the exercise's own unit `to`: the shortest number that reads back as typed in `from` and as the same weight in `to` (60 kg into a pound exercise: "132.3"; 135 lb into a kilo one: "61.23")
+  const s = String(v == null ? "" : v).trim(), n = weightNumber(s); if (!from || !to || from === to) return v;   // the exercise's own unit: as typed
+  const words = () => (saysUnit(s) && (s + " " + from).length <= 16 ? s + " " + from : v);   // words, kept with the unit they were typed in ("2x10 kg" in a pound exercise reads so in both units); within the server's 16 characters
+  if (n == null) return words();
+  const exact = fromKg(inKg(n, from), to), back = oneDecimal(n), shown = oneDecimal(exact);
+  for (let d = 0; d <= 8; d++) { const c = Math.round(exact * 10 ** d) / 10 ** d; if (oneDecimal(fromKg(inKg(c, to), from)) === back && oneDecimal(c) === shown) return String(c).length <= 16 ? String(c) : words(); }   // two decimals nearly always; more only a hair from a rounding edge (33.4 lb is 15.14998 kg, which reads 15.1)
+  return words();
+};
 export const stampUnit = (t, unit) => { let changed = false; for (const r of (t && t.rows) || []) { if (r.unit || !(r.weights || []).some((w) => num(w) != null)) continue; r.unit = unit; changed = true; } return changed; };
-export const toUnit = (st, from, to) => (st && from && to && from !== to && st.w != null ? { ...st, w: convertWeight(st.w, from, to) } : st);   // a top set read in another unit
 // Health details (v299; the owner's asks, 15 Nov 2026: Apple's Health details in both views, "options for lbs and cm", and "switch to cm and feet as they are adding the height and lbs and kg as they are adding body weight ... units for workouts are separate").
 // Height and body weight are kept as entered on their wheels, { v, u }: whole inches or centimetres, whole pounds or kilograms (Apple's own wheels, measured on iOS 27.2: 1-inch, 1-cm, 1-lb and 1-kg steps).
 // Each is shown in the unit picked on its own switch (heightUnit, bodyUnit), so flipping a switch back and forth never drifts a value: 142 lb shows as 64 kg, and as 142 lb again.
@@ -98,17 +120,23 @@ export const repairTimed = (t) => {
 // A dumbbell or kettlebell exercise is logged per hand: the Weight label says so ("Weight / dumbbell"), the number stays a number.
 export const perHand = (name) => { const n = String(name || ""); return /\b(dumb?bells?|dbs?)\b/i.test(n) ? "dumbbell" : /\b(kettlebells?|kbs?)\b/i.test(n) ? "kettlebell" : null; };
 // Ranking logged sets. A hold: the longest, then the heaviest. Anything else: the heaviest, then the most reps; a set with
-// reps and no weight (bodyweight) ranks below any weighted set. A set is { w, rp } with null for what was not logged.
+// reps and no weight (bodyweight) ranks below any weighted set. A set is { w, rp } with null for what was not logged, and u, the unit its weight was logged in
+// (v301): sets compare in kilograms, and within 0.06 kg is the same weight, as a weight shown at one decimal in the other unit is never more than 0.05 kg off
+// (135 lb is 61.235 kg: the 61.2 typed in Europe is the same weight, so more reps at it is a best, and 61.2 for as many is not).
 const num = (v) => { const str = String(v == null ? "" : v).trim(); return /^\d+(?:[.,]\d+)?$/.test(str) ? parseFloat(str.replace(",", ".")) : null; };
-export const betterSet = (a, b, timed) => !b || (timed ? (a.rp || 0) > (b.rp || 0) || ((a.rp || 0) === (b.rp || 0) && (a.w || 0) > (b.w || 0))
-  : (a.w == null ? -1 : a.w) > (b.w == null ? -1 : b.w) || ((a.w == null ? -1 : a.w) === (b.w == null ? -1 : b.w) && (a.rp || 0) > (b.rp || 0)));
+const TIE_KG = 0.06;
+const kgOr = (st, none) => (st.w == null ? none : st.u === "lb" ? st.w * KG_PER_LB : st.w);   // no unit (one exercise's own sets): the numbers as they stand
+const cmpW = (a, b, none) => { const d = kgOr(a, none) - kgOr(b, none); return d > TIE_KG + 1e-9 ? 1 : d < -TIE_KG - 1e-9 ? -1 : 0; };   // exactly 0.06 is the same weight (a float's hair over is not heavier)
+export const kgOf = (st) => kgOr(st, -1);   // a set's weight in kilograms: of two sets the same within 0.06 kg, the heavier keeps the title (Best never reads lower than a session that tied it)
+export const betterSet = (a, b, timed) => !b || (timed ? (a.rp || 0) > (b.rp || 0) || ((a.rp || 0) === (b.rp || 0) && cmpW(a, b, 0) > 0)
+  : cmpW(a, b, -1) > 0 || (cmpW(a, b, -1) === 0 && (a.rp || 0) > (b.rp || 0)));
 // How many sets of a row were completed (the Complete set button). Rows from before the count existed: finished = all of them.
 export const doneCount = (row) => { const n = parseInt(row && row.setsDone, 10); return Number.isFinite(n) ? clamp(n, 0, 20) : (row && row.done ? 20 : 0); };
 // A set is a lift once it was completed, or once its reps (or seconds) were logged. A weight typed into a set that never happened is not a lift:
 // it used to become a phantom "best" (Aly's 58 lb curl, Oct 2026) and then carried itself into the next session.
 export const setCounts = (row, i) => i < doneCount(row) || num(((row && row.repsDone) || [])[i]) != null;
-export const topSet = (row, timed, upTo) => { let best = null; const ws = (row && row.weights) || [], rs = (row && row.repsDone) || []; for (let i = 0; i < Math.max(ws.length, rs.length); i++) { if (!setCounts(row, i) && !(upTo != null && i < upTo)) continue; const w = num(ws[i]), rp = num(rs[i]); if (timed ? rp == null : (w == null && rp == null)) continue; const st = { w, rp }; if (betterSet(st, best, timed)) best = st; } return best; };   // upTo: the card being logged may preview the set under the finger
-export const sameSet = (a, b) => !!a && !!b && a.w === b.w && a.rp === b.rp;
+export const topSet = (row, timed, upTo) => { let best = null; const ws = (row && row.weights) || [], rs = (row && row.repsDone) || []; for (let i = 0; i < Math.max(ws.length, rs.length); i++) { if (!setCounts(row, i) && !(upTo != null && i < upTo)) continue; const w = weightNumber(ws[i]), rp = num(rs[i]); if (timed ? rp == null : (w == null && rp == null)) continue; const st = { w, rp }; if (betterSet(st, best, timed)) best = st; } return best; };   // upTo: the card being logged may preview the set under the finger
+export const sameSet = (a, b) => !!a && !!b && cmpW(a, b, -1) === 0 && a.rp === b.rp;
 // Correcting a logged number: the sets after it that still show the old number were copied from it ("untouched box = same as the set
 // before"), so they follow the correction. A later set with a different number was typed on purpose and stays.
 export const followFrom = (arr, i, was) => { const old = String(was == null ? "" : was).trim(); const out = []; if (old) for (let j = i + 1; j < (arr || []).length; j++) if (String(arr[j] == null ? "" : arr[j]).trim() === old) out.push(j); return out; };   // which later sets were copied from this one: decided when editing begins, so every keystroke of the correction reaches them

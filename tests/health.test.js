@@ -223,14 +223,15 @@ test("a US number reads as Apple writes it, \"(310) 555-0142\"; any other stays 
   assert.deepStrictEqual(["3105550142", "13105550142", "310-555-0142", "+44 20 7946 0958", "555-0142", "", null].map(fns.fmtPhone), ["(310) 555-0142", "(310) 555-0142", "(310) 555-0142", "+44 20 7946 0958", "555-0142", "", ""]);
 });
 
-test("an exercise begun in lb keeps lb after Weights in kg: last time's numbers are read in its own unit, not the new one", () => {
+test("last time's weights come as logged, with the unit they were logged in (v301: every screen reads them in the client's unit)", () => {
   const sb = makeSupabase(); clientOn(sb);
   maps.trainings.set("p1", workout("p1", { date: day(-3), completedAt: day(-3) + "T18:00:00.000Z", rows: [logged("100", "lb")] }));
   maps.trainings.set("w1", workout("w1", { rows: [{ ...logged("135", "lb"), done: false, setsDone: 1 }] }));
   maps.clients.get("c1").unit = "kg";
-  assert.deepStrictEqual(fns.lastWeights(maps.trainings.get("w1"), maps.trainings.get("w1").rows[0]).weights, ["100"], "begun in lb: 100 lb, not 45.5");
+  const got = fns.lastWeights(maps.trainings.get("w1"), maps.trainings.get("w1").rows[0]); assert.deepStrictEqual([got.weights, got.unit], [["100"], "lb"], "never rewritten: 100 lb");
   const fresh = { ...logged("", null), weights: [], repsDone: [], setsDone: 0, done: false };
-  assert.deepStrictEqual(fns.lastWeights(maps.trainings.get("w1"), fresh).weights, ["45.5"], "a fresh one in the client's new unit");
+  const f = fns.lastWeights(maps.trainings.get("w1"), fresh); assert.deepStrictEqual([f.weights, f.unit], [["100"], "lb"], "the same for a fresh one");
+  delete maps.trainings.get("p1").rows[0].unit; assert.strictEqual(fns.lastWeights(maps.trainings.get("w1"), fresh).unit, "kg", "a row with no unit is in the client's (stampUnit keeps it so)");
   quiet();
 });
 

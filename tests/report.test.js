@@ -51,10 +51,20 @@ test("a chosen month covers that whole month", () => {
   const r = fns.reportRange("2026-02"); assert.strictEqual(r.from, "2026-02-01"); assert.strictEqual(r.to, "2026-02-28"); assert.ok(/February 2026/.test(r.title));
 });
 
-test("a row logged in pounds prints in pounds after the client switched to kilos, and a minute hold compares with a seconds hold", () => {
+test("a row logged in pounds prints in kilos after the client switched to kilos (v301: one unit, one decimal), and a minute hold compares with a seconds hold", () => {
   const c = seed(); c.unit = "kg";
   const a = maps.trainings.get("a"); a.rows[0].unit = "lb"; a.rows[1].reps = "1 min"; a.rows[1].weights = [""]; a.rows[1].repsDone = ["1"];
   const { text } = checkPdf(fns.buildReport("month", null, c).bytes);
-  assert.ok(text.includes("140 lb"), "the old row keeps its pounds"); assert.ok(!text.includes("140 kg"), "and is never read as kilos");
+  assert.ok(text.includes("63.5 kg"), "140 lb reads 63.5 kg"); assert.ok(!text.includes("140 kg"), "never read as kilos"); assert.ok(!/140 lb/.test(text), "and the report holds one unit");
+  a.rows[0].weights = ["140", "2x20"]; const words = checkPdf(fns.buildReport("month", null, c).bytes).text; assert.ok(words.includes("2x20 lb"), "words with a number say the unit they were logged in");
+  a.rows[0].weights = ["1,000", "1,000"]; const thousand = checkPdf(fns.buildReport("month", null, c).bytes).text; assert.ok(thousand.includes("453.6 kg"), "1,000 lb is a thousand: 453.6 kg"); assert.ok(!/\b0\.5 kg/.test(thousand), "never 1 lb");
   assert.ok(text.includes("60 sec"), "a one-minute hold reads as 60 seconds in the progress table"); assert.ok(!text.includes("1 min") || text.includes("60 sec"));
+});
+
+test("the PDF's Best is the heavier of two sets the same within 0.06 kg, so it never reads lower than End (61.2 kg, then 135 lb at home)", () => {
+  const c = seed(); const a = maps.trainings.get("a"), b = maps.trainings.get("b");   // fixed days in October 2026: the order holds on any day the tests run
+  Object.assign(a, { date: "2026-10-06", completedAt: new Date("2026-10-06T18:00:00").toISOString(), rows: [{ id: "r1", name: "Back squat", setsDone: 1, weights: ["61.2"], repsDone: ["5"], unit: "kg" }] });
+  Object.assign(b, { date: "2026-10-14", completedAt: new Date("2026-10-14T18:00:00").toISOString(), rows: [{ id: "r3", name: "Back squat", setsDone: 1, weights: ["135"], repsDone: ["5"], unit: "lb" }] });
+  const { text } = checkPdf(fns.buildReport("2026-10", null, c).bytes);
+  const cells = [...text.matchAll(/\(([^)]*lb[^)]*)\)/g)].map((m) => m[1]); assert.deepStrictEqual(cells.slice(0, 3), ["134.9 lb × 5", "135 lb × 5", "135 lb × 5"], "START, END, BEST: BEST is 135 lb, as END");
 });
