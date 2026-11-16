@@ -27,7 +27,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
   - a screen's or a gesture's own state is a private `let` in `main.js`;
   - `sync.js` keeps `seenDoc` and `moveOut`;
   - `photos.js` keeps its own queue.
-- `app/sync.js`: the device copy (`fiala.trainings.v1`), the unsent queue (`fiala.pending.v1`), `scheduleSave`, the coach's `cloudBackend`, the client's `clientBackend`, `syncDownNow`/`mergeDown` and the paged `fetchAll`.
+- `app/sync.js`: the device copy (`fiala.trainings.v1`: since v306 in IndexedDB, database `fiala`, store `kv`; in localStorage only where there is no database, as in the tests), the unsent queue (`fiala.pending.v1`), `scheduleSave`, the coach's `cloudBackend`, the client's `clientBackend`, `syncDownNow`/`mergeDown` and the paged `fetchAll`.
 - `app/photos.js`: profile photos in the private Storage bucket `photos`, with their own cache and offline queue.
 - Smaller modules:
   - `app/model.js`: the workout model (no app state);
@@ -51,13 +51,13 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
   - The scripts that built `templates.json` from the program PDFs, with their inputs and outputs, moved to the parent folder's `Templates_source_private/tools/` (15 Nov 2026).
   - `clean_names.py` and `match_videos.py` are one-offs over the parent folder's spreadsheets.
 - `supabase/*.sql`: the server's tables and rules, run by hand (see Database).
-- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 56 `*.test.js` files and 30 `*-probe.mjs` scripts (see Tests).
+- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 57 `*.test.js` files and 31 `*-probe.mjs` scripts (see Tests).
 
 ## Releasing
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (305 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (306 at the time of writing).
 - Any change to `index.html` or an `app/*.js` file raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -177,6 +177,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - A Health details wheel keeps a value only once it moved half a row, another row was tapped, or a key was pressed (`moved`/`picked` in `wheelCol`, #17).
   - `renameInWorkouts` marks each renamed row in `trainerNamed` and saves through `tidySave` (#18).
   - Two pages of the app on one device (a second tab, Safari beside the Dock app) never drop each other's unsent work (v305, #19): the queue carries the page's `tab` id and `fiala.pending.tab` names the last writer; `persistPending` first takes on (`adoptQueue`) what another page's queue still has to send and this page has no edit of (its record from `recs`, its queues, stamps and the coach's marks; never another account's), and so does a `storage` event from another page.
+  - The device copy lives in IndexedDB (v306, #1): localStorage holds about 2.6 million characters once a copy holds a "–" or a curly quote, and the coach's outgrew it in months; WebKit's IndexedDB took 50 million (measured). `localBackend.load()` reads localStorage at once, then boot awaits `loadDb()`, which takes the database's copy when it is the newer (`savedAt`) and moves a localStorage copy over (the key is then removed). `save()` writes the database 120 ms after a burst (`flushDb`, also on leaving the app); `wipe()` clears both at a sign-out. With no database, or an open that takes over 2 s, the session uses localStorage as before. A copy of the wrong shape is passed over (`takeCopy`, #20).
   - #22: the card's safety summary (`clause`) cuts at the first point, never inside a number or after "Dr."; `phoneIn` drops a trunk "(0)"; History files a workout skipped ahead of its day under today (`hday`); a workout made less than a week ago is never filed as missed; the client's sync judges a lapsed monthly plan by the phone's day and Los Angeles's (`laToday` in sync.js), as the server does.
 - A template's `rows` merge in `takeFields` as a plain field (no client logs on a template): rows this copy did not change since it last read take the other device's. A client workout's rows keep their own rules (`mergeServerRows`).
 - `takeFields` merges `health` (Health & safety, v299) field by field: the client writes one of its fields with the client's rule while the coach edits another on the client's card.
@@ -213,7 +214,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v305 it ends "699 passed, 0 failed" after about 95 s.
+- At v306 it ends "702 passed, 0 failed" after about 95 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests

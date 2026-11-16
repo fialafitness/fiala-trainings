@@ -160,9 +160,41 @@ function flushOne(kind, id) {
   chains.set(k, run.catch(() => {}));
   return run;
 }
+// ---------- the device copy in the browser's database (v306, the audit's #1: localStorage holds about 2.6 million characters once a copy holds a "–" or a curly quote, and a coach's copy outgrew it in months) ----------
+const COPY = "fiala.trainings.v1", IDB_NAME = "fiala", IDB_STORE = "kv";
+let idbDb = null, idbTried = false, idbTimer = 0;
+function idbOpen() {                                               // the database, or null where there is none (an older or a locked-down browser): the copy then stays in localStorage, as before
+  if (idbTried) return Promise.resolve(idbDb); idbTried = true;
+  if (typeof indexedDB === "undefined" || !indexedDB) return Promise.resolve(null);
+  return new Promise((done) => {
+    let over = false; const end = (db) => { if (over) return; over = true; idbDb = db; done(db); };
+    const late = setTimeout(() => end(null), 2000);                // a browser that never answers the open: this launch goes on with localStorage
+    try {
+      const r = indexedDB.open(IDB_NAME, 1);
+      r.onupgradeneeded = () => { try { r.result.createObjectStore(IDB_STORE); } catch (_) {} };
+      r.onsuccess = () => { clearTimeout(late); const db = r.result; try { db.onversionchange = () => { try { db.close(); } catch (_) {} if (idbDb === db) idbDb = null; }; } catch (_) {} end(db); };
+      r.onerror = () => { clearTimeout(late); end(null); };
+    } catch (_) { clearTimeout(late); end(null); }
+  });
+}
+const idbTx = (mode, fn) => new Promise((ok) => { try { const tx = idbDb.transaction(IDB_STORE, mode), r = fn(tx.objectStore(IDB_STORE)); if (mode === "readonly") { r.onsuccess = () => ok(r.result); r.onerror = () => ok(undefined); } else { tx.oncomplete = () => ok(true); tx.onerror = () => ok(false); tx.onabort = () => ok(false); } } catch (_) { ok(mode === "readonly" ? undefined : false); } });
+const copyOf = () => { const ts = Object.fromEntries(trainings), d = S.templateDraft; if (d && d.dirty && d.snapshot && ts[d.id]) ts[d.id] = JSON.parse(d.snapshot); return { clients: Object.fromEntries(clients), trainings: ts, savedAt: Date.now() }; };   // the device copy holds the template as saved, never the draft
+const takeCopy = (d) => { if (!d || typeof d !== "object" || !d.clients || !d.trainings || typeof d.clients !== "object" || typeof d.trainings !== "object") return false; for (const c of Object.values(d.clients)) if (c && c.id) clients.set(c.id, c); for (const t of Object.values(d.trainings)) if (t && t.id) { repairTimed(t); trainings.set(t.id, t); } return true; };   // a copy of the wrong shape (damaged) is passed over: the app starts empty and the queue and the server fill it, never a blank app at every launch (the audit's #20)
 const localBackend = {
-  load() { const d = lsGet("fiala.trainings.v1") || { clients: {}, trainings: {} }; for (const c of Object.values(d.clients)) clients.set(c.id, c); for (const t of Object.values(d.trainings)) { repairTimed(t); trainings.set(t.id, t); } },
-  save() { const ts = Object.fromEntries(trainings), d = S.templateDraft; if (d && d.dirty && d.snapshot && ts[d.id]) ts[d.id] = JSON.parse(d.snapshot); const ok = lsSet("fiala.trainings.v1", { clients: Object.fromEntries(clients), trainings: ts }); S.deviceFull = !ok; },   // the device copy holds the template as saved, never the draft
+  load() { takeCopy(lsGet(COPY)); },                                // at once, from localStorage (the copy of a release before v306, or of a browser with no database)
+  async loadDb() {                                                  // (v306) then the copy in the browser's database: newer than any in localStorage, it replaces what load() put in; one found only in localStorage moves over, and leaves localStorage its room
+    if (!(await idbOpen())) return false;
+    const got = await idbTx("readonly", (st) => st.get(COPY)), ls = lsGet(COPY);
+    if (got && typeof got === "object" && (!ls || (Number(got.savedAt) || 0) >= (Number(ls && ls.savedAt) || 0))) { clients.clear(); trainings.clear(); takeCopy(got); }
+    if (ls && (await idbTx("readwrite", (st) => st.put(copyOf(), COPY)))) { try { localStorage.removeItem(COPY); } catch (_) {} }
+    return true;
+  },
+  save() {
+    if (idbDb) { clearTimeout(idbTimer); idbTimer = setTimeout(() => localBackend.flushDb(), 120); return; }   // the database: one write for a burst of saves (a sync, a restore)
+    const ok = lsSet(COPY, copyOf()); S.deviceFull = !ok;
+  },
+  flushDb() { clearTimeout(idbTimer); idbTimer = 0; if (!idbDb) return Promise.resolve(false); return idbTx("readwrite", (st) => st.put(copyOf(), COPY)).then((ok) => { const was = S.deviceFull; S.deviceFull = !ok; if (was !== S.deviceFull && ui.setStatus) ui.setStatus(); return ok; }); },
+  async wipe() { clearTimeout(idbTimer); idbTimer = 0; if (idbDb) { try { localStorage.removeItem(COPY); } catch (_) {} await idbTx("readwrite", (st) => st.delete(COPY)); } else lsSet(COPY, { clients: {}, trainings: {} }); },   // a sign-out: nothing of the account stays on the device
   async set() { this.save(); },
   async del() { this.save(); },
 };
@@ -536,6 +568,8 @@ window.addEventListener("focus", scheduleSync);
 window.addEventListener("storage", (e) => { if (!e || e.key !== "fiala.pending.v1" || !e.newValue) return; try { if (adoptQueue(JSON.parse(e.newValue))) persistPending(); } catch (_) {} });   // another page of the app saved its queue: taken on here at once (the audit's #19)
 window.addEventListener("online", () => { S.failed = false; if (S.offline && S.signedIn) { ui.resumeOnline().catch(() => {}); return; } for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } scheduleSync(); });
 setInterval(() => { if (document.visibilityState === "visible") scheduleSync(); }, 60000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && idbTimer) localBackend.flushDb(); });   // leaving the app: the copy waiting to be written goes now
+window.addEventListener("pagehide", () => { if (idbTimer) localBackend.flushDb(); });
 // a request that gets no answer within `ms` counts as a network failure (a phone with one bar can hang for a long time)
 async function fetchAll(table) {                                 // every row, page by page: the server answers at most 1,000 at a time
   const PAGE = 1000, out = []; let after = null;

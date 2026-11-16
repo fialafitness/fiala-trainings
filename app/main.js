@@ -1065,7 +1065,7 @@ import { reportRange, buildReport } from "./report.js";
     const finish = () => {
       for (const tm of timers.values()) clearTimeout(tm);
       timers.clear(); chains.clear(); dirty.clear(); pendingProfile.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); S.failed = false;
-      clients.clear(); trainings.clear(); localBackend.save();
+      clients.clear(); trainings.clear(); localBackend.wipe();   // nothing of the account stays on the device, in localStorage or in the browser's database
       try { localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
       S.offline = false; S.offlineEntry = null; S.pendingOwner = "";
       resetPhotos();                                                 // no one else's photos stay on this phone
@@ -1094,7 +1094,7 @@ import { reportRange, buildReport } from "./report.js";
     const finish = () => {
       for (const tm of timers.values()) clearTimeout(tm);
       timers.clear(); chains.clear(); dirty.clear(); pendingProfile.clear(); profileTouched.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); folderTouched.clear(); deletedFolders.clear(); fromFile.clear(); S.failed = false;
-      clients.clear(); trainings.clear(); localBackend.save();
+      clients.clear(); trainings.clear(); localBackend.wipe();   // nothing of the account stays on the device, in localStorage or in the browser's database
       try { localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
       S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar();
       S.offline = false; S.offlineEntry = null; S.pendingOwner = "";
@@ -5902,7 +5902,7 @@ import { reportRange, buildReport } from "./report.js";
     const saved = lsGet("fiala.trainings.view"); if (saved && saved.name) S.view = saved;
     const page = lsGet("fiala.trainings.page"); if (page && page.open) pendingPage = page;   // read before any screen change clears it
     const savedTab = lsGet("fiala.trainings.tab"); if (["profile", "workouts", "notes"].includes(savedTab)) S.tab = savedTab;
-    localBackend.load();                       // instant start from the device copy
+    localBackend.load(); await localBackend.loadDb();   // instant start from the device copy (v306: in the browser's database, with far more room than localStorage's 2.6 million characters; where there is none, localStorage as before)
     try { const dr = lsGet("fiala.trainings.draft"); if (dr && dr.id && dr.doc && trainings.has(dr.id)) { S.templateDraft = { id: dr.id, snapshot: JSON.stringify(trainings.get(dr.id)), dirty: true, saving: false }; trainings.set(dr.id, dr.doc); } } catch (_) {}   // a template left with unsaved changes: back as it was, still unsaved
     restorePending();                          // and whatever was still waiting to reach the server
     try { previewClient = firstPreview(sessionStorage.getItem(PREVIEW_KEY), S.view); } catch (_) {}   // the workout page it opens on, in the view he set
