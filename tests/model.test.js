@@ -100,7 +100,7 @@ test("the top set of a row: heaviest then most reps; a hold: longest then heavie
   assert.deepStrictEqual(topSet({ weights: ["", ""], repsDone: ["10", "12"] }, false), { w: null, rp: 12 });
   assert.deepStrictEqual(topSet({ weights: ["bw", "20"], repsDone: ["15", "8"] }, false), { w: 20, rp: 8 });
   assert.strictEqual(topSet({ weights: [], repsDone: [] }, false), null); assert.strictEqual(topSet({ weights: ["", ""], repsDone: ["", ""] }, true), null);
-  // a weight typed into a set that was never completed is not a lift (Aly's phantom 58 lb curl)
+  // a weight typed into a set that was never completed is not a lift (a client's phantom 58 lb curl)
   assert.deepStrictEqual(topSet({ weights: ["50", "58"], repsDone: ["10", ""], setsDone: 1 }, false), { w: 50, rp: 10 });
   assert.deepStrictEqual(topSet({ weights: ["50", "58"], repsDone: ["10", ""], setsDone: 2 }, false), { w: 58, rp: null });     // completed without reps: it happened
   assert.deepStrictEqual(topSet({ weights: ["50", "58"], repsDone: ["10", "8"], setsDone: 1 }, false), { w: 58, rp: 8 });       // reps typed: a deliberate log

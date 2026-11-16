@@ -51,13 +51,13 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
   - The scripts that built `templates.json` from the program PDFs, with their inputs and outputs, moved to the parent folder's `Templates_source_private/tools/` (15 Nov 2026).
   - `clean_names.py` and `match_videos.py` are one-offs over the parent folder's spreadsheets.
 - `supabase/*.sql`: the server's tables and rules, run by hand (see Database).
-- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 53 `*.test.js` files and 28 `*-probe.mjs` scripts (see Tests).
+- `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 56 `*.test.js` files and 30 `*-probe.mjs` scripts (see Tests).
 
 ## Releasing
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (303 at the time of writing).
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (304 at the time of writing).
 - Any change to `index.html` or an `app/*.js` file raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -172,6 +172,11 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - A client workout's exercise list merges three ways by row id: removed there and unchanged here goes, added there comes in, removed or added here stays (#4). Notes (`mergeNotes`' `base`) and packages do the same for deletions made on the other device (#9).
   - `mergeDown` compares with `sameRec`: key order, empty sets at the end, and an old exercise name for its alias's new one are not changes (#11). A changed sibling of the workout on screen bumps `S.histVer` (part of `paintSigOf`); it never clears `S.renderedTraining`, which lifted the typing guard. `renderTraining` also rebuilds when the record object itself was replaced (`paintedObj`, #3).
   - Sign-out is `signOut({ scope: "local" })`, and a SIGNED_OUT from elsewhere keeps `S.pendingOwner` (#7).
+- Since v304 (the audit's hidden fixes):
+  - A switch between session packages carries only the open package (`carryOver` in model.js, #10): a finished 10 moved to a 20 starts at 0 of 20.
+  - A Health details wheel keeps a value only once it moved half a row, another row was tapped, or a key was pressed (`moved`/`picked` in `wheelCol`, #17).
+  - `renameInWorkouts` marks each renamed row in `trainerNamed` and saves through `tidySave` (#18).
+  - #22: the card's safety summary (`clause`) cuts at the first point, never inside a number or after "Dr."; `phoneIn` drops a trunk "(0)"; History files a workout skipped ahead of its day under today (`hday`); a workout made less than a week ago is never filed as missed; the client's sync judges a lapsed monthly plan by the phone's day and Los Angeles's (`laToday` in sync.js), as the server does.
 - A template's `rows` merge in `takeFields` as a plain field (no client logs on a template): rows this copy did not change since it last read take the other device's. A client workout's rows keep their own rules (`mergeServerRows`).
 - `takeFields` merges `health` (Health & safety, v299) field by field: the client writes one of its fields with the client's rule while the coach edits another on the client's card.
 - A new shared Map or Set (a new client queue, say) also goes into:
@@ -207,7 +212,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v303 it ends "688 passed, 0 failed" after about 95 s.
+- At v304 it ends "697 passed, 0 failed" after about 95 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
@@ -224,7 +229,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 
 - `*-probe.mjs` scripts test what in-process tests cannot: gestures, document and window listeners, and import-time variants (the home-screen app, phone or Mac).
 - Each probe runs in its own Node process (`execFileSync` from its test file). It sets up its stand-ins before it imports `main.js`, then prints one JSON line that the test parses.
-- Twenty probes run every timer and `performance.now` on their own clock: row-swipe, hold-menu, month-menu, preview-swipe, preview-pager, template-preview, turn, cal-drag, cal-fold, cal-fold-reload, week-pager, alternatives, ramp, instructions, sets-count, show-in-history, browser-pictures, row-delete, units and detached. The others use real timers.
+- Twenty probes run every timer and `performance.now` on their own clock: row-swipe, hold-menu, month-menu, preview-swipe, preview-pager, template-preview, turn, cal-drag, cal-fold, cal-fold-reload, week-pager, alternatives, ramp, instructions, sets-count, show-in-history, browser-pictures, row-delete, units, detached and wheel. The others use real timers.
 - `alternatives-probe.mjs` has the fullest stand-in elements: children with their parent, listeners with bubbling and `composedPath`, one class list behind `className` and `classList`, and the markup's parts looked up by selector (the same part each time). Its walks up stop at its own stand-ins, because any other `env.js` lookup answers a new element without end.
 - `ramp-probe.mjs` starts from those stand-ins and also keeps written text as a node among an element's children (`nodes`; `children` is the elements alone, as on a page), so a test can tell whether something sits before or after the words. `instructions-probe.mjs` starts from those. So does `sets-count-probe.mjs`, which also lays a menu's rows out 42 tall (`offsetTop`), gives `#whenPop` the height a page would (its rows, the long list's 528, a cap written on it, and no scrolling while hidden), keeps the window's listeners with their phase, and records any unhandled rejection. `units-probe.mjs` starts from ramp-probe's and gives each box one chip of its own (`chipEl`: `closest(".chip")` answers the same element each time), so a test can read the number and the unit word a box shows.
 - Most probes record whether a document listener is capture. hold-menu, cal-drag and week-pager also record whether it is passive.

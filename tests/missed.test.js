@@ -224,3 +224,15 @@ test("the page: the Missed card above Today with Skip all on its title; the \"â€
   assert.ok(html.includes("body.client.paused #missHead, body.client.paused #missList,") && html.includes("#vClient.tpl #missHead, #vClient.tpl #missList,"), "paused, or the library: no card");
   assert.ok(!html.includes("missed-actions"), "no buttons under the row any more");
 });
+
+test("(the audit's #22) a workout added to a day more than a week ago (a session logged after the fact) is not filed as Missed until a week after it was made", () => {
+  for (const client of [false, true]) {
+    setup(client, {});
+    W("backlog", -10, { createdAt: new Date().toISOString() });
+    W("old", -10);
+    drawing(() => { fns.render(); });
+    assert.strictEqual(maps.trainings.get("backlog").skippedAt, null, "made today: still to do, not filed");
+    assert.ok(maps.trainings.get("old").skippedAt && maps.trainings.get("old").missed === true, "made long ago: filed as before");
+  }
+  quiet();
+});

@@ -18,6 +18,7 @@ const reasonOf = (e) => {
 };
 
 function key(kind, id) { return kind + "/" + id; }
+const laToday = () => { try { const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date()), g = (t) => (p.find((x) => x.type === t) || {}).value; return g("year") + "-" + g("month") + "-" + g("day"); } catch (_) { return today(); } };   // the server's day: client_my_data hides a lapsed plan's workouts by the Los Angeles date (the audit's #22: a phone in Hawaii is a day behind it for three hours a night)
 const seenDoc = new Map();                                        // "kind/id" -> the server copy the stamp belongs to: the base a two-device merge measures changes against
 function markDirty(kind, id) { const k = key(kind, id); dirty.set(k, (dirty.get(k) || 0) + 1); }
 const recMap = (k) => { const kind = String(k).slice(0, String(k).indexOf("/")); return kind === "clients" ? clients : kind === "trainings" ? trainings : null; };
@@ -455,7 +456,7 @@ async function syncDownNow() {
     }
     c = { data: res.data.clients || [] }; t = { data: res.data.trainings || [] };
     const me = c.data[0]; { const was = (me && me.data && me.data.unit) || "lb"; for (const r of t.data) if (r && r.data) stampUnit(r.data, was); }   // v299: each answer read in its own unit: an exercise logged with no unit of its own was logged in the unit the client's record had when this was read (the client's rule stamps them so before the client's unit changes), so a read from before the client's switch never shows lb as kg, and a copy that did not change compares the same (no redraw under the client's finger: the v299 review's catches)
-    const authoritative = !!me && !(me.data && me.data.paused) && planActive(me.data && me.data.plan, today());   // paused, or a monthly plan past its day: the server hides the workouts, it has not deleted them, so nothing queued is dropped
+    const authoritative = !!me && !(me.data && me.data.paused) && planActive(me.data && me.data.plan, today()) && planActive(me.data && me.data.plan, laToday());   // paused, or a monthly plan past its day: the server hides the workouts, it has not deleted them, so nothing queued is dropped
     if (authoritative) {                                                   // a training the trainer deleted: nothing queued for it can land
       const serverIds = new Set(t.data.map((r) => r.id));
       for (const k of [...dirty.keys()]) { const [kind, id] = k.split("/"); if (kind === "trainings" && !serverIds.has(id)) { dirty.delete(k); pendingWeightRows.delete(id); pendingDoneRows.delete(id); pendingEarlyRows.delete(id); pendingNoteRows.delete(id); pendingFinish.delete(id); pendingSkip.delete(id); pendingMove.delete(id); pendingMiss.delete(id); pendingSwap.delete(id); pendingOrder.delete(id); } }

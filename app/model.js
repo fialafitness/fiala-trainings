@@ -133,7 +133,7 @@ export const betterSet = (a, b, timed) => !b || (timed ? (a.rp || 0) > (b.rp || 
 // How many sets of a row were completed (the Complete set button). Rows from before the count existed: finished = all of them.
 export const doneCount = (row) => { const n = parseInt(row && row.setsDone, 10); return Number.isFinite(n) ? clamp(n, 0, 20) : (row && row.done ? 20 : 0); };
 // A set is a lift once it was completed, or once its reps (or seconds) were logged. A weight typed into a set that never happened is not a lift:
-// it used to become a phantom "best" (Aly's 58 lb curl, Oct 2026) and then carried itself into the next session.
+// it used to become a phantom "best" (a client's 58 lb curl, Oct 2026) and then carried itself into the next session.
 export const setCounts = (row, i) => i < doneCount(row) || num(((row && row.repsDone) || [])[i]) != null;
 export const topSet = (row, timed, upTo) => { let best = null; const ws = (row && row.weights) || [], rs = (row && row.repsDone) || []; for (let i = 0; i < Math.max(ws.length, rs.length); i++) { if (!setCounts(row, i) && !(upTo != null && i < upTo)) continue; const w = weightNumber(ws[i]), rp = num(rs[i]); if (timed ? rp == null : (w == null && rp == null)) continue; const st = { w, rp }; if (betterSet(st, best, timed)) best = st; } return best; };   // upTo: the card being logged may preview the set under the finger
 export const sameSet = (a, b) => !!a && !!b && cmpW(a, b, -1) === 0 && a.rp === b.rp;
@@ -150,6 +150,7 @@ export const planProgress = (plan, list) => {
   const size = plan.size, packNo = used === 0 ? 1 : Math.floor((used - 1) / size) + 1, inPack = used === 0 ? 0 : ((used - 1) % size) + 1;
   return { used, size, packNo, inPack, left: size - inPack, complete: used > 0 && used % size === 0 };
 };
+export const carryOver = (plan, list) => { const p = planProgress(plan, list); return p ? p.used - (p.complete ? 0 : p.inPack) : 0; };   // (15 Nov 2026, the audit's #10) the sessions of the packages already finished: a switch to another size goes on from the open one
 export const sessionNo = (plan, list, t) => {                      // "Session 3 of 10": finished in-person workouts rank by the day they were finished (the card's count); a planned one comes after them, in date order
   if (!plan || plan.kind !== "sessions" || !(plan.size > 0) || !t || !t.inPerson || t.skippedAt || t.missed === true || effDate(t) < (plan.startedOn || "")) return null;
   const by = (a, b) => effDate(a).localeCompare(effDate(b)) || (a.createdAt || "").localeCompare(b.createdAt || "");
