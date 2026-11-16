@@ -181,3 +181,34 @@ test("(#7, #13, #14) source guards: sign-out is this device's alone and keeps wh
   assert.ok(src.includes('$("esKeep").focus({ preventScroll: true, focusVisible: keysLast })'), "Cancel takes the focus, as askFirst's");
   assert.ok(src.includes("st(trainings.get(id)) !== was) return;"), "the preview's Delete checks the workout again after its question");
 });
+
+test("(#19) another page's unsent work is taken on before this page writes the queue, record and queues with it; this page's own edit of the same workout stands; another account's is never taken", () => {
+  const quietTimers = () => { for (const t of maps.timers.values()) clearTimeout(t); maps.timers.clear(); };
+  app.reset(); app.set({ clientMode: true, sessionEmail: "jane@test" });
+  maps.trainings.set("MINE", training("MINE", { title: "Mine, edited here" })); maps.dirty.set("trainings/MINE", 1);
+  const theirs = training("X", { rows: [row("r1", ["100", "105"], ["5", "5"], 2)] });
+  localStorage.setItem("fiala.pending.v1", JSON.stringify({ tab: "OTHER", owner: "jane@test", dirty: ["trainings/X", "trainings/MINE"], recs: [["trainings/X", theirs], ["trainings/MINE", training("MINE", { title: "Theirs" })]], weights: [["X", ["r1"]]], finish: ["X"], gone: [] }));
+  localStorage.setItem("fiala.pending.tab", "OTHER");
+  fns.persistPending();
+  assert.deepStrictEqual(maps.trainings.get("X").rows[0].weights, ["100", "105"], "the other page's sets, taken on");
+  assert.ok(maps.dirty.has("trainings/X") && maps.pendingWeightRows.get("X").has("r1") && maps.pendingFinish.has("X"), "and queued to go from here too");
+  assert.strictEqual(maps.trainings.get("MINE").title, "Mine, edited here", "this page's own edit stands");
+  const disk = JSON.parse(localStorage.getItem("fiala.pending.v1"));
+  assert.ok(disk.dirty.includes("trainings/X") && disk.recs.some(([k]) => k === "trainings/X"), "the queue on the device keeps it");
+  assert.notStrictEqual(localStorage.getItem("fiala.pending.tab"), "OTHER", "and this page wrote last");
+  quietTimers(); app.reset();
+  app.set({ clientMode: true, sessionEmail: "ann@test" });
+  localStorage.setItem("fiala.pending.v1", JSON.stringify({ tab: "OTHER", owner: "jane@test", dirty: ["trainings/X"], recs: [["trainings/X", theirs]] })); localStorage.setItem("fiala.pending.tab", "OTHER");
+  fns.persistPending();
+  assert.ok(!maps.trainings.has("X") && !maps.dirty.has("trainings/X"), "another account's queue: never taken on");
+  quietTimers(); app.reset();
+});
+
+test("(#19) a page that wrote the queue last never reads it back: a single tab pays nothing", () => {
+  app.reset(); app.set({ clientMode: false });
+  fns.persistPending();                                                     // this page writes, and is noted as the last writer
+  localStorage.setItem("fiala.pending.v1", JSON.stringify({ tab: "OTHER", dirty: ["trainings/Z"], recs: [["trainings/Z", training("Z")]] }));   // the content changed under it, the note did not
+  fns.persistPending();
+  assert.ok(!maps.trainings.has("Z") && !maps.dirty.has("trainings/Z"));
+  app.reset();
+});

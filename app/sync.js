@@ -1,6 +1,6 @@
 // Saving and syncing: the device copy, the debounced save queue, the cloud backend (coach), the client backend (RPCs),
 // the paged read of the server and the merge back into the local maps. Screens are reached only through `ui`.
-import { lsGet, lsSet, norm, clamp, today } from "./util.js";
+import { lsGet, lsSet, norm, clamp, today, uid } from "./util.js";
 import { isTemplateClient, planActive, repairTimed, timedPlan, cmpLabel, stampUnit, profileGet, profilePut } from "./model.js";
 import { mergeNotes } from "./notes.js";
 import { ALIASES } from "./catalog.js";
@@ -37,15 +37,44 @@ const mergeSets = (lr, br, sr) => {                                // (15 Nov 20
   if (String(lr.unit || "") === String(br.unit || "") && (sr.unit === "kg" || sr.unit === "lb")) lr.unit = sr.unit;
   if (String(lr.earlyReason || "") === String(br.earlyReason || "")) { if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; }
 };
+const TAB = uid(), TAB_KEY = "fiala.pending.tab";                   // (15 Nov 2026, the audit's #19) this page's own name, and the device's note of which page wrote the queue last
+function adoptQueue(p) {                                           // another page of the app (a second tab, Safari beside the Dock app) wrote the queue: what it still has to send that this page knows nothing of is taken on here, record, queues and the coach's marks with it, so neither page's write ever drops the other's (a tab iOS discards before it sends loses nothing)
+  if (!p || typeof p !== "object" || p.tab === TAB) return false;
+  const me = S.sessionEmail || S.pendingOwner || ""; if (p.owner && me && p.owner !== me) return false;   // another account's: never taken on
+  const recs = new Map((p.recs || []).filter((e) => Array.isArray(e) && typeof e[0] === "string" && e[1] && typeof e[1] === "object")), gone = new Set(p.gone || []), took = new Set();
+  for (const k of p.dirty || []) {
+    if (typeof k !== "string" || dirty.has(k)) continue;           // this page's own edit of it stands
+    const m = recMap(k), id = k.slice(k.indexOf("/") + 1); if (!m || (S.templateDraft && S.templateDraft.id === id)) continue;
+    if (recs.has(k)) { const d = recs.get(k); if (m === trainings) repairTimed(d); m.set(id, d); } else if (gone.has(k)) m.delete(id); else continue;   // a queue from before v303 holds no record: that page sends its own
+    dirty.set(k, 1); took.add(k);
+  }
+  if (!took.size) return false;
+  const tid = (id) => took.has("trainings/" + id), cid = (id) => took.has("clients/" + id);
+  const sets = (list, map, ok) => { for (const [id, xs] of list || []) if (ok(id) && Array.isArray(xs)) map.set(id, new Set([...(map.get(id) || []), ...xs])); };
+  sets(p.weights, pendingWeightRows, tid); sets(p.done, pendingDoneRows, tid); sets(p.early, pendingEarlyRows, tid); sets(p.rownotes, pendingNoteRows, tid);
+  sets(p.touched, trainerTouched, tid); sets(p.named, trainerNamed, tid); sets(p.noted, trainerNoted, tid); sets(p.state, trainerState, tid);
+  sets(p.profile, pendingProfile, cid); sets(p.profTouched, profileTouched, cid);
+  for (const [list, set] of [[p.finish, pendingFinish], [p.skip, pendingSkip], [p.move, pendingMove], [p.miss, pendingMiss], [p.order, pendingOrder]]) for (const id of list || []) if (tid(id)) set.add(id);
+  for (const [id, picks] of p.swap || []) if (tid(id) && Array.isArray(picks)) pendingSwap.set(id, new Map([...(pendingSwap.get(id) || []), ...picks]));
+  for (const id of p.plans || []) if (cid(id)) planTouched.add(id);
+  for (const [list, map] of [[p.notesGone, deletedNotes], [p.packagesGone, deletedPackages], [p.foldersGone, deletedFolders], [p.foldersTouched, folderTouched]]) for (const [n, c] of list || []) if (cid(c)) map.set(n, c);
+  for (const [k, stamp] of p.stamps || []) if (took.has(k)) { if (stamp) seenAt.set(k, stamp); else seenAt.delete(k); }   // its record goes with the copy that page read it against
+  for (const [k, doc] of p.docs || []) if (took.has(k) && doc) seenDoc.set(k, doc);
+  for (const k of took) if (!timers.has(k)) { const kind = k.slice(0, k.indexOf("/")), id = k.slice(k.indexOf("/") + 1); timers.set(k, setTimeout(() => flushOne(kind, id), 400)); }   // sent from here too: twice is harmless, every write is whole
+  setTimeout(() => { if (ui.render) ui.render(); }, 0);
+  return true;
+}
 // what still has to reach the server is written to the device too, so closing the app with no signal loses nothing
 function persistPending() {
+  try { if (localStorage.getItem(TAB_KEY) !== TAB) adoptQueue(lsGet("fiala.pending.v1")); } catch (_) {}   // the last write was another page's (or an earlier launch's): what it holds is taken on before this one writes over it
   lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]), rownotes: [...pendingNoteRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]), profile: [...pendingProfile].filter(([, f]) => f.size).map(([id, f]) => [id, [...f]]),
     finish: [...pendingFinish], skip: [...pendingSkip], move: [...pendingMove], miss: [...pendingMiss], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]), order: [...pendingOrder],
     touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]), noted: [...trainerNoted].map(([id, r]) => [id, [...r]]), state: [...trainerState].map(([id, f]) => [id, [...f]]),
     plans: [...planTouched], profTouched: [...profileTouched].filter(([, f]) => f.size).map(([id, f]) => [id, [...f]]), notesGone: [...deletedNotes], packagesGone: [...deletedPackages], foldersGone: [...deletedFolders], foldersTouched: [...folderTouched], fromFile: [...fromFile],   // the coach's intent about a client record: a plan changed, a note or package removed, a backup restored
     stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), docs: [...dirty.keys()].filter((k) => seenDoc.has(k)).map((k) => [k, seenDoc.get(k)]),   // the stamp and the copy it describes: a save sent after a relaunch still merges against what this device last read
     recs: [...dirty.keys()].map((k) => [k, recOf(k)]).filter(([, d]) => d), gone: [...dirty.keys()].filter((k) => recMap(k) && !recOf(k)),   // (15 Nov 2026, the audit's #1) each record still to send as it is now, and each one deleted here: a device copy that stopped saving (a full device) can never send an older copy over the server's, nor make a record it lost look deleted
-    owner: S.sessionEmail || S.pendingOwner || "" });
+    owner: S.sessionEmail || S.pendingOwner || "", tab: TAB });
+  try { localStorage.setItem(TAB_KEY, TAB); } catch (_) {}
   if (S.sessionEmail) S.pendingOwner = S.sessionEmail;
 }
 function restorePending() {
@@ -504,6 +533,7 @@ async function syncDownNow() {
 function scheduleSync() { clearTimeout(S.syncTimer); S.syncTimer = setTimeout(() => { (S.offline ? ui.resumeOnline() : syncDown()).catch(() => {}); }, 300); }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") scheduleSync(); });
 window.addEventListener("focus", scheduleSync);
+window.addEventListener("storage", (e) => { if (!e || e.key !== "fiala.pending.v1" || !e.newValue) return; try { if (adoptQueue(JSON.parse(e.newValue))) persistPending(); } catch (_) {} });   // another page of the app saved its queue: taken on here at once (the audit's #19)
 window.addEventListener("online", () => { S.failed = false; if (S.offline && S.signedIn) { ui.resumeOnline().catch(() => {}); return; } for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } scheduleSync(); });
 setInterval(() => { if (document.visibilityState === "visible") scheduleSync(); }, 60000);
 // a request that gets no answer within `ms` counts as a network failure (a phone with one bar can hang for a long time)
@@ -519,4 +549,4 @@ async function fetchAll(table) {                                 // every row, p
   }
 }
 
-export { seenDoc, moveOut, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll };
+export { adoptQueue, seenDoc, moveOut, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll };
