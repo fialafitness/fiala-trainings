@@ -78,6 +78,9 @@
     --chart-bar: #e5e5ea; --chart-avg: #d1d1d6;   /* the small charts' earlier bars, and the average card's bars (Health's pinned card and Highlights, measured) */
     --chart-grid: #ececee; --chart-base: #d6d6da; --chart-axis: #c5c5c7;   /* Health's chart page: the lines across, the zero line, the labels (measured) */
     --range-track: #eeeeef; --range-on: #ffffff;   /* Health's D W M 6M Y control: its track and the chosen part (measured) */
+    --lift: #c29b3e; --lift-ink: #1d1d1f;   /* strength in gold as a fill or a line: a lighter step of --gold, which reads brown as a bar on white (his pick after the pictures, 16 Nov 2026); --gold stays the text's */
+    --chart-cmp: #e9e9eb;               /* Highlights' grey comparison bar, its label black inside (measured) */
+    --search-fill: #e9e9eb;             /* a search field's capsule on the page (Look up an exercise) */
     --ink: #1d1d1f;                     /* the strong mark: black on light, white on dark */
     --disc-fill: #f8f8f8; --disc-ink: #1d1d1f;   /* the floating bar buttons (back, Messages, "…", + …; the preview's ×, ‹ ›, Edit): Apple's iOS 27.2 glass, measured pixel by pixel (his ask, 13 Nov: "measure exactly how Apple would do edit buttons"; his pick A: glass on the bar buttons, the page's own buttons plain as Apple's): light is the same on the page and on a sheet (Reminders, Photos, Calendar's event sheet) */
     --menu-sep: rgba(0,0,0,0.08); --pop-chev: rgba(60,60,67,0.6);   /* a menu's line between its groups (Files, measured: 8% black on the glass, 8% white in the dark) and a pop-up button's up-and-down chevrons (Calendar's "None": Apple's secondary label, measured 138 on white) */
@@ -141,6 +144,9 @@
       --chart-bar: #48484a; --chart-avg: #48484a;
       --chart-grid: rgba(255,255,255,0.09); --chart-base: rgba(255,255,255,0.2); --chart-axis: #5b5b5f;
       --range-track: #1c1c1f; --range-on: #5a5a5f;
+      --lift: #e0c268; --lift-ink: #1d1d1f;
+      --chart-cmp: #38383b;
+      --search-fill: #38383b;
       --ink: #ffffff;
       --disc-fill: #1f1f1f; --disc-ink: #ffffff;   /* on the black page: 12% white, fitted to his Mail screenshot */
       --menu-sep: rgba(255,255,255,0.08); --pop-chev: rgba(235,235,245,0.6);
@@ -204,6 +210,9 @@
     --chart-bar: #48484a; --chart-avg: #48484a;
     --chart-grid: rgba(255,255,255,0.09); --chart-base: rgba(255,255,255,0.2); --chart-axis: #5b5b5f;
     --range-track: #1c1c1f; --range-on: #5a5a5f;
+    --lift: #e0c268; --lift-ink: #1d1d1f;
+    --chart-cmp: #38383b;
+    --search-fill: #38383b;
     --ink: #ffffff;
     --disc-fill: #1f1f1f; --disc-ink: #ffffff;   /* on the black page: 12% white, fitted to his Mail screenshot */
     --menu-sep: rgba(255,255,255,0.08); --pop-chev: rgba(235,235,245,0.6);
@@ -1150,6 +1159,63 @@
   .pg-avg .num { position: absolute; left: 0; padding-top: 10px; font-size: 1.75rem; font-weight: 600; letter-spacing: -0.015em; line-height: 1; }
   .pg-avg .num small { font-size: 0.9375rem; color: var(--stat-grey); margin-left: 4px; letter-spacing: 0; }
   .pg-avg .xl { position: absolute; top: calc(100% + 4px); transform: translateX(-50%); font-size: 0.75rem; font-weight: 600; line-height: 1; color: var(--stat-grey); white-space: nowrap; }
+  /* v311: the rest of the Progress tab as in the owner's pictures (16 Nov 2026, "So the rest"): Getting stronger as Health's comparison Highlight (a number over a 24-point bar with 6-point corners, its label inside: the latest in gold, the first time grey, each as long as its weight) and Fitness's Trends rows (an arrow in a round well beside the name, the value in colour); New bests, Sessions and Attendance as Health's cards; a lift's own page with Health's line chart (a line through hollow dots, a best's dot filled) */
+  .pg-sec { margin: 32px 0 12px; }
+  .pg-gap { margin-top: 10px; }
+  .pg-title.gold { color: var(--gold); }
+  .pg-cmp { margin-top: 12px; }
+  .pg-cmp .pg-val { margin-top: 0; font-size: 1.625rem; }
+  .pg-cmp .pg-val small { font-size: 0.9375rem; }
+  .pg-bar { display: flex; align-items: center; box-sizing: border-box; height: 1.5rem; margin-top: 6px; padding: 0 8px; border-radius: 6px; overflow: hidden; font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.005em; white-space: nowrap; width: fit-content; min-width: var(--w, 24px); max-width: 100%; }   /* as long as its count (--w), never shorter than its words, never wider than the card (the v311 review: words cut with no ellipsis) */
+  .pg-bar > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .pg-bar.now { background: var(--lift); color: var(--lift-ink); }
+  .pg-bar.then { background: var(--chart-cmp); color: var(--text-primary); }
+  .pg-bar.done { background: var(--done); color: var(--done-ink); }
+  .pg-bar.skip { background: var(--chart-cmp); color: var(--text-primary); }
+  .pg-bar.miss { background: var(--danger); color: #fff; }
+  .list .pg-lift { gap: 12px; }
+  .list .pg-lift .nm > span:first-child { white-space: normal; overflow-wrap: break-word; }   /* a long name wraps rather than end in "…" beside its value (the v311 check: two curls read the same) */
+  .list .pg-lift .n2, .pg-hist .n2 { font-weight: 400; color: var(--stat-grey); }   /* the pictures' lighter second line (Health's) */
+  .list .pg-lift .chev, .list .pg-all .chev { color: var(--chart-axis); }   /* the cards' chevron grey, as in the pictures */
+  .list .pg-lift:focus-visible, .list .pg-all:focus-visible { outline-offset: -2px; }   /* the ring inside its row: the list clips what is outside */
+  .pg-up { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--glyph-fill); color: var(--gold); }
+  .pg-up svg { width: 16px; height: 16px; }
+  .list .pg-lift .nm { flex: 1 1 auto; }
+  .pg-r { flex: none; font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; color: var(--gold); white-space: nowrap; }
+  .list .pg-lift .chev { margin-left: 0; }
+  .list li.pg-lead { padding: 15px 17px 14px; }
+  .list li.pg-lead .pg-val { margin-top: 16px; }
+  .pg-sub { display: block; margin-top: 6px; font-size: 0.9375rem; color: var(--stat-grey); }
+  .pg-look { margin-top: 10px; }
+  .pg-lift-chart { position: relative; height: 210px; margin: 14px 0 30px; }
+  .pg-lift-chart .plot { position: absolute; left: 6px; right: calc(var(--gut, 6ch) + 10px); top: 10px; bottom: 0; font-size: 0.8125rem; }   /* room on the right as wide as the longest label (--gut, in the labels' own ch), at any Text Size (the v311 review and check: labels past the screen, into the plot) */
+  .pg-lift-chart .gl { position: absolute; left: -6px; right: -6px; height: 0; border-top: 1px solid var(--chart-grid); }
+  .pg-lift-chart .gl.zero { border-top-color: var(--chart-base); }
+  .pg-lift-chart .yl { position: absolute; right: calc(-1 * (var(--gut, 6ch) + 10px)); transform: translateY(-50%); font-size: 0.8125rem; line-height: 1; color: var(--chart-axis); white-space: nowrap; }   /* as wide as its words, its right edge at the chart's */
+  .pg-lift-chart .vl { position: absolute; top: -10px; bottom: -24px; width: 1px; background: repeating-linear-gradient(to bottom, var(--chart-grid) 0 2.7px, transparent 2.7px 4px); }
+  .pg-lift-chart .xl { position: absolute; top: calc(100% + 6px); padding-left: 4px; font-size: 0.8125rem; line-height: 1; color: var(--chart-axis); white-space: nowrap; }
+  .pg-lift-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .pg-lift-chart .pt { position: absolute; width: 7px; height: 7px; box-sizing: content-box; margin: -5.5px 0 0 -5.5px; border-radius: 50%; border: 2px solid var(--lift); background: var(--surface); }   /* hollow: the page shows through, as Health's dots on its page */
+  .pg-lift-chart .pt.best { width: 9px; height: 9px; margin: -6.5px 0 0 -6.5px; background: var(--lift); }
+  .pg-key { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: 0.8125rem; color: var(--stat-grey); }
+  .pg-key i { width: 9px; height: 9px; border-radius: 50%; background: var(--lift); }
+  span.pg-sent, span.pg-cmp { display: block; }   /* inside a card that is a button, the parts are spans */
+  span.pg-hr { display: block; height: 0; }
+  .pg-hr + .pg-cmp.sm { margin-top: 0; }
+  .pg-cmp.sm .pg-val { font-size: 1.25rem; }   /* Attendance's three counts, smaller than a lift's comparison (the picture) */
+  .pg-cmp.sm .pg-val small { min-width: 0; white-space: normal; }   /* the skip reasons wrap under the number rather than leave the card (the v311 review, at 375 points) */
+  .pg-notes .pg-note { margin: 0 0 10px; }   /* the coach's discomfort notes, above the tiles */
+  .pg-note .lim-text b { display: block; color: var(--text-primary); font-weight: 600; }
+  .limits-note.pg-note .lim-text { display: block; -webkit-line-clamp: none; overflow: visible; }   /* the whole note: its days are the point (the v311 check: cut at a larger Text Size); two classes, as .limits-note's own rule comes later */
+  .pg-note:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .list.pg-bests { margin-top: 32px; }
+  .pg-hist { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-height: 56px; box-sizing: border-box; padding: 12px 20px; font-size: 1.0625rem; letter-spacing: -0.01em; }   /* a lift's session: the day and workout, its sets under it (no tap: the row is the record) */
+  .pg-lift-chart .ln { stroke: var(--lift); }
+  .ov-pick input { height: 40px; border-radius: 20px; background: var(--search-fill); padding: 0 40px 0 36px; font-size: 1.0625rem; letter-spacing: -0.01em; }   /* Look up an exercise as a search capsule with its magnifier (the pictures); the field's own border shows its focus */
+  .ov-pick input::placeholder { color: var(--stat-grey); }   /* the picture's grey, the magnifier's (the v311 check: the fields' pale placeholder all but vanished on the grey) */
+  .ov-mag { position: absolute; left: 12px; top: 20px; width: 17px; height: 17px; margin-top: -8.5px; color: var(--stat-grey); pointer-events: none; }
+  .ov-pick .ov-clear { position: absolute; top: 20px; }   /* inside the capsule at its end: a later rule gives .ov-clear position relative for its tap area (the v311 check: the × fell under the field and the list jumped) */
+  .pg-find { margin: 0 0 16px; }
   .lifts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin: 0 0 -8px; padding: 0; }   /* under the boxes, in their two columns, one line: the clock and the last lift, the crown and the best (his symbols) */
   .lifts[hidden] { display: none; }
   .lifts .lift { appearance: none; border: 0; background: none; padding: 0 0 0 11px; min-height: 36px; font: inherit; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 0.9375rem; line-height: 1.3; }
@@ -1855,6 +1921,22 @@
     <h2 id="wkHlCap" hidden>Highlights</h2>
     <div class="pg-card" id="wkHl" hidden><span class="pg-head"><span class="pg-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M-0.35 8.29C-0.35 7.49 0.25 6.88 1.04 6.88C1.83 6.88 2.43 7.49 2.43 8.29V15.7C2.43 16.5 1.83 17.11 1.04 17.11C0.25 17.11 -0.35 16.5 -0.35 15.7ZM3.48 6.89C3.48 5.59 4.36 4.72 5.68 4.72C7 4.72 7.88 5.59 7.88 6.89V17.11C7.88 18.41 7 19.28 5.68 19.28C4.36 19.28 3.48 18.41 3.48 17.11ZM9.02 10.1H15.08V13.9H9.02ZM16.22 6.89C16.22 5.59 17.1 4.72 18.42 4.72C19.74 4.72 20.62 5.59 20.62 6.89V17.11C20.62 18.41 19.74 19.28 18.42 19.28C17.1 19.28 16.22 18.41 16.22 17.11ZM21.57 8.29C21.57 7.49 22.17 6.88 22.96 6.88C23.75 6.88 24.35 7.49 24.35 8.29V15.7C24.35 16.5 23.75 17.11 22.96 17.11C22.17 17.11 21.57 16.5 21.57 15.7Z"/></svg><span>Workouts</span></span></span><p class="pg-sent" id="wkHlText"></p><hr class="pg-hr"><div class="pg-avg" id="wkAvg" aria-hidden="true"></div></div>
   </section>
+  <section id="vBests" hidden>
+    <h1 class="pagetitle">Bests</h1>
+    <div class="ov-pick pg-find"><svg class="ov-mag" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M10.5 2.5a8 8 0 0 1 6.4 12.8l4.4 4.4a1.3 1.3 0 0 1-1.85 1.85l-4.4-4.4A8 8 0 1 1 10.5 2.5zm0 2.6a5.4 5.4 0 1 0 0 10.8 5.4 5.4 0 0 0 0-10.8z"/></svg><input id="bestsFind" placeholder="Look up an exercise" autocomplete="off" autocapitalize="sentences" aria-label="Look up an exercise"><button class="ov-clear" id="bestsClear" type="button" aria-label="Clear" hidden>&times;</button></div>
+    <ul class="list" id="bestsList"></ul>
+    <div class="empty" id="bestsEmpty" hidden></div>
+  </section>
+  <section id="vLift" hidden>
+    <h1 class="pagetitle" id="liftName"></h1>
+    <p class="pg-cap" id="liftCap">Best</p>
+    <p class="pg-big" id="liftBest"></p>
+    <p class="pg-date" id="liftDates"></p>
+    <div class="pg-lift-chart" id="liftChart" role="img"></div>
+    <p class="pg-key" id="liftKey" hidden><i aria-hidden="true"></i><span id="liftKeyText"></span></p>
+    <h2 id="liftHistCap">History</h2>
+    <ul class="list" id="liftList"></ul>
+  </section>
 
   <section id="vCatalog" hidden>
     <h1>Catalog</h1>
@@ -1962,13 +2044,20 @@
       <div class="plan-actions" id="planActions" hidden><button class="btn quiet" id="planCancel" type="button">Cancel</button><button class="btn sm" id="planSave" type="button">Save</button></div>
     </div>
     <div data-tab="profile" class="overview" id="overview" hidden>
+      <div class="pg-notes trainer-only" id="pgNotes"></div>
       <div class="pg-tiles">
         <button type="button" class="pg-card pg-tile" id="pgMonth"><span class="pg-head"><span class="pg-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M-0.35 8.29C-0.35 7.49 0.25 6.88 1.04 6.88C1.83 6.88 2.43 7.49 2.43 8.29V15.7C2.43 16.5 1.83 17.11 1.04 17.11C0.25 17.11 -0.35 16.5 -0.35 15.7ZM3.48 6.89C3.48 5.59 4.36 4.72 5.68 4.72C7 4.72 7.88 5.59 7.88 6.89V17.11C7.88 18.41 7 19.28 5.68 19.28C4.36 19.28 3.48 18.41 3.48 17.11ZM9.02 10.1H15.08V13.9H9.02ZM16.22 6.89C16.22 5.59 17.1 4.72 18.42 4.72C19.74 4.72 20.62 5.59 20.62 6.89V17.11C20.62 18.41 19.74 19.28 18.42 19.28C17.1 19.28 16.22 18.41 16.22 17.11ZM21.57 8.29C21.57 7.49 22.17 6.88 22.96 6.88C23.75 6.88 24.35 7.49 24.35 8.29V15.7C24.35 16.5 23.75 17.11 22.96 17.11C22.17 17.11 21.57 16.5 21.57 15.7Z"/></svg><span>This month</span></span><span class="pg-go" aria-hidden="true">&rsaquo;</span></span><span class="pg-val"><b id="ovMonth">0</b><small id="ovMonthUnit">workouts</small></span><span class="pg-mini days" id="pgMonthChart" aria-hidden="true"></span></button>
         <button type="button" class="pg-card pg-tile" id="pgTotal"><span class="pg-head"><span class="pg-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M-0.35 8.29C-0.35 7.49 0.25 6.88 1.04 6.88C1.83 6.88 2.43 7.49 2.43 8.29V15.7C2.43 16.5 1.83 17.11 1.04 17.11C0.25 17.11 -0.35 16.5 -0.35 15.7ZM3.48 6.89C3.48 5.59 4.36 4.72 5.68 4.72C7 4.72 7.88 5.59 7.88 6.89V17.11C7.88 18.41 7 19.28 5.68 19.28C4.36 19.28 3.48 18.41 3.48 17.11ZM9.02 10.1H15.08V13.9H9.02ZM16.22 6.89C16.22 5.59 17.1 4.72 18.42 4.72C19.74 4.72 20.62 5.59 20.62 6.89V17.11C20.62 18.41 19.74 19.28 18.42 19.28C17.1 19.28 16.22 18.41 16.22 17.11ZM21.57 8.29C21.57 7.49 22.17 6.88 22.96 6.88C23.75 6.88 24.35 7.49 24.35 8.29V15.7C24.35 16.5 23.75 17.11 22.96 17.11C22.17 17.11 21.57 16.5 21.57 15.7Z"/></svg><span>Total</span></span><span class="pg-go" aria-hidden="true">&rsaquo;</span></span><span class="pg-val"><b id="ovTotal">0</b><small id="ovTotalUnit">workouts</small></span><span class="pg-mini" id="pgTotalChart" aria-hidden="true"></span></button>
       </div>
       <button type="button" class="pg-card pg-week" id="pgWeek"><span class="pg-head"><span class="pg-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M7 1.5a1 1 0 0 1 1 1V4h8V2.5a1 1 0 1 1 2 0V4h.5A3.5 3.5 0 0 1 22 7.5v11a3.5 3.5 0 0 1-3.5 3.5h-13A3.5 3.5 0 0 1 2 18.5v-11A3.5 3.5 0 0 1 5.5 4H6V2.5a1 1 0 0 1 1-1zM4 9.5v9A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-9zm3.2 2.7h2.6v2.6H7.2zm4.4 0h2.6v2.6h-2.6zm4.4 0h2.6v2.6H16zm-8.8 4.2h2.6V19H7.2zm4.4 0h2.6V19h-2.6z"/></svg><span>This week</span></span><span class="pg-when"><span id="pgWeekDates"></span><span class="pg-go" aria-hidden="true">&rsaquo;</span></span></span><span class="pg-val"><b id="pgWeekN">0 of 0</b><small id="pgWeekUnit">workouts</small></span><span class="pg-days" id="pgDays" aria-hidden="true"></span><span class="pg-foot" id="pgAvg" hidden></span></button>
-      <div class="ov-pick"><input id="ovEx" placeholder="Look up an exercise" autocomplete="off" autocapitalize="sentences" aria-label="Look up an exercise"><button class="ov-clear" id="ovClear" type="button" aria-label="Clear" hidden>&times;</button><ul class="sugg" id="ovSugg" hidden></ul></div>
+      <div class="pg-card pg-gap" id="pgAttend" hidden></div>
+      <h2 class="pg-sec" id="pgStrongCap" hidden>Getting stronger</h2>
+      <button type="button" class="pg-card" id="pgStrong" hidden></button>
+      <ul class="list pg-gap" id="pgStrongList" hidden></ul>
+      <div class="ov-pick"><svg class="ov-mag" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M10.5 2.5a8 8 0 0 1 6.4 12.8l4.4 4.4a1.3 1.3 0 0 1-1.85 1.85l-4.4-4.4A8 8 0 1 1 10.5 2.5zm0 2.6a5.4 5.4 0 1 0 0 10.8 5.4 5.4 0 0 0 0-10.8z"/></svg><input id="ovEx" placeholder="Look up an exercise" autocomplete="off" autocapitalize="sentences" aria-label="Look up an exercise"><button class="ov-clear" id="ovClear" type="button" aria-label="Clear" hidden>&times;</button><ul class="sugg" id="ovSugg" hidden></ul></div>
       <div class="ov-best" id="ovBest" hidden><button type="button" class="ov-tile best" id="ovBestBtn"><b id="ovBestVal"></b><span>Best</span></button><span class="ov-none" id="ovNone" hidden></span></div>
+      <ul class="list pg-bests" id="pgBests" hidden></ul>
+      <div class="pg-card pg-gap" id="pgSessions" hidden></div>
     </div>
     <div data-tab="workouts" class="listbar week-bar" id="weekBar"><h2 id="weekHead"></h2><button class="cal-today" id="weekToday" type="button" hidden>Today</button><button class="cal-disc" id="calToggle" type="button" aria-expanded="false"><span id="calToggleText">Month</span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5.5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div data-tab="workouts" class="week-view" id="weekView"><div class="week-track" id="weekTrack"><div class="week" id="weekPrev" aria-hidden="true" inert></div><div class="week" id="week"></div><div class="week" id="weekNext" aria-hidden="true" inert></div></div></div>
@@ -2091,7 +2180,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=310";
+  import { boot } from "./app/main.js?v=311";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

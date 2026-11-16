@@ -99,7 +99,7 @@ export const ageOn = (birthday, day) => { const b = /^(\d{4})-(\d{2})-(\d{2})$/.
 // A client's own profile field by the key client_set_profile takes ("sex", "height", "unit", "health.limits", …): read as it is sent (an empty text or nothing is null, a clear), and written back the same way.
 export const profileGet = (c, k) => { const v = !c ? undefined : String(k).startsWith("health.") ? (c.health && typeof c.health === "object" ? c.health[k.slice(7)] : undefined) : c[k]; return v === undefined || v === null || v === "" ? null : v; };
 export const profilePut = (c, k, v) => { const none = v === undefined || v === null || v === ""; if (String(k).startsWith("health.")) { const f = k.slice(7); if (!c.health || typeof c.health !== "object" || Array.isArray(c.health)) { if (none) return; c.health = {}; } if (none) delete c.health[f]; else c.health[f] = v; } else if (none) delete c[k]; else c[k] = v; };
-export const toTimeUnit = (st, from, to) => (st && from && to && from !== to && st.rp != null && from !== "m" && to !== "m" ? { ...st, rp: from === "min" ? st.rp * 60 : Math.round(st.rp / 60 * 100) / 100 } : st);   // a hold logged in minutes against one in seconds
+export const toTimeUnit = (st, from, to) => (st && from && to && from !== to && st.rp != null && from !== "m" && to !== "m" ? { ...st, rp: from === "min" ? Math.round(st.rp * 60 * 100) / 100 : Math.round(st.rp / 60 * 100) / 100 } : st);   // a hold logged in minutes against one in seconds
 export const repairTimed = (t) => {
   let changed = false;
   for (const r of (t && t.rows) || []) {
@@ -124,6 +124,7 @@ export const perHand = (name) => { const n = String(name || ""); return /\b(dumb
 // (v301): sets compare in kilograms, and within 0.06 kg is the same weight, as a weight shown at one decimal in the other unit is never more than 0.05 kg off
 // (135 lb is 61.235 kg: the 61.2 typed in Europe is the same weight, so more reps at it is a best, and 61.2 for as many is not).
 const num = (v) => { const str = String(v == null ? "" : v).trim(); return /^\d+(?:[.,]\d+)?$/.test(str) ? parseFloat(str.replace(",", ".")) : null; };
+export const numOf = num;   // v311: a set's reps or time as the card reads them ("1,5" from a comma keypad is 1.5)
 const TIE_KG = 0.06;
 const kgOr = (st, none) => (st.w == null ? none : st.u === "lb" ? st.w * KG_PER_LB : st.w);   // no unit (one exercise's own sets): the numbers as they stand
 const cmpW = (a, b, none) => { const d = kgOr(a, none) - kgOr(b, none); return d > TIE_KG + 1e-9 ? 1 : d < -TIE_KG - 1e-9 ? -1 : 0; };   // exactly 0.06 is the same weight (a float's hair over is not heavier)
@@ -258,4 +259,123 @@ export function rangeCounts(list, range, todayIso) {
   else if (range === "6M") { const mon = mondayOf(todayIso); for (let k = 25; k >= 0; k--) { const a = daysLater(mon, -7 * k), b = daysLater(a, 6); out.push({ from: a, to: b, n: sum(a, b) }); } }
   else { const [y, m] = String(todayIso).split("-").map(Number); for (let k = 11; k >= 0; k--) { const a = localIso(new Date(y, m - 1 - k, 1, 12)), [ay, am] = a.split("-").map(Number), b = localIso(new Date(ay, am, 0, 12)); out.push({ from: a, to: b, n: sum(a, b) }); } }
   return out;
+}
+// ---------- the rest of the Progress tab (v311; the owner's "So the rest", 16 Nov 2026, from the pictures he had seen) ----------
+// A workout's state as the monthly PDF names it (report.js's status): finished; skipped (a person decided); missed (filed, or its day gone undone); or still planned.
+export const workoutStatus = (t, todayIso) => (t.completedAt ? "finished" : t.skippedAt ? (t.missed === true ? "missed" : "skipped") : effDate(t) < todayIso ? "missed" : "planned");
+// Attendance over the 4 whole weeks before this one (the average's weeks): finished of all but the still planned, as the PDF's; the skips' reasons; the finished ones in person or on their own (not marked In person).
+export function attendance(list, todayIso, n = 4) {
+  const mon = mondayOf(todayIso), out = { from: daysLater(mon, -7 * n), to: daysLater(mon, -1), finished: 0, skipped: 0, missed: 0, reasons: {}, missedDays: [], inPerson: 0, onOwn: 0, pct: null };
+  for (const t of list) {
+    const e = effDate(t); if (isEmptyWorkout(t) || !e || e < out.from || e > out.to) continue;
+    const st = workoutStatus(t, todayIso); if (st === "planned") continue;
+    out[st]++;
+    if (st === "skipped" && t.skipReason) out.reasons[t.skipReason] = (out.reasons[t.skipReason] || 0) + 1;
+    if (st === "finished") { if (t.inPerson) out.inPerson++; else out.onOwn++; }
+    if (st === "missed") out.missedDays.push(e);
+  }
+  out.missedDays = [...new Set(out.missedDays)].sort();   // two missed on one day name it once
+  const held = out.finished + out.skipped + out.missed; out.pct = held ? Math.round((100 * out.finished) / held) : null;
+  return out;
+}
+// Every exercise's sessions, oldest first, by the key canon(name) gives (main.js's alias merge): every dated workout with sets counted, as the card's Best and the
+// Look up count them (sets logged in a workout ahead of its day were lifted; the v311 review: the Look up's Best and this page disagreed). Each session's top set by the workout card's rules (a set counts once completed
+// or its reps typed; only rows of the kind the newest logged row has: reps, a hold, a carry; holds in the newest plan's unit, rounded as the card rounds them), its counted sets,
+// and whether it was a new best as the card's NEW BEST
+// decides: strictly better than every earlier session, the earlier ones folded newest first as Last time and Best are (in the 0.06 kg band the direction matters).
+export function liftsOf(list, canon, todayIso, clientUnit) {
+  const kindOf = (mu) => (!mu ? "reps" : mu.unit === "m" ? "m" : "time"), by = new Map(), better = (st, b, timed) => betterSet(st, b, timed) || (sameSet(st, b) && kgOf(st) > kgOf(b));
+  const ws = list.filter((t) => effDate(t) && !isEmptyWorkout(t)).sort((a, b) => effDate(b).localeCompare(effDate(a)) || (b.createdAt || "").localeCompare(a.createdAt || ""));
+  for (const t of ws) {                                                           // newest first: the name keeps its newest spelling, the kind its newest plan's
+    const here = new Map();
+    for (const r of t.rows || []) {
+      const k = canon(r.name); if (!k) continue;
+      const mu = measurePlan(r.reps), kind = kindOf(mu), raw = topSet(r, kind !== "reps"); if (!raw) continue;
+      let e = by.get(k); if (!e) by.set(k, (e = { key: k, name: String(r.name || "").trim(), kind, tunit: kind === "time" ? mu.unit : null, timed: kind !== "reps", points: [] }));   // tunit: a hold shows in its newest plan's unit, as the card's Best
+      if (kind !== e.kind) continue;
+      const own = { ...raw, u: r.unit || clientUnit || "lb" }, ou = kind === "time" ? mu.unit : null, st = ou ? toTimeUnit(own, ou, e.tunit) : own;   // the card converts each hold to its plan's unit (2 decimals): the same numbers, the same bests
+      let s = here.get(k); if (!s) here.set(k, (s = { date: effDate(t), tid: t.id, title: String(t.title || "").trim(), top: null, tops: [], rows: [], sets: [], words: false }));
+      if (better(st, s.top, e.timed)) s.top = st;
+      s.tops.push(st); s.rows.push({ own, ou });                                  // every row's top: in the unit shown (tops, the card's Best folds rows, not sessions) and in its own plan's (rows, for its NEW BEST)
+      const n = Math.max(setsOf(r), ((r.weights || []).length), ((r.repsDone || []).length));
+      for (let i = 0; i < n; i++) if (setCounts(r, i)) {
+        const w = (r.weights || [])[i]; if (String(w == null ? "" : w).trim() && weightNumber(w) == null) s.words = true;   // "BW+10", "2x20", "Band 3": a load in words, never compared as a weight
+        s.sets.push({ w, rp: (r.repsDone || [])[i], u: own.u, m: mu ? mu.unit : null });
+      }
+    }
+    for (const [k, s] of here) by.get(k).points.push(s);
+  }
+  for (const e of by.values()) {
+    e.points.reverse();                                                           // oldest first
+    // a new best as the card's NEW BEST judges it: this session's top against every earlier row folded newest first, all in this session's own plan's unit (a hold's
+    // plan can move between seconds and minutes, and the card rounds in the unit of the workout it is on: the v311 check found a best here that the card did not show)
+    e.points.forEach((p, i) => {
+      const u = p.rows[0].ou, to = (x) => (u && x.ou ? toTimeUnit(x.own, x.ou, u) : x.own);
+      let mine = null; for (const x of p.rows) { const st = to(x); if (better(st, mine, e.timed)) mine = st; }
+      let b = null; for (let j = i - 1; j >= 0; j--) for (const x of e.points[j].rows) { const st = to(x); if (better(st, b, e.timed)) b = st; }
+      p.gold = !!b && betterSet(mine, b, e.timed);
+    });
+  }
+  return by;
+}
+// An exercise's best: the set as the card's Best and the Look up fold every row, newest first (a better set takes it, an equal one only when heavier: 135 lb, not
+// the 134.9 lb of a 61.2 kg; the v311 review), and the day it was set: its last new best (the chart's last filled dot), or the first time when none came after. A best
+// matched again later keeps its day (the v311 check: a top set repeated each week read "Today" and sorted first).
+export const bestOf = (e) => {
+  let top = null, at = null;
+  for (let i = e.points.length - 1; i >= 0; i--) for (const st of e.points[i].tops || [e.points[i].top]) if (!top || betterSet(st, top, e.timed) || (sameSet(st, top) && kgOf(st) > kgOf(top))) top = st;
+  for (const p of e.points) if (p.gold) at = p;
+  at = at || e.points[0];
+  return { top, date: at.date, title: at.title, tid: at.tid };
+};
+// What grew from one session's top set to another's, in one measure, or null when nothing clearly did. A hold: longer (or, as long, heavier); a carry: farther (or, as far,
+// heavier); else heavier past the 0.06 kg band (no weight is none added), or more reps at the same weight with both counted: before 6 Oct 2026 sets kept no reps, and a set
+// with none never reads as fewer (the v311 review: the same 25 lb read as "stronger"). The sentence and the bars of Getting stronger measure what this names.
+export function gainOf(a, b, kind) {
+  if (!a || !b) return null;
+  const kg = (st) => (st.w == null ? 0 : st.u === "lb" ? st.w * KG_PER_LB : st.w), dw = kg(b) - kg(a), both = a.rp != null && b.rp != null, band = TIE_KG + 1e-9;   // the card's band, a float's hair included
+  if (kind === "time" || kind === "m") { if (both && b.rp > a.rp) return { by: kind === "time" ? "time" : "dist", d: b.rp - a.rp }; return both && b.rp === a.rp && dw > band ? { by: "weight", d: dw } : null; }
+  if (dw > band) return { by: "weight", d: dw };
+  return Math.abs(dw) <= band && both && b.rp > a.rp ? { by: "reps", d: b.rp - a.rp } : null;
+}
+// Getting stronger: exercises done in the last 8 weeks whose latest session clearly beats their first, on an earlier day (gainOf); the most done in those weeks first.
+// Never from or to a load typed in words ("BW+10" then "10" is no 10 lb gained), never a heavier assisted machine (more help, not more strength: the v311 check). A first
+// time from before 6 Oct 2026 kept no reps: when its weight is the same, the first time with reps is the one to grow from (firstTime false: "than on Oct 20").
+export function strongerLifts(lifts, todayIso, days = 56) {
+  const since = daysLater(todayIso, -(days - 1)), out = [];
+  for (const e of lifts.values()) {
+    const p = e.points; if (p.length < 2) continue;
+    const recent = p.filter((x) => x.date >= since).length; if (!recent) continue;
+    const last = p[p.length - 1], assisted = /assist/i.test(e.name); if (last.words) continue;
+    const grew = (base) => { if (!base || base === last || base.words || !(base.date < last.date)) return null; const g = gainOf(base.top, last.top, e.kind); return g && !(assisted && g.by === "weight") ? g : null; };   // two sessions on one day are no first time to grow from
+    let first = p[0], gain = grew(first), firstTime = true;
+    if (!gain && first.top.rp == null) { const b = p.find((x) => x.top.rp != null && x !== last); const g = grew(b); if (g) { first = b; gain = g; firstTime = false; } }
+    if (gain) out.push({ e, first, last, recent, gain, firstTime });
+  }
+  return out.sort((a, b) => b.recent - a.recent || b.last.date.localeCompare(a.last.date) || a.e.name.localeCompare(b.e.name));
+}
+// New bests this month: one an exercise (its latest this month), newest first.
+export function monthBests(lifts, todayIso) {
+  const ym = String(todayIso).slice(0, 7), out = [];
+  for (const e of lifts.values()) { let at = null; for (const p of e.points) if (p.gold && p.date.slice(0, 7) === ym) at = p; if (at) out.push({ e, p: at }); }
+  return out.sort((a, b) => b.p.date.localeCompare(a.p.date) || a.e.name.localeCompare(b.e.name));
+}
+// An exercise cut short for Discomfort on two days or more within 4 weeks (the coach's note). The reason is written on every row of a card, so a row counts only when it was
+// itself cut short (skipped, or finished early); a stale reason on a complete row never counts. Days, not rows.
+export function discomforts(list, canon, todayIso, days = 28) {
+  const from = daysLater(todayIso, -(days - 1)), by = new Map();
+  const ws = list.filter((t) => effDate(t) >= from && effDate(t) <= todayIso).sort((a, b) => effDate(b).localeCompare(effDate(a)));
+  for (const t of ws) for (const r of t.rows || []) {
+    if (r.earlyReason !== "Discomfort" || r.done !== true || Math.min(doneCount(r), setsOf(r)) >= setsOf(r)) continue;
+    const k = canon(r.name); if (!k) continue;
+    let x = by.get(k); if (!x) by.set(k, (x = { key: k, name: String(r.name || "").trim(), days: new Map() }));
+    if (!x.days.has(effDate(t))) x.days.set(effDate(t), doneCount(r) === 0 ? "skipped" : "early");
+  }
+  return [...by.values()].filter((x) => x.days.size >= 2).map((x) => ({ key: x.key, name: x.name, days: [...x.days.keys()].sort(), skipped: [...x.days.values()].every((v) => v === "skipped"), early: [...x.days.values()].every((v) => v === "early") }));
+}
+// Sessions with the coach: the finished workouts marked In person (the mark exists since 14 Oct 2026, so the count says from when).
+export function inPersonCount(list, todayIso) {
+  let n = 0, since = "";
+  for (const t of list) { if (!(t.inPerson && t.completedAt && !t.skippedAt && t.missed !== true)) continue; const e = effDate(t); if (!e || e > todayIso) continue; n++; if (!since || e < since) since = e; }
+  return { n, since };
 }

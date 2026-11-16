@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows, pendingProfile, profileTouched, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, fmtDayLong, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { carryOver, TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, labelKey, cmpLabel, validateBackup, doneCount, timedPlan, measurePlan, weightIn, weightStored, sameWeightText, kgOf, stampUnit, toTimeUnit, heightAs, weightAs, heightUnitOf, bodyUnitOf, fmtHeight, fmtBodyWeight, ageOn, profileGet, profilePut, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive, weekDays, weekAverage, rangeCounts, mondayOf } from "./model.js";
+import { carryOver, TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, labelKey, cmpLabel, validateBackup, doneCount, timedPlan, measurePlan, weightIn, weightStored, sameWeightText, kgOf, stampUnit, toTimeUnit, heightAs, weightAs, heightUnitOf, bodyUnitOf, fmtHeight, fmtBodyWeight, ageOn, profileGet, profilePut, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive, weekDays, weekAverage, rangeCounts, mondayOf, weightNumber, attendance, liftsOf, bestOf, strongerLifts, monthBests, discomforts, inPersonCount, numOf } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { seenDoc, moveOut, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -223,7 +223,7 @@ import { reportRange, buildReport } from "./report.js";
     rememberPage();                                                   // every page change passes here: the device remembers which settings page is up
     $("tabbar").hidden = true; $("addBtn").hidden = true; document.body.classList.remove("tabs", "tplus"); $("dock").classList.remove("tp");
     $("viewSeg").hidden = true; $("addExBtn").hidden = true; document.body.classList.remove("wsdock"); $("dock").classList.remove("ws");   // the workout page's bar too: Coach | Client and its +
-    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vClientCard", "vHealth", "vSafety", "vHistory", "vWorkouts", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
+    for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vClientCard", "vHealth", "vSafety", "vHistory", "vWorkouts", "vBests", "vLift", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
     $("navDone").hidden = true;
   }
   function showLogin(msg) {
@@ -246,12 +246,13 @@ import { reportRange, buildReport } from "./report.js";
   let exPainted = null;                  // { name, sub, video } the exercise page was painted with: edits are measured against these, not against data that may arrive later
   let backScroll = null;                 // where the Clients page (or the client's profile) was scrolled when Settings, Catalog or Data was opened: Back returns there, not to the top
   let subY = null;                       // where a list page (Settings, Catalog, the client's card) was scrolled when one of its own pages was opened: Back lands it there, as the swipe's picture of it shows it (v300, the owner's report: "swiping back doesnt work smooth": it jumped to the top as the finger let go)
-  let settingsOpen = false;              // false | "settings" | "card" | "health" | "safety" | "history" | "workouts" | "catalog" | "data" | "password" | "exercises" | "exercise" | "packages" | "number" (v310: the Progress tab's Workouts page)
-  let fromSettings = false;              // false | "settings" | "catalog" | "card": the list page a sub-page (number, password, exercises, packages; v299: Health details, Health & safety) was opened from; Back returns there
+  let settingsOpen = false;              // false | "settings" | "card" | "health" | "safety" | "history" | "workouts" | "bests" | "lift" | "catalog" | "data" | "password" | "exercises" | "exercise" | "packages" | "number" (v310: the Progress tab's Workouts page; v311: its Bests page and a lift's own page, liftCur)
+  let liftCur = null;                    // v311: the lift page's exercise, { key, name } (the key is liftKey's: the alias merge)
+  let fromSettings = false;              // false | "settings" | "catalog" | "card" | "bests" (v311: the lift page opened from Bests): the list page a sub-page (number, password, exercises, packages; v299: Health details, Health & safety) was opened from; Back returns there
   let pendingPage = null;                // the settings page that was open when the page was last refreshed: it comes back after sign-in
   let exStale = false;                   // the exercise pages came back before the first sync: painted once more when the custom names, videos and subtitles are in
-  const leaveSettings = () => { settingsOpen = false; fromSettings = false; exCurrent = null; exPainted = null; wheelOpen = null; subY = null; stopWheels(); hideAllViews(); };   // off the settings pages (tests use it; Back does the same with a render)
-  const rememberPage = () => lsSet("fiala.trainings.page", settingsOpen ? { open: settingsOpen, from: fromSettings || false, ...(settingsOpen === "exercise" && exCurrent ? { name: exCurrent.name, key: exCurrent.key } : {}) } : null);
+  const leaveSettings = () => { settingsOpen = false; fromSettings = false; liftCur = null; exCurrent = null; exPainted = null; wheelOpen = null; subY = null; stopWheels(); hideAllViews(); };   // off the settings pages (tests use it; Back does the same with a render)
+  const rememberPage = () => lsSet("fiala.trainings.page", settingsOpen ? { open: settingsOpen, from: fromSettings || false, ...(settingsOpen === "exercise" && exCurrent ? { name: exCurrent.name, key: exCurrent.key } : {}), ...(settingsOpen === "lift" && liftCur ? { name: liftCur.name, key: liftCur.key } : {}) } : null);
   // ---- appearance: auto (follow the phone) | light | dark. Saved on this device only.
   const THEME_KEY = "fiala.theme";
   // theme-color: the page's own colour, always. The strip under the clock is not ours to paint: iOS leaves it see-through (the page scrolls
@@ -649,8 +650,8 @@ import { reportRange, buildReport } from "./report.js";
   function showData() {                                             // the backup and the restore
     settingsOpen = "data"; fromSettings = false; hideAllViews(); $("vData").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
   }
-  const parentLabel = () => (fromSettings === "catalog" ? "Catalog" : fromSettings === "card" ? ((clients.get(S.view.id) || {}).name || "Client") : fromSettings ? "Settings" : "Back");
-  const showParent = () => (fromSettings === "catalog" ? showCatalog : fromSettings === "card" ? showClientCard : showSettings)();   // v299: the client's card is the parent of the client's Health details and Health & safety
+  const parentLabel = () => (fromSettings === "catalog" ? "Catalog" : fromSettings === "bests" ? "Bests" : fromSettings === "card" ? ((clients.get(S.view.id) || {}).name || "Client") : fromSettings ? "Settings" : "Back");
+  const showParent = () => (fromSettings === "catalog" ? showCatalog : fromSettings === "bests" ? showBests : fromSettings === "card" ? showClientCard : showSettings)();   // v299: the client's card is the parent of the client's Health details and Health & safety
   function showNumber() {
     settingsOpen = "number"; hideAllViews(); $("vNumber").hidden = false; $("back").hidden = false; $("backLabel").textContent = parentLabel(); $("brand").hidden = true; $("status").textContent = "";
     $("myPhone").value = trainerPhone(); $("myPhoneMsg").textContent = "";
@@ -1249,7 +1250,7 @@ import { reportRange, buildReport } from "./report.js";
     if (settingsOpen) {
       if (fromSettings) { const sub = settingsOpen, y = subY; subY = null; showParent(); if (settingsOpen !== sub) { window.scrollTo(0, y || 0); return; } }   // the parent could not open (the client's card, with the client's record gone): off the settings pages, as below
       settingsOpen = false; fromSettings = false; $("exPlayer").replaceChildren(); hideAllViews(); render();
-      if (backScroll != null) window.scrollTo(0, backScroll); else { const foot = $("localFoot"); if (!S.clientMode && !foot.hidden) foot.scrollIntoView({ block: "end" }); else window.scrollTo(0, 0); }   // back where the page was; after a refresh, at the pills it was opened from
+      if (backScroll != null) window.scrollTo(0, backScroll); else { const foot = $("localFoot"); if (!S.clientMode && !foot.hidden && typeof foot.getClientRects === "function" && foot.getClientRects().length) foot.scrollIntoView({ block: "end" }); else window.scrollTo(0, 0); }   // back where the page was; after a refresh, at the pills it was opened from (v311: only where they show; Back to a client's page after a refresh starts at its top)
       backScroll = null; return;
     }
     if (S.view.name === "training") { const t = trainings.get(S.view.id); if (fromHistory(t)) { backToHistory(t); return; } go(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }, true); }
@@ -1297,7 +1298,7 @@ import { reportRange, buildReport } from "./report.js";
   if (iosHome) { try { homeFirst(history.state); } catch (_) {} }
   const canBack = () => !$("back").hidden;
   const held = () => { const wb = $("whenBg"); return S.asking || !!(wb && !wb.hidden) || !!document.querySelector(".crop-view") || !!document.querySelector(".sheet-bg:not([hidden])"); };   // a question, a menu or bubble, a date picker or the photo framing is up: Back waits for it (the Back circle's tap only closes a menu, too)
-  const screenKey = () => viewKey(S.view) + "|" + (settingsOpen || "") + "|" + (settingsOpen === "exercise" && exCurrent ? exCurrent.key : "");
+  const screenKey = () => viewKey(S.view) + "|" + (settingsOpen || "") + "|" + (settingsOpen === "exercise" && exCurrent ? exCurrent.key : settingsOpen === "lift" && liftCur ? liftCur.key : "");   // v311: which lift, so two lifts' pictures never mix
   const navSig = () => [...document.querySelectorAll("main > section")].filter((s) => !s.hidden).map((s) => s.id).join(",") + "|" + screenKey();
   const histPush = () => {                                          // one step to come back to; after a step back still under way, never before it (the browser would put it in the wrong place)
     if (!hasState()) return; const d = ++nav.depth, put = () => { try { history.pushState({ fiala: d }, ""); } catch (_) {} };
@@ -1378,7 +1379,7 @@ import { reportRange, buildReport } from "./report.js";
   function backKey() {                                              // the screen runBack() would go to, without going (keep in step with runBack)
     const k = (v, s) => viewKey(v) + "|" + (s || "") + "|";
     if (settingsOpen === "exercise") return k(S.view, "exercises");
-    if (settingsOpen) return fromSettings ? k(S.view, fromSettings === "catalog" ? "catalog" : fromSettings === "card" ? "card" : "settings") : k(S.view, "");
+    if (settingsOpen) return fromSettings ? k(S.view, fromSettings === "catalog" ? "catalog" : fromSettings === "bests" ? "bests" : fromSettings === "card" ? "card" : "settings") : k(S.view, "");
     if (S.view.name === "training") { const t = trainings.get(S.view.id); if (fromHistory(t)) return k({ name: "client", id: t.clientId }, "history"); return k(t ? (isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }) : { name: "clients" }, ""); }
     if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.folder) { const f = tplNode(S.view.folder); return k(tplUp(f && f.parent), ""); }
     if (S.view.name === "client" && isTemplateClient(S.view.id) && !S.view.program && pickFor) return k(fillFor ? { name: "training", id: fillFor } : { name: "client", id: pickFor }, "");
@@ -2942,14 +2943,15 @@ import { reportRange, buildReport } from "./report.js";
     if (S.recovering) { showRecovery(); return; }
     if (pendingPage && S.signedIn && !(S.clientMode && !S.myClientId)) {   // a refresh on a settings page lands back on it at the first paint: no glimpse of the Clients page on the way
       const p = pendingPage; pendingPage = null; exStale = !!S.sb && !S.syncedOnce && (p.open === "exercises" || p.open === "exercise");
-      const open = { settings: showSettings, card: showClientCard, history: showHistory, workouts: () => showWorkouts(), catalog: showCatalog, data: showData, number: showNumber, packages: showPackages, exercises: showExercises, password: showPassword, health: () => showSub("health"), safety: () => showSub("safety") }[p.open];
+      const open = { settings: showSettings, card: showClientCard, history: showHistory, workouts: () => showWorkouts(), bests: () => showBests(), catalog: showCatalog, data: showData, number: showNumber, packages: showPackages, exercises: showExercises, password: showPassword, health: () => showSub("health"), safety: () => showSub("safety") }[p.open];
       const from = p.from === true ? "settings" : (p.from || false);   // older devices wrote a yes/no
       if (p.open === "exercise" && p.name) { fromSettings = from; showExercise(p.name, p.key || squash(p.name)); return; }
+      if (p.open === "lift" && p.key) { if (showLift(p.key, from, p.name) !== false) return; fromSettings = false; }   // v311: a lift's page comes back on its exercise
       if (open) { fromSettings = from; if (open() !== false) return; fromSettings = false; }   // an opener that refuses (the client gone, or not this role's page) leaves nothing half drawn
     }
-    if ((SUB_PAGE[settingsOpen] || settingsOpen === "workouts") && !healthId()) { settingsOpen = false; fromSettings = false; wheelOpen = null; hideAllViews(); }   // v299: the client of a Health page gone (deleted, or the client's record no longer sent): off it, to where the normal drawing puts the page
+    if ((SUB_PAGE[settingsOpen] || settingsOpen === "workouts" || settingsOpen === "bests" || settingsOpen === "lift") && !healthId()) { settingsOpen = false; fromSettings = false; wheelOpen = null; liftCur = null; hideAllViews(); }   // v299: the client of a Health page gone (deleted, or the client's record no longer sent): off it, to where the normal drawing puts the page
     if (settingsOpen === "settings" || settingsOpen === "card") paintHeroes();   // a photo that went up meanwhile shows on the page that is open
-    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $("navDone").hidden = settingsOpen !== "exercise"; $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : settingsOpen === "card" ? "vClientCard" : settingsOpen === "history" ? "vHistory" : settingsOpen === "workouts" ? "vWorkouts" : settingsOpen === "catalog" ? "vCatalog" : settingsOpen === "data" ? "vData" : SUB_PAGE[settingsOpen] || "vPassword").hidden = false; if (SUB_PAGE[settingsOpen]) paintSub(settingsOpen); if (settingsOpen === "settings") paintUnitSegs(); if (settingsOpen === "packages") renderPackages(); if (settingsOpen === "card") paintCard(); if (settingsOpen === "history") paintHistory(); if (settingsOpen === "workouts") paintWorkouts(); if (exStale && S.syncedOnce) { exStale = false; if (settingsOpen === "exercises") renderExercises(); else if (settingsOpen === "exercise" && exCurrent && !exDirty()) showExercise(exCurrent.name, exCurrent.key); } $("back").hidden = false; $("brand").hidden = true; } return; }
+    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $("navDone").hidden = settingsOpen !== "exercise"; $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : settingsOpen === "card" ? "vClientCard" : settingsOpen === "history" ? "vHistory" : settingsOpen === "workouts" ? "vWorkouts" : settingsOpen === "bests" ? "vBests" : settingsOpen === "lift" ? "vLift" : settingsOpen === "catalog" ? "vCatalog" : settingsOpen === "data" ? "vData" : SUB_PAGE[settingsOpen] || "vPassword").hidden = false; if (SUB_PAGE[settingsOpen]) paintSub(settingsOpen); if (settingsOpen === "settings") paintUnitSegs(); if (settingsOpen === "packages") renderPackages(); if (settingsOpen === "card") paintCard(); if (settingsOpen === "history") paintHistory(); if (settingsOpen === "workouts") paintWorkouts(); if (settingsOpen === "bests") paintBests(); if (settingsOpen === "lift") paintLift(); if (exStale && S.syncedOnce) { exStale = false; if (settingsOpen === "exercises") renderExercises(); else if (settingsOpen === "exercise" && exCurrent && !exDirty()) showExercise(exCurrent.name, exCurrent.key); } $("back").hidden = false; $("brand").hidden = true; } return; }
     if (S.sb && !S.signedIn) { showLogin($("loginMsg").textContent); return; }
     if (S.clientMode && !S.myClientId) { showWaiting(); return; }
     if (celebrating) { hideAllViews(); $("vCelebrate").hidden = false; $("back").hidden = true; $("brand").hidden = false; return; }   // "Nice work" stays up until it hands over to the client page, whatever refreshes meanwhile
@@ -3521,7 +3523,7 @@ import { reportRange, buildReport } from "./report.js";
     return map;
   }
   let ovFor = null, ovPick = "";                                     // the exercise looked up, kept while the page stays open
-  const fmtSetFor = (c, e) => { const u = c.unit || "lb", st = e.best, w = st.w != null ? weightIn(String(st.w), st.u || u, u) + " " + u : ""; return e.timed ? (w ? w + " \u00d7 " : "") + st.rp + " " + (e.measure ? e.measure.unit : "sec") : w ? w + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps"); };   // v301: in the client's unit at one decimal
+  const fmtSetFor = (c, e) => { const u = c.unit || "lb", st = e.best, w = st.w != null ? weightIn(String(st.w), st.u || u, u) + " " + u : ""; return e.timed ? (w ? w + " \u00d7 " : "") + (e.measure && e.measure.unit === "min" && !Number.isInteger(st.rp) ? Math.round(st.rp * 60) + " sec" : st.rp + " " + (e.measure ? e.measure.unit : "sec")) : w ? w + (st.rp != null ? " \u00d7 " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps"); };   // v301: in the client's unit at one decimal
   function paintOvBest() {
     const c = clients.get(S.view.id); const box = $("ovBest"); if (!c || !ovPick) { box.hidden = true; return; }
     const e = loggedExercises(c).get(ovPick); box.hidden = false;
@@ -3531,8 +3533,8 @@ import { reportRange, buildReport } from "./report.js";
   function suggestOv(v) {
     const c = clients.get(S.view.id), ul = $("ovSugg"); if (!c) { ul.hidden = true; return; }
     const s = squash(v), all = [...loggedExercises(c).entries()];
-    const hits = (s ? all.filter(([k]) => k.includes(s)).sort((a, b) => (b[0].startsWith(s) - a[0].startsWith(s)) || b[1].count - a[1].count) : all.sort((a, b) => b[1].count - a[1].count)).slice(0, 8);   // nothing typed: what they do most
-    ul.replaceChildren(...hits.map(([k, e]) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = e.name; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", () => { ovPick = k; $("ovEx").value = e.name; $("ovClear").hidden = false; ul.hidden = true; $("ovEx").blur(); paintOvBest(); }); li.appendChild(b); return li; }));
+    const hits = (s ? all.filter(([k, e]) => k.includes(s) || squash(e.name).includes(s)).sort((a, b) => (b[0].startsWith(s) - a[0].startsWith(s)) || b[1].count - a[1].count) : all.sort((a, b) => b[1].count - a[1].count)).slice(0, 8);   // nothing typed: what they do most
+    ul.replaceChildren(...hits.map(([k, e]) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.textContent = e.name; b.addEventListener("mousedown", (ev) => ev.preventDefault()); b.addEventListener("click", (ev) => { askEat(ev); ovPick = k; $("ovEx").value = e.name; $("ovClear").hidden = false; ul.hidden = true; $("ovEx").blur(); paintOvBest(); }); li.appendChild(b); return li; }));   // askEat (v311): the Best tile shows where the list was, and now opens a page
     ul.hidden = hits.length === 0;
   }
   function renderOverview(c) {
@@ -3582,6 +3584,7 @@ import { reportRange, buildReport } from "./report.js";
     $("pgDays").innerHTML = wk.days.map((d, k) => '<span class="pg-day' + (d.iso === t0 ? " today" : "") + '"><span class="wd">' + "MTWTFSS"[k] + '</span><span class="pg-dot ' + d.state + '">' + (d.state === "done" ? PG_TICK : d.state === "miss" ? PG_CROSS : d.state === "skip" ? PG_DASH : "") + "</span></span>").join("");
     const avWords = !av ? "" : av.weeks.length === 1 ? av.weeks[0].n + " " + workoutsWord(av.weeks[0].n) + " last week" : avgWords(av.avg) + " a week on average over the last " + av.weeks.length + " weeks";
     foot.hidden = !av; if (av) foot.innerHTML = av.weeks.length === 1 ? "<b>" + av.weeks[0].n + " " + workoutsWord(av.weeks[0].n) + "</b> last week" : "<b>" + avgWords(av.avg) + " a week</b> on average over the last " + av.weeks.length + " weeks";
+    paintProgressMore(c, list, t0);   // v311: the rest of the tab
     $("pgWeek").setAttribute("aria-label", ["This week, " + (wk.of ? wk.done + " of " + wk.of : "no") + " " + workoutsWord(wk.of), wk.days.map((d, k) => (d.state === "rest" ? "" : PG_DAYS[k] + " " + PG_SAY[d.state])).filter(Boolean).join(", "), avWords].filter(Boolean).join(". "));
   }
   // The Workouts page: Health's chart page for finished workouts, W this week, M the 30 days to today, 6M a bar a week, Y a bar a month; under it the average as Highlights draw it
@@ -3590,7 +3593,7 @@ import { reportRange, buildReport } from "./report.js";
     if (range) pgRange = range;
     settingsOpen = "workouts"; fromSettings = false; hideAllViews(); $("vWorkouts").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = ""; paintWorkouts();
   }
-  const openWorkouts = (range, e) => { askEat(e); backScroll = window.scrollY; if (showWorkouts(range) === false) { backScroll = null; return; } window.scrollTo(0, 0); };   // as History: Back lands the Progress tab where it was; a double tap's second press goes nowhere
+  const openWorkouts = (range, e) => { askEat(e); $("ovSugg").hidden = true; backScroll = window.scrollY; if (showWorkouts(range) === false) { backScroll = null; return; } window.scrollTo(0, 0); };   // as History: Back lands the Progress tab where it was; a double tap's second press goes nowhere
   function pgChart(bins, range) {
     const max = Math.max(...bins.map((b) => b.n)), step = Math.max(1, Math.ceil(max / 3)), top = step * 3, k = bins.length, at = (i) => ((i / k) * 100).toFixed(3) + "%";   // about four lines at round values (Apple's chart talk, WWDC22)
     let h = '<div class="plot">';
@@ -3628,6 +3631,173 @@ import { reportRange, buildReport } from "./report.js";
     $("wkAvg").style.marginTop = "max(12px, calc(1.125rem + 10px - " + ayPx.toFixed(1) + "px))"; $("wkAvg").style.marginBottom = "max(18px, calc(1.75rem + " + (ayPx - 114).toFixed(1) + "px))";
   }
   const totalRange = (c) => { const done = clientTrainings(c.id).filter((t) => t.completedAt), start = daysLater(mondayOf(today()), -175); return done.some((t) => effDate(t) < start) ? "Y" : "6M"; };   // Total opens on the year once there is more than the 26 weeks of 6M to show
+  // ---------- the rest of the Progress tab (v311; the owner's "So the rest", 16 Nov 2026, after the pictures the owner had seen) ----------
+  // Getting stronger (Health's comparison Highlight, then Fitness's Trends rows), New bests (and a Bests page), Attendance (both views: the owner's pick, clients see their attendance),
+  // Sessions, the coach's note when an exercise was cut short for Discomfort twice in 4 weeks, and a lift's own page. Sets and bests follow the workout card's rules exactly
+  // (model.js liftsOf: a new best is the card's NEW BEST), so a best never reads one way here and another on the card. Words a person typed go through esc() into markup.
+  const liftKey = (x) => squash(ALIASES[String(x || "").trim()] || x);   // an exercise's one key, the alias merge loggedExercises, Last time and Best use
+  const esc = (x) => String(x == null ? "" : x).replace(/[&<>\u0022\u0027]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);   // the quotes written as \u0022 and \u0027: tests/state.test.js reads quotes in a regex as the start of a string
+  const shortDay = (iso) => { const d = pgAt(iso), o = { month: "short", day: "numeric" }; if (d.getFullYear() !== new Date().getFullYear()) o.year = "numeric"; return d.toLocaleDateString(undefined, o); };   // "Sep 30"
+  const dayWord = (iso, t0) => (iso === t0 ? "Today" : iso === daysLater(t0, -1) ? "Yesterday" : whenDay(iso, true));   // "Today", "Yesterday", "Fri, Nov 13" (the pictures' rows)
+  const PG_ICON = {
+    up: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 5.2c.5 0 .95.2 1.3.55l7.2 7.3a1.75 1.75 0 0 1-2.5 2.45L12 9.45l-6 6.05a1.75 1.75 0 1 1-2.5-2.45l7.2-7.3A1.8 1.8 0 0 1 12 5.2z"/></svg>',
+    trend: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M15 4.5h5.2c.7 0 1.3.6 1.3 1.3V11a1.3 1.3 0 0 1-2.6 0V8.9l-6.3 6.4a1.3 1.3 0 0 1-1.85 0L7.8 12.4l-4.6 4.7a1.3 1.3 0 1 1-1.85-1.85l5.5-5.6a1.3 1.3 0 0 1 1.85 0l2.95 2.9 5.4-5.45H15a1.3 1.3 0 0 1 0-2.6z"/></svg>',
+    medal: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M6.2 1.5h3.6l2.2 4.3 2.2-4.3h3.6l-3.4 6.6A7.5 7.5 0 1 1 9.6 8.1zM12 9.8a5.6 5.6 0 1 0 0 11.2 5.6 5.6 0 0 0 0-11.2zm0 2.1 1.25 2.55 2.8.4-2.03 1.98.48 2.79L12 18.3l-2.5 1.32.48-2.79-2.03-1.98 2.8-.4z"/></svg>',
+    people: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8.5 3.2a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm8 1.6a3.3 3.3 0 1 1 0 6.6 3.3 3.3 0 0 1 0-6.6zM8.5 12.6c4.3 0 7.5 2.3 7.5 5.4v1.3c0 .9-.7 1.5-1.5 1.5h-12c-.8 0-1.5-.6-1.5-1.5V18c0-3.1 3.2-5.4 7.5-5.4zm8.4.3c3.3.2 5.6 2 5.6 4.6v1.2c0 .8-.6 1.4-1.4 1.4h-3.5c.3-.5.4-1 .4-1.6v-1.2c0-1.8-.9-3.3-2.4-4.4z"/></svg>',
+    cal: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M7 1.5a1 1 0 0 1 1 1V4h8V2.5a1 1 0 1 1 2 0V4h.5A3.5 3.5 0 0 1 22 7.5v11a3.5 3.5 0 0 1-3.5 3.5h-13A3.5 3.5 0 0 1 2 18.5v-11A3.5 3.5 0 0 1 5.5 4H6V2.5a1 1 0 0 1 1-1zM4 9.5v9A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-9zm3.2 2.7h2.6v2.6H7.2zm4.4 0h2.6v2.6h-2.6zm4.4 0h2.6v2.6H16zm-8.8 4.2h2.6V19H7.2zm4.4 0h2.6V19h-2.6z"/></svg>',
+    bandage: '<svg viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(-45 12 12)"><path fill="currentColor" fill-rule="evenodd" d="M6.5 7h11a5 5 0 0 1 0 10h-11a5 5 0 0 1 0-10zM8.3 8.1h1.05v7.8H8.3zM14.65 8.1h1.05v7.8h-1.05zM10.95 11a.75.75 0 1 1 0-.01zM13.8 11a.75.75 0 1 1 0-.01zM10.95 13.05a.75.75 0 1 1 0-.01zM13.8 13.05a.75.75 0 1 1 0-.01z"/></g></svg>',
+  };
+  const pgHead = (icon, title, right, gold, go) => '<span class="pg-head"><span class="pg-title' + (gold ? " gold" : "") + '">' + PG_ICON[icon] + "<span>" + title + "</span></span>" + (right || go ? '<span class="pg-when">' + (right ? "<span>" + right + "</span>" : "") + (go ? '<span class="pg-go" aria-hidden="true">&rsaquo;</span>' : "") + "</span>" : "") + "</span>";   // the chevron only on a card that opens a page
+  const pgNum = (num, unit) => '<span class="pg-val"><b>' + num + "</b><small>" + unit + "</small></span>";
+  const liftW = (st, cu) => (st.w != null ? weightIn(String(st.w), st.u || cu, cu) + " " + cu : "");
+  // a session's top set in the client's unit, as the card writes it: "40 lb × 10", "60 sec", "40 lb × 30 m", "12 reps"; a set from before 6 Oct 2026 has its weight alone ("25 lb")
+  const holdIn = (v, e) => { const x = Math.round(v * 100) / 100; return e.tunit === "min" && !Number.isInteger(x) ? Math.round(x * 60) + " sec" : x + " " + (e.tunit || "sec"); };   // a hold as the card writes it: in its plan's unit, a part of a minute in seconds (liftsOf keeps the plan's unit)
+  function fmtTop(st, e, cu) {
+    const w = liftW(st, cu);
+    if (e.kind === "time") return (w ? w + " × " : "") + holdIn(st.rp, e);
+    if (e.kind === "m") return (w ? w + " × " : "") + st.rp + " m";
+    return w ? w + (st.rp != null ? " × " + st.rp : "") : st.rp + (st.rp === 1 ? " rep" : " reps");
+  }
+  // a session's counted sets: "35 lb × 10 · 40 lb × 10 · 40 lb × 10"; a weight in words stays as written
+  function fmtSets(p, e, cu) {
+    return p.sets.map((x) => {
+      const wt = String(x.w == null ? "" : x.w).trim(), ws = wt ? weightIn(wt, x.u || cu, cu) : "", w = ws ? (weightNumber(ws) != null ? ws + " " + cu : ws) : "";
+      let r = String(x.rp == null ? "" : x.rp).trim(), unit = e.kind === "time" ? " " + (x.m || "sec") : e.kind === "m" ? " m" : "";
+      const rn = numOf(r); if (e.kind === "time" && x.m === "min" && rn != null && !Number.isInteger(rn)) { r = String(Math.round(rn * 60)); unit = " sec"; }   // a part of a minute in seconds, as the card ("1,5" from a comma keypad too)
+      return w && r ? w + " × " + r + unit : w || (r ? r + (e.kind === "reps" ? (r === "1" ? " rep" : " reps") : unit) : "");
+    }).filter(Boolean).join(" · ");
+  }
+  // what grew, for the sentence over the comparison (gainOf in model.js names it): "lifting 15 lb more", "doing 2 more reps at 40 lb", "going 30 sec longer", "going 10 m
+  // farther", "using 10 lb more" (a weighted hold or carry). The verbs fit any timed or distance plan (the v311 check: a sprint is not carried). A weight's gain is the
+  // difference of the two weights as shown, so the sentence and its two labels agree after a switch of units; none shown, no sentence (null: the lift is left out).
+  function strongerWords(e, g, first, last, cu) {
+    const one = (x) => String(Math.round(x * 10) / 10), shown = (st) => (st.w == null ? 0 : weightNumber(weightIn(String(st.w), st.u || cu, cu)) || 0);
+    if (g.by === "time") return "going " + holdIn(g.d, e) + " longer";
+    if (g.by === "dist") return "going " + one(g.d) + " m farther";
+    if (g.by === "weight") { const d = Math.round((shown(last.top) - shown(first.top)) * 10) / 10; return d > 0 ? (e.kind === "reps" ? "lifting " : "using ") + one(d) + " " + cu + " more" : null; }
+    return "doing " + g.d + " more " + (g.d === 1 ? "rep" : "reps") + (last.top.w ? " at " + liftW(last.top, cu) : "");
+  }
+  const pgLiftRow = (key, name, sub, right, up) => '<li><button type="button" class="pg-lift" data-key="' + esc(key) + '" data-name="' + esc(name) + '">' + (up ? '<span class="pg-up">' + PG_ICON.up + "</span>" : "") + '<span class="nm"><span>' + esc(name) + '</span><span class="n2">' + esc(sub) + "</span></span>" + (right ? '<span class="pg-r">' + esc(right) + "</span>" : "") + '<span class="chev" aria-hidden="true">&rsaquo;</span></button></li>';
+  function paintProgressMore(c, list, t0) {
+    const cu = c.unit || "lb", lifts = liftsOf(list, liftKey, t0, cu), name = firstOf(c).replace(/^./, (ch) => ch.toUpperCase());
+    // the coach's note: an exercise cut short for Discomfort on two days or more in 4 weeks (safety context, never the client's)
+    const listDays = (ds) => { const w = ds.map(shortDay); return w.length <= 2 ? w.join(" and ") : w.slice(0, -1).join(", ") + " and " + w[w.length - 1]; };
+    $("pgNotes").innerHTML = S.clientMode ? "" : discomforts(list, liftKey, t0).map((d) => '<button type="button" class="notice limits-note pg-note" data-key="' + esc(d.key) + '" data-name="' + esc(d.name) + '">' + PG_ICON.bandage + '<span class="lim-text"><b>Discomfort ' + (d.days.length === 2 ? "twice" : d.days.length + " times") + " on " + esc(d.name) + "</b>" + (d.early ? "Finished it early" : d.skipped ? "Skipped it" : "Cut it short") + " on " + listDays(d.days) + '</span><span class="chev" aria-hidden="true">&rsaquo;</span></button>').join("");
+    // Attendance: the 4 whole weeks before this one, as the monthly PDF counts it; a bar each, as long as its count (Health's comparison bars). No tap: History lists a missed
+    // workout only once it is filed a week on, so the card would open on a page without the days it names (the v311 check).
+    const a = attendance(list, t0), att = $("pgAttend");
+    att.hidden = a.pct == null;
+    if (a.pct != null) {
+      const max = Math.max(a.finished, a.skipped, a.missed, 1), wid = (k) => Math.max(8, (k / max) * 100).toFixed(1) + "%";   // --w: the bar never shorter than its words (index.html .pg-bar)
+      const why = Object.entries(a.reasons).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])).map(([r, k]) => esc(r) + (k > 1 ? " " + k : "")).join(", "), md = a.missedDays;   // the commonest reason first
+      const when = md.length === 1 ? " · " + esc(whenDay(md[0], true)) : md.length === 2 ? " · " + esc(shortDay(md[0]) + " and " + shortDay(md[1])) : "";
+      const how = "In person " + a.inPerson + " · On " + (S.clientMode ? "your" : "their") + " own " + a.onOwn, inside = a.finished > 0 && a.finished === max;   // inside the finished bar when it is the longest (the picture); under it when not, where it would not fit
+      const row = (k, w, cls, label) => '<span class="pg-cmp sm">' + pgNum(k, w) + (k ? '<span class="pg-bar ' + cls + '" style="--w:' + wid(k) + '">' + (label ? "<span>" + label + "</span>" : "") + "</span>" : "") + "</span>";
+      att.innerHTML = pgHead("cal", "Attendance", "Last 4 weeks") + pgNum(a.pct + "%", "of planned workouts") + '<span class="pg-hr"></span>' +
+        row(a.finished, "finished", "done", inside ? how : "") + (a.finished && !inside ? '<span class="pg-sub">' + how + "</span>" : "") +
+        (a.skipped ? row(a.skipped, "skipped" + (why ? " · " + why : ""), "skip") : "") + (a.missed ? row(a.missed, "missed" + when, "miss") : "");
+    }
+    // Getting stronger: the most done exercise that beats its first time as Health's comparison card, up to four more as Trends rows
+    const st = strongerLifts(lifts, t0).map((x) => ({ ...x, words: strongerWords(x.e, x.gain, x.first, x.last, cu) })).filter((x) => x.words), top = st[0];
+    $("pgStrongCap").hidden = $("pgStrong").hidden = !top;
+    if (top) {
+      const { e, first, last, gain } = top, A = first.top, B = last.top, m = (x) => (gain.by === "weight" ? (x.w == null ? 0 : x.u === "lb" ? x.w * 0.45359237 : x.w) : x.rp || 0);   // the bars measure what the sentence says grew (the v311 review: reps against a weight read backwards)
+      const mx = Math.max(m(A), m(B), 1e-9), wid = (x) => Math.max(12, (m(x) / mx) * 100).toFixed(1) + "%";
+      $("pgStrong").dataset.key = e.key; $("pgStrong").dataset.name = e.name;
+      const sent = (S.clientMode ? "You’re " : name + " is ") + top.words + (!top.firstTime ? " than on " : S.clientMode ? " than on your first time, " : " than the first time, ") + shortDay(first.date) + ".";   // "than on Oct 20" when the first time kept no reps   // the client's words as in the picture they approved; the coach's with the client's first name, never a he or a she
+      $("pgStrong").innerHTML = pgHead("trend", esc(e.name), "", true, true) + '<span class="pg-sent">' + esc(sent) + '</span><span class="pg-hr"></span>' +
+        '<span class="pg-cmp">' + pgNum(esc(fmtTop(B, e, cu)), "") + '<span class="pg-bar now" style="--w:' + wid(B) + '"><span>' + esc(dayWord(last.date, t0)) + "</span></span></span>" +
+        '<span class="pg-cmp">' + pgNum(esc(fmtTop(A, e, cu)), "") + '<span class="pg-bar then" style="--w:' + wid(A) + '"><span>' + esc(shortDay(first.date)) + "</span></span></span>";
+      $("pgStrong").setAttribute("aria-label", e.name + ". " + sent + " " + fmtTop(B, e, cu) + ", " + dayWord(last.date, t0) + ". " + fmtTop(A, e, cu) + ", " + shortDay(first.date) + ".");
+    }
+    $("pgStrongList").hidden = st.length < 2;
+    $("pgStrongList").innerHTML = st.slice(1, 5).map((x) => pgLiftRow(x.e.key, x.e.name, "from " + fmtTop(x.first.top, x.e, cu), fmtTop(x.last.top, x.e, cu), true)).join("");
+    // New bests this month, one an exercise, and the way to every best
+    const mb = monthBests(lifts, t0), nb = $("pgBests");
+    nb.hidden = !lifts.size;
+    nb.innerHTML = '<li class="pg-lead">' + pgHead("medal", "New bests", pgAt(t0).toLocaleDateString(undefined, { month: "long" }), true) + (mb.length ? pgNum(mb.length, "this month") : '<span class="pg-sub">None yet this month</span>') + "</li>" +
+      mb.slice(0, 3).map((x) => pgLiftRow(x.e.key, x.e.name, dayWord(x.p.date, t0), fmtTop(x.p.top, x.e, cu))).join("") +
+      '<li><button type="button" class="pg-all" data-act="bests"><span>All bests</span><span class="chev" aria-hidden="true">&rsaquo;</span></button></li>';
+    // Sessions with the coach: the finished workouts marked In person (counted from the first, as the mark began on 14 Oct 2026), and the package, as the plan card counts it
+    const ip = inPersonCount(list, t0), pr = c.plan ? planProgress(c.plan, list) : null, se = $("pgSessions"), nS = pr ? pr.used : ip.n;   // the package's count with its correction (the v311 check: "3 with you" beside "5 of 10")
+    se.hidden = !nS && !pr;
+    se.innerHTML = pgHead("people", "Sessions", pr ? "Package " + pr.packNo : "") + pgNum(nS, S.clientMode ? "with your coach" : "with you") +
+      (pr ? '<span class="pg-sub">This package: ' + pr.inPack + " of " + pr.size + "</span>" : ip.n ? '<span class="pg-sub">Counted since ' + esc(shortDay(ip.since)) + "</span>" : "");
+  }
+  // the taps: a lift's card or row opens its page, All bests the Bests page, the coach's discomfort note that exercise's page
+  function pgTap(e) {
+    const b = e && e.target && e.target.closest ? e.target.closest("button[data-key], button[data-act]") : null; if (!b) return;
+    if (b.dataset.act === "bests") openBests(e); else if (b.dataset.key) openLift(b.dataset.key, false, e, b.dataset.name);
+  }
+  // The Bests page: every exercise's best set and the day it first reached it, newest first; a box to look one up
+  function showBests() {
+    const cid = healthId(); if (!cid || !clients.get(cid)) return false;
+    settingsOpen = "bests"; fromSettings = false; liftCur = null; hideAllViews(); $("vBests").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = ""; paintBests();
+  }
+  const ovShut = () => { $("ovSugg").hidden = true; };   // the Look up's list closed at once (its blur closes it 120 ms later, after the swipe back's picture is taken)
+  const openBests = (e) => { askEat(e); ovShut(); backScroll = window.scrollY; $("bestsFind").value = ""; $("bestsClear").hidden = true; if (showBests() === false) { backScroll = null; return; } window.scrollTo(0, 0); };   // a fresh open shows every exercise; Back from a lift keeps what was typed
+  function paintBests() {
+    const c = clients.get(healthId()); if (!c) return;
+    const t0 = today(), cu = c.unit || "lb", lifts = liftsOf(clientTrainings(c.id), liftKey, t0, cu), q = squash($("bestsFind").value || "");
+    const rows = [...lifts.values()].map((e) => ({ e, p: bestOf(e) })).filter((x) => !q || x.e.key.includes(q) || squash(x.e.name).includes(q)).sort((a, b) => b.p.date.localeCompare(a.p.date) || a.e.name.localeCompare(b.e.name));
+    $("bestsList").innerHTML = rows.map((x) => pgLiftRow(x.e.key, x.e.name, dayWord(x.p.date, t0), fmtTop(x.p.top, x.e, cu))).join("");
+    $("bestsList").hidden = !rows.length; $("bestsEmpty").hidden = !!rows.length; $("bestsEmpty").textContent = lifts.size ? "No exercise by that name yet." : "No lifts logged yet.";
+  }
+  // A lift's own page: its best, the dates, Health's line chart of the heaviest set each time (a best's dot filled), and every session's sets
+  function showLift(key, from, name) {
+    const cid = healthId(); if (!key || !cid || !clients.get(cid) || (from && from !== "bests")) return false;
+    const e = liftsOf(clientTrainings(cid), liftKey, today(), clients.get(cid).unit || "lb").get(key);   // its name as last written, before the page is remembered for a reload
+    liftCur = { key, name: e ? e.name : name || (liftCur && liftCur.key === key ? liftCur.name : key) }; fromSettings = from || false; settingsOpen = "lift"; hideAllViews();
+    $("vLift").hidden = false; $("back").hidden = false; $("backLabel").textContent = parentLabel(); $("brand").hidden = true; $("status").textContent = ""; paintLift();
+  }
+  const openLift = (key, from, e, name) => { askEat(e); if (!from) ovShut(); const y = window.scrollY; if (!from) backScroll = y; if (showLift(key, from, name) === false) { if (!from) backScroll = null; return; } if (from) subY = y; window.scrollTo(0, 0); };   // from the Progress tab as Workouts (backScroll); from Bests as a list's own page (subY)
+  // the lines' step: 1, 2, 2.5 or 5 times a power of ten, the smallest at least a third of the range that leaves at most three gaps (equal values: a range of half their size)
+  const axisStep = (lo, hi, whole) => {
+    const span = hi - lo > 0 ? hi - lo : Math.max(Math.abs(hi) / 2, 1), raw = span / 3; let k = Math.pow(10, Math.floor(Math.log10(raw)));
+    for (let n = 0; n < 40; n++, k *= 10) for (const m of [1, 2, 2.5, 5]) {
+      const s = Math.round(m * k * 1e6) / 1e6;
+      if (s < raw * (1 - 1e-9) || (whole ? !Number.isInteger(s) : s < 0.1 || !Number.isInteger(Math.round(s * 10 * 1e6) / 1e6))) continue;   // reps, seconds, metres in whole steps; weights to one decimal (the v311 check: "12.5 reps", "100.25 kg")
+      if (Math.ceil(hi / s - 1e-9) - Math.floor(lo / s + 1e-9) <= 3) return s;
+    }
+    return k;
+  };
+  function liftChart(e, cu) {
+    const byW = e.kind === "reps" && e.points.some((p) => p.top.w != null); let unit = byW ? cu : e.kind === "time" ? e.tunit || "sec" : e.kind === "m" ? "m" : "reps";
+    let pts = e.points.map((p) => ({ p, y: byW ? (p.top.w != null ? weightNumber(weightIn(String(p.top.w), p.top.u || cu, cu)) : null) : p.top.rp })).filter((x) => x.y != null && Number.isFinite(x.y));
+    if (!pts.length) return "";
+    if (unit === "min" && pts.some((q) => !Number.isInteger(Math.round(q.y * 100) / 100))) { pts = pts.map((q) => ({ ...q, y: Math.round(q.y * 60) })); unit = "sec"; }   // a part of a minute: the chart in seconds, as the card and the history write it
+    const whole = pts.every((q) => Number.isInteger(Math.round(q.y * 1e6) / 1e6));
+    let lo = Math.min(...pts.map((x) => x.y)), hi = Math.max(...pts.map((x) => x.y));
+    const step = axisStep(lo, hi, whole);   // about four lines at round values, at any size (the v311 review: a weight typed 40000 drew 41 labels, a longer typo hung the page)
+    lo = Math.floor(lo / step + 1e-9) * step; hi = Math.ceil(hi / step - 1e-9) * step; if (hi - lo < step / 2) { hi += step; lo = Math.max(0, lo - step); }
+    const t0 = Date.parse(pts[0].p.date + "T12:00:00"), t1 = Date.parse(pts[pts.length - 1].p.date + "T12:00:00"), x = (d) => (t1 > t0 ? ((Date.parse(d + "T12:00:00") - t0) / (t1 - t0)) * 100 : 50), y = (v) => (1 - (v - lo) / (hi - lo)) * 100;
+    const lab = (v) => { const x = whole ? Math.round(v) : Math.round(v * 10) / 10; return x + " " + (unit === "reps" && x === 1 ? "rep" : unit); }, labs = [];
+    for (let k = 0, nl = Math.round((hi - lo) / step); k <= nl; k++) labs.push([lo + k * step, lab(lo + k * step)]);
+    let h = '<div class="plot" style="--gut:' + Math.max(...labs.map(([, t]) => t.length)) + 'ch">';   // the room on the right as wide as the longest label (index.html: the v311 check found "107.5 sec" reaching into the plot)
+    for (const [v, t] of labs) h += '<span class="gl' + (v === lo ? " zero" : "") + '" style="top:' + y(v).toFixed(3) + '%"></span><span class="yl" style="top:' + y(v).toFixed(3) + '%">' + t + "</span>";
+    const a = pgAt(pts[0].p.date), last = pts[pts.length - 1].p.date, months = [];
+    for (let k = 1; ; k++) { const m1 = new Date(a.getFullYear(), a.getMonth() + k, 1, 12), iso = localIso(m1); if (iso > last) break; months.push([iso, m1]); }
+    const every = Math.max(1, Math.ceil(months.length / 6));   // about six months named at most, so no name runs into the next (the v310 review's collisions)
+    months.forEach(([iso, m1], k) => { if (k % every) return; const xm = x(iso); h += '<span class="vl" style="left:' + xm.toFixed(3) + '%"></span>' + (xm <= 88 ? '<span class="xl" style="left:' + xm.toFixed(3) + '%">' + m1.toLocaleDateString(undefined, { month: "short" }) + "</span>" : ""); });   // none at the right edge, where it would meet the weights' labels
+    h += '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + pts.map((q) => x(q.p.date).toFixed(3) + "," + y(q.y).toFixed(3)).join(" ") + '" class="ln" fill="none" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+    const dot = (q) => '<span class="pt' + (q.p.gold ? " best" : "") + '" style="left:' + x(q.p.date).toFixed(3) + "%;top:" + y(q.y).toFixed(3) + '%"></span>';   // the bests drawn last, on top; past two dozen sessions the line and the bests alone (11-point rings ran into a chain: the v311 check)
+    h += (pts.length <= 24 ? pts.filter((q) => !q.p.gold).map(dot).join("") : "") + pts.filter((q) => q.p.gold).map(dot).join("") + "</div>";
+    return h;
+  }
+  function paintLift() {
+    const c = clients.get(healthId()); if (!c || !liftCur) return;
+    const t0 = today(), cu = c.unit || "lb", e = liftsOf(clientTrainings(c.id), liftKey, t0, cu).get(liftCur.key);
+    if (e) liftCur.name = e.name;
+    $("liftName").textContent = liftCur.name; const has = !!(e && e.points.length);
+    for (const id of ["liftCap", "liftDates", "liftChart", "liftHistCap", "liftList"]) $(id).hidden = !has;
+    if (!has) { $("liftBest").textContent = "Nothing logged yet"; $("liftKey").hidden = true; return; }
+    const p0 = bestOf(e), P = e.points, chart = liftChart(e, cu);
+    $("liftBest").textContent = fmtTop(p0.top, e, cu);
+    $("liftDates").textContent = P[0].date !== P[P.length - 1].date ? dayRange(P[0].date, P[P.length - 1].date, true) : whenDay(P[0].date, true);   // two sessions on one day: that day, never "Nov 16–16"
+    $("liftChart").innerHTML = chart; $("liftChart").hidden = !chart; $("liftChart").setAttribute("aria-label", e.name + ", the best set each time: " + P.map((p) => fmtTop(p.top, e, cu) + " on " + whenDay(p.date, true)).join("; "));
+    $("liftKey").hidden = !chart || !P.some((p) => p.gold); $("liftKeyText").textContent = e.kind === "time" ? "New best: longer" : e.kind === "m" ? "New best: farther, or heavier" : "New best: heavier, or more reps";
+    $("liftList").innerHTML = P.slice().reverse().map((p) => '<li><div class="pg-hist"><span>' + esc(dayWord(p.date, t0) + (p.title ? " · " + p.title : "")) + '</span><span class="n2">' + esc(fmtSets(p, e, cu) || fmtTop(p.top, e, cu)) + "</span></div></li>").join("");
+  }
   // ---- what a client did on their own that the coach has not seen: finished workouts (cleared when the profile opens) and notes (each cleared when tapped).
   // "Seen" lives on the client's record (seenDoneAt, seenNotes), so every device of the coach agrees.
   const noteId = (t, r) => "row/" + t.id + "/" + r.id;
@@ -5249,10 +5419,14 @@ import { reportRange, buildReport } from "./report.js";
   $("ovEx").addEventListener("focus", (e) => suggestOv(e.target.value));
   $("ovEx").addEventListener("blur", () => setTimeout(() => { $("ovSugg").hidden = true; }, 120));
   $("ovClear").addEventListener("click", () => { ovPick = ""; $("ovEx").value = ""; $("ovClear").hidden = true; $("ovSugg").hidden = true; paintOvBest(); });
-  $("ovBestBtn").addEventListener("click", (e) => { const x = $("ovBest")._e; if (x && x.best) showWhen(e.currentTarget, whenDay(x.best.date, true), x.best.title || "Workout"); });
+  $("ovBestBtn").addEventListener("click", (e) => { if (ovPick) openLift(ovPick, false, e, ($("ovBest")._e || {}).name); });   // v311: the exercise looked up opens its own page (its best, its chart, every session), as in the pictures
   $("pgMonth").addEventListener("click", (e) => openWorkouts("M", e));   // v310: each card opens the Workouts page on its own range (Health opens a card's chart)
   $("pgTotal").addEventListener("click", (e) => { const c = clients.get(S.view.id); if (c) openWorkouts(totalRange(c), e); });
   $("pgWeek").addEventListener("click", (e) => openWorkouts("W", e));
+  $("overview").addEventListener("click", pgTap);   // v311: a lift's card or row, the coach's discomfort note, All bests
+  $("bestsList").addEventListener("click", (e) => { const b = e.target.closest("button[data-key]"); if (b) openLift(b.dataset.key, "bests", e, b.dataset.name); });
+  $("bestsFind").addEventListener("input", (e) => { $("bestsClear").hidden = !e.target.value; paintBests(); });
+  $("bestsClear").addEventListener("click", () => { $("bestsFind").value = ""; $("bestsClear").hidden = true; paintBests(); $("bestsFind").focus(); });
   $("wkRange").addEventListener("click", (e) => { const b = e.target.closest("button[data-range]"); if (!b || b.dataset.range === pgRange) return; pgRange = b.dataset.range; paintWorkouts(); });
   $("noteDiscard").addEventListener("click", async () => { if ($("cNotes").value.trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; const c = clients.get(S.view.id); if (c) noteDraft.delete(c.id); $("cNotes").value = ""; $("noteActions").hidden = true; growNotesBox(); });
   $("unitSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-unit]"); if (b && !S.clientMode && clients.has(S.view.id)) setLiftUnit(S.view.id, b.dataset.unit); });   // "Weights in" on the client's card (v299: one setter with the client's own Settings and the client's workout's "…"; what was logged stays what it was)
@@ -6108,7 +6282,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, wheelCol, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, editAlts, editNote, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, fmtSetFor, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c, opts) => buildReport(kind, fonts, c, clientTrainings(c.id), opts), repMonths, repFoot, openReport, saveAgain, bannerOff: () => bannerOff, reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, weekOffNow: () => weekOff, setWeekOff: (v) => { weekOff = v; }, weekWheelNow: () => weekWheel, weekPageNow: () => weekPage, wkMonth, calFold, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates, setProfile, setLiftUnit, showSub, openSub, paintHealth, paintSafety, healthSummary, safetySummary, healthId, toggleWheel, closeWheel, wheelState: () => wheelOpen, editText, editSafety, unitRows, paintLimits, fmtBirthday, phoneIn, fmtPhone, unitLabel: () => UNIT_LABEL, settingsPage: () => ({ open: settingsOpen, from: fromSettings }), subPlace: () => subY, renderOverview, paintProgressCards, showWorkouts, openWorkouts, paintWorkouts, pgChart, dayRange, monthRange, totalRange, workoutsRange: () => pgRange },
+      fns: { boot, wheelCol, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, editAlts, editNote, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, fmtSetFor, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c, opts) => buildReport(kind, fonts, c, clientTrainings(c.id), opts), repMonths, repFoot, openReport, saveAgain, bannerOff: () => bannerOff, reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, weekOffNow: () => weekOff, setWeekOff: (v) => { weekOff = v; }, weekWheelNow: () => weekWheel, weekPageNow: () => weekPage, wkMonth, calFold, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates, setProfile, setLiftUnit, showSub, openSub, paintHealth, paintSafety, healthSummary, safetySummary, healthId, toggleWheel, closeWheel, wheelState: () => wheelOpen, editText, editSafety, unitRows, paintLimits, fmtBirthday, phoneIn, fmtPhone, unitLabel: () => UNIT_LABEL, settingsPage: () => ({ open: settingsOpen, from: fromSettings }), subPlace: () => subY, renderOverview, paintProgressCards, showWorkouts, openWorkouts, paintWorkouts, pgChart, dayRange, monthRange, totalRange, workoutsRange: () => pgRange, paintProgressMore, showBests, openBests, paintBests, showLift, openLift, paintLift, liftChart, fmtTop, fmtSets, strongerWords, liftKey, pgTap, liftPage: () => liftCur },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, pendingProfile, profileTouched, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
