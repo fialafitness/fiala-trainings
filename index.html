@@ -1533,6 +1533,8 @@
   .settings-list .row-field { flex: 1 1 auto; width: auto; min-width: 0; padding: 0; border: 0; border-radius: 0; background: none; text-align: right; font-size: 1.0625rem; letter-spacing: -0.01em; color: var(--text-primary); }   /* the card's name, email and phone: a field at the row's end, as Apple's Health details in Edit */
   .settings-list .pop-sel { position: relative; display: inline-flex; align-items: center; min-width: 0; color: var(--text-tertiary); font-size: 0.9375rem; }   /* the plan: a pop-up button, the value and Apple's up-and-down chevrons */
   .settings-list .pop-sel select { -webkit-appearance: none; appearance: none; width: auto; max-width: 220px; min-width: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; color: inherit; font: inherit; text-align: right; text-align-last: right; cursor: pointer; }
+  .settings-list .pop-sel select:focus { outline: none; }   /* v309 (the owner's screenshot, 15 Nov 2026: "the blue border stays after clicking"): a tap leaves no ring. A tapped select matches :focus-visible on iOS 27.2 (measured on the simulator), so WebKit drew its own blue ring round the plan from the tap until something else took the focus, the menu closed or not */
+  .settings-list .pop-sel.keys { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 8px; }   /* the keyboard's place, round the value and its chevrons, as the exercise name's pop-up (main.js: after Tab, Shift-Tab or Option-Tab, and on a computer a focus no press on its row brought) */
   .settings-list .pop-sel .pop-chev { flex: none; }
   .settings-list li[hidden] { display: none; }
   .card-lists { margin-top: 20px; max-width: 480px; }
@@ -1990,7 +1992,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=308";
+  import { boot } from "./app/main.js?v=309";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
