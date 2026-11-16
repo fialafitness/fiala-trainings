@@ -21,14 +21,20 @@ test("the copies of client_my_data are identical, so re-running any file gives t
   const found = copies(); const norm = (b) => b.replace(/\s+/g, " ").trim();
   for (const [f, body] of found) assert.strictEqual(norm(body), norm(found[0][1]), f + " differs from " + found[0][0]);
 });
-test("the service worker fetches the page, the scripts and the templates as one bundle, checked with the server", () => {
+test("the service worker fetches the page and the scripts as one bundle, checked with the server", () => {
   const sw = fs.readFileSync(path.join(root, "sw.js"), "utf8");
   const start = sw.indexOf("async function fetchBundle"); const bundle = sw.slice(start, sw.indexOf("\n}", start));
   assert.ok(/cache:\s*"no-cache"/.test(bundle), "the bundle must bypass the host's 10-minute HTTP cache");
   const list = JSON.parse(sw.match(/const BUNDLE = (\[[^\]]*\])/)[1].replace(/\bPAGE\b/, '"./index.html"'));
   for (const f of fs.readdirSync(path.join(root, "app")).filter((x) => x.endsWith(".js"))) assert.ok(list.includes("./app/" + f), f + " missing from the BUNDLE list");
-  assert.ok(list.includes("./templates.json"), "templates.json must travel with the scripts that know its version");
+  assert.ok(!list.includes("./templates.json"), "the built-in templates are no longer published (15 Nov 2026): they live in the coach's account and his backups");
   assert.ok(sw.includes("isAppScript") === false, "the old per-script network race must not come back");
+});
+test("the purchased programs' files stay out of the public repo (the owner's ask, 15 Nov 2026): they live in his private folder beside it", () => {
+  const gone = ["templates.json", "tools/odboj-raw.json", "tools/odboj-unmapped.json", "tools/bodytype-raw.json", "tools/bodytype-unmapped.json", "tools/bodytype-cues-cz.json", "tools/bodytype-cues-en.json", "tools/bodytype-manual.json", "tools/import_odboj.py", "tools/import_bodytype.py", "tools/merge_templates.py", "tools/pdfstr.swift"];
+  for (const f of gone) assert.ok(!fs.existsSync(path.join(root, f)), f + " is back in the repo: everything in it is published on GitHub and the website");
+  const ignore = fs.readFileSync(path.join(root, ".gitignore"), "utf8");
+  for (const line of ["templates.json", "tools/odboj-*", "tools/bodytype-*"]) assert.ok(ignore.split("\n").includes(line), ".gitignore must keep " + line + " out of a commit");
 });
 test("every file the service worker installs is on disk, or no phone ever gets the new shell", () => {
   const sw = fs.readFileSync(path.join(root, "sw.js"), "utf8");

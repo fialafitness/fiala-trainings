@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { test, assert } from "./assert.js";
 const src = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "sw.js"), "utf8");
 const ORIGIN = "https://app.test", SW_URL = ORIGIN + "/sw.js", META = "fiala-meta", ASSETS = "fiala-assets", REL = "fiala-rel-";
-const FILES = ["/index.html", "/app/main.js", "/app/catalog.js", "/app/util.js", "/app/model.js", "/app/notes.js", "/app/pdf.js", "/app/report.js", "/app/state.js", "/app/sync.js", "/app/photos.js", "/templates.json", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png", "/favicon.ico", "/fonts/Inter-Regular.ttf", "/fonts/Inter-Bold.ttf"];
+const FILES = ["/index.html", "/app/main.js", "/app/catalog.js", "/app/util.js", "/app/model.js", "/app/notes.js", "/app/pdf.js", "/app/report.js", "/app/state.js", "/app/sync.js", "/app/photos.js", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png", "/favicon.ico", "/fonts/Inter-Regular.ttf", "/fonts/Inter-Bold.ttf"];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function makeWorker() {
@@ -51,7 +51,7 @@ function makeWorker() {
   const current = async () => { const m = stores.get(META); const r = m && m.get(ORIGIN + "/current"); return r ? Number(await r.clone().text()) : 0; };
   const releases = () => [...stores.keys()].filter((k) => k.startsWith(REL)).map((k) => Number(k.slice(REL.length))).sort();
   return { server, device, stores, live, rel, relText, current, releases, install: () => run("install"), activate: () => run("activate"), request,
-    open: (resultingClientId = "page") => request("./", { mode: "navigate", resultingClientId }), script: (clientId = "page") => request("./app/main.js?v=99", { clientId }), templates: () => request("./templates.json", { clientId: "page" }),
+    open: (resultingClientId = "page") => request("./", { mode: "navigate", resultingClientId }), script: (clientId = "page") => request("./app/main.js?v=99", { clientId }), util: () => request("./app/util.js", { clientId: "page" }),
     hits: (p) => server.hits.filter((x) => x === p).length,
     check: async (clientId = "page") => { const replies = [], w = []; listeners.message({ data: { type: "check" }, source: { id: clientId, postMessage: (m) => replies.push(m) }, waitUntil: (p) => w.push(p) }); await Promise.allSettled(w); return replies; } };   // a page, back on screen, asking for news
 }
@@ -60,8 +60,8 @@ const PAGE = (n) => "/index.html v" + n + " main.js?v=" + n;
 
 test("install keeps the whole release on the device, and an offline open runs on it", async () => {
   const w = makeWorker(); await w.install(); await w.activate();
-  for (const f of FILES.slice(0, 12)) assert.ok(w.rel(1).has(ORIGIN + f), f + " not stored"); assert.strictEqual(await w.current(), 1);
-  for (const f of FILES.slice(12)) assert.ok(w.stores.get(ASSETS).has(ORIGIN + f), f + " not kept");
+  for (const f of FILES.slice(0, 11)) assert.ok(w.rel(1).has(ORIGIN + f), f + " not stored"); assert.strictEqual(await w.current(), 1);
+  for (const f of FILES.slice(11)) assert.ok(w.stores.get(ASSETS).has(ORIGIN + f), f + " not kept");
   w.server.down = true;
   const page = await w.open(); assert.strictEqual(page.text, PAGE(1)); await page.settle();
   assert.strictEqual((await w.script()).text, "/app/main.js v1");
@@ -70,7 +70,7 @@ test("a quick open after a deploy serves the new page and the scripts that came 
   const w = makeWorker(); await w.install(); w.server.version = 2; w.server.hits.length = 0;
   assert.strictEqual((await w.open()).text, PAGE(2));
   assert.strictEqual((await w.script()).text, "/app/main.js v2");
-  assert.strictEqual((await w.templates()).text, "/templates.json v2");
+  assert.strictEqual((await w.util()).text, "/app/util.js v2");
   assert.strictEqual(w.hits("/app/main.js"), 1, "the script must come from the release the open fetched, not a second request");
   assert.strictEqual(await w.current(), 2); assert.deepStrictEqual(w.releases(), [1, 2], "the release before stays for pages still running on it");
 });
@@ -91,7 +91,7 @@ test("a page keeps its own release for as long as it runs, even after another pa
   w.server.version = 2; assert.strictEqual((await w.open("pageB")).text, PAGE(2));
   assert.strictEqual((await w.script("pageA")).text, "/app/main.js v1", "page A: still release 1");
   assert.strictEqual((await w.script("pageB")).text, "/app/main.js v2", "page B: release 2");
-  assert.strictEqual((await w.request("./templates.json", { clientId: "pageA" })).text, "/templates.json v1");
+  assert.strictEqual((await w.request("./app/util.js", { clientId: "pageA" })).text, "/app/util.js v1");
 });
 test("headers arrive in time but one download dies half-way: the open runs on the device release, which stays untouched", async () => {
   const w = makeWorker(); await w.install(); w.server.version = 2; w.server.dieBody = "/app/main.js";
@@ -113,7 +113,7 @@ test("the same release again: the open writes nothing to the device; a deploy wr
   const w = makeWorker(); await w.install(); w.device.writes = 0;
   assert.strictEqual((await w.open()).text, PAGE(1)); assert.strictEqual(w.device.writes, 0);
   w.server.version = 2;
-  assert.strictEqual((await w.open()).text, PAGE(2)); assert.strictEqual(w.device.writes, 12);
+  assert.strictEqual((await w.open()).text, PAGE(2)); assert.strictEqual(w.device.writes, 11);
 });
 test("the device refuses a file of the new release: the fresh page is served with its scripts from the server, and the release before is still whole for an offline open", async () => {
   const w = makeWorker(); await w.install(); w.server.version = 2; w.device.failPut = "/app/state.js"; w.server.hits.length = 0;
@@ -204,7 +204,7 @@ test("a release a page still runs on is never pruned from under it, however many
   w.server.version = 3; assert.strictEqual((await w.open("pageC")).text, PAGE(3));
   assert.deepStrictEqual(w.releases(), [1, 2, 3], "release 1 stays for page A");
   const before = w.hits("/app/main.js"); assert.strictEqual((await w.script("pageA")).text, "/app/main.js v1", "page A still gets its own scripts"); assert.strictEqual(w.hits("/app/main.js"), before, "from the device, not the server");
-  w.server.down = true; assert.strictEqual((await w.request("./templates.json", { clientId: "pageA" })).text, "/templates.json v1", "and offline too");
+  w.server.down = true; assert.strictEqual((await w.request("./app/util.js", { clientId: "pageA" })).text, "/app/util.js v1", "and offline too");
   w.live.delete("pageA"); w.server.down = false; w.server.version = 4; assert.strictEqual((await w.open("pageD")).text, PAGE(4));
   assert.deepStrictEqual(w.releases(), [3, 4], "page A closed: its release goes with the next prune");
 });
@@ -235,7 +235,7 @@ test("an install that leaves no whole release on the device does not take over; 
 test("the pointer and the pin both refused (one full phone): the page and its scripts still come from one release, online and offline", async () => {
   const w = makeWorker(); await w.install(); w.server.version = 2; w.device.failPut = ["/current", "/client/page", "/client/page2"];
   assert.strictEqual((await w.open()).text, PAGE(2)); assert.strictEqual((await w.script()).text, "/app/main.js v2", "release 2's scripts with release 2's page, not the stale pointer's");
-  assert.strictEqual((await w.templates()).text, "/templates.json v2");
+  assert.strictEqual((await w.util()).text, "/app/util.js v2");
   w.server.down = true; assert.strictEqual((await w.open("page2")).text, PAGE(2)); assert.strictEqual((await w.script("page2")).text, "/app/main.js v2");
   assert.strictEqual(await w.current(), 1, "the pointer never moved"); assert.deepStrictEqual(w.releases(), [1, 2], "and the releases were pruned all the same");
 });

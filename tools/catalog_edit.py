@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Edit the exercise catalog: word renames (e.g. triceps=tricep) and a duplicate sweep.
 Writes the SOURCES (exercises.txt, exercise-videos.json, exercise-aliases.json), re-embeds app/catalog.js through tools/embed.py,
-and applies the same word renames to templates.json (exercise names and alternatives), so nothing drifts.
+and applies the same word renames to templates.json when one sits in the repo root (none since 15 Nov 2026: the built-in templates live in the coach's account).
 Usage: python3 tools/catalog_edit.py [old=new ...] [--dry]
 Rules: a renamed name becomes an alias of its new spelling, so old workouts and saved videos keep matching.
 Duplicates (two names with the same squashed key) are merged: the one with a video stays, the other becomes an alias."""
@@ -25,7 +25,9 @@ def word_rename(s, old, new):
         return (new[0].upper() + new[1:]) if w[0].isupper() else new
     return re.sub(r"\b" + re.escape(old) + r"\b", rep, s, flags=re.I)
 def rename_templates(renames, dry):
-    p = f"{ROOT}/templates.json"; t = json.load(open(p, encoding="utf-8")); n = 0
+    p = f"{ROOT}/templates.json"
+    if not os.path.exists(p): return 0                         # no templates.json in the repo since 15 Nov 2026
+    t = json.load(open(p, encoding="utf-8")); n = 0
     def fix(s):
         nonlocal n
         o = s

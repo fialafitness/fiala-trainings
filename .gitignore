@@ -1,3 +1,6 @@
 .DS_Store
 _test*.html
 .claude/
+templates.json
+tools/odboj-*
+tools/bodytype-*

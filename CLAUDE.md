@@ -5,10 +5,10 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 ## Where it lives
 
 - This folder, `webapp/`, is the git repo and the root of the public GitHub repo `fialafitness/fiala-trainings`. `main` is the only branch, and GitHub Pages publishes it at app.fialafitness.com (`CNAME`). A push to `main` is a release. Every committed file is public on GitHub and on the site, this one included.
-- Sessions usually start in the parent folder. It is not a repo, and it holds the owner's source material (program PDFs, spreadsheets, brand files). Never copy a file from it into the repo. What the tools extract from it (`templates.json`, the catalog sources, `tools/*.json`) is committed, and so public.
+- Sessions usually start in the parent folder. It is not a repo, and it holds the owner's source material (program PDFs, spreadsheets, brand files). Never copy a file from it into the repo. What the tools extract from it for the exercise catalogue (the catalog sources) is committed, and so public. The 426 built-in workout templates came from purchased programs: since 15 Nov 2026 (the owner's ask) they are not in the repo. They live in the coach's account (Templates records) and his backups; `templates.json` and the scripts that built it sit in the parent folder's `Templates_source_private/`. Never put them back: `.gitignore` and `tests/deploy.test.js` guard this.
 - Never commit a person's name, email, phone number, client data, keys or tokens. Some are already in the repo; never copy them anywhere else.
   - There by design: the coach's own first name in the app's wording (there is only one coach), and the Supabase URL and publishable key in `app/main.js` (row-level security guards the data).
-  - Not by design: the coach's sign-in email in `supabase/cloud.sql`, the coach's full name in `tests/photos.test.js` and `tools/import_bodytype.py`, and a home-folder path in `tools/clean_names.py` and `tools/match_videos.py`.
+  - Not by design: the coach's sign-in email in `supabase/cloud.sql`, the coach's full name in `tests/photos.test.js`, and a home-folder path in `tools/clean_names.py` and `tools/match_videos.py`.
 - There is one live Supabase project and no staging copy. A local copy of the app that signs in reads and writes real client data, so prove data changes with the tests.
 - The owner is a personal trainer, not a developer. When working with them:
   - write in plain language;
@@ -36,7 +36,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
   - `app/pdf.js` and `app/report.js`: the monthly report PDF, set in `fonts/Inter-*.ttf`.
 - `app/catalog.js`: the generated exercise names, videos and aliases. Never edit it by hand.
 - `sw.js`: the offline shell (see Releasing).
-- `templates.json`: the 426 built-in workout templates (see Saving and syncing). Never edit it by hand: the tools rebuild it.
+- No `templates.json` (see Where it lives): the built-in workout templates are records in the coach's account (see Saving and syncing).
 - `exercises.txt`, `exercise-videos.json` and `exercise-aliases.json`: the catalog sources. The app never loads them; `python3 tools/embed.py` writes them into `app/catalog.js`.
 - Other files:
   - `manifest.webmanifest` and the icons;
@@ -44,11 +44,11 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
   - `brand/`: `mark-*.svg` is the header logo, and `lockup-*.svg` is unused;
   - `CNAME`;
   - `package.json` (`"type": "module"`, `npm test`).
-- `tools/`: python3 scripts. The spreadsheet and PDF ones need `openpyxl`, and `import_odboj.py` also needs `pypdf`.
+- `tools/`: python3 scripts. The spreadsheet ones need `openpyxl`.
   - `embed.py` rebuilds `app/catalog.js` from the three catalog sources.
-  - `catalog_edit.py [old=new ...] [--dry]` renames words in the three sources and in `templates.json`, merges duplicate names in the sources, then re-embeds. With `--dry` it only prints.
+  - `catalog_edit.py [old=new ...] [--dry]` renames words in the three sources, merges duplicate names in them, then re-embeds. With `--dry` it only prints. (It renamed words in `templates.json` too while that was in the repo; with none there it skips it.)
   - `singularize.py [--write]` puts exercise names in the singular, in the sources only. Run `embed.py` after it.
-  - `import_odboj.py`, `import_bodytype.py` (with `pdfstr.swift`) and `merge_templates.py` rebuild `templates.json` from program PDFs in the parent folder. Two of the `tools/*.json` files are hand-made inputs: `bodytype-manual.json` (name mappings) and `bodytype-cues-en.json` (a translation). The others are the scripts' outputs.
+  - The scripts that built `templates.json` from the program PDFs, with their inputs and outputs, moved to the parent folder's `Templates_source_private/tools/` (15 Nov 2026).
   - `clean_names.py` and `match_videos.py` are one-offs over the parent folder's spreadsheets.
 - `supabase/*.sql`: the server's tables and rules, run by hand (see Database).
 - `tests/`: `run.js`, the helpers `assert.js`, `env.js`, `fake-supabase.js` and `load.js`, 51 `*.test.js` files and 27 `*-probe.mjs` scripts (see Tests).
@@ -57,8 +57,8 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 
 ### The release number
 
-- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (301 at the time of writing).
-- Any change to `index.html`, an `app/*.js` file or `templates.json` raises N by one. No test checks the bump.
+- N is the number in `import { boot } from "./app/main.js?v=N"` in `index.html` (302 at the time of writing).
+- Any change to `index.html` or an `app/*.js` file raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
   - With a reused N, the fresh page runs on the old scripts.
@@ -67,11 +67,11 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 
 ### The service worker
 
-- `sw.js` has no VERSION constant. On every open it fetches its BUNDLE (the page, the 10 `app/*.js` and `templates.json`) whole, with `no-cache`. It keeps each release whole in a cache `fiala-rel-N`, so a phone never mixes two deploys.
+- `sw.js` has no VERSION constant. On every open it fetches its BUNDLE (the page and the 10 `app/*.js`) whole, with `no-cache`. It keeps each release whole in a cache `fiala-rel-N`, so a phone never mixes two deploys.
 - A new `app/X.js` goes into three places:
   - BUNDLE in `sw.js`;
-  - the FILES list in `tests/sw.test.js`, before `/templates.json`;
-  - the count 12 in `tests/sw.test.js`, which becomes 13 (`slice(0, 12)`, `slice(12)`, `device.writes, 12`).
+  - the FILES list in `tests/sw.test.js`, before `/manifest.webmanifest`;
+  - the count 11 in `tests/sw.test.js`, which becomes 12 (`slice(0, 11)`, `slice(11)`, `device.writes, 11`).
 - `LIB` must equal the Supabase `<script src>` in `index.html`; change its `integrity` too. A test checks this.
 - `FONTS` must equal the Google Fonts link. No test checks it.
 - The service worker registers only on https and on localhost/127.0.0.1. A phone that opens the Mac's server by its network address runs without it: no release pinning and no offline.
@@ -194,16 +194,14 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
   - a folder page's templates (`tplHere`: the slide shown, or the folder's own) go into a client's calendar at once, one a day in their order from the day picked (v282, `useWeek`): "Use all" above the list while a template is chosen for a client's empty workout (`pickFor`/`fillFor`; while that workout is still empty and to do (`canFill`), it takes the first where it is and moves to the first day; one skipped or finished, or changed by a sync meanwhile, stays as it is and the week goes in beside it), and "Use for a client" in the folder's `…`. Both end on the client's page;
   - on the Templates pages (not while choosing for a client, nor in Reorder), template rows and folder rows swipe like the client page's workout rows (`tplSwipe`): red Delete (asks first) and, outermost, purple Move to (the full swipe's), the same two in the touch-and-hold and right-click menu (v283). A folder that has folders inside can only stay at the top, so its row has Delete alone (`folderPlaces`). A folder's row is as tall as a template's two-line row, 72.5 points (v298, the owner's pick A: `.list li[data-fid] > button`, the template row's padding and two lines summed in `rem`), so its sliding buttons fit with their words. Move to for a template goes step by step through `sheetList`, whose `up` option shows a step back over the title (`moveTemplate`); `placeTemplate` numbers it next in its new place. A template's page has Move to in its `…` too (not while its draft has unsaved changes), and a folder page's `…` has Move folder.
   - a template row's tap opens the workout preview (v288), as does the tap on its lifted card after a touch and hold. A template's preview has Edit (`#pvEdit`, left of the arrows as a workout's `…` is; its own page in the coach's view; none while choosing for a client) and no `…` (`pvItems` gives a template none), and its purple button says Use for client (`useForClient`: which client, the last one used first, then the day in their calendar, then the new workout opens). While choosing for a client (From template on their empty workout) the button says Use, and a row has its own Use button (`.tpl-use`), not a chevron; both run `tplUse`, which asks the day first (`useOne`: the client's days opened on the empty workout's day, it outlined, as Use all's), then `fillFromTemplate` fills it on the day picked (the date claimed with `touchState`) and opens it as the coach, on the workout's own step (`nav.pickDepth`); one finished, skipped or filled meanwhile (`canFill`) stays as it is and the template goes in beside it. The arrows and the finger walk only what the page under the preview lists (`tplWalk`, keep it in step with `drawTemplates`); the line under its name says where (`tplPlace`, "Phase 1 · Week 1"). A redraw repaints the preview, or closes it with its template or once another device has moved it off that page (`renderTemplates`, as `renderClient` does for a client's).
-- `templates.json` reaches an existing coach account only when its Templates record's `templatesVersion` is below `TEMPLATES_VERSION` in `main.js`: after a raise, or after restoring an older backup. Ask the owner before raising it. Each time, the app:
-  - adds every built-in template the account lacks, so templates the coach deleted come back;
-  - never replaces a template the account already holds. It only re-runs the old version-3 repair on them (reps saved as the built-in's plus " sec" get the built-in's reps back).
+- The built-in templates once came from `templates.json`, which is no longer published (15 Nov 2026, the owner's ask). `seedTemplates` still asks for it when an account's `templatesVersion` is below `TEMPLATES_VERSION` (a new account, or a restore of a backup from before version 3), gets no file and changes nothing. Never raise `TEMPLATES_VERSION`. A built-in template the coach deletes comes back only from his backup file (Settings → Data → Restore).
 
 ## Tests
 
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v301 it ends "669 passed, 0 failed" after about 70 s.
+- At v302 it ends "670 passed, 0 failed" after about 90 s.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 
 ### In-process tests
@@ -241,7 +239,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 
 ### Guard tests
 
-- `deploy.test.js`: the `client_my_data` copies, BUNDLE, every `./file` named in `sw.js` on disk, and LIB.
+- `deploy.test.js`: the `client_my_data` copies, BUNDLE, every `./file` named in `sw.js` on disk, LIB, and that the purchased programs' files (`templates.json` and the old import tools' files) stay out of the repo.
 - `sw.test.js`: the real `sw.js` through fast, slow, half-deployed, offline and pruning opens.
 - `state.test.js`: no bare `S` names.
 - `preview.test.js`: Preview teal `#006072` is used once, and Steel blue `#5e8ca7` nowhere yet.

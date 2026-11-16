@@ -9,7 +9,7 @@
 // are never cached.
 const META = "fiala-meta", ASSETS = "fiala-assets", REL = "fiala-rel-";
 const PAGE = "./index.html";
-const BUNDLE = [PAGE, "./app/main.js", "./app/catalog.js", "./app/util.js", "./app/model.js", "./app/notes.js", "./app/pdf.js", "./app/report.js", "./app/state.js", "./app/sync.js", "./app/photos.js", "./templates.json"];
+const BUNDLE = [PAGE, "./app/main.js", "./app/catalog.js", "./app/util.js", "./app/model.js", "./app/notes.js", "./app/pdf.js", "./app/report.js", "./app/state.js", "./app/sync.js", "./app/photos.js"];
 const EXTRAS = ["./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./favicon.ico", "./fonts/Inter-Regular.ttf", "./fonts/Inter-Bold.ttf"];
 // keep LIB identical to the <script src> in index.html
 const LIB = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js";
