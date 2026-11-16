@@ -68,3 +68,12 @@ test("the PDF's Best is the heavier of two sets the same within 0.06 kg, so it n
   const { text } = checkPdf(fns.buildReport("2026-10", null, c).bytes);
   const cells = [...text.matchAll(/\(([^)]*lb[^)]*)\)/g)].map((m) => m[1]); assert.deepStrictEqual(cells.slice(0, 3), ["134.9 lb × 5", "135 lb × 5", "135 lb × 5"], "START, END, BEST: BEST is 135 lb, as END");
 });
+test("(v307, the audit's #6) his private notes are left out of the report unless he asks for them: no Notes section at all by default; with { notes: true } they are there, under their heading", () => {
+  const c = seed();
+  const off = checkPdf(fns.buildReport("month", null, c).bytes).text, fromSheet = checkPdf(fns.buildReport("month", null, c, { notes: false }).bytes).text;
+  for (const t of [off, fromSheet]) { assert.ok(!t.includes("Twinge on set 2."), "no note"); assert.ok(!t.includes("(Notes)") && !t.includes("No notes this month."), "no Notes section"); }
+  assert.ok(off.includes("140 lb") && off.includes("finished early: Short"), "the rest of the month is all there, the client's own words included");
+  const on = checkPdf(fns.buildReport("month", null, c, { notes: true }).bytes).text;
+  assert.ok(on.includes("(Notes)") && on.includes("Twinge on set 2."), "his notes, when he turned them on");
+  c.notes = { log: [] }; assert.ok(checkPdf(fns.buildReport("month", null, c, { notes: true }).bytes).text.includes("No notes this month."), "on, with none that month: it says so");
+});

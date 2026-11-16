@@ -306,6 +306,13 @@
   #status.err { color: var(--danger); cursor: pointer; }
 
   main { max-width: 680px; margin: 0 auto; padding: 8px 16px 80px; }
+  .save-banner { display: flex; align-items: center; gap: 12px; margin: 10px 0 0; padding: 12px 12px 12px 16px; border-radius: 18px; background: var(--card); border: 1px solid var(--card-edge); }   /* v307 (the audit's #25, his pick, 15 Nov 2026: "Banner with Try again", after pictures): a failed save, at the top of the page, with what went wrong, what is kept and a real button (main.js saveBanner) */
+  .save-banner[hidden] { display: none; }
+  .save-banner .sb-ico { flex: none; width: 22px; height: 22px; color: var(--danger); }
+  .save-banner .sb-text { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 0.9375rem; line-height: 1.3; color: var(--text-secondary); }
+  .save-banner .sb-text b { font-weight: 600; color: var(--text-primary); }
+  .save-banner button { flex: none; appearance: none; border: 0; border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 0.9375rem; font-weight: 600; background: var(--brand-fill); color: #fff; cursor: pointer; }
+  .save-banner button:focus-visible { outline: 2px solid var(--brand-text); outline-offset: 2px; }
   h1, .pagetitle { font-size: 1.625rem; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; margin: 20px 0 16px; text-wrap: balance; }
   h2 { font-size: 0.9375rem; font-weight: 600; line-height: 1; letter-spacing: 0.015em; text-transform: uppercase; color: var(--text-tertiary); margin: 32px 0 12px; }   /* every caption in capitals: Inter 600 and Apple's spacing for its size (his ask, 13 Nov: "match apples thickness and letter spacing", keeping his font; Apple's semibold capitals measured in his Calendar widget and as SF in WebKit, Inter fitted to the same stroke and letter gaps: 0.035em at 11, 0.025em at 12, 0.02em at 13 and 14, 0.015em at 15). Two sizes bigger than they were (his pick B the same day), the client count beside Reorder kept at 13 */
   .muted { color: var(--text-tertiary); font-size: 0.8125rem; letter-spacing: 0; }
@@ -505,6 +512,9 @@
   .pick-sheet .pick-up { appearance: none; border: 0; background: none; font: inherit; font-size: 1.0625rem; color: var(--brand-text); display: flex; align-items: center; min-height: 44px; margin: -10px 0 0 -8px; padding: 0 8px; cursor: pointer; }   /* Move to's step back, over the title, as a sheet's own back button ("\2039 Fat Burn") */
   .pick-sheet .pick-up[hidden] { display: none; }
   .pick-sheet .list button:disabled { opacity: 0.4; cursor: default; }   /* where it is now: shown, not picked, as Files greys the folder an item is in */
+  .rep-sheet .settings-list { margin: 14px 0 0; background: var(--sheet-list); border-color: transparent; }   /* v307 (the audit's #6, his pick, 15 Nov 2026: "One button, export sheet", as Pages' Export): the month and the notes switch in a grouped list, the page grey on the white sheet, as Copy workout's */
+  .rep-sheet .settings-list .pop-sel { font-size: 1.0625rem; color: var(--text-secondary); }   /* the month as the approved picture: the row's size, Apple's value grey */
+  .rep-sheet .rep-foot { margin: 8px 20px 0; font-size: 0.8125rem; line-height: 1.35; color: var(--text-secondary); }   /* what the switch means, under the list, as Apple's footers */
   .pick-sheet .list li.w .wd { display: none; }   /* a day's sheet: the date is its title, the rows need not repeat it */
   .alt-sheet .list li { display: flex; align-items: center; min-height: 52px; }   /* the Alternatives sheet (his pick, 13 Nov): each alternative with Apple's red minus, as the edit card of Contacts */
   .alt-sheet .alt-row { gap: 4px; padding: 0 12px 0 6px; }
@@ -1477,6 +1487,12 @@
   .foot.foot-col { flex-direction: column; align-items: flex-start; gap: 10px; }
   .auth-split { display: flex; align-items: center; gap: 4px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--card-border); max-width: 360px; }
   .auth-split .muted { font-size: 0.9375rem; }
+  .sign-rows { margin: 6px 0 14px; }   /* v307 (the audit's #24, his pick, 15 Nov 2026: "Labelled rows", after pictures): Email and Password in one card, each with its label, as Apple's sign-in forms; the boxes had only a grey hint, at 1.5:1, that went as typing began */
+  .sign-rows label { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 20px; cursor: text; }
+  .sign-rows .lab { flex: none; width: 92px; font-size: 1.0625rem; letter-spacing: -0.01em; color: var(--text-primary); }
+  .sign-rows input { flex: 1 1 auto; width: auto; min-width: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; font-size: 1.0625rem; letter-spacing: -0.01em; color: var(--text-primary); }
+  .sign-rows input::placeholder { color: var(--text-secondary); }
+  .sign-rows input:-webkit-autofill { -webkit-box-shadow: 0 0 0 40px var(--card) inset; -webkit-text-fill-color: var(--text-primary); }   /* an email or password the phone filled in: WebKit's own pale yellow box with black words would show inside the row, on the dark card too */
   .btn.quiet.link { color: var(--brand-text); padding: 0 6px; font-weight: 500; }
   .foot.foot-col .muted { font-size: 0.8125rem; }
   .foot-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin-left: -8px; }
@@ -1489,7 +1505,6 @@
   @media (max-width: 359px) { #localFoot .foot-pills .pill { padding: 0 6px; gap: 5px; font-size: 0.8125rem; } }   /* the narrowest phones: the three words still fit their thirds */
   .foot-pills.reports { margin-top: 28px; }
   .rep-cap { font-size: 0.8125rem; color: var(--text-tertiary); margin-right: 2px; }   /* "Report PDF": this client's month, to mail yourself */
-  select.pill { -webkit-appearance: none; appearance: none; padding-right: 30px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%236f6b99' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
   .pill { appearance: none; border: 0; cursor: pointer; border-radius: 50px; min-height: 36px; padding: 0 16px; font-size: 0.875rem; font-weight: 500; letter-spacing: 0; white-space: nowrap;
     background: var(--field); color: var(--text-primary); transition: opacity 300ms ease, transform 120ms ease; }   /* secondary: a grey pill with the brand as its text */
   .pill:hover { opacity: 0.85; }
@@ -1592,11 +1607,14 @@
 <div id="edgeNudge" aria-hidden="true"></div>
 
 <main>
+  <div class="save-banner" id="saveBanner" role="alert" hidden><svg class="sb-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 5.2a1.2 1.2 0 0 0-1.2 1.3l.4 5.6a.8.8 0 0 0 1.6 0l.4-5.6A1.2 1.2 0 0 0 12 7.2zm0 8.9a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6z"/></svg><p class="sb-text"><b>Couldn’t save</b><span id="saveWhy"></span></p><button type="button" id="saveAgain">Try again</button></div>
   <section id="vLogin" hidden>
     <h1>Sign in</h1>
     <form id="loginForm" class="stack">
-      <input id="loginEmail" type="email" placeholder="Email" autocomplete="username" inputmode="email" autocapitalize="none" required>
-      <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" required>
+      <ul class="list sign-rows">
+        <li><label><span class="lab">Email</span><input id="loginEmail" type="email" placeholder="name@example.com" autocomplete="username" inputmode="email" autocapitalize="none" required></label></li>
+        <li><label><span class="lab">Password</span><input id="loginPassword" type="password" placeholder="Required" autocomplete="current-password" required></label></li>
+      </ul>
       <button class="btn" type="submit" id="loginBtn" style="width:100%">Sign in</button>
       <p class="muted" id="loginMsg" aria-live="polite"></p>
       <button class="btn quiet" type="button" id="forgotBtn" style="width:100%">Forgot password?</button>
@@ -1850,7 +1868,7 @@
     <ul data-tab="workouts" class="list" id="nextList" hidden></ul>
     <ul data-tab="workouts" class="list" id="histCard" hidden><li><button type="button" id="histBtn"><span style="min-width:0"><span class="pri">History</span><span class="sec" id="histSub"></span></span><span class="chev">&rsaquo;</span></button></li></ul>
     <div data-tab="workouts" class="empty" id="trainingEmpty" hidden>No workouts yet.</div>
-    <div data-tab="profile" class="foot-pills reports trainer-only" id="reportWrap"><span class="rep-cap">Report PDF</span><button class="pill" type="button" id="reportNow">This month</button><select class="pill" id="reportMonth" aria-label="Pick a month"><option value="">Pick a month</option></select></div>
+    <div data-tab="profile" class="foot-pills reports trainer-only" id="reportWrap"><span class="rep-cap">Report PDF</span><button class="pill" type="button" id="reportBtn" aria-haspopup="dialog">Monthly report</button></div>
     <div data-tab="notes" class="trainer-only" id="notesWrap">
       <textarea id="cNotes" placeholder="Injuries, preferences, anything to remember"></textarea>
       <div class="note-actions" id="noteActions" hidden><button class="btn sm" id="noteSave" type="button">Save note</button><button class="btn quiet" id="noteDiscard" type="button">Discard</button></div>
@@ -1909,6 +1927,7 @@
 <input type="file" id="photoInput" accept="image/*" hidden>
 <div class="sheet-bg" id="pvSheet" hidden><div class="sheet pv-sheet" id="pvBox" role="dialog" aria-modal="true" aria-labelledby="pvTitle" tabindex="-1"><div class="pv-bar" id="pvBar"><button class="pv-x" id="pvX" type="button" aria-label="Close"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M1.7 1.7 16.3 16.3M16.3 1.7 1.7 16.3"/></svg></button><p class="pv-bar-title" id="pvBarTitle" aria-hidden="true"></p><div class="pv-tools"><button class="pv-x pv-more" id="pvMore" type="button" aria-label="More" aria-haspopup="menu"><svg viewBox="0 0 22 22" aria-hidden="true" fill="currentColor"><circle cx="3.13" cy="11" r="1.97"/><circle cx="11" cy="11" r="1.97"/><circle cx="18.87" cy="11" r="1.97"/></svg></button><button class="pv-edit" id="pvEdit" type="button" hidden>Edit</button><div class="pv-pager" role="group" aria-label="Workouts"><button id="pvPrev" type="button" aria-label="Previous workout"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 3.2 5.7 9l5.8 5.8"/></svg></button><button id="pvNext" type="button" aria-label="Next workout"><svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.2 12.3 9l-5.8 5.8"/></svg></button></div></div></div><div class="pv-scroll" id="pvScroll" tabindex="0" role="group" aria-labelledby="pvTitle"><h3 id="pvTitle"></h3><p class="pv-day" id="pvDay"></p><div class="pv-cards" id="pvCards" role="group" aria-label="Exercises"></div></div><div class="ask-actions"><button class="btn" id="pvGo" type="button">Start workout</button></div><p class="vh" id="pvSay" aria-live="polite"></p></div></div>
 <div class="sheet-bg" id="askSheet" hidden><div class="sheet ask confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="askTitle"><h3 id="askTitle"></h3><p class="lead" id="askText"></p><input class="ask-input" id="askInput" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" aria-labelledby="askTitle" hidden><div class="ask-actions"><button class="btn danger" id="askYes" type="button">Delete</button><button class="btn quiet" id="askNo" type="button">Cancel</button></div></div></div>
+<div class="sheet-bg" id="repSheet" hidden><div class="sheet ask confirm-sheet rep-sheet" role="dialog" aria-modal="true" aria-labelledby="repTitle" aria-describedby="repLead"><h3 id="repTitle">Monthly report</h3><p class="lead" id="repLead"></p><ul class="list settings-list"><li><label class="srow"><span>Month</span><span class="pop-sel"><select id="repMonth" aria-label="Month"></select><svg class="pop-chev" viewBox="0 0 9 13" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.1 4.5 4.5 1.2 7.9 4.5M1.1 8.83 4.5 12.13 7.9 8.83"/></svg></span></label></li><li><div class="srow sw-row"><span id="repNotesLabel">Include your notes</span><button class="ios-switch" id="repNotes" type="button" role="switch" aria-checked="false" aria-labelledby="repNotesLabel" aria-describedby="repFoot"></button></div></li></ul><p class="rep-foot" id="repFoot"></p><div class="ask-actions"><button class="btn" id="repShare" type="button">Share</button><button class="btn quiet" id="repNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="altSheet" hidden><div class="sheet ask confirm-sheet pick-sheet alt-sheet" role="dialog" aria-modal="true" aria-labelledby="altTitle" tabindex="-1"><h3 id="altTitle">Alternatives</h3><p class="lead" id="altLead"></p><ul class="list" id="altRows"></ul><div class="ask-actions"><button class="btn quiet" id="altDone" type="button">Done</button></div></div></div>
 <div class="sheet-bg" id="noteSheet" hidden><div class="sheet ask confirm-sheet note-sheet" role="dialog" aria-modal="true" aria-labelledby="noteTitle"><h3 id="noteTitle">Add instructions</h3><p class="lead" id="noteLead"></p><textarea class="note-input" id="noteField" rows="5" maxlength="500" placeholder="Instructions for the client" autocomplete="off" autocapitalize="sentences" aria-labelledby="noteTitle" aria-describedby="noteLead"></textarea><div class="ask-actions"><button class="btn" id="noteOk" type="button">Add</button><button class="btn quiet" id="noteNo" type="button">Cancel</button></div></div></div>
 <div class="sheet-bg" id="textSheet" hidden><div class="sheet ask confirm-sheet note-sheet" role="dialog" aria-modal="true" aria-labelledby="textTitle"><h3 id="textTitle"></h3><p class="lead" id="textLead"></p><textarea class="note-input" id="textField" rows="5" maxlength="500" autocomplete="off" autocapitalize="sentences" aria-labelledby="textTitle" aria-describedby="textLead"></textarea><div class="ask-actions"><button class="btn" id="textOk" type="button">Save</button><button class="btn quiet" id="textNo" type="button">Cancel</button></div></div></div>
@@ -1952,7 +1971,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=306";
+  import { boot } from "./app/main.js?v=307";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

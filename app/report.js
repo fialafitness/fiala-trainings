@@ -10,12 +10,12 @@ export function reportRange(kind) {                                      // "mon
   const last = new Date(first.getFullYear(), first.getMonth() + 1, 0, 12);
   return { from: localIso(first), to: localIso(last), title: first.toLocaleDateString(undefined, { month: "long", year: "numeric" }) };
 }
-export function buildReport(kind, fonts, c, allTrainings) {                           // the client's month on paper: overview, progress, sessions, notes
+export function buildReport(kind, fonts, c, allTrainings, opts) {                     // the client's month on paper: overview, progress, sessions, and his notes only when opts.notes is true (v307, the audit's #6: they are private, and the report is one tap from Mail)
   const r = reportRange(kind), doc = pdfDoc(fonts), t = today(), made = new Date(), M = doc.M, R = doc.W - doc.M;
   const grey = "0.45 0.45 0.47", soft = "0.25 0.25 0.27", brand = "0.435 0.42 0.6", fern = "0.235 0.478 0.306", warn = "0.65 0.23 0.27";
   const inRange = (day) => day >= r.from && day <= r.to, unit = c.unit || "lb";
   const sessions = allTrainings.filter((x) => inRange(effDate(x))).sort((a, b) => effDate(a).localeCompare(effDate(b)));
-  const notes = noteEntries(c).filter((n) => n.at && inRange(localIso(new Date(n.at)))).sort((a, b) => a.at.localeCompare(b.at));
+  const notes = opts && opts.notes === true ? noteEntries(c).filter((n) => n.at && inRange(localIso(new Date(n.at)))).sort((a, b) => a.at.localeCompare(b.at)) : null;
   const status = (x) => x.completedAt ? "Finished" : x.skippedAt ? (x.missed === true ? "Missed" : "Skipped") : effDate(x) < t ? "Not done" : "Planned";
   const totals = { finished: 0, missed: 0, skipped: 0, planned: 0 };
   for (const x of sessions) { const st = status(x); totals[st === "Finished" ? "finished" : st === "Skipped" ? "skipped" : st === "Planned" ? "planned" : "missed"]++; }
@@ -71,15 +71,17 @@ export function buildReport(kind, fonts, c, allTrainings) {                     
     }
     doc.space(5);
   }
-  // notes, each with its time and the session it came with
-  doc.section("Notes");
-  if (!notes.length) doc.text("No notes this month.", { size: 10.5, color: grey });
-  notes.forEach((n, i) => {
-    const d = new Date(n.at); doc.keep(44);                                  // a note's heading stays with its first lines
-    doc.row([{ x: M, text: d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }), bold: true, color: grey }, ...(n.workout ? [{ x: M + 150, text: n.workout.title || "Workout", color: grey, maxW: 300 }] : [])], { size: 9, gap: 3 });
-    doc.text(n.text, { size: 10.5, gap: 4 });
-    if (i < notes.length - 1) { doc.space(2); doc.rule(); }
-  });
+  // notes, each with its time and the session it came with: in the copy for him alone (v307)
+  if (notes) {
+    doc.section("Notes");
+    if (!notes.length) doc.text("No notes this month.", { size: 10.5, color: grey });
+    notes.forEach((n, i) => {
+      const d = new Date(n.at); doc.keep(44);                                // a note's heading stays with its first lines
+      doc.row([{ x: M, text: d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }), bold: true, color: grey }, ...(n.workout ? [{ x: M + 150, text: n.workout.title || "Workout", color: grey, maxW: 300 }] : [])], { size: 9, gap: 3 });
+      doc.text(n.text, { size: 10.5, gap: 4 });
+      if (i < notes.length - 1) { doc.space(2); doc.rule(); }
+    });
+  }
   doc.footer((c.name || "Client") + "  ·  " + r.title);
   return { bytes: doc.bytes(), name: ((c.name || "Client") + " " + r.title).replace(/[^\p{L}\p{N}\- ]+/gu, " ").replace(/\s+/g, " ").trim() + ".pdf" };
 }

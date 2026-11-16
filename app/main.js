@@ -98,16 +98,44 @@ import { reportRange, buildReport } from "./report.js";
   $("draftDiscard").addEventListener("click", async () => { if (await askFirst({ title: "Discard the unsaved changes?", text: "The template stays as it was.", yes: "Discard" })) discardDraft(); });
 
 
+  let bannerSig = "", bannerIO = null, bannerOff = false;          // the failed save's banner (v307, below): what it says now, the watch on it, and whether it is scrolled up out of sight
   function setStatus() {
     const el = $("status");
-    const pending = timers.size + S.inflight;
+    const pending = timers.size + S.inflight, off = !!S.backend && S.backend !== localBackend && (S.offline || !navigator.onLine);
+    saveBanner(S.failed && pending === 0 && !off);
     if (S.deviceFull) { el.className = "err"; el.textContent = "Not saved on this device \u00b7 free up space"; return; }
-    if (S.backend && S.backend !== localBackend && (S.offline || !navigator.onLine)) { el.className = ""; el.textContent = (dirty.size || pending) ? "Offline \u00b7 will sync" : "Offline"; return; }   // short enough for the bar beside its Messages circle (his pick, 10 Nov: "Offline")
-    if (S.failed && pending === 0) { el.textContent = "Couldn't save" + (S.failReason ? " \u00b7 " + S.failReason : "") + (dirty.size ? " \u00b7 tap to retry" : ""); el.className = "err"; return; }
+    if (off) { el.className = ""; el.textContent = (dirty.size || pending) ? "Offline \u00b7 will sync" : "Offline"; return; }   // short enough for the bar beside its Messages circle (his pick, 10 Nov: "Offline")
+    if (S.failed && pending === 0) { el.className = bannerOff ? "err" : ""; el.textContent = bannerOff ? "Couldn\u2019t save" : ""; return; }   // the banner says it (v307); the bar only while the banner is scrolled up out of sight, and a tap there scrolls up to it, as a tap on an iPhone's status bar does
     el.className = "";
     el.textContent = pending > 0 ? "Saving\u2026" : (S.backend ? "Saved" : "");
   }
-  $("status").addEventListener("click", () => { if (S.failed) { S.failed = false; for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } setStatus(); } });
+  // ---------- a failed save, in a banner (v307, the audit's #25, his pick, 15 Nov 2026: "Banner with Try again", after pictures) ----------
+  // The bar's "Couldn't save \u00b7 that email is already on another client \u00b7 tap to retry" was cut short on a 375-point iPhone, and its retry was a tap on words
+  // no keyboard could reach. Now a card at the top of the page says what went wrong and what is kept, with a real button: Try again, or OK when
+  // nothing is waiting (the server said no for good). It sits in the page as Apple's cards at the top of Settings do: when it comes or goes, a page
+  // scrolled down stays where it is (WebKit keeps no anchor of its own), and while it is scrolled up out of sight the bar says "Couldn't save".
+  const pageTop = () => { try { const s = document.querySelector("main > section:not([hidden])"), r = s && typeof s.getBoundingClientRect === "function" ? s.getBoundingClientRect() : null; return r && typeof r.top === "number" ? r.top : null; } catch (_) { return null; } };
+  function saveBanner(on) {
+    const b = $("saveBanner"), kept = dirty.size > 0, sets = [...dirty.keys()].some((k) => String(k).startsWith("trainings/")), sig = on ? JSON.stringify([S.failReason || "", kept, !!S.clientMode, sets]) : "";
+    if (sig === bannerSig) return;
+    const top = pageTop(); bannerSig = sig;
+    if (on) {
+      const why = S.failReason ? String(S.failReason).charAt(0).toUpperCase() + String(S.failReason).slice(1) + "." : "", keep = !kept ? "" : !S.clientMode ? "Your changes are kept on this device." : sets ? "Your sets are kept on this phone." : "Your changes are kept on this phone.";
+      b.hidden = false; $("saveWhy").textContent = why || keep ? " \u00b7 " + [why, keep].filter(Boolean).join(" ") : ""; $("saveAgain").textContent = kept ? "Try again" : "OK";   // shown, then its words: VoiceOver reads an alert as its words come
+    } else b.hidden = true;
+    bannerWatch(on);
+    const now = pageTop(); if (top != null && now != null && now !== top && (Number(window.scrollY) || 0) > 0 && typeof window.scrollBy === "function") window.scrollBy(0, now - top);   // a page scrolled down does not jump: it moves by what the banner added or took away above it
+  }
+  function bannerWatch(on) {                                         // the banner scrolled up under the bar: the bar says "Couldn't save" until it is back in sight
+    if (!on) { if (bannerIO) { bannerIO.disconnect(); bannerIO = null; } bannerOff = false; return; }
+    if (bannerIO || typeof IntersectionObserver !== "function") return;
+    const h = document.querySelector("header"), hb = h && typeof h.getBoundingClientRect === "function" ? Math.max(0, Math.round(Number(h.getBoundingClientRect().bottom) || 0)) : 0;
+    bannerIO = new IntersectionObserver((es) => { const e = es[es.length - 1]; if (!e) return; const rb = e.rootBounds, up = !e.isIntersecting && !!e.boundingClientRect && e.boundingClientRect.bottom <= (rb ? rb.top : hb) + 1; if (up !== bannerOff) { bannerOff = up; setStatus(); } }, { rootMargin: -hb + "px 0px 0px 0px" });   // out of sight above the bar, never beside it (the page sliding away under the swipe back)
+    bannerIO.observe($("saveBanner"));
+  }
+  function saveAgain() { if (!S.failed) return; S.failed = false; for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } setStatus(); }   // Try again: every change waiting goes once more; OK (nothing waits) puts the banner away
+  $("saveAgain").addEventListener("click", saveAgain);
+  $("status").addEventListener("click", () => { if (S.failed && bannerOff) window.scrollTo({ top: 0, behavior: calmMotion() ? "auto" : "smooth" }); });
 
 
   // ---------- cloud (Supabase) ----------
@@ -203,7 +231,7 @@ import { reportRange, buildReport } from "./report.js";
     S.signedIn = false; S.clientMode = false; S.myClientId = null; reordering = false; tplOrdering = null; document.body.classList.remove("client");
     $("localFoot").hidden = true; $("myExercises").hidden = true; $("packagesBtn").hidden = true; $("settingsBtn").hidden = true; $("catalogBtn").hidden = true; $("dataBtn").hidden = true; settingsOpen = false; fromSettings = false;
     hideAllViews(); $("vLogin").hidden = false;
-    $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
+    $("back").hidden = true; $("brand").hidden = false; $("status").textContent = ""; saveBanner(false);   // (a banner left from the account signed out: none on the sign-in page)
     $("loginMsg").textContent = msg || "";
   }
   function showSignup() {
@@ -1400,6 +1428,7 @@ import { reportRange, buildReport } from "./report.js";
   function captureScreen() {                                        // a still copy of the page as it is, to sit under the swipe later
     const secs = [...document.querySelectorAll("main > section")].filter((s) => !s.hidden && s.getClientRects().length);
     if (!secs.length) return null;
+    if (bannerSig) { const ban = $("saveBanner"); if (ban && !ban.hidden && ban.getClientRects().length) secs.unshift(ban); }   // a failed save's banner over the page (v307): in its picture too, where it was
     const box = document.createElement("div"); box.className = "nav-shot"; box.setAttribute("aria-hidden", "true");
     box.dataset.bar = String(Math.min(1, Math.max(0, (Number(window.scrollY) || 0) / BAR_FADE)));   // how the top bar looked over this page: the swipe brings it back
     box.dataset.look = lookNow();                                   // the coach's look or the client's: a copy is only shown in the look it was taken in, and at the width (the phone turned since: laid out for the other one)
@@ -3671,11 +3700,7 @@ import { reportRange, buildReport } from "./report.js";
     else if (!notesFresh || notesFresh.id !== c.id) { notesFresh = { id: c.id, ids: new Set(unseen) }; if (unseen.size) markNotesSeen(c, unseen); }   // the tab just opened: what was unread keeps its dot for this visit, and counts as read from now
     renderNotes(c, notesFresh ? notesFresh.ids : unseen);
     const badge = $("notesBadge"); badge.hidden = S.clientMode || !unseen.size || S.tab === "notes"; badge.textContent = String(unseen.size);
-    if (!S.clientMode) {                                                        // the report row: the last two years of months to pick from
-      const sel = $("reportMonth"), base = new Date(today() + "T12:00:00"); sel.replaceChildren(new Option("Pick a month", ""));
-      for (let i = 1; i <= 24; i++) { const d = new Date(base.getFullYear(), base.getMonth() - i, 1, 12); sel.appendChild(new Option(d.toLocaleDateString(undefined, { month: "long", year: "numeric" }), localIso(d).slice(0, 7))); }
-      loadReportFonts();
-    }
+    if (!S.clientMode) loadReportFonts();                                       // the report's fonts, fetched before Monthly report is pressed (its sheet fills its months as it opens, v307)
     if (!S.clientMode && (!S.sb || S.syncedOnce)) for (const t of clientTrainings(c.id)) if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }   // empty workouts left behind (an accidental tap on a day) go away, once the server's copy has been seen
     const list = clientTrainings(c.id);
 
@@ -3998,9 +4023,15 @@ import { reportRange, buildReport } from "./report.js";
         if (!current) { complete.classList.add("quiet-back"); if (doneSets >= total) complete.hidden = true; }
         const undo = document.createElement("button"); undo.type = "button"; undo.className = "finish-early undo-set"; undo.textContent = "Mark set " + (sel + 1) + " as not done";
         undo.hidden = !(sel < doneSets);
-        undo.addEventListener("click", () => {                // this set and anything after it go back to not done
-          for (const r of g.rows) { if (sel < setsOf(r)) { r.setsDone = Math.min(clamp(parseInt(r.setsDone, 10) || 0, 0, 20), sel); r.done = false; markEarly(t, r, ""); for (let j = sel; j < (r.repsDone || []).length; j++) r.repsDone[j] = ""; } /* the reps go too: a set marked not done is not a lift */ const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
-          fullBlocks.delete(selKey); setSel.set(selKey, sel); scheduleSave("trainings", t.id); S.renderedTraining = null; render();
+        undo.addEventListener("click", async (e) => {         // this set and anything after it go back to not done; v307 (the audit's #12, his pick, 15 Nov 2026: "Ask first, naming sets"): it asks first and names every set that changes, as Drop sets does (with sets 1 to 3 done, "Mark set 2 as not done" un-did 2 and 3 and cleared their reps without a word)
+          const keys = byKeys(e), upto = Math.max(sel + 1, ...g.rows.filter((r) => sel < setsOf(r)).map((r) => Math.min(doneCount(r), setsOf(r)))), n = upto - sel;   // the sets done from this one on, in any exercise of the card
+          const which = n === 1 ? "set " + (sel + 1) : n === 2 ? "sets " + (sel + 1) + " and " + upto : "sets " + (sel + 1) + " to " + upto, reps = g.rows.some((r) => sel < setsOf(r) && (r.repsDone || []).slice(sel).some((v) => String(v || "").trim()));
+          const back = (cls) => { if (!keys) return; const b = [...$("rows").children].find((x) => x.dataset && x.dataset.key === g.key), f = b && b.querySelector(cls); if (f) f.focus({ preventScroll: true }); };   // a keyboard's place: back on the card, drawn anew or not
+          if (!(await askFirst({ title: "Mark " + which + " as not done?", text: reps ? (n === 1 ? "Its reps are cleared." : "Their reps are cleared.") : "", yes: "Mark not done" }))) { back(".undo-set"); return; }
+          const T = trainings.get(t.id); if (!T) return;   // a sync can replace the record while the question is up: the change goes into the one there now
+          const rows = T === t ? g.rows : g.rows.map((r) => (T.rows || []).find((x) => x.id === r.id)).filter(Boolean);
+          for (const r of rows) { if (sel < setsOf(r)) { r.setsDone = Math.min(doneCount(r), sel); r.done = false; markEarly(T, r, ""); for (let j = sel; j < (r.repsDone || []).length; j++) r.repsDone[j] = ""; } /* the reps go too: a set marked not done is not a lift; doneCount: a row finished before the counter existed keeps the sets before this one, as the question says */ const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
+          fullBlocks.delete(selKey); setSel.set(selKey, sel); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); back(".complete");
         });
         complete.addEventListener("click", () => {
           if (performance.now() - completeAt < 350) return; completeAt = performance.now();   // the second tap of a double tap lands on the next card's button: it must not log a second set
@@ -5817,16 +5848,48 @@ import { reportRange, buildReport } from "./report.js";
       .catch(() => { reportFontsP = null; return null; });
     return reportFontsP;
   }
-  async function shareReport(kind, clientId) {                     // the phone's share sheet (Mail is one tap away); elsewhere a download
+  async function shareReport(kind, clientId, opts) {               // the phone's share sheet (Mail is one tap away); elsewhere a download. opts.notes: his private notes go in (v307: only when he turns them on)
     const c = clients.get(clientId); if (!c) return;
     const fonts = await loadReportFonts();
-    const { bytes, name } = buildReport(kind, fonts, c, clientTrainings(c.id));
+    const { bytes, name } = buildReport(kind, fonts, c, clientTrainings(c.id), opts);
     const file = new File([bytes], name, { type: "application/pdf" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
     const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
-  $("reportNow").addEventListener("click", () => shareReport("month", S.view.id));
-  $("reportMonth").addEventListener("change", (e) => { const v = e.target.value; e.target.value = ""; if (v) shareReport(v, S.view.id); });
+  // The report's sheet (v307, the audit's #6, his pick, 15 Nov 2026: "One button, export sheet", as Pages' Export, after pictures). The report looks like
+  // the client's own (their name, "Monthly report") and is one tap from Mail, and it ended with his private notes, which the app never shows a client.
+  // One Monthly report button opens a sheet: the month as Apple's pop-up button (this month and the 24 before), "Include your notes" off every
+  // time, a line saying what that means, Share and Cancel. Guarded as every question: the page behind inert, nothing taken in the first 350 ms
+  // (a double tap on the button must not turn the notes on), the dim closing only for a press begun on it, Escape, Cancel focused.
+  const repMonths = (base) => { const y = base.getFullYear(), out = []; for (let i = 0; i <= 24; i++) { const d = new Date(y, base.getMonth() - i, 1, 12); out.push([localIso(d).slice(0, 7), d.toLocaleDateString(undefined, d.getFullYear() === y ? { month: "long" } : { month: "long", year: "numeric" })]); } return out; };   // the year only where it is not this one, as Apple writes dates
+  const repFoot = (on, c) => on ? "On: for you only. Your private notes about " + firstOf(c) + " are in it." : "Off: safe to send to " + firstOf(c) + ". Your private notes stay in the app.";
+  function openReport(e) {
+    const id = S.view.id, c = clients.get(id); if (S.clientMode || S.view.name !== "client" || !c || isTemplateClient(id)) return;
+    if (askOpen) askOpen(false);
+    loadReportFonts();                                               // (fetched as the page was drawn: Share builds the file at once, inside its tap, as a share sheet needs)
+    const bg = $("repSheet"), sel = $("repMonth"), sw = $("repNotes"), ok = $("repShare"), no = $("repNo"), keys = byKeys(e), from = document.activeElement, behind = [...document.body.children].filter((el) => el !== bg && !el.inert);
+    const months = repMonths(new Date(today() + "T12:00:00"));
+    $("repLead").textContent = c.name || "Client"; sel.replaceChildren(...months.map(([v, l]) => new Option(l, v))); sel.value = months[0][0];   // this month, as the old "This month" button
+    const notesOn = () => sw.getAttribute("aria-checked") === "true", paint = () => { $("repFoot").textContent = repFoot(notesOn(), clients.get(id) || c); };
+    sw.setAttribute("aria-checked", "false"); paint();                // off every time: the copy that is safe to send
+    let armed = false; const settle = setTimeout(() => { armed = true; }, 350);
+    const done = (back = true) => {
+      clearTimeout(settle); askOpen = null; S.asking = !!pv; bg.hidden = true;
+      for (const el of behind) el.inert = false;
+      sw.removeEventListener("click", onSw); ok.removeEventListener("click", onOk); no.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); bg.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey);
+      if (back && keys && from && document.contains(from)) from.focus({ preventScroll: true });   // a keyboard's place: back on Monthly report
+    };
+    const onSw = () => { if (!armed) return; sw.setAttribute("aria-checked", String(!notesOn())); paint(); };
+    const onOk = (ev) => { if (!armed) return; askEat(ev); const kind = sel.value || months[0][0], notes = notesOn(); done(); shareReport(kind, id, { notes }); };   // the sheet goes, then the share sheet comes, in the same tap
+    let downOnBg = false; const onDown = (ev) => { downOnBg = ev.target === bg; };
+    const onNo = (ev) => { askEat(ev); done(); }, onBg = (ev) => { if (armed && downOnBg && ev.target === bg) { askEat(ev); done(); } };
+    const onKey = (ev) => { if (ev.key === "Escape") { ev.preventDefault(); done(); } };
+    askOpen = done; S.asking = true;
+    sw.addEventListener("click", onSw); ok.addEventListener("click", onOk); no.addEventListener("click", onNo); bg.addEventListener("click", onBg); bg.addEventListener("pointerdown", onDown); document.addEventListener("keydown", onKey);
+    for (const el of behind) el.inert = true;                          // the page behind is out of reach until the sheet goes
+    bg.hidden = false; no.focus({ preventScroll: true, focusVisible: keysLast });
+  }
+  $("reportBtn").addEventListener("click", openReport);
   $("backup").addEventListener("click", () => {
     if (S.clientMode) return;                                                               // the coach's data only (the buttons are hidden for a client; the handler must not rely on that)
     const data = { app: "fiala-trainings", format: 1, exported: now(), clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) };   // format: bumped when a later app writes something an older one must not read
@@ -5946,7 +6009,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, wheelCol, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, editAlts, editNote, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, fmtSetFor, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c) => buildReport(kind, fonts, c, clientTrainings(c.id)), reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, weekOffNow: () => weekOff, setWeekOff: (v) => { weekOff = v; }, weekWheelNow: () => weekWheel, weekPageNow: () => weekPage, wkMonth, calFold, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates, setProfile, setLiftUnit, showSub, openSub, paintHealth, paintSafety, healthSummary, safetySummary, healthId, toggleWheel, closeWheel, wheelState: () => wheelOpen, editText, editSafety, unitRows, paintLimits, fmtBirthday, phoneIn, fmtPhone, unitLabel: () => UNIT_LABEL, settingsPage: () => ({ open: settingsOpen, from: fromSettings }), subPlace: () => subY },
+      fns: { boot, wheelCol, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, editAlts, editNote, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, fmtSetFor, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c, opts) => buildReport(kind, fonts, c, clientTrainings(c.id), opts), repMonths, repFoot, openReport, saveAgain, bannerOff: () => bannerOff, reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, weekOffNow: () => weekOff, setWeekOff: (v) => { weekOff = v; }, weekWheelNow: () => weekWheel, weekPageNow: () => weekPage, wkMonth, calFold, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates, setProfile, setLiftUnit, showSub, openSub, paintHealth, paintSafety, healthSummary, safetySummary, healthId, toggleWheel, closeWheel, wheelState: () => wheelOpen, editText, editSafety, unitRows, paintLimits, fmtBirthday, phoneIn, fmtPhone, unitLabel: () => UNIT_LABEL, settingsPage: () => ({ open: settingsOpen, from: fromSettings }), subPlace: () => subY },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, pendingProfile, profileTouched, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
