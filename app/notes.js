@@ -11,9 +11,11 @@ export const noteEntries = (c) => {
   return list;
 };
 export const packNotes = (list) => ({ log: list.map((x) => ({ id: x.id === "legacy" ? uid() : x.id, at: x.at, text: x.text, ...(x.workout ? { workout: x.workout } : {}) })) });
-export const mergeNotes = (mine, theirs, deletedNotes) => {                          // another device saved first: keep both sets; what this device deleted stays deleted
+export const mergeNotes = (mine, theirs, deletedNotes, base) => {                          // another device saved first: keep both sets; what this device deleted stays deleted
   const a = noteEntries({ notes: mine }), b = noteEntries({ notes: theirs }), ids = new Set(a.map((x) => x.id));
+  const was = base == null ? null : new Map(noteEntries({ notes: base }).map((x) => [x.id, JSON.stringify(x)])), there = new Set(b.map((x) => x.id));   // (15 Nov 2026, the audit's #9) base: the notes as this device last read them
+  const kept = was ? a.filter((x) => !(x.id !== "legacy" && was.has(x.id) && !there.has(x.id) && was.get(x.id) === JSON.stringify(x))) : a;   // one the other device deleted (read here, gone from its copy, unchanged here) goes here too, never back to the server
   const legacy = a.find((x) => x.id === "legacy");
   const extra = b.filter((x) => x.id !== "legacy" && !ids.has(x.id) && !deletedNotes.has(x.id) && !(legacy && x.at == null && x.text === legacy.text));   // the old single note, already folded into the other side's log: not a second copy
-  return extra.length ? packNotes([...a, ...extra]) : mine;
+  return extra.length || kept.length !== a.length ? packNotes([...kept, ...extra]) : mine;
 };

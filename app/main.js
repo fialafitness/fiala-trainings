@@ -1070,7 +1070,7 @@ import { reportRange, buildReport } from "./report.js";
       S.view = { name: "clients" }; showLogin("");
     };
     const who = S.sessionEmail;
-    if (!S.signingOut) S.signingOut = (S.sb ? S.sb.auth.signOut() : Promise.resolve({ error: null })).catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });
+    if (!S.signingOut) S.signingOut = (S.sb ? S.sb.auth.signOut({ scope: "local" }) : Promise.resolve({ error: null })).catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });   // this device only (15 Nov 2026, the audit's #7): the library's default signed every device out, and those kept every client's data on disk behind the sign-in page
     const out = await withTimeout(S.signingOut, 8000);
     if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (S.signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && S.signedIn && S.sessionEmail === who) finish(); }); return; }
     finish();
@@ -1100,7 +1100,7 @@ import { reportRange, buildReport } from "./report.js";
       S.view = { name: "clients" }; showLogin("");
     };
     const who = S.sessionEmail;
-    if (!S.signingOut) S.signingOut = (S.sb ? S.sb.auth.signOut() : Promise.resolve({ error: null })).catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });
+    if (!S.signingOut) S.signingOut = (S.sb ? S.sb.auth.signOut({ scope: "local" }) : Promise.resolve({ error: null })).catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });   // this device only (15 Nov 2026, the audit's #7): the library's default signed every device out, and those kept every client's data on disk behind the sign-in page
     const out = await withTimeout(S.signingOut, 8000);
     if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (S.signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && S.signedIn && S.sessionEmail === who) finish(); }); return; }
     finish();
@@ -2323,16 +2323,17 @@ import { reportRange, buildReport } from "./report.js";
     const total = Math.max(...g.rows.map(setsOf));
     const did = Math.min(...g.rows.map((r) => { const n = Math.min(doneCount(r), setsOf(r)); return n >= setsOf(r) ? total : n; }));   // a shorter row that is finished does not hold the others back
     const left = total - did, word = (n) => n + (n === 1 ? " set" : " sets");
-    es = { t, g, selKey, reason: "" }; S.asking = true;                                      // a sync must not swap the record under the sheet
+    es = { t, g, selKey, reason: "", at: performance.now(), from: document.activeElement, behind: [...document.body.children].filter((el) => el !== $("earlySheet") && !el.inert) }; S.asking = true; for (const el of es.behind) el.inert = true;   // (15 Nov 2026, the audit's #13) askFirst's guards: the page behind out of reach, a double tap's second press eaten, Cancel takes the focus, the focus goes back after                                      // a sync must not swap the record under the sheet
     $("esTitle").textContent = (skip ? "Skip this " : "Finish this ") + groupWord(g) + "?";
     $("esLead").textContent = did > 0 ? did + " of " + word(total) + " completed." : "No sets completed yet.";
     $("esFine").textContent = skip ? "Its " + word(left) + " will stay incomplete." : (did > 0 ? "What you logged stays saved. " : "") + "The remaining " + word(left) + " will stay incomplete.";
     $("esGo").textContent = skip ? "Skip" : "Finish & move on";
     for (const b of $("esReasons").querySelectorAll("button")) { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); }
     $("earlySheet").hidden = false;
-    setTimeout(() => { if (es) $("esGo").focus({ preventScroll: true }); }, 0);
+    setTimeout(() => { if (es) $("esKeep").focus({ preventScroll: true, focusVisible: keysLast }); }, 0);
   }
-  function closeFinishEarly() { $("earlySheet").hidden = true; es = null; S.asking = false; }
+  function closeFinishEarly() { const was = es; $("earlySheet").hidden = true; es = null; S.asking = !!pv; if (was) { for (const el of was.behind || []) el.inert = false; if (was.from && was.from.isConnected && was.from.focus) was.from.focus({ preventScroll: true, focusVisible: keysLast }); } }
+  const esSettled = (e) => !!es && (performance.now() - es.at >= 350 || (!!e && e.detail === 0));   // the second tap of a double tap must not finish, skip, pick a reason or close (a keyboard's Enter or VoiceOver is at once)
   let askOpen = null;                                               // the sheet that is up, if any: a second ask closes it as "no" first
   let keysLast = false, askEatUntil = 0;                              // the last thing pressed was a key; a question answered by a press, until when its next click is eaten
   document.addEventListener("keydown", () => { keysLast = true; }, true); document.addEventListener("pointerdown", () => { keysLast = false; }, true);   // a question's first button takes the keyboard's ring only after a key (the v298 safety check: after a right-click's or a hold's menu, whose presses are all cancelled, WebKit drew it round Cancel for a finger, in a page not yet clicked)
@@ -3071,11 +3072,11 @@ import { reportRange, buildReport } from "./report.js";
     if (S.view.name === "client") renderClient();
   });
   $("dpCancel").addEventListener("click", (e) => { if (dpSettled(e)) closeDatePicker(); });
-  $("esKeep").addEventListener("click", closeFinishEarly);
-  $("esGo").addEventListener("click", finishEarlyNow);
-  $("earlySheet").addEventListener("click", (e) => { if (e.target === $("earlySheet")) closeFinishEarly(); });
+  $("esKeep").addEventListener("click", (e) => { if (!esSettled(e)) return; askEat(e); closeFinishEarly(); });
+  $("esGo").addEventListener("click", (e) => { if (!esSettled(e)) return; askEat(e); finishEarlyNow(); });
+  $("earlySheet").addEventListener("click", (e) => { if (e.target === $("earlySheet") && esSettled(e)) { askEat(e); closeFinishEarly(); } });
   $("esReasons").addEventListener("click", (e) => {
-    const b = e.target.closest("button"); if (!b || !es) return;
+    const b = e.target.closest("button"); if (!b || !esSettled(e)) return;
     const on = !b.classList.contains("on");                          // tap again to clear
     for (const x of $("esReasons").querySelectorAll("button")) { x.classList.toggle("on", on && x === b); x.setAttribute("aria-pressed", String(on && x === b)); }
     es.reason = on ? b.dataset.reason : "";
@@ -3882,7 +3883,7 @@ import { reportRange, buildReport } from "./report.js";
     const active = document.activeElement;
     if (S.renderedTraining === t.id && (S.asking || (rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.tagName === "IFRAME")))) return; // never rebuild under a typing finger, a playing video, nor under a confirm sheet
     const sigOf = () => paintSigOf(t);
-    if (S.renderedTraining === t.id && sigOf() === paintedSig) return;   // a sync that changed nothing here: the cards stay as they are, open video, menus and half-typed notes included
+    if (S.renderedTraining === t.id && paintedObj === t && sigOf() === paintedSig) return;   // a sync that changed nothing here: the cards stay as they are, open video, menus and half-typed notes included
     S.renderedTraining = t.id;
     const sc = document.scrollingElement || document.documentElement, keepScroll = sc.scrollTop;   // the cards are rebuilt in place (every sync does it): the page must not move while it is empty
     if (!S.clientMode && normalizeLabels(t)) tidySave(t);
@@ -4146,7 +4147,7 @@ import { reportRange, buildReport } from "./report.js";
       block.appendChild(card); rowsEl.appendChild(block);
     });
     const back = Math.min(keepScroll, Math.max(0, sc.scrollHeight - sc.clientHeight)); if (Math.abs(sc.scrollTop - back) > 1) sc.scrollTop = back;   // a box measured mid-rebuild made the browser clamp the scroll to a page with no cards yet: put it back where he was
-    paintedSig = sigOf();
+    paintedSig = sigOf(); paintedObj = t;
     requestAnimationFrame(regrowNames);                               // once the cards are in the page, every name box at its true height                                         // what the cards now show, tidied rows included
   }
 
@@ -4674,7 +4675,8 @@ import { reportRange, buildReport } from "./report.js";
   const fullBlocks = new Set();           // of those, the ones opened all the way ("Resume this exercise"): the working card instead of the summary
   const peekBlocks = new Set();   // client: exercises still to come that were tapped open to have a look
   let paintedSig = "";              // what the cards on screen were built from: a redraw with the same picture is skipped
-  const paintSigOf = (t) => JSON.stringify([t.rows, t.completedAt, t.skippedAt, t.date, t.inPerson, t.missed, (clients.get(t.clientId) || {}).unit, S.clientMode || previewClient, [...openBlocks], [...fullBlocks], [...peekBlocks], [...setSel], [...openExNotes], [...openNotes]]);
+  let paintedObj = null;            // (15 Nov 2026, the audit's #3) the very record the cards were built from: a sync that replaced it (an Undo, a rename) draws them again even with the same picture, or the next set typed would go into the old copy
+  const paintSigOf = (t) => JSON.stringify([t.rows, t.completedAt, t.skippedAt, t.date, t.inPerson, t.missed, (clients.get(t.clientId) || {}).unit, S.clientMode || previewClient, [...openBlocks], [...fullBlocks], [...peekBlocks], [...setSel], [...openExNotes], [...openNotes], S.histVer]);
   const cardNoteDraft = new Map();  // selKey -> a card note being written: it survives a rebuild of the cards (a sync, a set logged elsewhere)
   let completeAt = 0;               // when Complete set last fired: the second tap of a double tap must not log a second set
   const PREVIEW_KEY = "fiala.preview";
@@ -5640,8 +5642,10 @@ import { reportRange, buildReport } from "./report.js";
   function pvSkip(id) { if (canSwipeRow(trainings.get(id))) openSkip(id, () => pvOn(id)); }   // Skip's own question (its reasons), then on to the next
   async function pvDelete(id) {                                      // the coach's Delete workout: asked first (the workout page's question), then on to the next
     if (!coachMore(trainings.get(id))) return;
+    const st = (t) => !!t && [!!t.completedAt, !!t.skippedAt, t.missed === true].join();   // (15 Nov 2026, the audit's #14) finished, skipped or filed by a sync while the question was up: it stays
+    const was = st(trainings.get(id));
     if (!(await askFirst({ title: "Delete this workout?", text: "It goes for good, with everything logged on it.", yes: "Delete" }))) return;
-    if (!pv || pv.id !== id || !trainings.has(id)) return;
+    if (!pv || pv.id !== id || !trainings.has(id) || st(trainings.get(id)) !== was) return;
     pvOn(id); trainings.delete(id); scheduleSave("trainings", id, 0); S.renderedTraining = null; render();   // (the page behind redraws now; the preview paints where its slide lands)
   }
   async function pvCopy(id) {                                        // the coach's Copy workout: which client gets it (this one first), then the day, then the copy opens, as the workout page's Copy workout does
@@ -5727,7 +5731,7 @@ import { reportRange, buildReport } from "./report.js";
   $("addExBtn").addEventListener("click", addExercise);
   $("addRow").addEventListener("click", addExercise);                // the white + Add exercise under the last exercise does the same (his ask, 12 Nov)
   function setSkipped(skipped, reason, id = S.view.id) {              // asked first (the sheet); the workout stays on screen, marked Skipped, with Undo (from a row on Workouts: it goes to History, Undo on its page)
-    const t = trainings.get(id); if (!t) return;
+    const t = trainings.get(id); if (!t || (skipped && t.completedAt)) return;   // finished meanwhile (a sync under the Skip sheet): never stamped skipped as well (the audit's #14)
     t.skippedAt = skipped ? now() : null; t.missed = false; touchState(t.id, "skippedAt", "missed", "skipReason");   // a person decided: never filed by itself again
     if (skipped && reason) t.skipReason = reason; else delete t.skipReason;
     if (S.clientMode) { pendingSkip.add(t.id); pendingMiss.add(t.id); }
@@ -5908,7 +5912,7 @@ import { reportRange, buildReport } from "./report.js";
       const fromRecoveryLink = /type=recovery/.test(location.hash);
       S.sb.auth.onAuthStateChange((event) => {
         if (event === "PASSWORD_RECOVERY") { S.recovering = true; showRecovery(); }
-        if (event === "SIGNED_OUT" && S.signedIn) { resetPhotos(); S.backend = null; S.offline = false; S.offlineEntry = null; S.pendingOwner = ""; S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); }
+        if (event === "SIGNED_OUT" && S.signedIn) { resetPhotos(); S.backend = null; S.offline = false; S.offlineEntry = null; S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); }   // whose unsent edits these are stays known (15 Nov 2026, the audit's #7): another account signing in on this page never takes them on
       });
       // no signal: the library retries the token refresh for up to 30 s before answering. Don't make anyone wait for that:
       // after 4 s show what the device knows, and switch to live data if the session comes through later.

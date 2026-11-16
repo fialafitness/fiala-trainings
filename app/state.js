@@ -18,6 +18,7 @@ export const initial = () => ({
   offlineEntry: null, resuming: false, signingOut: null,
   sessionEmail: "", entering: false,
   renderedTraining: null,                // the workout whose rows are on screen
+  histVer: 0,                            // (15 Nov 2026, the audit's #11) bumped when a sync changes another workout of the client on screen: the open one's Last time and Best are drawn again once no field or question owns the page
   tab: "workouts",                       // the client page's tab: "workouts" | "profile"
   asking: false,                         // a confirm sheet is up: no sync may swap the workout under it, no redraw may rebuild its rows
   seeding: false,                        // a sync must not run while the templates are being written

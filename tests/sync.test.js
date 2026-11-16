@@ -423,8 +423,9 @@ test("a sync that changes nothing keeps the very same objects, so the cards on s
   const a = training("A"), b = training("B"); maps.trainings.set("A", a); maps.trainings.set("B", b);
   fns.mergeDown(maps.trainings, "trainings", [{ id: "A", data: training("A"), updated_at: "S1" }, { id: "B", data: training("B"), updated_at: "S1" }], true, Date.now());
   assert.strictEqual(maps.trainings.get("A"), a, "the same object"); assert.strictEqual(app.get().renderedTraining, "A", "nothing to repaint");
+  const v0 = app.get().histVer;
   fns.mergeDown(maps.trainings, "trainings", [{ id: "A", data: training("A"), updated_at: "S1" }, { id: "B", data: training("B", { title: "Changed elsewhere" }), updated_at: "S2" }], true, Date.now());
-  assert.strictEqual(maps.trainings.get("A"), a, "A untouched"); assert.strictEqual(app.get().renderedTraining, null, "B changed: A's last/best lines are read again");
+  assert.strictEqual(maps.trainings.get("A"), a, "A untouched"); assert.strictEqual(app.get().renderedTraining, "A", "the page still knows which workout it shows (the audit's #11)"); assert.ok(app.get().histVer > v0, "B changed: A's last/best lines are drawn again");
 });
 test("a record deleted this session can be restored from a backup: its stamp went with it", async () => {
   const sb = makeSupabase(); coach(sb);

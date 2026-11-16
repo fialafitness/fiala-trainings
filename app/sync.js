@@ -3,6 +3,7 @@
 import { lsGet, lsSet, norm, clamp, today } from "./util.js";
 import { isTemplateClient, planActive, repairTimed, timedPlan, cmpLabel, stampUnit, profileGet, profilePut } from "./model.js";
 import { mergeNotes } from "./notes.js";
+import { ALIASES } from "./catalog.js";
 import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, planTouched, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows, pendingProfile, profileTouched } from "./state.js";
 
 // ---------- persistence ----------
@@ -19,6 +20,22 @@ const reasonOf = (e) => {
 function key(kind, id) { return kind + "/" + id; }
 const seenDoc = new Map();                                        // "kind/id" -> the server copy the stamp belongs to: the base a two-device merge measures changes against
 function markDirty(kind, id) { const k = key(kind, id); dirty.set(k, (dirty.get(k) || 0) + 1); }
+const recMap = (k) => { const kind = String(k).slice(0, String(k).indexOf("/")); return kind === "clients" ? clients : kind === "trainings" ? trainings : null; };
+const recOf = (k) => { const m = recMap(k), id = String(k).slice(String(k).indexOf("/") + 1), d = S.templateDraft; if (!m) return null; if (m === trainings && d && d.dirty && d.snapshot && d.id === id) return JSON.parse(d.snapshot); return m.get(id) || null; };   // a record still to send, as it stands now (a template's open draft as last saved, as the device copy keeps it)
+const trimEnd = (a) => { if (!Array.isArray(a)) return a; let n = a.length; while (n && (a[n - 1] == null || a[n - 1] === "")) n--; return n === a.length ? a : a.slice(0, n); };
+const normRow = (x) => (x && typeof x === "object" ? { ...x, weights: trimEnd(x.weights), repsDone: trimEnd(x.repsDone), ...(typeof x.name === "string" && ALIASES[x.name] ? { name: ALIASES[x.name] } : {}) } : x);   // what a row says, not how this device holds it: the boxes drawn add empty sets at the end, and a client's phone shows an old name by its new one
+const canon = (v) => JSON.stringify(v, (k, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((kk) => [kk, x[kk]])) : x));   // keys in one order: the server keeps them in its own (shortest first), this device in the order they were written
+const sameRec = (a, b) => JSON.stringify(a) === JSON.stringify(b) || (!!a && !!b && canon(Array.isArray(a.rows) ? { ...a, rows: a.rows.map(normRow) } : a) === canon(Array.isArray(b.rows) ? { ...b, rows: b.rows.map(normRow) } : b));   // (15 Nov 2026, the audit's #11) a copy that says the same is the same: the open workout is not swapped and drawn anew at every sync
+const mergeSets = (lr, br, sr) => {                                // (15 Nov 2026, the audit's #2) one exercise's log, set by set, three ways: what this device changed since it read br stands, the server's (the client's sets) fills the rest
+  const pick = (mine, base, srv) => { const a = mine || [], b = base || [], s = srv || [], out = []; for (let i = 0; i < Math.max(a.length, s.length); i++) { const m = a[i] == null ? "" : String(a[i]); out.push(m !== (b[i] == null ? "" : String(b[i])) ? m : s[i] == null ? "" : String(s[i])); } return trimEnd(out); };
+  const n = clamp(parseInt(lr.sets, 10) || 0, 0, 20);
+  lr.weights = pick(lr.weights, br.weights, sr.weights); lr.repsDone = pick(lr.repsDone, br.repsDone, sr.repsDone);
+  if (n) { lr.weights = lr.weights.slice(0, n); lr.repsDone = lr.repsDone.slice(0, n); }
+  if ((parseInt(lr.setsDone, 10) || 0) === (parseInt(br.setsDone, 10) || 0)) { if (sr.setsDone != null) lr.setsDone = sr.setsDone; else delete lr.setsDone; }
+  if (!!lr.done === !!br.done) lr.done = !!sr.done;
+  if (String(lr.unit || "") === String(br.unit || "") && (sr.unit === "kg" || sr.unit === "lb")) lr.unit = sr.unit;
+  if (String(lr.earlyReason || "") === String(br.earlyReason || "")) { if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; }
+};
 // what still has to reach the server is written to the device too, so closing the app with no signal loses nothing
 function persistPending() {
   lsSet("fiala.pending.v1", { dirty: [...dirty.keys()], weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]), rownotes: [...pendingNoteRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]), profile: [...pendingProfile].filter(([, f]) => f.size).map(([id, f]) => [id, [...f]]),
@@ -26,6 +43,7 @@ function persistPending() {
     touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]), noted: [...trainerNoted].map(([id, r]) => [id, [...r]]), state: [...trainerState].map(([id, f]) => [id, [...f]]),
     plans: [...planTouched], profTouched: [...profileTouched].filter(([, f]) => f.size).map(([id, f]) => [id, [...f]]), notesGone: [...deletedNotes], packagesGone: [...deletedPackages], foldersGone: [...deletedFolders], foldersTouched: [...folderTouched], fromFile: [...fromFile],   // the coach's intent about a client record: a plan changed, a note or package removed, a backup restored
     stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), docs: [...dirty.keys()].filter((k) => seenDoc.has(k)).map((k) => [k, seenDoc.get(k)]),   // the stamp and the copy it describes: a save sent after a relaunch still merges against what this device last read
+    recs: [...dirty.keys()].map((k) => [k, recOf(k)]).filter(([, d]) => d), gone: [...dirty.keys()].filter((k) => recMap(k) && !recOf(k)),   // (15 Nov 2026, the audit's #1) each record still to send as it is now, and each one deleted here: a device copy that stopped saving (a full device) can never send an older copy over the server's, nor make a record it lost look deleted
     owner: S.sessionEmail || S.pendingOwner || "" });
   if (S.sessionEmail) S.pendingOwner = S.sessionEmail;
 }
@@ -43,6 +61,8 @@ function restorePending() {
   for (const id of p.order || []) pendingOrder.add(id);
   for (const [id, ks] of p.profile || []) { pendingProfile.set(id, new Set([...(pendingProfile.get(id) || []), ...ks])); markDirty("clients", id); }   // the client's own profile fields (v299): sent again on this launch (the rule may have been missing last time)
   for (const id of new Set([...pendingMove, ...pendingMiss, ...pendingOrder, ...[...pendingNoteRows].filter(([, r]) => r.size).map(([id]) => id), ...[...pendingEarlyRows].filter(([, r]) => r.size).map(([id]) => id)])) markDirty("trainings", id);   // sent again on this launch (the rule may have been missing last time)
+  { const recs = new Map((p.recs || []).filter((e) => Array.isArray(e) && typeof e[0] === "string" && e[1] && typeof e[1] === "object")), gone = new Set(p.gone || []);   // (15 Nov 2026, the audit's #1) the records the queue holds win over the device copy, which may have stopped saving before them (a full device); a queued record the device lost and never deleted here is the server's again: nothing is deleted there for it
+    for (const k of [...dirty.keys()]) { const m = recMap(k), id = k.slice(k.indexOf("/") + 1); if (!m || (S.templateDraft && S.templateDraft.id === id)) continue; if (recs.has(k)) { const d = recs.get(k); if (m === trainings) repairTimed(d); m.set(id, d); } else if (gone.has(k)) m.delete(id); else if (!m.has(id)) dirty.delete(k); } }
   for (const [id, picks] of p.swap || []) pendingSwap.set(id, new Map([...(pendingSwap.get(id) || []), ...picks]));
   for (const [id, rows] of p.touched || []) trainerTouched.set(id, new Set([...(trainerTouched.get(id) || []), ...rows]));
   for (const [id, fields] of p.state || []) trainerState.set(id, new Set([...(trainerState.get(id) || []), ...fields]));
@@ -166,10 +186,19 @@ const cloudBackend = {
     const mergeServerRows = (serverData, against) => {        // take the client's weights/done/swaps for rows the trainer did not touch; `against`: the copy this device last read, to tell her new numbers from his
       const touched = trainerTouched.get(id) || new Set(), named = trainerNamed.get(id) || new Set(), noted = trainerNoted.get(id) || new Set();   // three separate claims per row: the log, the name, the note — a coach who only wrote a note keeps nothing else
       const live = trainings.get(id);
+      if (against && Array.isArray(against.rows) && serverData && Array.isArray(serverData.rows)) {   // (15 Nov 2026, the audit's #4) the exercise list three ways, by row id: one the other device removed (read here, gone from the server's copy, not changed here since) goes here too, and one it added (on the server's copy, never read here) comes in; one removed or added here stays so
+        const was = new Map(against.rows.filter((x) => x && x.id).map((x) => [x.id, canon(normRow(x))])), there = new Set(serverData.rows.map((x) => x && x.id));
+        for (const target of [data, live]) {
+          if (!target || !Array.isArray(target.rows)) continue;
+          const have = new Set(target.rows.map((x) => x && x.id));
+          target.rows = target.rows.filter((x) => !(x && was.has(x.id) && !there.has(x.id) && was.get(x.id) === canon(normRow(x))));
+          for (const sr of serverData.rows) if (sr && sr.id && !was.has(sr.id) && !have.has(sr.id)) target.rows.push(JSON.parse(JSON.stringify(sr)));
+        }
+      }
       for (const sr of (serverData && serverData.rows) || []) {
         for (const target of [data, live]) {
           const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (!lr) continue;
-          if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; if (sr.unit === "kg" || sr.unit === "lb") lr.unit = sr.unit; if (sr.setsDone != null) lr.setsDone = sr.setsDone; else delete lr.setsDone; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; }
+          if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; if (sr.unit === "kg" || sr.unit === "lb") lr.unit = sr.unit; if (sr.setsDone != null) lr.setsDone = sr.setsDone; else delete lr.setsDone; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; } else { const br = against && (against.rows || []).find((x) => x.id === sr.id); if (br) mergeSets(lr, br, sr); }   // (15 Nov 2026, the audit's #2) a row the coach changed: set by set, his value where he changed that set since he last read it, the client's everywhere else (with no copy read, his row stands whole, as before)
           if (!noted.has(sr.id)) { if (sr.clientNote) { lr.clientNote = String(sr.clientNote); if (sr.clientNoteBy) lr.clientNoteBy = String(sr.clientNoteBy); else delete lr.clientNoteBy; if (sr.clientNoteAt) lr.clientNoteAt = String(sr.clientNoteAt); else delete lr.clientNoteAt; } else { delete lr.clientNote; delete lr.clientNoteBy; delete lr.clientNoteAt; } }
           if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
           if (typeof sr.label === "string" && sr.label !== lr.label) { const br = against && (against.rows || []).find((x) => x.id === sr.id); if (br && String(br.label || "") === String(lr.label || "")) lr.label = sr.label; }   // the client put an exercise ahead ("Start this exercise"): her number stands wherever the coach did not renumber that row himself since he last read it
@@ -192,9 +221,10 @@ const cloudBackend = {
       };
       const takeNotes = (serverData, against = base) => {      // another device may have written notes: keep both (against: the copy this device last read, for the folders)
         if (kind !== "clients" || !serverData) return;
-        data.notes = mergeNotes(data.notes, serverData.notes, deletedNotes); const live = clients.get(id); if (live) live.notes = mergeNotes(live.notes, serverData.notes, deletedNotes);   // each copy merged from its own list: a note written while this save was out is not undone
+        data.notes = mergeNotes(data.notes, serverData.notes, deletedNotes, against && against.notes); const live = clients.get(id); if (live) live.notes = mergeNotes(live.notes, serverData.notes, deletedNotes, against && against.notes);   // each copy merged from its own list: a note written while this save was out is not undone
         if (Array.isArray(serverData.packages) || Array.isArray(data.packages)) {                  // packages added on two devices: keep both
-          const union = (mine) => { const have = new Set((mine || []).map((x) => x && x.id)); return [...(mine || []), ...(serverData.packages || []).filter((x) => x && x.id && !have.has(x.id) && !deletedPackages.has(x.id))]; };   // one removed here stays removed
+          const wasP = new Map(((against && against.packages) || []).filter((x) => x && x.id).map((x) => [x.id, canon(x)])), thereP = new Set((serverData.packages || []).map((x) => x && x.id));   // (15 Nov 2026, the audit's #9) one the other device deleted (read here, gone from its copy, unchanged here) goes here too
+          const union = (mine) => { const keep = (mine || []).filter((x) => !(x && x.id && wasP.has(x.id) && !thereP.has(x.id) && wasP.get(x.id) === canon(x))), have = new Set(keep.map((x) => x && x.id)); return [...keep, ...(serverData.packages || []).filter((x) => x && x.id && !have.has(x.id) && !deletedPackages.has(x.id))]; };   // one removed here stays removed
           data.packages = union(data.packages); if (live) live.packages = union(live.packages);
         }
         if (Array.isArray(serverData.folders) || Array.isArray(data.folders)) {                    // his template folders and slides (12 Nov), changed on two devices: each kept by its id; the server's copy of one wins unless this device changed that one; one removed here stays removed; one removed on the other device (in the copy last read, gone from the server's, not changed here) goes here too
@@ -390,17 +420,17 @@ const clientBackend = {
 function syncDown() { if (S.syncing) return S.syncing; S.syncing = syncDownNow().finally(() => { S.syncing = null; }); return S.syncing; }
 const carryOrder = (cur, rec) => { const mine = new Map((cur.rows || []).map((x) => [x.id, String(x.label || "").trim()])); for (const x of rec.rows || []) { const l = mine.get(x.id); if (l != null && /^\d+[a-z]?$/i.test(l) && l !== x.label) x.label = l; } };   // the phone's exercise numbers onto the server's rows, by row id
 function mergeDown(map, kind, rows, complete, startedAt) {        // the server's answer into the local map, keeping what this device still has to send
-  const seen = new Set(), viewed = trainings.get(S.renderedTraining), viewedClient = viewed ? viewed.clientId : null;
+  const seen = new Set(), viewedId = S.renderedTraining, viewed = trainings.get(viewedId), viewedClient = viewed ? viewed.clientId : null;   // (15 Nov 2026, the audit's #11) the workout on screen as this answer began: a sibling changed earlier in the answer must not lift the guard below
   for (const r of rows) {
     seen.add(r.id); if (dirty.has(key(kind, r.id))) continue;
     if (kind === "trainings" && map.has(r.id) && (pendingMove.has(r.id) || pendingMiss.has(r.id) || (pendingNoteRows.get(r.id) || new Set()).size || (pendingEarlyRows.get(r.id) || new Set()).size)) continue;   // the client's decision, note or reason still has to reach the server: keep ours (when there is an ours: a workout hidden and shown again is taken back)
     if ((confirmedAt.get(key(kind, r.id)) || 0) > startedAt) continue;   // written after this read began: keep ours
     if (kind === "trainings" && S.templateDraft && S.templateDraft.dirty && S.templateDraft.id === r.id) continue;   // unsaved template edits
-    if (kind === "trainings" && S.renderedTraining === r.id && (S.asking || ui.$("rows").contains(document.activeElement))) continue; // being edited right now, or a confirm sheet is up over it: next sync, stamp and all
+    if (kind === "trainings" && viewedId === r.id && (S.asking || ui.$("rows").contains(document.activeElement))) continue; // being edited right now, or a confirm sheet is up over it: next sync, stamp and all
     const rec = { ...r.data, id: r.id }, cur = map.get(r.id);
     if (kind === "clients" && cur && (pendingProfile.get(r.id) || new Set()).size) for (const k of pendingProfile.get(r.id)) profilePut(rec, k, profileGet(cur, k));   // the client's own profile fields still on their way ride on the server's copy (the coach's edits land, the client's stand)
     if (kind === "trainings") { repairTimed(rec); if (cur && pendingOrder.has(r.id)) carryOrder(cur, rec); if (Array.isArray(rec.rows)) rec.rows.sort((a, b) => cmpLabel(a.label, b.label)); }   // her new order still on its way rides on the server's copy (his edits land, her numbers stand); rows in the order the cards show, so a copy that changed nothing reads as the same
-    if (!(cur && JSON.stringify(cur) === JSON.stringify(rec))) { if (kind === "trainings" && cur && ui.relabeled) ui.relabeled(r.id, cur, rec); map.set(r.id, rec); if (kind === "trainings" && viewedClient && rec.clientId === viewedClient && r.id !== S.renderedTraining) S.renderedTraining = null; }   // the same record stays the same object (the cards on screen hold it); another workout of the viewed client changed: its last/best lines are read again
+    if (!(cur && sameRec(cur, rec))) { if (kind === "trainings" && cur && ui.relabeled) ui.relabeled(r.id, cur, rec); map.set(r.id, rec); if (kind === "trainings" && viewedClient && rec.clientId === viewedClient && r.id !== viewedId) S.histVer++; }   // the same record stays the same object (the cards on screen hold it); another workout of the viewed client changed: its last/best lines are read again (by S.histVer, never by forgetting which workout is on screen: that let a sync rebuild the cards under a typing finger, the audit's #11)
     if (!S.clientMode && r.updated_at) { seenAt.set(key(kind, r.id), r.updated_at); seenDoc.set(key(kind, r.id), JSON.stringify(r.data)); }   // the stamp, and the copy it describes, travel with the record
     if (kind === "trainings") trainerState.delete(r.id);
   }
