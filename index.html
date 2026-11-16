@@ -74,6 +74,10 @@
     --drop-on: rgba(0,0,0,0.05);        /* the day under a dragged workout: Apple Calendar's fill, measured (#f2f2f2 on white, 5% black) */
     --danger: #a63a46;                  /* Crimson deep — red text on light */
     --gold: #7f621a;                    /* the best lift: a quiet gold, deep enough to read as small bold text (5:1 on a field) */
+    --stat-grey: #8a8a8e;               /* the Progress tab's units, dates and day letters: Apple's secondary grey in Health's cards and charts, measured on iOS 27.2 (16 Nov 2026) */
+    --chart-bar: #e5e5ea; --chart-avg: #d1d1d6;   /* the small charts' earlier bars, and the average card's bars (Health's pinned card and Highlights, measured) */
+    --chart-grid: #ececee; --chart-base: #d6d6da; --chart-axis: #c5c5c7;   /* Health's chart page: the lines across, the zero line, the labels (measured) */
+    --range-track: #eeeeef; --range-on: #ffffff;   /* Health's D W M 6M Y control: its track and the chosen part (measured) */
     --ink: #1d1d1f;                     /* the strong mark: black on light, white on dark */
     --disc-fill: #f8f8f8; --disc-ink: #1d1d1f;   /* the floating bar buttons (back, Messages, "…", + …; the preview's ×, ‹ ›, Edit): Apple's iOS 27.2 glass, measured pixel by pixel (his ask, 13 Nov: "measure exactly how Apple would do edit buttons"; his pick A: glass on the bar buttons, the page's own buttons plain as Apple's): light is the same on the page and on a sheet (Reminders, Photos, Calendar's event sheet) */
     --menu-sep: rgba(0,0,0,0.08); --pop-chev: rgba(60,60,67,0.6);   /* a menu's line between its groups (Files, measured: 8% black on the glass, 8% white in the dark) and a pop-up button's up-and-down chevrons (Calendar's "None": Apple's secondary label, measured 138 on white) */
@@ -133,6 +137,10 @@
       --drop-on: rgba(255,255,255,0.098);   /* #191919 on black, measured on Apple Calendar */
       --danger: #e06470;                /* Crimson */
       --gold: #e0c268;
+      --stat-grey: #98989f;
+      --chart-bar: #48484a; --chart-avg: #48484a;
+      --chart-grid: rgba(255,255,255,0.09); --chart-base: rgba(255,255,255,0.2); --chart-axis: #5b5b5f;
+      --range-track: #1c1c1f; --range-on: #5a5a5f;
       --ink: #ffffff;
       --disc-fill: #1f1f1f; --disc-ink: #ffffff;   /* on the black page: 12% white, fitted to his Mail screenshot */
       --menu-sep: rgba(255,255,255,0.08); --pop-chev: rgba(235,235,245,0.6);
@@ -192,6 +200,10 @@
     --drop-on: rgba(255,255,255,0.098);
     --danger: #e06470;
     --gold: #e0c268;
+    --stat-grey: #98989f;
+    --chart-bar: #48484a; --chart-avg: #48484a;
+    --chart-grid: rgba(255,255,255,0.09); --chart-base: rgba(255,255,255,0.2); --chart-axis: #5b5b5f;
+    --range-track: #1c1c1f; --range-on: #5a5a5f;
     --ink: #ffffff;
     --disc-fill: #1f1f1f; --disc-ink: #ffffff;   /* on the black page: 12% white, fitted to his Mail screenshot */
     --menu-sep: rgba(255,255,255,0.08); --pop-chev: rgba(235,235,245,0.6);
@@ -1047,10 +1059,9 @@
   .list .pack-row .sub { margin-top: 2px; }
   .list .pack-row .sub { color: var(--text-secondary); font-size: 0.875rem; }
   .list .pack-row .del { appearance: none; border: 0; background: none; color: var(--danger); font: inherit; font-size: 0.875rem; cursor: pointer; width: auto; flex: none; min-height: 44px; padding: 0; display: inline-flex; align-items: center; }   /* not the full-width list button */
-  /* the client page overview: two numbers and an exercise lookup that shows the heaviest set ever */
+  /* the client page overview: the cards below (v310), and an exercise lookup that shows the heaviest set ever */
   .overview { margin: 28px 0 18px; }                                        /* the first thing under the name sits 28 below it, on every tab */
   .overview[hidden] { display: none; }
-  .ov-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .ov-tile { background: var(--card); border-radius: var(--r-card); padding: 14px 16px 12px; }
   .ov-tile b { display: block; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text-primary); }
   .ov-tile span { display: block; margin-top: 4px; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-tertiary); }
@@ -1065,6 +1076,80 @@
   .ov-tile.best[hidden] { display: none; }
   .ov-none { font-size: 0.9375rem; color: var(--text-secondary); }
   .ov-none[hidden] { display: none; }
+  /* the Progress tab's cards and the Workouts page (v310; the owner's ask, 16 Nov 2026: "I still want workouts this month and total workouts ... I want the stats and graphics look more like Apple ones", then his picks after the pictures and "Build it"). Apple Health, measured on the iOS 27.2 simulator: the pinned card (16 in from the page's edges, its title in colour at 15 semibold, the number at 28 with its unit at 15 in grey, the small chart's bars 8 wide and 3.3 apart with 2.3 corners, sitting on the number's baseline, the latest in colour), the chart page (a caps caption at 13, the number at 34 and its unit at 17, the date at 15, bars 65% of their column with 1-point corners, solid lines across, dashed lines 2.7 on and 1.3 off between days, grey labels at 13 on the right) and Highlights (one sentence at 17 semibold, a hairline, an average as a 5-point line over grey bars) */
+  .pg-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }   /* two equal tiles at any Text Size: their words give way, never the tile (the v310 review: a bigger Text Size pushed Total off the screen) */
+  .pg-card { display: block; width: 100%; box-sizing: border-box; margin: 0; text-align: left; appearance: none; font: inherit; letter-spacing: inherit; color: var(--text-primary); cursor: pointer; background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r-card); padding: 15px 17px 16px; -webkit-tap-highlight-color: transparent; transition: opacity 300ms ease; }
+  @media (hover: hover) { button.pg-card:hover { opacity: 0.85; } }   /* a mouse's hover only: an iPhone keeps a tapped card's hover, so the card would come back dim after Back */
+  .pg-card:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  div.pg-card { cursor: default; }
+  .pg-tiles .pg-card { padding: 15px 15px 14px; }
+  .pg-week { margin-top: 10px; }
+  .pg-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 20px; }
+  .pg-title { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.005em; line-height: 1.25; color: var(--done); white-space: nowrap; }
+  .pg-title svg { width: 17px; height: 17px; flex: none; }
+  .pg-title > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .pg-when { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 0.8125rem; line-height: 1.25; color: var(--stat-grey); white-space: nowrap; }
+  #pgWeekDates { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .pg-go { font-size: 0.9375rem; line-height: 1; color: var(--chart-axis); }
+  .pg-val { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 4px; row-gap: 2px; margin-top: 16px; font-size: 1.75rem; font-weight: 600; letter-spacing: -0.015em; line-height: 1; white-space: nowrap; }   /* the unit goes under the number when a tile is too narrow for both */
+  .pg-val b { font-weight: 600; }
+  .pg-val small { font-size: 0.9375rem; font-weight: 600; letter-spacing: 0; color: var(--stat-grey); }
+  .pg-mini { position: relative; display: block; height: 40px; margin: 14px 0 18px; }
+  .pg-mini .bars { position: absolute; inset: 0; display: flex; align-items: flex-end; }
+  .pg-mini .bars > span { flex: 1 1 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
+  .pg-mini .bars i { display: block; width: min(8px, 70%); background: var(--chart-bar); border-radius: 2.3px 2.3px 0 0; }
+  .pg-mini .bars i.now { background: var(--done); }
+  .pg-mini.days { border-bottom: 1px solid var(--chart-base); }
+  .pg-mini.days .bars i { width: min(3px, 55%); height: 100%; border-radius: 9px; }
+  .pg-mini .labels { position: absolute; left: 0; right: 0; top: calc(100% + 3px); height: 14px; }
+  .pg-mini .labels span { position: absolute; top: 0; transform: translateX(-50%); font-size: 0.6875rem; font-weight: 500; line-height: 14px; color: var(--stat-grey); white-space: nowrap; }
+  .pg-mini .labels .l0 { left: 0; transform: none; }
+  .pg-mini .labels .l1 { right: 0; transform: none; }
+  .pg-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin: 18px -6px 0; }
+  .pg-day { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .pg-day .wd { font-size: 0.8125rem; font-weight: 600; line-height: 1.2; color: var(--stat-grey); }
+  .pg-day.today .wd { color: var(--text-primary); }
+  .pg-dot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; box-sizing: border-box; }
+  .pg-dot svg { width: 14px; height: 14px; }
+  .pg-dot.done { background: var(--done); color: var(--done-ink); }
+  .pg-dot.plan { box-shadow: inset 0 0 0 1.5px var(--chart-avg); }
+  .pg-dot.miss { background: var(--chip-miss); color: var(--danger); }
+  .pg-dot.skip { background: var(--chip-plan); color: var(--chip-grey); }
+  .pg-dot.rest::after { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--chart-avg); }
+  .pg-foot { display: block; border-top: 1px solid var(--card-border); margin: 16px -17px 0; padding: 12px 17px 0; font-size: 0.9375rem; line-height: 1.35; color: var(--stat-grey); white-space: normal; }
+  .pg-foot b { color: var(--text-primary); font-weight: 600; }
+  .pg-foot[hidden] { display: none; }
+  .pg-seg { display: flex; height: 28px; box-sizing: border-box; border-radius: 14px; background: var(--range-track); padding: 2px; margin: 0 4px 18px; }
+  .pg-seg button { flex: 1 1 0; min-width: 0; appearance: none; border: 0; border-radius: 12px; background: transparent; font: inherit; font-size: 0.8125rem; font-weight: 500; letter-spacing: 0; line-height: 1; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .pg-seg button.on { background: var(--range-on); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+  .pg-seg button:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+  .pg-cap { margin: 0; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: var(--stat-grey); }
+  .pg-big { margin: 2px 0 0; font-size: 2.125rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1.12; }
+  .pg-big b { font-weight: 600; }
+  .pg-big small { font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; color: var(--stat-grey); margin-left: 5px; }
+  .pg-date { margin: 2px 0 0; font-size: 0.9375rem; font-weight: 600; color: var(--stat-grey); }
+  .pg-chart { position: relative; height: 230px; margin: 14px 0 30px; }
+  .pg-chart .plot { position: absolute; left: 0; right: 40px; top: 6px; bottom: 0; }
+  .pg-chart .gl { position: absolute; left: 0; right: -4px; height: 0; border-top: 1px solid var(--chart-grid); }
+  .pg-chart .gl.zero { border-top-color: var(--chart-base); }
+  .pg-chart .yl { position: absolute; right: -40px; width: 36px; transform: translateY(-50%); text-align: right; font-size: 0.8125rem; line-height: 1; color: var(--chart-axis); }
+  .pg-chart .vl { position: absolute; top: 0; bottom: -24px; width: 1px; background: repeating-linear-gradient(to bottom, var(--chart-grid) 0 2.7px, transparent 2.7px 4px); }
+  .pg-chart .vl.solid { background: var(--chart-base); }
+  .pg-chart .xl { position: absolute; top: calc(100% + 6px); padding-left: 4px; font-size: 0.8125rem; line-height: 1; color: var(--chart-axis); white-space: nowrap; }
+  .pg-chart .cols { position: absolute; inset: 0; display: flex; align-items: flex-end; }
+  .pg-chart .cols > span { flex: 1 1 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
+  .pg-chart .cols i { display: block; width: 65%; background: var(--done); border-radius: 1px 1px 0 0; }
+  .pg-sent { margin: 12px 0 0; font-size: 1.0625rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; color: var(--text-primary); }
+  .pg-hr { border: 0; border-top: 1px solid var(--card-border); margin: 14px 0 12px; }
+  .pg-avg { position: relative; height: 128px; margin-bottom: 18px; }
+  .pg-avg .bars { position: absolute; left: 150px; right: 0; top: 0; bottom: 0; display: flex; align-items: flex-end; }
+  .pg-avg .bars > span { flex: 1 1 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
+  .pg-avg .bars i { display: block; width: min(16px, 40%); background: var(--chart-avg); border-radius: 2.5px 2.5px 0 0; }
+  .pg-avg .line { position: absolute; left: 0; right: 0; height: 5px; border-radius: 3px; background: var(--done); transform: translateY(-50%); }
+  .pg-avg .lab { position: absolute; left: 0; transform: translateY(-100%); padding-bottom: 8px; font-size: 0.9375rem; font-weight: 600; line-height: 1.2; color: var(--stat-grey); }
+  .pg-avg .num { position: absolute; left: 0; padding-top: 10px; font-size: 1.75rem; font-weight: 600; letter-spacing: -0.015em; line-height: 1; }
+  .pg-avg .num small { font-size: 0.9375rem; color: var(--stat-grey); margin-left: 4px; letter-spacing: 0; }
+  .pg-avg .xl { position: absolute; top: calc(100% + 4px); transform: translateX(-50%); font-size: 0.75rem; font-weight: 600; line-height: 1; color: var(--stat-grey); white-space: nowrap; }
   .lifts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin: 0 0 -8px; padding: 0; }   /* under the boxes, in their two columns, one line: the clock and the last lift, the crown and the best (his symbols) */
   .lifts[hidden] { display: none; }
   .lifts .lift { appearance: none; border: 0; background: none; padding: 0 0 0 11px; min-height: 36px; font: inherit; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 0.9375rem; line-height: 1.3; }
@@ -1760,6 +1845,16 @@
     <div id="histList"></div>
     <div class="empty" id="histEmpty" hidden>No past workouts yet.</div>
   </section>
+  <section id="vWorkouts" hidden>
+    <h1 class="pagetitle">Workouts</h1>
+    <div class="pg-seg" id="wkRange" role="radiogroup" aria-label="Show"><button type="button" role="radio" data-range="W" aria-label="Week" aria-checked="false">W</button><button type="button" role="radio" data-range="M" aria-label="Month" aria-checked="false">M</button><button type="button" role="radio" data-range="6M" aria-label="6 months" aria-checked="false">6M</button><button type="button" role="radio" data-range="Y" aria-label="Year" aria-checked="false">Y</button></div>
+    <p class="pg-cap">Total</p>
+    <p class="pg-big"><b id="wkTotal">0</b><small id="wkUnit">workouts</small></p>
+    <p class="pg-date" id="wkDates"></p>
+    <div class="pg-chart" id="wkChart" role="img"></div>
+    <h2 id="wkHlCap" hidden>Highlights</h2>
+    <div class="pg-card" id="wkHl" hidden><span class="pg-head"><span class="pg-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M-0.35 8.29C-0.35 7.49 0.25 6.88 1.04 6.88C1.83 6.88 2.43 7.49 2.43 8.29V15.7C2.43 16.5 1.83 17.11 1.04 17.11C0.25 17.11 -0.35 16.5 -0.35 15.7ZM3.48 6.89C3.48 5.59 4.36 4.72 5.68 4.72C7 4.72 7.88 5.59 7.88 6.89V17.11C7.88 18.41 7 19.28 5.68 19.28C4.36 19.28 3.48 18.41 3.48 17.11ZM9.02 10.1H15.08V13.9H9.02ZM16.22 6.89C16.22 5.59 17.1 4.72 18.42 4.72C19.74 4.72 20.62 5.59 20.62 6.89V17.11C20.62 18.41 19.74 19.28 18.42 19.28C17.1 19.28 16.22 18.41 16.22 17.11ZM21.57 8.29C21.57 7.49 22.17 6.88 22.96 6.88C23.75 6.88 24.35 7.49 24.35 8.29V15.7C24.35 16.5 23.75 17.11 22.96 17.11C22.17 17.11 21.57 16.5 21.57 15.7Z"/></svg><span>Workouts</span></span></span><p class="pg-sent" id="wkHlText"></p><hr class="pg-hr"><div class="pg-avg" id="wkAvg" aria-hidden="true"></div></div>
+  </section>
 
   <section id="vCatalog" hidden>
     <h1>Catalog</h1>
@@ -1867,7 +1962,11 @@
       <div class="plan-actions" id="planActions" hidden><button class="btn quiet" id="planCancel" type="button">Cancel</button><button class="btn sm" id="planSave" type="button">Save</button></div>
     </div>
     <div data-tab="profile" class="overview" id="overview" hidden>
-      <div class="ov-tiles"><div class="ov-tile"><b id="ovTotal">0</b><span>Total workouts</span></div><div class="ov-tile"><b id="ovMonth">0</b><span>This month</span></div></div>
+      <div class="pg-tiles">
+        <button type="button" class="pg-card pg-tile" id="pgMonth"><span class="pg-head"><span class="pg-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M-0.35 8.29C-0.35 7.49 0.25 6.88 1.04 6.88C1.83 6.88 2.43 7.49 2.43 8.29V15.7C2.43 16.5 1.83 17.11 1.04 17.11C0.25 17.11 -0.35 16.5 -0.35 15.7ZM3.48 6.89C3.48 5.59 4.36 4.72 5.68 4.72C7 4.72 7.88 5.59 7.88 6.89V17.11C7.88 18.41 7 19.28 5.68 19.28C4.36 19.28 3.48 18.41 3.48 17.11ZM9.02 10.1H15.08V13.9H9.02ZM16.22 6.89C16.22 5.59 17.1 4.72 18.42 4.72C19.74 4.72 20.62 5.59 20.62 6.89V17.11C20.62 18.41 19.74 19.28 18.42 19.28C17.1 19.28 16.22 18.41 16.22 17.11ZM21.57 8.29C21.57 7.49 22.17 6.88 22.96 6.88C23.75 6.88 24.35 7.49 24.35 8.29V15.7C24.35 16.5 23.75 17.11 22.96 17.11C22.17 17.11 21.57 16.5 21.57 15.7Z"/></svg><span>This month</span></span><span class="pg-go" aria-hidden="true">&rsaquo;</span></span><span class="pg-val"><b id="ovMonth">0</b><small id="ovMonthUnit">workouts</small></span><span class="pg-mini days" id="pgMonthChart" aria-hidden="true"></span></button>
+        <button type="button" class="pg-card pg-tile" id="pgTotal"><span class="pg-head"><span class="pg-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M-0.35 8.29C-0.35 7.49 0.25 6.88 1.04 6.88C1.83 6.88 2.43 7.49 2.43 8.29V15.7C2.43 16.5 1.83 17.11 1.04 17.11C0.25 17.11 -0.35 16.5 -0.35 15.7ZM3.48 6.89C3.48 5.59 4.36 4.72 5.68 4.72C7 4.72 7.88 5.59 7.88 6.89V17.11C7.88 18.41 7 19.28 5.68 19.28C4.36 19.28 3.48 18.41 3.48 17.11ZM9.02 10.1H15.08V13.9H9.02ZM16.22 6.89C16.22 5.59 17.1 4.72 18.42 4.72C19.74 4.72 20.62 5.59 20.62 6.89V17.11C20.62 18.41 19.74 19.28 18.42 19.28C17.1 19.28 16.22 18.41 16.22 17.11ZM21.57 8.29C21.57 7.49 22.17 6.88 22.96 6.88C23.75 6.88 24.35 7.49 24.35 8.29V15.7C24.35 16.5 23.75 17.11 22.96 17.11C22.17 17.11 21.57 16.5 21.57 15.7Z"/></svg><span>Total</span></span><span class="pg-go" aria-hidden="true">&rsaquo;</span></span><span class="pg-val"><b id="ovTotal">0</b><small id="ovTotalUnit">workouts</small></span><span class="pg-mini" id="pgTotalChart" aria-hidden="true"></span></button>
+      </div>
+      <button type="button" class="pg-card pg-week" id="pgWeek"><span class="pg-head"><span class="pg-title"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" fill-rule="evenodd"><path d="M7 1.5a1 1 0 0 1 1 1V4h8V2.5a1 1 0 1 1 2 0V4h.5A3.5 3.5 0 0 1 22 7.5v11a3.5 3.5 0 0 1-3.5 3.5h-13A3.5 3.5 0 0 1 2 18.5v-11A3.5 3.5 0 0 1 5.5 4H6V2.5a1 1 0 0 1 1-1zM4 9.5v9A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-9zm3.2 2.7h2.6v2.6H7.2zm4.4 0h2.6v2.6h-2.6zm4.4 0h2.6v2.6H16zm-8.8 4.2h2.6V19H7.2zm4.4 0h2.6V19h-2.6z"/></svg><span>This week</span></span><span class="pg-when"><span id="pgWeekDates"></span><span class="pg-go" aria-hidden="true">&rsaquo;</span></span></span><span class="pg-val"><b id="pgWeekN">0 of 0</b><small id="pgWeekUnit">workouts</small></span><span class="pg-days" id="pgDays" aria-hidden="true"></span><span class="pg-foot" id="pgAvg" hidden></span></button>
       <div class="ov-pick"><input id="ovEx" placeholder="Look up an exercise" autocomplete="off" autocapitalize="sentences" aria-label="Look up an exercise"><button class="ov-clear" id="ovClear" type="button" aria-label="Clear" hidden>&times;</button><ul class="sugg" id="ovSugg" hidden></ul></div>
       <div class="ov-best" id="ovBest" hidden><button type="button" class="ov-tile best" id="ovBestBtn"><b id="ovBestVal"></b><span>Best</span></button><span class="ov-none" id="ovNone" hidden></span></div>
     </div>
@@ -1992,7 +2091,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=309";
+  import { boot } from "./app/main.js?v=310";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

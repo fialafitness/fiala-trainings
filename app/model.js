@@ -1,5 +1,5 @@
 // The workout model: what a training, a row and the templates entry are, with no app state.
-import { uid, clamp, localIso } from "./util.js";
+import { uid, clamp, localIso, daysLater } from "./util.js";
 
 export const TEMPLATES_ID = "00000000-0000-4000-8000-0000000000f1";
 export const isTemplateClient = (id) => id === TEMPLATES_ID;
@@ -221,4 +221,41 @@ export function validateBackup(d, knownClient) {                  // the whole f
     tids.add(t.id);
   }
   return { cs, ts };
+}
+
+// ---------- the Progress tab's counts (v310; the owner's picks after the pictures, 16 Nov 2026) ----------
+// A workout counts on its effDate: a finished one on the day it was finished, any other on its planned day. Days are local YYYY-MM-DD.
+export const mondayOf = (iso) => { const [y, m, d] = String(iso).split("-").map(Number); const dt = new Date(y, m - 1, d, 12); return localIso(new Date(y, m - 1, d - ((dt.getDay() + 6) % 7), 12)); };   // weeks run Monday to Sunday, as History and the calendar
+export const finishedByDay = (list) => { const m = new Map(); for (const t of list) if (t.completedAt) { const e = effDate(t); m.set(e, (m.get(e) || 0) + 1); } return m; };
+// This week: each day's state for its disc, and finished "of" all the week's workouts (skipped and missed among them: his pick, clients see their attendance too).
+// A day still to do whose day has gone is missed, as the calendar's red chip; one filed as missed is missed; today's to do is planned.
+export function weekDays(list, todayIso) {
+  const mon = mondayOf(todayIso), days = [];
+  for (let k = 0; k < 7; k++) days.push({ iso: daysLater(mon, k), ws: [] });
+  for (const t of list) { if (isEmptyWorkout(t)) continue; const d = days.find((x) => x.iso === effDate(t)); if (d) d.ws.push(t); }
+  let done = 0, of = 0;
+  for (const d of days) {
+    const fin = d.ws.filter((t) => t.completedAt).length, todo = d.ws.filter((t) => !t.completedAt && !t.skippedAt).length, filed = d.ws.filter((t) => !t.completedAt && t.skippedAt && t.missed === true).length;
+    done += fin; of += d.ws.length;
+    d.state = !d.ws.length ? "rest" : (todo && d.iso < todayIso) || filed ? "miss" : todo ? "plan" : fin ? "done" : "skip";
+  }
+  return { mon, sun: days[6].iso, days: days.map((d) => ({ iso: d.iso, state: d.state })), done, of };
+}
+// Finished workouts a week, over the last n whole weeks before this one, counted from the week of the client's first workout (his pick, 16 Nov: "an average of previous weeks", in place of weeks in a row).
+export function weekAverage(list, todayIso, n = 4) {
+  let first = ""; for (const t of list) { if (isEmptyWorkout(t)) continue; const e = effDate(t); if (e && (!first || e < first)) first = e; }
+  if (!first) return null;
+  const mon = mondayOf(todayIso), start = mondayOf(first), byDay = finishedByDay(list), weeks = [];
+  for (let k = n; k >= 1; k--) { const a = daysLater(mon, -7 * k); if (a < start) continue; let c = 0; for (let j = 0; j < 7; j++) c += byDay.get(daysLater(a, j)) || 0; weeks.push({ mon: a, n: c }); }
+  return weeks.length ? { avg: weeks.reduce((s, w) => s + w.n, 0) / weeks.length, weeks } : null;
+}
+// The Workouts page's ranges, as Apple Health draws them: W this week's days, M this month's days, 6M the 26 weeks to this one, Y the 12 months to this one.
+// M is the calendar month, as W is the calendar week, so the This month card and the page it opens show the same number (the v310 review; Health's own M runs to today).
+export function rangeCounts(list, range, todayIso) {
+  const byDay = finishedByDay(list), out = [], sum = (a, b) => { let c = 0; for (const [d, k] of byDay) if (d >= a && d <= b) c += k; return c; };
+  if (range === "W") { const mon = mondayOf(todayIso); for (let k = 0; k < 7; k++) { const d = daysLater(mon, k); out.push({ from: d, to: d, n: byDay.get(d) || 0 }); } }
+  else if (range === "M") { const [y, m] = String(todayIso).split("-").map(Number), len = new Date(y, m, 0).getDate(); for (let k = 1; k <= len; k++) { const d = localIso(new Date(y, m - 1, k, 12)); out.push({ from: d, to: d, n: byDay.get(d) || 0 }); } }
+  else if (range === "6M") { const mon = mondayOf(todayIso); for (let k = 25; k >= 0; k--) { const a = daysLater(mon, -7 * k), b = daysLater(a, 6); out.push({ from: a, to: b, n: sum(a, b) }); } }
+  else { const [y, m] = String(todayIso).split("-").map(Number); for (let k = 11; k >= 0; k--) { const a = localIso(new Date(y, m - 1 - k, 1, 12)), [ay, am] = a.split("-").map(Number), b = localIso(new Date(ay, am, 0, 12)); out.push({ from: a, to: b, n: sum(a, b) }); } }
+  return out;
 }
