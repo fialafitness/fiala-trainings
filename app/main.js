@@ -228,7 +228,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   function showLogin(msg) {
     dropWake(); if (askOpen) askOpen(false);                        // a sheet left up (v299's Health & safety editor, any question) never stays over the sign-in
-    S.signedIn = false; S.clientMode = false; S.myClientId = null; reordering = false; tplOrdering = null; document.body.classList.remove("client");
+    S.signedIn = false; S.clientMode = false; S.myClientId = null; reordering = false; tplOrdering = null; exOrdering = null; document.body.classList.remove("client");
     $("localFoot").hidden = true; $("myExercises").hidden = true; $("packagesBtn").hidden = true; $("settingsBtn").hidden = true; $("catalogBtn").hidden = true; $("dataBtn").hidden = true; settingsOpen = false; fromSettings = false;
     hideAllViews(); $("vLogin").hidden = false;
     $("back").hidden = true; $("brand").hidden = false; $("status").textContent = ""; saveBanner(false);   // (a banner left from the account signed out: none on the sign-in page)
@@ -864,7 +864,7 @@ import { reportRange, buildReport } from "./report.js";
     if (problem) { exCurrent = { name: cur, key: nk2 }; $("status").textContent = problem; return; }   // the rename stood: the page now shows the new name, the complaint stays in the bar
     exCurrent = { name: cur, key: nk2 }; navWillChange("back"); showExercises(true); setStatus();
   }
-  $("navDone").addEventListener("click", () => { if (settingsOpen === "exercise") saveExercise(); else if (tplOrderOn()) doneTplOrder(); });   // (and Done after Reorder folders)
+  $("navDone").addEventListener("click", (e) => { if (settingsOpen === "exercise") saveExercise(); else if (tplOrderOn()) doneTplOrder(); else if (exOrderOn()) doneOrder(!!e && e.detail === 0); });   // (and Done after Reorder folders)
   $("exDelete").addEventListener("click", async () => {
     if (!exCurrent) return; const { name, key } = exCurrent;
     if (!(await askFirst({ title: "Delete \u201c" + name + "\u201d from the database?", text: (videoForName(name) ? "Its video goes with it. " : "") + "Workouts that use it keep the name.", yes: "Delete" }))) return;
@@ -1242,7 +1242,7 @@ import { reportRange, buildReport } from "./report.js";
     notesFresh = null;
     if (newsShown && !(next.name === "client" && next.id === newsShown)) { const c = clients.get(newsShown); newsShown = null; if (c) markWorkoutsSeen(c); }   // leaving the client: the New list he saw counts as looked at
     for (const f of document.querySelectorAll("#rows .player iframe, #exPlayer iframe")) f.remove();   // a video left playing does not follow to the next page
-    reordering = false; tplOrdering = null; S.view = next; lsSet("fiala.trainings.view", S.view); render(); setStatus(); window.scrollTo(0, back ? (scrollMemo.get(viewKey(next)) || 0) : 0);   // forward: the top; back: where that page was (the header shows this page's save state, not the last page's complaint)
+    reordering = false; tplOrdering = null; exOrdering = null; S.view = next; lsSet("fiala.trainings.view", S.view); render(); setStatus(); window.scrollTo(0, back ? (scrollMemo.get(viewKey(next)) || 0) : 0);   // forward: the top; back: where that page was (the header shows this page's save state, not the last page's complaint)
     if (next.name === "training") holdWake(true); else dropWake(); }
   async function runBack() {                                       // where Back goes, from every page: the Back circle, Safari's swipe and the edge swipe all come here
     if (settingsOpen === "exercise") { if (exDirty() && !(await askFirst({ title: "Discard the changes?", text: "The exercise stays as it was.", yes: "Discard" }))) return; showExercises(true); return; }
@@ -1444,7 +1444,7 @@ import { reportRange, buildReport } from "./report.js";
     return box;
   }
   const lookNow = () => (document.body.classList.contains("client") ? "client" : "coach") + "@" + (Number(window.innerWidth) || 0);
-  const SHOT_SKIP = ["typing", "kb", "rs-drag", "swipe-busy", "pv-up", "cal-drag"];   // the body's passing states (a keyboard, a finger, a sheet): never part of a page's picture
+  const SHOT_SKIP = ["typing", "kb", "rs-drag", "swipe-busy", "pv-up", "cal-drag", "ro-drag"];   // the body's passing states (a keyboard, a finger, a sheet): never part of a page's picture
   const bodyState = (also = []) => Array.from(document.body.classList || []).filter((c) => !SHOT_SKIP.includes(c) && !also.includes(c)).join(" ");
   // ---------- the browser's own pictures (a phone's browser tab, v297) ----------
   // In a phone's Safari tab (Chrome's on Android alike) the swipe back from the left edge is the browser's, and it slides in the browser's own
@@ -1472,7 +1472,8 @@ import { reportRange, buildReport } from "./report.js";
   function barFor(key) {                                            // the bar's buttons on the screen with this key (keep in step with render() and the settings pages)
     const [vk, sub] = String(key).split("|"), [name, id, prog] = vk.split("/"), home = !sub && (name === "clients" || (S.clientMode && name === "client"));
     const tplMore = !sub && name === "client" && isTemplateClient(id) && !prog && !S.clientMode && !pickFor;   // the Templates page and his folders: his "…" (keep in step with tplPageOn)
-    return { back: !home, brand: home, meDisc: !sub && name === "client" && !isTemplateClient(id), navDone: sub === "exercise", tMore: (!sub && name === "training" && moreOn(trainings.get(id))) || tplMore, tAdd: tplMore, barMsg: !sub && (name === "client" || name === "training") && !!msgTarget(name, id), id };
+    const ord = !sub && name === "training" && exOrdering === id && !S.clientMode && roOpen(trainings.get(id));   // v314: Reorder's bar, Done alone at the right
+    return { back: !home, brand: home, meDisc: !sub && name === "client" && !isTemplateClient(id), navDone: sub === "exercise" || ord, tMore: (!sub && name === "training" && moreOn(trainings.get(id)) && !ord) || tplMore, tAdd: tplMore, barMsg: !sub && (name === "client" || name === "training") && !!msgTarget(name, id) && !ord, id };
   }
   function barCopy(key) {                                           // the bar as the screen Back goes to will show it, when there is no copy of that screen
     const live = document.querySelector("header .bar"); if (!live) return null;
@@ -1689,7 +1690,7 @@ import { reportRange, buildReport } from "./report.js";
   const rsSample = (g, ts, x) => { const last = g.pts[g.pts.length - 1]; if (!last || ts - last[0] >= 8) { g.pts.push([ts, x]); while (g.pts.length > 2 && ts - g.pts[0][0] > 100) g.pts.shift(); } else last[1] = x; };
   const rsSpeed = (g, at) => { const a = g.pts[0], b = g.pts[g.pts.length - 1]; if (!a || !b || b[0] <= a[0] || (at != null && at - b[0] > 60)) return 0; return (b[1] - a[1]) / (b[0] - a[0]); };   // px per ms to the left over the last 100 ms; a finger that rested before it lifted has none
   const lpSettling = () => { const b = $("ctxLift"); return !!(b && !b.hidden && b.classList.contains("lp-back")); };   // a held item's copy settling back into its place (0.26 s): the row under it is not rebuilt meanwhile, or the copy would slide back over a row that is no longer there
-  const rowHolds = () => lpSettling() || !!(lpHoldAt && performance.now() - lpHoldAt < 10000) || !!(rsT && (rsT.held || performance.now() - rsT.at < 10000)) || !!(rs && rs.busy) || !!(wg && wg.r && !wg.done) || pvHolds() || cdHolds();   // a finger still down from a touch and hold, a finger or the mouse on a row (a press that never came up holds nothing after 10 s), a row settling, two fingers moving one, a finger on the workout preview or its spring: a sync's redraw waits (renderUnlessSwiping), never the item under them rebuilt (its release would then reach no listener, and iOS would click what lies under it)
+  const rowHolds = () => lpSettling() || !!(lpHoldAt && performance.now() - lpHoldAt < 10000) || !!(rsT && (rsT.held || performance.now() - rsT.at < 10000)) || !!(rs && rs.busy) || !!(wg && wg.r && !wg.done) || pvHolds() || cdHolds() || roHolds();   // a finger still down from a touch and hold, a finger or the mouse on a row (a press that never came up holds nothing after 10 s), a row settling, two fingers moving one, a finger on the workout preview or its spring: a sync's redraw waits (renderUnlessSwiping), never the item under them rebuilt (its release would then reach no listener, and iOS would click what lies under it)
   const rsFlush = () => { if (renderAfterSwipe && !(sw && (sw.on || sw.busy)) && !rowHolds()) { renderAfterSwipe = false; render(); } };
   const rsDrop = () => { rsT = null; rsFlush(); };                   // the finger or mouse is off the rows: what a sync brought meanwhile is drawn
   const rsFree = () => !!rs && !(rsT && rsT.held) && !(wg && wg.r === rs && !wg.done);   // the row out is in no finger's, mouse's or two fingers' hands (it may still be settling)
@@ -2981,7 +2982,7 @@ import { reportRange, buildReport } from "./report.js";
     $("back").hidden = S.view.name === "clients" || (S.clientMode && S.view.name === "client");
     $("brand").hidden = !(S.view.name === "clients" || (S.clientMode && S.view.name === "client"));
     $("meDisc").hidden = !(S.view.name === "client" && !isTemplateClient(S.view.id));   // the person disc: on a client's page, every tab, nowhere else — Settings for the client, the card for the coach
-    $("tMore").hidden = !((S.view.name === "training" && moreOn(trainings.get(S.view.id))) || (tplPageOn() && !tplOrderOn())); $("navDone").hidden = !tplOrderOn(); $("tAdd").hidden = !(tplPageOn() && !tplOrderOn()); closeMoreMenu();   // the workout's "…": the client's view (and the coach's Client view) of a workout still to do, Reschedule; the coach's own view of any workout or template, Delete (and Reschedule while it is still to do)
+    const ordOn = exOrderOn(); $("tMore").hidden = !((S.view.name === "training" && moreOn(trainings.get(S.view.id)) && !ordOn) || (tplPageOn() && !tplOrderOn())); $("navDone").hidden = !(tplOrderOn() || ordOn); document.body.classList.toggle("ro-on", ordOn); $("vTraining").classList.toggle("ro", ordOn); $("tAdd").hidden = !(tplPageOn() && !tplOrderOn()); closeMoreMenu();   // the workout's "…": the client's view (and the coach's Client view) of a workout still to do, Reschedule; the coach's own view of any workout or template, Delete (and Reschedule while it is still to do)
     $("meDisc").setAttribute("aria-label", S.clientMode ? "Settings" : "Client card");
     paintMeDisc(); paintBarMsg();
     if (S.clientMode && S.tab === "notes") setTab("workouts");   // Notes is the coach's tab
@@ -4102,7 +4103,7 @@ import { reportRange, buildReport } from "./report.js";
 
   function paintFinish(t) {
     $("finishWrap").hidden = t.rows.length === 0 && !t.skippedAt && !t.completedAt && !canSwipeRow(t);   // nothing added yet: nothing to finish, yet a workout its row can skip offers Skip workout here too, and a skipped or finished one shows its line with Undo
-    if (S.view.name === "training" && S.view.id === t.id) { $("tMore").hidden = !moreOn(t); closeMoreMenu(); }   // Undo on a finish (which redraws only this) brings the client's "…" back (the coach's stays: Delete)
+    if (S.view.name === "training" && S.view.id === t.id) { $("tMore").hidden = !moreOn(t) || exOrderOn(); closeMoreMenu(); }   // Undo on a finish (which redraws only this) brings the client's "…" back (the coach's stays: Delete)
     const done = !!t.completedAt, skipped = !done && !!t.skippedAt;
     $("finishBtn").hidden = done || skipped || t.rows.length === 0; $("finishedLine").hidden = !done;
     const left = t.rows.some((r) => !r.done);   // an exercise still open, in either view (his ask, 12 Nov: "now in both views coach and client"): finishing is finishing early, a quiet pill like Skip workout, not the purple act, and it asks first (finishTap)
@@ -4164,7 +4165,8 @@ import { reportRange, buildReport } from "./report.js";
     if (document.activeElement !== $("tTitle")) { $("tTitle").value = t.title || ""; requestAnimationFrame(() => { const el = $("tTitle"); el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); }
     const asClient = S.clientMode || previewClient; paintSessionPill(t, asClient);
     $("tDate").textContent = (asClient ? fmtDayLong : fmtDay)(t.date || today());
-    $("tTitle").readOnly = asClient; $("tDate").disabled = asClient;
+    if (exOrdering === t.id && !roOpen(t)) exOrdering = null;          // finished or skipped (a sync's, or his): Reorder is over, and an Undo does not bring it back by itself (the v314 review)
+    const ord = exOrderOn(); $("tTitle").readOnly = asClient || ord; $("tDate").disabled = asClient; $("roHint").hidden = !ord; $("vTraining").classList.toggle("ro", ord);   // v314 Reorder: the title stays as it is, the hint under it
     const isTpl = isTemplateClient(t.clientId);
     if (isTpl) draftFor(t);
     const src = !asClient && !isTpl && t.fromTemplate ? trainings.get(t.fromTemplate) : null;
@@ -4183,13 +4185,15 @@ import { reportRange, buildReport } from "./report.js";
     const rowsEl = $("rows");
     const active = document.activeElement;
     if (S.renderedTraining === t.id && (S.asking || (rowsEl.contains(active) && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.tagName === "IFRAME")))) return; // never rebuild under a typing finger, a playing video, nor under a confirm sheet
-    const sigOf = () => paintSigOf(t);
+    const sigOf = () => paintSigOf(t) + (ord ? "\u0001ro" : "");   // Reorder on or off is a picture of its own
     if (S.renderedTraining === t.id && paintedObj === t && sigOf() === paintedSig) return;   // a sync that changed nothing here: the cards stay as they are, open video, menus and half-typed notes included
     S.renderedTraining = t.id;
     const sc = document.scrollingElement || document.documentElement, keepScroll = sc.scrollTop;   // the cards are rebuilt in place (every sync does it): the page must not move while it is empty
     if (!S.clientMode && normalizeLabels(t)) tidySave(t);
     t.rows.sort((a, b) => cmpLabel(a.label, b.label));
     if (popClose && popAnchor && rowsEl.contains(popAnchor)) popClose();   // a menu hung from the cards goes with them: its rows were built from the copy the redraw replaces (the v291 recheck)
+    if (ord) { roDraw(t, groupsOf(t.rows)); const back = Math.min(keepScroll, Math.max(0, sc.scrollHeight - sc.clientHeight)); if (Math.abs(sc.scrollTop - back) > 1) sc.scrollTop = back; paintedSig = sigOf(); paintedObj = t; return; }   // v314 Reorder: the folded cards, held to move, swiped to delete
+    if (rs && rs.li && rowsEl.contains(rs.li)) rsForget();           // a Reorder row left swiped open as its cards go
     rowsEl.replaceChildren();
     const groups = groupsOf(t.rows);
     let numbered = 0;
@@ -4339,7 +4343,7 @@ import { reportRange, buildReport } from "./report.js";
           for (const r of g.rows) { r.done = clamp(parseInt(r.setsDone, 10) || 0, 0, 20) >= setsOf(r); markEarly(t, r, ""); const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
           openBlocks.delete(selKey); fullBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); scrollToCard(g.key);
         });
-        const first = g.rows[0], noteKey = selKey;
+        const first = g.rows.find((r) => r.clientNote) || g.rows[0], noteKey = selKey;   // the card's note: on whichever of its exercises holds one (v314: a Reorder inside the superset moves the exercises, never the note: its id, its seen state and the exercise it names stay), else written on the first
         const addNote = document.createElement("button"); addNote.type = "button"; addNote.className = "add-note";
         const noteIcon = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-6"/><path d="M18.4 2.6a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>';   // Apple's square-and-pencil, the Notes glyph
         early.insertAdjacentHTML("afterbegin", skipping ? '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 3.5l6.5 4.5-6.5 4.5z"/><path d="M12.5 3.5v9"/></svg>' : '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 14V2.5"/><path d="M3.5 3h8l-2 2.5 2 2.5h-8"/></svg>');   // skip: Apple's forward-to-end glyph; finish early: the flag
@@ -4548,6 +4552,282 @@ import { reportRange, buildReport } from "./report.js";
     for (const x of rec.rows || []) { const a = keyOf(cur.rows, x.id), b = keyOf(rec.rows, x.id); if (a != null && b != null && a !== b && !map.has(a)) map.set(a, b); }
     if (map.size) remapCardKeys(id, map);
   }
+
+  // ---------- Reorder: a workout's exercises put in order (v314) ----------
+  // His ask, 17 Nov 2026: "in 3 dot button bellow reschedule we will have reorder ... folded cards for all exercises like in the pictures
+  // attached except not green .. gray or purple ... touch and hold to move exercises in the card/ superset but I also want to be able to move
+  // the whole superset tri set etc by touch and hold ... also swiping on exercise delete option"; "I also meant the 3 dots button in the top
+  // right corner". His picks after the pictures: grey cards, the one held in purple (as the day picker's moving workout); an exercise moves
+  // only inside its own card, a whole card among the cards; workouts and templates. Apple's own: Fitness's custom workout, "Tap Reorder,
+  // touch and hold an interval, then reposition it. When you're finished, tap Done"; World Clock and every list: swipe left to a red trash.
+  // The order is the numbers (renderTraining sorts by them), so a move writes them: 1, 2, 3 for the cards, a, b, c inside a card, as
+  // "Start this exercise" does; the per-card state follows each card (remapCardKeys). A warm-up stays first and a card numbered in words
+  // (or not at all) stays last, as their numbers sort: they move nothing, their exercises still move inside them.
+  let exOrdering = null;                                              // the workout (or template) whose exercises are being put in order: Reorder is on while its page is up in the coach's own look
+  const roNum = (k) => /^\d+$/.test(String(k));                       // a numbered card: it moves among the numbered ones
+  const roGroups = (t) => groupsOf([...((t && t.rows) || [])].sort((a, b) => cmpLabel(a.label, b.label)));
+  const roStarted = (r) => !!r.done || loggedSets(r) > 0;             // done, or a set logged on it (his rule, 17 Nov 2026: "If I am reordering in the middle of the workout only let me reorder exercises that have not been done or started")
+  const roFree = (g) => !g.rows.some(roStarted);                       // a card none of whose exercises has begun: it moves, and its exercises move inside it; a card begun stays where it is, with its number (a superset begun keeps its rounds' order)
+  function canOrder(t) { const gs = roGroups(t).filter(roFree); return gs.filter((g) => roNum(g.key)).length > 1 || gs.some((g) => g.rows.length > 1); }   // something left to put in order: two numbered cards not begun, or one not begun with two exercises
+  function roOpen(t) { return !!t && (isTemplateClient(t.clientId) || canSwipeRow(t)); }   // a template, or a workout still to do: one finished or skipped has nothing left to put in order (as Reschedule)
+  function exOrderOn() { const t = exOrdering && trainings.get(exOrdering); return !!t && S.view.name === "training" && S.view.id === exOrdering && !settingsOpen && !S.clientMode && roOpen(t); }   // the coach, in his own look or his Client view (his ask); a settings page over it, another page, a finish or a skip: off; back on its page, on again
+  const RO_GRIP = '<svg class="ro-g" viewBox="0 0 18 13" aria-hidden="true" fill="currentColor"><rect width="18" height="2.2" rx="1.1"/><rect y="5.4" width="18" height="2.2" rx="1.1"/><rect y="10.8" width="18" height="2.2" rx="1.1"/></svg>';   // Apple's reorder lines (line.3.horizontal), filled bars
+  const RO_UP = '<svg class="mi" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 3.4 18.3 9.7A1.15 1.15 0 0 1 16.67 11.33L13.15 7.81V19.45A1.15 1.15 0 0 1 10.85 19.45V7.81L7.33 11.33A1.15 1.15 0 0 1 5.7 9.7Z"/></svg>';   // arrow.up, filled: Move up (the keyboard's and VoiceOver's way to move)
+  const RO_DOWN = RO_UP.replace("<path ", '<path transform="rotate(180 12 12)" ');
+  function roAnchor() {                                               // the card at the top of the screen, and how far under the bar it starts: it stays there as the page changes look
+    const bar = document.querySelector("header"), top = bar ? bar.getBoundingClientRect().bottom : 0;
+    for (const b of $("rows").children) { const r = b.getBoundingClientRect(); if (r.bottom > top + 8) { const x = b.querySelector(".row, li.ro-ex"); return x && x.dataset.id ? { id: x.dataset.id, off: Math.max(0, r.top - top), top } : null; } }
+    return null;
+  }
+  function roRestore(a) {
+    if (!a) return; const x = $("rows").querySelector('.row[data-id="' + a.id + '"], li.ro-ex[data-id="' + a.id + '"]'), b = x && x.closest(".block"); if (!b) return;
+    const y = (Number(window.scrollY) || 0) + b.getBoundingClientRect().top - a.top - a.off; window.scrollTo(0, Math.max(0, y));
+  }
+  function startOrder(id, keys) {                                           // Reorder, from the workout's "…": every card folds, the card at the top of the screen stays there
+    const t = trainings.get(id); if (!t || !(S.view.name === "training" && S.view.id === id) || S.clientMode || !roOpen(t)) return;   // (finished or skipped meanwhile: nothing left to put in order)
+    const a = document.activeElement; if (a && a !== document.body && /^(INPUT|TEXTAREA)$/.test(a.tagName) && a.blur) { a.blur(); document.body.classList.remove("typing"); }   // the title or a number still typed in lets go first
+    const keep = roAnchor(); exOrdering = id; S.renderedTraining = null; render(); roRestore(keep);
+    if (keys) { const d = $("navDone"); if (d && !d.hidden && d.focus) d.focus({ preventScroll: true }); }   // picked from the keyboard or by VoiceOver: the place goes to Done, as the menu it came from has gone (the v314 review)
+  }
+  function doneOrder(keys) { roOff(); if (rs && rs.li && $("rows").contains(rs.li)) rsForget(); const keep = roAnchor(); exOrdering = null; S.renderedTraining = null; render(); roRestore(keep); if (keys) { const m = $("tMore"); if (m && !m.hidden && m.focus) m.focus({ preventScroll: true }); } }   // Done: the page as it was, in the new order, the card at the top of the screen still there
+  const roStatus = (g) => (g.rows.every((r) => r.done) ? groupSummary(g).lines[0] : "In progress");   // a card begun says where it stands: the finished card's own line ("Finished · 4 of 4 sets", "Finished early · 2 of 4 sets", "Skipped"), else In progress
+  const roSpan = (cls, text) => { const e = document.createElement("span"); e.className = cls; e.textContent = text; return e; };
+  function roDraw(t, groups) {                                        // Reorder's cards: each folded as a finished card is (his pictures), its exercises' numbers and names, a line saying what it is, a grip on whatever moves
+    const rowsEl = $("rows"), mine = !!(rs && rs.li && rowsEl.contains(rs.li)), keep = mine && rs.open && !rs.busy && !(rsT && rsT.held) ? rs.li.dataset.id : "";
+    if (mine) rsForget();                                             // a row swiped open stays open across a sync's redraw, as the Templates pages' rows
+    rowsEl.replaceChildren();
+    const movers = groups.filter((g) => roNum(g.key) && roFree(g)).length;   // a card's grip only where there is another place for it to take
+    for (const g of groups) {
+      const multi = g.rows.length > 1, free = roFree(g), moves = roNum(g.key) && free && movers > 1, ul = document.createElement("ul"); ul.className = "list ro-card";
+      const block = document.createElement("div"); block.className = "block ro-block" + (free ? "" : " ro-fixed"); block.dataset.key = String(g.key); block.dataset.free = free ? "1" : "";   // begun (his rule): it stays, no grip, its names grey as a finished card's
+      const gc = groupCaption(g), most = Math.max(...g.rows.map(setsOf)), setsText = (n) => n + (n === 1 ? " set" : " sets");
+      const sumEl = (text, nm) => {
+        const d = document.createElement("div"); d.className = "ro-sum"; d.appendChild(roSpan("", text));
+        if (moves) { const b = document.createElement("button"); b.type = "button"; b.className = "ro-move"; b.setAttribute("aria-label", "Move " + nm); b.setAttribute("aria-haspopup", "menu"); b.innerHTML = RO_GRIP; b.addEventListener("click", (e) => { if (e.detail === 0) roKeys(b, "card", g.rows[0].id); }); d.appendChild(b); }   // the card's own grip: a press and hold moves the card; from the keyboard or VoiceOver, Move up and Move down
+        return d;
+      };
+      for (const r of g.rows) {
+        const nm = String(r.name || "").trim() || "Exercise", li = document.createElement("li"); li.className = "ro-ex" + (multi ? "" : " ro-one"); li.dataset.id = r.id;
+        const body = document.createElement("div"), line = document.createElement("div"); body.className = "ro-body"; line.className = "ro-line";
+        line.append(roSpan("ro-lab", String(r.label || "").trim()), roSpan("ro-name", nm));
+        if (multi && free) { const b = document.createElement("button"); b.type = "button"; b.className = "ro-grip"; b.setAttribute("aria-label", "Move " + nm); b.setAttribute("aria-haspopup", "menu"); b.innerHTML = RO_GRIP; b.addEventListener("click", (e) => { if (e.detail === 0) roKeys(b, "row", r.id); }); line.appendChild(b); }   // an exercise's grip inside its card
+        body.appendChild(line);
+        if (!multi) body.appendChild(sumEl(free ? setsText(setsOf(r)) + " · " + pvReps(r.reps) : roStatus(g), nm));   // a card of one: "4 sets · 6 reps", its grip sliding with it under a swipe
+        li.appendChild(body); roSwipe(li, t.id, r.id); ul.appendChild(li);
+      }
+      if (multi) { const f = document.createElement("li"); f.className = "ro-foot"; f.appendChild(sumEl(!free ? roStatus(g) : (g.key === "w" ? "Warmup" : gc.kind) + " · " + setsText(most), (g.key === "w" ? "warmup" : gc.kind.toLowerCase()) + (roNum(g.key) ? " " + g.key : ""))); ul.appendChild(f); }   // "Superset · 4 sets": the card's line, and the whole card's grip
+      block.appendChild(ul); rowsEl.appendChild(block);
+    }
+    if (keep) { const li = rowsEl.querySelector('li.ro-ex[data-id="' + keep + '"]'), r = li && rsBegin(li, true); if (r) { rsPaint(r, r.w, null); r.open = true; } }
+  }
+  function roSwipe(li, tid, rid) {                                    // swipe left: a red Delete (his ask), which asks first as every Delete does; the full swipe runs it too. No touch-and-hold menu: the hold is the move
+    li.classList.add("swipe-row");
+    const layer = document.createElement("div"); layer.className = "swipe-acts"; layer.setAttribute("aria-hidden", "true");
+    const b = document.createElement("button"); b.type = "button"; b.className = "swipe-act sa-del"; b.tabIndex = -1; b.innerHTML = '<span class="sa-cap">' + SA_TRASH + '</span>'; b.setAttribute("aria-label", "Delete");   // the trash alone (his ask, 17 Nov 2026: "only delete icon to ensure it fits": a 58-point row)
+    b.addEventListener("click", (e) => { e.stopPropagation(); if (rs && rs.li === li) rsFire(rs); else roDelete(tid, rid); });
+    li._full = () => roDelete(tid, rid); li.appendChild(layer); layer.appendChild(b);
+  }
+  async function roDelete(tid, rid) {                                 // asked first (his rule), the workout read again after the question (a sync may have taken the exercise, or the workout)
+    const t = trainings.get(tid), r = t && (t.rows || []).find((x) => x.id === rid); if (!r || exOrdering !== tid) return false;
+    const fa = document.activeElement, grip = !!(fa && fa.closest && fa.closest(".ro-grip, .ro-move"));   // a keyboard's or VoiceOver's place on a grip (the menu's close put it back there): it comes back after the question (the v314 final check)
+    const sorted = [...(t.rows || [])].sort((a, b) => cmpLabel(a.label, b.label)), at = sorted.findIndex((x) => x.id === rid), near = (sorted[at + 1] || sorted[at - 1] || {}).id;
+    const gripOf = (id) => { const li = id && $("rows").querySelector('li.ro-ex[data-id="' + id + '"]'), blk = li && li.closest(".ro-block"); return li ? li.querySelector(".ro-grip") || (blk && blk.querySelector(".ro-move")) : null; };
+    const back = (id) => { const a = document.activeElement; if (!grip || !(!a || a === document.body || $("askSheet").contains(a))) return; const near2 = [id, ...sorted.slice(at + 1).map((x) => x.id), ...sorted.slice(0, at).reverse().map((x) => x.id)], b = near2.map(gripOf).find(Boolean) || [$("navDone"), $("tMore")].find((x) => x && !x.hidden); if (b && b.focus) b.focus({ preventScroll: !b.closest || !b.closest("#rows") }); };   // only a place the closed question left lost: on that exercise's grip, else the nearest with one, else Done (nothing left to move: the final check), else the "…"
+    const nm = String(r.name || "").trim() || "this exercise", tpl = isTemplateClient(t.clientId);
+    const yes = await askFirst({ title: tpl ? "Delete " + nm + " from this template?" : "Delete " + nm + "?", text: tpl ? "Nothing changes until you tap Save template." : "It comes off this workout, with anything logged on it.", yes: "Delete" });
+    const T = trainings.get(tid), x = T && (T.rows || []).find((y) => y.id === rid);
+    if (!yes || !x || !exOrderOn() || exOrdering !== tid) { if (S.view.name === "training" && S.view.id === tid) { S.renderedTraining = null; render(); } back(rid); return false; }   // nothing deleted: the page drawn as it is now (a sync that ended Reorder under the question drew around it: the final check), the place back on its grip
+    T.rows = T.rows.filter((y) => y.id !== rid); renumber(T, x); if (!tpl) touchState(T.id, "order");   // the numbers after it close up (renumber); the whole numbering is his on a save's merge, as a move's
+    scheduleSave("trainings", T.id); S.renderedTraining = null; render(); back(near); return true;   // the place on the next exercise's grip (or the one before)
+  }
+  function roWrite(t, groups, draw = true) {                                       // the cards in their new order: each numbered place keeps its own number (the cards trade them), letters by place inside each card; a warm-up's letters by place; words as they were
+    const map = new Map(), slots = groups.filter((g) => roNum(g.key)).map((g) => Number(g.key)).sort((a, b) => a - b); let n = 0, changed = false;   // each place keeps its own number (the v314 final check: 1, 2, 4 renumbered a begun 4 to 3): the cards trade places and numbers, nothing else is renumbered
+    for (const g of groups) {
+      const num = roNum(g.key), base = num ? String(slots[n++]) : g.key === "w" ? "W" : null;
+      if (num && base !== String(g.key)) map.set(String(g.key), base);
+      if (base) g.rows.forEach((r, j) => { const want = base + (g.rows.length > 1 ? String.fromCharCode(97 + Math.min(j, 25)) : ""); if (r.label !== want) { r.label = want; changed = true; } });
+    }
+    const flat = groups.flatMap((g) => g.rows);
+    if (!changed && flat.every((r, i) => t.rows[i] === r)) return false;
+    lastEditedId = null; t.rows = flat; t.rows.sort((a, b) => cmpLabel(a.label, b.label)); remapCardKeys(t.id, map);
+    if (!isTemplateClient(t.clientId)) touchState(t.id, "order");     // his whole order stands on a save's merge: a client's "Start this exercise" crossing it never leaves two cards on one number (sync.js)
+    scheduleSave("trainings", t.id); if (draw) { S.renderedTraining = null; render(); } return true;
+  }
+  function roCards(t, rid, to, draw = true) {                                      // the card holding this exercise goes to place `to` among the numbered cards not begun; those fill the places they held, and a card begun keeps its place and its number (his rule), as Start this exercise keeps the finished ones
+    const groups = roGroups(t), nums = groups.filter((g) => roNum(g.key)), slots = nums.map((g, i) => i).filter((i) => roFree(nums[i])), free = slots.map((i) => nums[i]);
+    const gi = free.findIndex((g) => g.rows.some((r) => r.id === rid)); if (gi < 0) return false;
+    const [card] = free.splice(gi, 1); free.splice(Math.max(0, Math.min(to, free.length)), 0, card); slots.forEach((i, j) => { nums[i] = free[j]; });
+    return roWrite(t, [...groups.filter((g) => g.key === "w"), ...nums, ...groups.filter((g) => g.key !== "w" && !roNum(g.key))], draw);
+  }
+  function roRows(t, rid, to, draw = true) {                                       // this exercise goes to place `to` inside its own card
+    const groups = roGroups(t), g = groups.find((x) => x.rows.some((r) => r.id === rid)); if (!g || g.rows.length < 2 || !roFree(g)) return false;   // (a superset begun keeps its rounds' order)
+    const was = g.rows.slice(), i = g.rows.findIndex((r) => r.id === rid), [row] = g.rows.splice(i, 1); g.rows.splice(Math.max(0, Math.min(to, g.rows.length)), 0, row);
+    if (g.rows.every((r, j) => r === was[j])) return false;
+    const rests = was.map((r) => r.rest); g.rows.forEach((r, j) => { if (rests[j] === undefined) delete r.rest; else r.rest = rests[j]; });   // the rests stay with their places: between the exercises a transition, after the last the round's rest (the v314 review: moved with their exercises, a 10-second transition became the round's rest)
+    return roWrite(t, groups, draw);                                   // (the card's note stays on the exercise it was written on: the card shows whichever of its exercises holds one, renderTraining's `first`)
+  }
+  function roPlace(t, kind, rid) {                                    // where it is now: its place and how many there are to move among
+    const groups = roGroups(t);
+    if (kind === "card") { const free = groups.filter((g) => roNum(g.key) && roFree(g)), i = free.findIndex((g) => g.rows.some((r) => r.id === rid)); return i < 0 ? null : { i, n: free.length }; }
+    const g = groups.find((x) => x.rows.some((r) => r.id === rid)); return g && roFree(g) ? { i: g.rows.findIndex((r) => r.id === rid), n: g.rows.length } : null;
+  }
+  function roKeyItems(kind, rid) {                                    // a grip pressed from the keyboard or by VoiceOver: Move up, Move down (a drag is a pointer's), as the HIG asks for another way than drag and drop; each asks where it is again at the pick
+    const t = trainings.get(exOrdering), p = t && exOrderOn() && roPlace(t, kind, rid); if (!p) return [];
+    const go = (d) => { const T = trainings.get(exOrdering), q = T && exOrderOn() && roPlace(T, kind, rid); if (!q) return; if (kind === "card" ? roCards(T, rid, q.i + d) : roRows(T, rid, q.i + d)) roFocus(kind, rid); };
+    const items = [];
+    if (p.i > 0) items.push({ label: "Move up", icon: RO_UP, onPick: () => go(-1) });
+    if (p.i < p.n - 1) items.push({ label: "Move down", icon: RO_DOWN, onPick: () => go(1) });
+    const g = roGroups(t).find((x) => x.rows.some((r) => r.id === rid));
+    if (g && (kind === "row" || g.rows.length === 1)) items.push({ label: "Delete", icon: MI.trash, danger: true, sep: items.length > 0, onPick: () => roDelete(t.id, rid) });   // the swipe's Delete, which a swipe row's hidden layer keeps from VoiceOver (the v314 review): last and red after a line, asking first (a superset's own grip has none: nothing deletes a whole card)
+    return items;
+  }
+  function roKeys(btn, kind, rid) { const items = roKeyItems(kind, rid); if (items.length) showMenu(btn, items, { align: "right", focus: true }); }
+  function roFocus(kind, rid) {                                       // the keyboard's place goes with what moved, its grip drawn anew
+    const li = $("rows").querySelector('li.ro-ex[data-id="' + rid + '"]'), blk = li && li.closest(".ro-block"), b = kind === "card" ? blk && blk.querySelector(".ro-move") : li && li.querySelector(".ro-grip");
+    if (b && b.focus) b.focus({ preventScroll: false });
+  }
+  // The hold and the drag: as the calendar's (cd): 0.4 s still, then it lifts (a finger's touchmove claimed only from then on, so a scroll
+  // or a swipe before it is theirs); the others glide out of its way; let go, it glides into its place and the numbers follow. A Mac:
+  // click and hold. Escape, a second finger or the system's own gesture put it back. Near the screen's top or foot the page scrolls.
+  const RO_MS = 400, RO_SLOP = 8, RO_MSLOP = 4, RO_EDGE = 64, RO_LIFT = 1.03;   // the hold (as every touch and hold here), the drift that lets it go (a finger, a mouse), the band that scrolls the page, the lift (Fitness's held card: 1.03 to 1.05, measured)
+  let ro = null, roEatUntil = 0, roSpent = null;
+  function roHolds() { return !!ro; }                                 // a finger or the mouse on a card or an exercise, held, lifted or landing: a sync's redraw waits (rowHolds), never the cards under it rebuilt
+  function roItem(target) {                                           // what a press would lift: an exercise inside its card, or a whole card (one of one exercise, or a card's own line); never a swiped row's Delete
+    if (!target || !target.closest || !exOrderOn() || target.closest(".swipe-acts")) return null;
+    const block = target.closest(".ro-block"); if (!block || !$("rows").contains(block)) return null;
+    const li = target.closest("li.ro-ex"), foot = target.closest("li.ro-foot");
+    const free = block.dataset.free === "1";                         // a card begun lifts nothing (his rule); its rows still swipe
+    if (li && !li.classList.contains("ro-one")) return free ? { kind: "row", el: li, rid: li.dataset.id } : null;
+    if ((li || foot) && free && roNum(block.dataset.key)) { const x = block.querySelector("li.ro-ex"); return x ? { kind: "card", el: block, rid: x.dataset.id } : null; }
+    return null;
+  }
+  function roStart(it, x, y, id, mouse) { ro = { ...it, tid: exOrdering, x0: x, y0: y, x, y, id, mouse, lifted: false, landing: false, timer: setTimeout(roLift, RO_MS), ac: null, seq: null, mov: null, i: -1, to: -1, gap: 0, land: 0, sy0: 0, raf: 0, lost: null }; }
+  function roQuiet(g) { clearTimeout(g.timer); g.timer = null; clearTimeout(g.lost); g.lost = null; if (g.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(g.raf); g.raf = 0; if (g.ac) { g.ac.abort(); g.ac = null; } }
+  function roOff() { const g = ro; if (!g || g.landing) return; roQuiet(g); if (g.lifted) roLand(g, false); else { ro = null; setTimeout(rsFlush, 0); } }   // let go before the lift: a tap, a scroll, a swipe; after it: back into its place
+  function roLift() {                                                 // 0.4 s: it lifts (a little larger, a shadow, the purple outline) and the others are measured for the glide
+    const g = ro; if (!g) return; g.timer = null;
+    if (g.el.isConnected === false) {                                 // the last drop's landing drew the cards anew under this hold: the same exercise (or its card) is the one held, if it can still move
+      const li = $("rows").querySelector('li.ro-ex[data-id="' + g.rid + '"]'), blk = li && li.closest(".ro-block"), free = !!blk && blk.dataset.free === "1";
+      g.el = g.kind === "row" ? (free && !li.classList.contains("ro-one") ? li : null) : (free && roNum(blk.dataset.key) ? blk : null);
+      if (!g.el) { ro = null; setTimeout(rsFlush, 0); return; }
+    }
+    if (g.el.isConnected === false || !exOrderOn() || exOrdering !== g.tid || held() || (rs && (rs.open || rs.busy)) || (rsT && rsT.held) || swipeHolds()) { ro = null; setTimeout(rsFlush, 0); return; }
+    rsT = null; dropSw();                                             // from here the finger is the drag's: not the row's swipe, not the swipe back
+    const els = g.kind === "row" ? [...g.el.parentElement.children].filter((c) => c.classList.contains("ro-ex")) : [...$("rows").children].filter((c) => c.classList.contains("ro-block"));
+    const sy = Number(window.scrollY) || 0;
+    g.seq = els.map((el) => { const r = el.getBoundingClientRect(); return { el, top: r.top + sy, h: r.height }; });   // every card on the page (or every exercise of its card), as they stand
+    g.mov = els.map((el, k) => k).filter((k) => g.kind === "row" || (roNum(els[k].dataset.key) && els[k].dataset.free === "1"));   // what can take another's place: the card's exercises, or the numbered cards not begun
+    g.i = g.mov.indexOf(els.indexOf(g.el)); if (g.i < 0 || g.mov.length < 2) { ro = null; setTimeout(rsFlush, 0); return; }
+    g.to = g.i; g.land = 0; g.sy0 = sy; g.gap = g.seq.length > 1 ? Math.max(0, g.seq[1].top - g.seq[0].top - g.seq[0].h) : 0;
+    g.lifted = true;
+    if (g.kind === "row") g.el.parentElement.classList.add("ro-open");
+    for (const it of g.seq) if (it.el !== g.el) it.el.classList.add("ro-slide");
+    g.el.classList.add("ro-lifted"); document.body.classList.add("ro-drag");
+    g.el.style.transition = calmMotion() ? "none" : "transform 150ms cubic-bezier(0.25, 0.1, 0.25, 1)"; g.el.style.transform = "scale(" + RO_LIFT + ")";
+    try { const sel = window.getSelection && window.getSelection(); if (sel && sel.removeAllRanges) sel.removeAllRanges(); } catch (_) {}   // (a Mac's press may have begun a selection)
+  }
+  function roPaint() {                                                // the held one under the finger, between the first and the last place it can take; the others where they would stand with it there (a card begun keeps its place: only the heights before it can move it)
+    const g = ro; if (!g || !g.lifted || g.landing) return;
+    const all = g.seq, mov = g.mov, me = all[mov[g.i]], first = all[mov[0]], last = all[mov[mov.length - 1]], sy = Number(window.scrollY) || 0;
+    const lo = first.top - me.top, hi = last.top + last.h - (me.top + me.h), dy = Math.max(lo, Math.min(hi, g.y - g.y0 + sy - g.sy0)), c = me.top + me.h / 2 + dy;
+    let to = 0; mov.forEach((k, j) => { if (j !== g.i && all[k].top + all[k].h / 2 < c) to++; });   // its place: after every other one whose middle it has passed
+    if (dy <= lo) to = 0; else if (dy >= hi) to = mov.length - 1;    // held against either end: past all on that side (a tall superset's middle never passes a short last card's)
+    g.to = to;
+    const order = mov.filter((k, j) => j !== g.i); order.splice(to, 0, mov[g.i]);
+    const stand = all.map((o, k) => k); mov.forEach((k, j) => { stand[k] = order[j]; });   // what stands in each place: the ones that move in their new order, the others where they were
+    const tops = new Map(); let y = all[0].top; for (const k of stand) { tops.set(k, y); y += all[k].h + g.gap; }
+    all.forEach((o, k) => { if (k === mov[g.i]) return; const d = Math.round(tops.get(k) - o.top); o.el.style.transform = d ? "translate3d(0," + d + "px,0)" : ""; });
+    g.land = Math.round(tops.get(mov[g.i]) - me.top);
+    me.el.style.transition = "none"; me.el.style.transform = "translate3d(0," + dy + "px,0) scale(" + RO_LIFT + ")";
+  }
+  function roAuto() {                                                 // near the screen's top (under the bar) or foot, the page scrolls on under a held finger, faster the nearer the edge
+    const g = ro; if (!g || !g.lifted || g.landing) { if (g) g.raf = 0; return; }
+    const vv = window.visualViewport, h = (vv && vv.height) || window.innerHeight || 0, bar = document.querySelector("header"), top = bar ? bar.getBoundingClientRect().bottom : 0;
+    const db = $("draftBar"), foot = db && !db.hidden ? Math.min(h, db.getBoundingClientRect().top || h) : h;   // a template's Unsaved changes bar is the foot while it shows (the v314 review: the band lay under it)
+    const v = g.y > foot - RO_EDGE ? Math.min(1, (g.y - (foot - RO_EDGE)) / RO_EDGE) : g.y < top + RO_EDGE ? -Math.min(1, (top + RO_EDGE - g.y) / RO_EDGE) : 0;
+    if (!v) { g.raf = 0; return; }
+    const before = Number(window.scrollY) || 0; window.scrollBy(0, Math.round(v * 14)); if ((Number(window.scrollY) || 0) === before) { g.raf = 0; return; }   // (the page's end: nothing more to scroll)
+    roPaint(); g.raf = requestAnimationFrame(roAuto);
+  }
+  function roMove(x, y) { const g = ro; if (!g) return; g.x = x; g.y = y; roPaint(); if (!g.raf && typeof requestAnimationFrame === "function") g.raf = requestAnimationFrame(roAuto); }
+  function roLand(g, moved) {                                         // it glides into its new place (or back into its own), then the numbers are written and the cards drawn anew
+    roQuiet(g); g.landing = true;
+    const T = moved ? trainings.get(g.tid) : null, wrote = !!T && exOrderOn() && exOrdering === g.tid && (g.kind === "card" ? roCards(T, g.rid, g.to, false) : roRows(T, g.rid, g.to, false));   // written as it is let go (the v314 review: a Done or a Back during the glide lost it), into the workout as it is now (a sync may have replaced it meanwhile), by the exercise's id; drawn once it has landed
+    if (wrote) haptic();                                              // Android's buzz as it lands, as the calendar's drag (an iPhone gives a web page none in a drag: his word, 12 Nov)
+    const it = g.seq, off = wrote ? g.land : 0;                       // (g.land: where the last paint laid its place out; not written: back into its own)
+    const ms = calmMotion() ? 0 : 200;
+    g.el.style.transition = ms ? "transform " + ms + "ms cubic-bezier(0.25, 0.1, 0.25, 1)" : "none"; g.el.style.transform = off ? "translate3d(0," + off + "px,0)" : "";
+    if (!wrote) for (const o of it) if (o.el !== g.el) o.el.style.transform = "";
+    document.body.classList.remove("ro-drag");
+    setTimeout(() => {
+      if (ro === g) ro = null;
+      const later = wrote && ((sw && (sw.on || sw.busy)) || (rsT && rsT.held) || (rs && rs.busy) || (wg && wg.r && !wg.done));   // a row swiped meanwhile (or the swipe back, two fingers on the trackpad) is never drawn out from under its finger: rsFlush draws the cards after (the v314 review)
+      g.el.classList.remove("ro-lifted"); if (g.kind === "row" && g.el.parentElement) g.el.parentElement.classList.remove("ro-open");
+      for (const o of it) { o.el.classList.remove("ro-slide"); o.el.style.transition = ""; if (!later) o.el.style.transform = ""; }   // put off, the cards rest where the glide left them (the held one in its new place, no lift) until drawn anew: never back in their old places meanwhile (the final check)
+      if (later) g.el.style.transform = g.land ? "translate3d(0," + g.land + "px,0)" : "";
+      if (wrote) { S.renderedTraining = null; if (later) renderAfterSwipe = true; else render(); }   // the cards in their new order (a Done or a Back meanwhile has drawn its own page: drawn again, as it is); a new hold begun in the glide is drawn under at once, and finds its exercise again at its lift (roLift)
+      if (wrote && !later && rsT && !rsT.held && rsT.li && rsT.li.isConnected === false) rsT = null;   // a finger resting on a row the redraw replaced: its touch now reaches only that old row, so the row engine lets it go rather than hold every sync's redraw for 10 s (the final check)
+      setTimeout(rsFlush, 0);                                         // a sync's redraw that waited
+    }, ms + 10);
+  }
+  function roDrop() { const g = ro; if (!g || g.landing) return; if (!g.lifted) { roOff(); return; } roLand(g, g.to !== g.i); }
+  function roBack(down) { const g = ro; if (!g || g.landing) return; if (down) roSpent = { mouse: g.mouse, id: g.id }; if (g.lifted) roLand(g, false); else roOff(); }   // a cancelled drag: back into its place; down: the finger or button still on it, its release clicks nothing
+  function roListen(tgt) {                                            // a touch's events stay aimed at the element it began on: a redraw that took it out of the page leaves only it hearing them
+    const g = ro; if (!g || !tgt || typeof tgt.addEventListener !== "function" || typeof AbortController === "undefined") return;
+    const ac = new AbortController(), lost = (fn) => (e) => { if (tgt.isConnected === false) fn(e); };
+    tgt.addEventListener("touchmove", lost(roTouchMove), { signal: ac.signal, passive: false });
+    tgt.addEventListener("touchend", lost(roTouchEnd), { signal: ac.signal, passive: false });
+    tgt.addEventListener("touchcancel", lost(roTouchEnd), { signal: ac.signal, passive: true });
+    g.ac = ac;
+  }
+  const roTouch = (e) => { const g = ro; if (!g || g.mouse) return null; for (const p of [...(e.changedTouches || []), ...(e.touches || [])]) if (p && p.identifier === g.id) return p; return null; };
+  function roTouchMove(e) {
+    const g = ro; if (!g || g.mouse || g.landing) return; const p = roTouch(e); if (!p) return;
+    if (!g.lifted) { if ((e.touches && e.touches.length > 1) || Math.hypot(p.clientX - g.x0, p.clientY - g.y0) > RO_SLOP) roOff(); else { g.x = p.clientX; g.y = p.clientY; } return; }   // before the lift a move is a scroll or the row's swipe
+    if (e.cancelable) e.preventDefault();                             // lifted: the page holds still under the drag (it scrolls only by roAuto)
+    roMove(p.clientX, p.clientY);
+  }
+  function roTouchEnd(e) {
+    if (!ro && roSpent && !roSpent.mouse && [...(e.changedTouches || [])].some((p) => p && p.identifier === roSpent.id)) { roSpent = null; if (e.cancelable) e.preventDefault(); roEatUntil = performance.now() + 400; return; }   // the finger of a drag called off under it: its release clicks nothing either
+    const g = ro; if (!g || g.mouse || g.landing || !roTouch(e)) return;
+    if (!g.lifted) { roOff(); return; }                               // a tap
+    if (e.cancelable) e.preventDefault(); roEatUntil = performance.now() + 400;   // the release clicks nothing (iOS clicks after a long press)
+    if (e.type === "touchcancel") roBack(); else roDrop();
+  }
+  document.addEventListener("touchstart", (e) => {
+    if (e.touches && e.touches.length === 1) { roEatUntil = 0; roSpent = null; }   // a new touch: the last release's window is over
+    if (ro && !ro.landing) { const two = !!(e.touches && e.touches.length > 1); if (ro.lifted) roBack(two); else roOff(); if (two) return; }   // (a press during the last one's glide starts a hold of its own: the v314 review)   // a second finger: the drag goes back (a hold, let go); a lone finger here means the last one's end never came
+    if (!e.touches || e.touches.length !== 1 || held() || swipeHolds() || (rs && (rs.open || rs.busy)) || typingIn(document.activeElement)) return;   // (a row swiped open: this tap only closes it)
+    const it = roItem(e.target); if (!it) return;
+    const p = e.touches[0]; roStart(it, p.clientX, p.clientY, p.identifier, false); roListen(e.target);
+  }, { capture: true, passive: true });
+  document.addEventListener("touchmove", roTouchMove, { capture: true, passive: false });
+  document.addEventListener("touchend", roTouchEnd, { capture: true, passive: false });
+  document.addEventListener("touchcancel", roTouchEnd, { capture: true, passive: true });
+  document.addEventListener("pointerdown", (e) => {                   // a Mac: click and hold
+    if (e.pointerType !== "mouse" || e.button !== 0 || e.ctrlKey) return;
+    roEatUntil = 0; roSpent = null;
+    if (ro && ro.mouse && !ro.landing) { if (ro.lifted) roBack(); else roOff(); }   // (its release never came: let go outside the window)
+    if ((ro && !ro.landing) || held() || typingIn(document.activeElement) || (rs && (rs.open || rs.busy))) return;
+    const it = roItem(e.target); if (it) roStart(it, e.clientX, e.clientY, e.pointerId, true);
+  }, true);
+  document.addEventListener("pointermove", (e) => {
+    const g = ro; if (!g || !g.mouse || e.pointerId !== g.id || g.landing) return;
+    if (!g.lifted) { if (Math.hypot(e.clientX - g.x0, e.clientY - g.y0) > RO_MSLOP) roOff(); else { g.x = e.clientX; g.y = e.clientY; } return; }   // moved before the lift: the row's own mouse swipe, or nothing
+    if (e.buttons === 0) { if (!g.lost) g.lost = setTimeout(() => { if (ro === g) roBack(); }, 150); return; }   // Safari's last move can come with the button already up: a release lost to the window takes it back
+    clearTimeout(g.lost); g.lost = null; roMove(e.clientX, e.clientY);
+  }, true);
+  document.addEventListener("pointerup", (e) => {
+    if (!ro && roSpent && roSpent.mouse && e.pointerId === roSpent.id) { roSpent = null; roEatUntil = performance.now() + 400; return; }   // the button of a drag called off (Escape) under it: its click goes nowhere
+    const g = ro; if (!g || !g.mouse || e.pointerId !== g.id || g.landing) return;
+    if (!g.lifted) { roOff(); return; }
+    roEatUntil = performance.now() + 400; roDrop();                   // a mouse's click follows its release at once
+  }, true);
+  document.addEventListener("pointercancel", (e) => { const g = ro; if (g && g.mouse && e.pointerId === g.id && !g.landing) { if (g.lifted) roBack(); else roOff(); } }, true);
+  document.addEventListener("click", (e) => { if (performance.now() < roEatUntil) { roEatUntil = 0; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && ro && ro.lifted && !ro.landing) { e.preventDefault(); e.stopImmediatePropagation(); roBack(true); } }, true);
+  document.addEventListener("contextmenu", (e) => { if (e.target && e.target.closest && e.target.closest(".ro-block") && exOrderOn()) e.preventDefault(); }, true);   // Android's long press (and a Mac's right-click) shows no menu of the browser's over the cards: the hold is the move
+  window.addEventListener("scroll", () => { const g = ro; if (!g || g.landing) return; if (!g.lifted) { roOff(); return; } roPaint(); }, { capture: true, passive: true });   // a scroll before the lift was the finger's; after it (a Mac's wheel, or roAuto) the slot under the finger is found again
 
   // what the set before (in this workout) was logged at: the next set starts from it, so nothing is retyped unless something changed
   // after Complete set: bring the card's Sets line back under the header (or on to the next card once this one is finished)
@@ -5546,7 +5826,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   function paintBarMsg() {                                           // up in the bar beside the photo, and beside the workout's "…" (his pick, 10 Nov: as Apple's Fitness, two separate circles); the client's view the same
     const a = $("barMsg"), m = S.view.name === "client" || S.view.name === "training" ? msgTarget(S.view.name, S.view.id) : null;
-    a.hidden = !m; if (!m) return;
+    a.hidden = !m || exOrderOn(); if (!m) return;
     a.href = m.href; $("barMsgText").textContent = m.label;
     if (m.wa) { a.target = "_blank"; a.rel = "noopener"; } else { a.removeAttribute("target"); a.removeAttribute("rel"); }
   }
@@ -6082,10 +6362,11 @@ import { reportRange, buildReport } from "./report.js";
     const id = t.id, cid = t.clientId, page = () => S.view.name === "training" && S.view.id === id;
     if (canReschedule(t)) {
       const still = () => page() && canReschedule(trainings.get(id));   // the page is still this workout, still to do
-      return [{ label: "Reschedule", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, moving: id, title: "Reschedule", selected: cur.date || today(), min: today, ok: still, onPick: (date) => applyReschedule(id, date) }); } }, ...unitRows(cid, still)];   // min: today itself, asked at each redraw (days left open past midnight grey yesterday); then "Weights in lb / kg" (v299, the approved picture A: the client switches on a trip)
+      return [{ label: "Reschedule", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, moving: id, title: "Reschedule", selected: cur.date || today(), min: today, ok: still, onPick: (date) => applyReschedule(id, date) }); } }, ...(!S.clientMode && roOpen(t) && canOrder(t) ? [{ label: "Reorder", icon: MI.reorder, onPick: (e) => { const cur = trainings.get(id); if (cur && page() && !S.clientMode) startOrder(id, byKeys(e)); } }] : []), ...unitRows(cid, still)];   // (v314, his ask, 17 Nov 2026: "when I am logged in as a coach can I have the reorder option from both clients and coaches view": the coach's Client view has Reorder too, never the client's app) min: today itself, asked at each redraw (days left open past midnight grey yesterday); then "Weights in lb / kg" (v299, the approved picture A: the client switches on a trip)
     }
     const items = [];
     if (canSwipeRow(t)) { const still = () => page() && coachMore(trainings.get(id)) && canSwipeRow(trainings.get(id)); items.push({ label: "Reschedule", icon: MI.calendar, onPick: () => { const cur = trainings.get(id); if (cur && still()) openDatePicker({ clientId: cid, moving: id, title: "Reschedule", selected: cur.date || today(), min: null, ok: still, onPick: (date) => moveWorkout(id, date) }); } }); }
+    if (roOpen(t) && canOrder(t)) items.push({ label: "Reorder", icon: MI.reorder, onPick: (e) => { const cur = trainings.get(id); if (cur && page() && coachMore(cur)) startOrder(id, byKeys(e)); } });   // v314 (his ask, 17 Nov 2026: "in 3 dot button bellow reschedule we will have reorder"): the cards fold, held to move, swiped to delete; a template's too (his pick), before its Move to
     if (!isTemplateClient(cid)) items.push({ label: "Copy workout", icon: MI.copy, onPick: () => copyWorkout(id) }, { label: "Save as template", icon: MI.save, onPick: () => leaveClean(() => { const cur = trainings.get(id); if (cur && page() && coachMore(cur)) saveAsTemplate(cur); }) });   // moved here from the page's foot, the coach's own view only (his ask, 12 Nov: "copy workout and save as template will go to '...' button only for coaches view")
     if (isTemplateClient(cid) && !draftOpen(id)) items.push({ label: "Move to", icon: MI.folder, onPick: () => { if (page()) moveTemplate(id); } });   // a template's place, as its row's swipe moves it (Apple never keeps an action in a gesture only); not while it has unsaved changes, which Discard would take the move back with (the v283 review)
     items.push({ label: isTemplateClient(cid) ? "Delete template" : "Delete workout", icon: MI.trash, danger: true, onPick: () => askDelete(id) });
@@ -6369,7 +6650,7 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, wheelCol, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, editAlts, editNote, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, fmtSetFor, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c, opts) => buildReport(kind, fonts, c, clientTrainings(c.id), opts), repMonths, repFoot, openReport, saveAgain, bannerOff: () => bannerOff, reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, weekOffNow: () => weekOff, setWeekOff: (v) => { weekOff = v; }, weekWheelNow: () => weekWheel, weekPageNow: () => weekPage, wkMonth, calFold, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates, setProfile, setLiftUnit, showSub, openSub, paintHealth, paintSafety, healthSummary, safetySummary, healthId, toggleWheel, closeWheel, wheelState: () => wheelOpen, editText, editSafety, unitRows, paintLimits, fmtBirthday, phoneIn, fmtPhone, unitLabel: () => UNIT_LABEL, settingsPage: () => ({ open: settingsOpen, from: fromSettings }), subPlace: () => subY, renderOverview, paintProgressCards, showWorkouts, openWorkouts, paintWorkouts, pgChart, dayRange, monthRange, totalRange, workoutsRange: () => pgRange, paintProgressMore, showBests, openBests, paintBests, showLift, openLift, paintLift, liftChart, fmtTop, fmtSets, strongerWords, liftKey, pgTap, liftPage: () => liftCur },
+      fns: { boot, wheelCol, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, editAlts, editNote, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, fmtSetFor, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c, opts) => buildReport(kind, fonts, c, clientTrainings(c.id), opts), repMonths, repFoot, openReport, saveAgain, bannerOff: () => bannerOff, reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, weekOffNow: () => weekOff, setWeekOff: (v) => { weekOff = v; }, weekWheelNow: () => weekWheel, weekPageNow: () => weekPage, wkMonth, calFold, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates, setProfile, setLiftUnit, showSub, openSub, paintHealth, paintSafety, healthSummary, safetySummary, healthId, toggleWheel, closeWheel, wheelState: () => wheelOpen, editText, editSafety, unitRows, paintLimits, fmtBirthday, phoneIn, fmtPhone, unitLabel: () => UNIT_LABEL, settingsPage: () => ({ open: settingsOpen, from: fromSettings }), subPlace: () => subY, renderOverview, paintProgressCards, showWorkouts, openWorkouts, paintWorkouts, pgChart, dayRange, monthRange, totalRange, workoutsRange: () => pgRange, paintProgressMore, showBests, openBests, paintBests, showLift, openLift, paintLift, liftChart, fmtTop, fmtSets, strongerWords, liftKey, pgTap, liftPage: () => liftCur, exOrderOn, startOrder, doneOrder, canOrder, roCards, roRows, roDelete, roKeys, roKeyItems, roOrdering: () => exOrdering, roState: () => (ro ? { kind: ro.kind, rid: ro.rid, lifted: ro.lifted, landing: ro.landing, i: ro.i, to: ro.to } : null) },
       maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, pendingProfile, profileTouched, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },

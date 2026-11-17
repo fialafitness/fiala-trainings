@@ -695,6 +695,93 @@ test("on a conflict the client's new exercise order stands, except for a row the
   assert.deepStrictEqual(saved.rows.map((r) => r.id + ":" + r.label), ["r1:2", "r2:1", "r3:4"], "her order lands with his edit; his own renumbering wins for its row"); assert.strictEqual(saved.rows[0].reps, "8");
   assert.deepStrictEqual(maps.trainings.get("T").rows.map((r) => r.label), ["2", "1", "4"], "the live copy learns her order too");
 });
+test("v314: after his Reorder his whole numbering stands on a conflict, so her Start this exercise crossing it never leaves two cards on one number", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const srv = (l1, l2, l3) => training("T", { rows: [{ ...row("r1"), label: l1 }, { ...row("r2"), label: l2 }, { ...row("r3"), label: l3 }] });
+  const stamp = sb.seed("ft_trainings", "T", srv("1", "2", "3"), { client_id: "c1" });
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: srv("1", "2", "3"), updated_at: stamp }], true, Date.now());   // the coach's device read the workout
+  sb.seed("ft_trainings", "T", srv("2", "3", "1"), { client_id: "c1" });                                                       // she started r3 first: it is 1 now
+  const mine = maps.trainings.get("T"); mine.rows[0].label = "2"; mine.rows[1].label = "1";                                         // meanwhile his Reorder swapped r1 and r2 (r3 stays 3 here)
+  maps.trainerState.set("T", new Set(["order"]));                                                                                  // (as roWrite claims it)
+  await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(mine)));
+  const saved = sb.tables.ft_trainings.get("T").data;
+  assert.deepStrictEqual(saved.rows.map((r) => r.id + ":" + r.label), ["r1:2", "r2:1", "r3:3"], "his order whole: without the claim r3 would take her 1 beside his r2, a superset nobody made");
+  await settle();
+});
+test("v314: his Reorder's claim lapses once the copy he read holds his numbers: her later Start this exercise stands (the v314 review)", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const srv = (l1, l2, l3) => training("T", { rows: [{ ...row("r1"), label: l1 }, { ...row("r2"), label: l2 }, { ...row("r3"), label: l3 }] });
+  const stamp = sb.seed("ft_trainings", "T", srv("2", "1", "3"), { client_id: "c1" });
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: srv("2", "1", "3"), updated_at: stamp }], true, Date.now());   // his Reorder's save landed: the copy he last read holds his numbers
+  maps.trainerState.set("T", new Set(["order"]));                                                                                  // its claim still kept (another edit was queued during that save)
+  sb.seed("ft_trainings", "T", srv("3", "2", "1"), { client_id: "c1" });                                                       // she started r3 first
+  const mine = maps.trainings.get("T"); mine.rows.find((r) => r.id === "r1").reps = "8";                                       // his queued edit: reps only
+  await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(mine)));
+  const saved = sb.tables.ft_trainings.get("T").data;
+  assert.deepStrictEqual(saved.rows.map((r) => r.id + ":" + r.label).sort(), ["r1:3", "r2:2", "r3:1"], "her order stands: nothing of his crossed it");
+  await settle();
+});
+test("v314: an exercise added since the copy he read is no renumbering of his: the lapsed claim still lets her later Start this exercise stand (the v314 review)", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const srv = (l1, l2, l3) => training("T", { rows: [{ ...row("r1"), label: l1 }, { ...row("r2"), label: l2 }, { ...row("r3"), label: l3 }] });
+  const stamp = sb.seed("ft_trainings", "T", srv("2", "1", "3"), { client_id: "c1" });
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: srv("2", "1", "3"), updated_at: stamp }], true, Date.now());
+  maps.trainerState.set("T", new Set(["order"]));
+  sb.seed("ft_trainings", "T", srv("3", "2", "1"), { client_id: "c1" });                                                       // she started r3 first
+  const mine = maps.trainings.get("T"); mine.rows.push({ ...row("r4"), label: "4" });                                          // his queued edit: + Add exercise
+  await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(mine)));
+  const saved = sb.tables.ft_trainings.get("T").data;
+  assert.deepStrictEqual(saved.rows.map((r) => r.id + ":" + r.label).sort(), ["r1:3", "r2:2", "r3:1", "r4:4"], "her order stands; his new exercise is added");
+  await settle();
+});
+test("v314: an exercise his other device added comes in with her number and is no renumbering of his: her Start this exercise on it never leaves two cards on one number (the v314 review)", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const srv = (l1, l2, l3, l4) => training("T", { rows: [{ ...row("r1"), label: l1 }, { ...row("r2"), label: l2 }, { ...row("r3"), label: l3 }, ...(l4 ? [{ ...row("r4"), label: l4 }] : [])] });
+  const stamp = sb.seed("ft_trainings", "T", srv("2", "1", "3"), { client_id: "c1" });
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: srv("2", "1", "3"), updated_at: stamp }], true, Date.now());
+  maps.trainerState.set("T", new Set(["order"]));
+  sb.seed("ft_trainings", "T", srv("3", "2", "4", "1"), { client_id: "c1" });                                                 // his other device added r4, and she started it first
+  const mine = maps.trainings.get("T"); mine.rows.find((r) => r.id === "r1").reps = "8";
+  await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(mine)));
+  const saved = sb.tables.ft_trainings.get("T").data;
+  assert.deepStrictEqual(saved.rows.map((r) => r.id + ":" + r.label).sort(), ["r1:3", "r2:2", "r3:4", "r4:1"], "her order, one card a number");
+  await settle();
+});
+test("v314: his Reorder over a card she began since he read it: that card keeps her place and number, her set with it, and his other cards fill the rest (the v314 final check)", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const srv = (l1, l2, l3, logged) => training("T", { rows: [{ ...row("r1", logged ? ["100"] : [], logged ? ["5"] : [], logged ? 1 : 0), label: l1 }, { ...row("r2"), label: l2 }, { ...row("r3"), label: l3 }] });
+  const stamp = sb.seed("ft_trainings", "T", srv("1", "2", "3"), { client_id: "c1" });
+  fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: srv("1", "2", "3"), updated_at: stamp }], true, Date.now());   // he read it with nothing begun
+  sb.seed("ft_trainings", "T", srv("1", "2", "3", true), { client_id: "c1" });                                                // she logged set 1 on r1
+  const mine = maps.trainings.get("T"); mine.rows.find((r) => r.id === "r1").label = "3"; mine.rows.find((r) => r.id === "r2").label = "1"; mine.rows.find((r) => r.id === "r3").label = "2";   // his Reorder, on his copy: r1 to the end
+  maps.trainerState.set("T", new Set(["order"]));
+  await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(mine)));
+  const saved = sb.tables.ft_trainings.get("T").data, r1 = saved.rows.find((r) => r.id === "r1");
+  assert.deepStrictEqual(saved.rows.map((r) => r.id + ":" + r.label).sort(), ["r1:1", "r2:2", "r3:3"], "her numbering, whole: one card a number, her begun card in its place");
+  assert.deepStrictEqual([r1.weights, r1.setsDone], [["100"], 1], "her set kept");
+  await settle();
+});
+test("v314: his Reorder and her phone crossing, card by card (the v314 final check): her begun card keeps its number, his move of the others stands, one card a number", async () => {
+  const quad = (labels, logged = {}) => training("T", { rows: ["r1", "r2", "r3", "r4"].map((id, i) => ({ ...row(id, logged[id] ? ["100"] : [], logged[id] ? ["5"] : [], logged[id] ? 1 : 0), label: labels[i] })).filter((x) => x.label != null) });
+  const run = async (read, theirs, mineLabels, extra) => {
+    const sb = makeSupabase(); coach(sb);
+    const stamp = sb.seed("ft_trainings", "T", read, { client_id: "c1" });
+    fns.mergeDown(maps.trainings, "trainings", [{ id: "T", data: read, updated_at: stamp }], true, Date.now());
+    sb.seed("ft_trainings", "T", theirs, { client_id: "c1" });
+    const mine = maps.trainings.get("T"); if (extra) extra(mine);
+    for (const [id, l] of Object.entries(mineLabels)) mine.rows.find((r) => r.id === id).label = l;
+    maps.trainerState.set("T", new Set(["order"]));
+    await fns.cloudBackend.set("trainings", "T", JSON.parse(JSON.stringify(mine)));
+    const out = sb.tables.ft_trainings.get("T").data.rows.map((r) => r.id + ":" + r.label).sort();
+    await settle(); return out;
+  };
+  const three = (l1, l2, l3, logged) => training("T", { rows: [["r1", l1], ["r2", l2], ["r3", l3]].map(([id, l]) => ({ ...row(id, logged === id ? ["100"] : [], logged === id ? ["5"] : [], logged === id ? 1 : 0), label: l })) });
+  assert.deepStrictEqual(await run(quad(["1", "2", "3", "4"]), quad(["1", "2", "3", "4"], { r1: 1 }), { r4: "1", r1: "2", r2: "3", r3: "4" }), ["r1:1", "r2:3", "r3:4", "r4:2"], "he put r4 first while she began r1: r1 keeps 1, r4 first of the rest");
+  assert.deepStrictEqual(await run(quad(["1", "2", "3", "4"]), quad(["2", "1", "3", "4"], { r2: 1 }), { r3: "4", r4: "3" }), ["r1:2", "r2:1", "r3:4", "r4:3"], "she started r2 first and he swapped the last two: both stand");
+  assert.deepStrictEqual(await run(three("1", "2", "3"), three("2", "3", "1", "r3"), { r1: "3", r2: "4", r3: "2" }, (mine) => mine.rows.push({ ...row("r4"), label: "1" })), ["r1:3", "r2:4", "r3:1", "r4:2"], "he added r4 and dragged it to the top while she began r3: r3 keeps 1, never two cards on 1");
+  const four = (l1, l2, l3, l4, logged) => training("T", { rows: [["r1", l1], ["r2", l2], ["r3", l3], ["r4", l4]].filter(([, l]) => l != null).map(([id, l]) => ({ ...row(id, logged === id ? ["100"] : [], logged === id ? ["5"] : [], logged === id ? 1 : 0), label: l })) });
+  assert.deepStrictEqual(await run(four("1", "2", "3"), four("2", "3", "4", "1", "r4"), { r1: "2", r2: "1" }), ["r1:3", "r2:2", "r3:4", "r4:1"], "his other device added r4, she began it as 1: it keeps 1; his order (r2, r1, r3) fills 2, 3, 4");
+});
 test("a coach's save sent after a relaunch still keeps the client's new order: the copy he last read travels with the stamp", async () => {
   const sb = makeSupabase(); coach(sb);
   const srv = (l1, l2, l3) => training("T", { rows: [{ ...row("r1"), label: l1 }, { ...row("r2"), label: l2 }, { ...row("r3"), label: l3 }] });

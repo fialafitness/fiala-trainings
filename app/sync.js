@@ -1,7 +1,7 @@
 // Saving and syncing: the device copy, the debounced save queue, the cloud backend (coach), the client backend (RPCs),
 // the paged read of the server and the merge back into the local maps. Screens are reached only through `ui`.
 import { lsGet, lsSet, norm, clamp, today, uid } from "./util.js";
-import { isTemplateClient, planActive, repairTimed, timedPlan, cmpLabel, stampUnit, profileGet, profilePut, setsOf, loggedSets } from "./model.js";
+import { isTemplateClient, planActive, repairTimed, timedPlan, cmpLabel, groupKey, stampUnit, profileGet, profilePut, setsOf, loggedSets } from "./model.js";
 import { mergeNotes } from "./notes.js";
 import { ALIASES } from "./catalog.js";
 import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, planTouched, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows, pendingProfile, profileTouched } from "./state.js";
@@ -198,6 +198,34 @@ const localBackend = {
   async set() { this.save(); },
   async del() { this.save(); },
 };
+// v314 (the final check): his Reorder crossing her phone, merged card by card as Reorder itself places them (roCards). A card begun (done, or a set
+// logged, in the merged copy: hers or his) keeps the server's number, its rows the server's labels; his cards not begun fill the other numbers in his
+// order, letters by place; rows the merge brought in from the server keep their numbers unless taken, then the next ones free. Never two cards on
+// one number, and her begun card never moved: a plain "his numbering wins" moved a card she had just begun, and "hers wins" dropped his whole move.
+const settleNum = (label) => { const m = /^\s*(\d+)/.exec(String(label == null ? "" : label)); return m ? parseInt(m[1], 10) : null; };
+function settleOrder(target, serverData, incoming) {
+  const srv = new Map(((serverData && serverData.rows) || []).filter((x) => x && x.id).map((x) => [x.id, x]));
+  const begun = (r) => !!r && (!!r.done || loggedSets(r) > 0), letter = (j) => String.fromCharCode(97 + Math.min(j, 25));
+  const mine = (target.rows || []).filter((r) => r && !incoming.has(r.id)).sort((a, b) => cmpLabel(a.label, b.label)), cards = [];
+  mine.forEach((r, i) => { const k = String(groupKey(r.label, i)); if (!cards.length || cards[cards.length - 1].key !== k) cards.push({ key: k, rows: [] }); cards[cards.length - 1].rows.push(r); });
+  const nums = cards.filter((c) => /^\d+$/.test(c.key)), taken = new Set(), free = [];
+  for (const c of nums) {
+    const n = c.rows.some(begun) ? (srv.has(c.rows[0].id) ? settleNum(srv.get(c.rows[0].id).label) : Number(c.key)) : null;
+    if (n == null || taken.has(n)) { free.push(c); continue; }   // (two begun cards on one server number cannot be: the later is placed as one not begun)
+    taken.add(n); c.to = n;
+    c.rows.forEach((r, j) => { const s = srv.get(r.id); r.label = s && settleNum(s.label) === n ? s.label : String(n) + (c.rows.length > 1 ? letter(j) : ""); });
+  }
+  for (const r of (target.rows || []).filter((x) => x && incoming.has(x.id) && begun(x))) { const n = settleNum(r.label); if (n != null && !taken.has(n)) taken.add(n); }   // a row come in from the server and begun there keeps its number too: none of his cards takes it (the final check)
+  const pool = [...new Set([...nums.map((c) => Number(c.key)), ...taken])].filter((n) => !taken.has(n)).sort((a, b) => a - b);
+  let top = Math.max(0, ...nums.map((c) => Number(c.key)), ...taken);
+  for (const c of free) { c.to = pool.length ? pool.shift() : ++top; c.rows.forEach((r, j) => { r.label = String(c.to) + (c.rows.length > 1 ? letter(j) : ""); }); }   // (free keeps his order: nums is sorted by his labels)
+  top = Math.max(top, ...nums.map((c) => c.to)); const used = new Set(nums.map((c) => c.to)), moved = new Map();
+  for (const r of (target.rows || []).filter((x) => x && incoming.has(x.id)).sort((a, b) => cmpLabel(a.label, b.label))) {
+    const n = settleNum(r.label); if (n == null) continue;
+    if (!moved.has(n)) moved.set(n, used.has(n) ? ++top : n);
+    used.add(moved.get(n)); if (moved.get(n) !== n) r.label = String(r.label).replace(/^(\s*)\d+/, "$1" + moved.get(n));
+  }
+}
 const touchState = (id, ...fields) => { if (S.clientMode) return; if (!trainerState.has(id)) trainerState.set(id, new Set()); for (const f of fields) trainerState.get(id).add(f); };
 const TABLE = { clients: "ft_clients", trainings: "ft_trainings" };
 const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r({ data: null, error: { message: "network timeout" } }), ms))]);
@@ -246,17 +274,19 @@ const cloudBackend = {
     };
     const verbatim = () => fromFile.has(k);                    // restored from a backup: the file's copy replaces what the server holds, nothing of the server's is merged in (asked at merge time: a save already out when Restore was tapped must not merge into the restored record either)
     const mergeServerRows = (serverData, against) => {        // take the client's weights/done/swaps for rows the trainer did not touch; `against`: the copy this device last read, to tell her new numbers from his
-      const touched = trainerTouched.get(id) || new Set(), named = trainerNamed.get(id) || new Set(), noted = trainerNoted.get(id) || new Set();   // three separate claims per row: the log, the name, the note — a coach who only wrote a note keeps nothing else
-      const live = trainings.get(id);
+      const touched = trainerTouched.get(id) || new Set(), named = trainerNamed.get(id) || new Set(), noted = trainerNoted.get(id) || new Set(), claimed = (trainerState.get(id) || new Set()).has("order");   // three separate claims per row: the log, the name, the note — a coach who only wrote a note keeps nothing else
+      const live = trainings.get(id), incoming = new Map();             // per copy: the rows the three-way merge brought in from the server (v314's settleOrder places them last)
       if (against && Array.isArray(against.rows) && serverData && Array.isArray(serverData.rows)) {   // (15 Nov 2026, the audit's #4) the exercise list three ways, by row id: one the other device removed (read here, gone from the server's copy, not changed here since) goes here too, and one it added (on the server's copy, never read here) comes in; one removed or added here stays so
         const was = new Map(against.rows.filter((x) => x && x.id).map((x) => [x.id, canon(normRow(x))])), there = new Set(serverData.rows.map((x) => x && x.id));
         for (const target of [data, live]) {
           if (!target || !Array.isArray(target.rows)) continue;
           const have = new Set(target.rows.map((x) => x && x.id));
           target.rows = target.rows.filter((x) => !(x && was.has(x.id) && !there.has(x.id) && was.get(x.id) === canon(normRow(x))));
-          for (const sr of serverData.rows) if (sr && sr.id && !was.has(sr.id) && !have.has(sr.id)) target.rows.push(JSON.parse(JSON.stringify(sr)));
+          for (const sr of serverData.rows) if (sr && sr.id && !was.has(sr.id) && !have.has(sr.id)) { target.rows.push(JSON.parse(JSON.stringify(sr))); if (!incoming.has(target)) incoming.set(target, new Set()); incoming.get(target).add(sr.id); }
         }
       }
+      const renumbered = (target) => claimed && !!target && (!against || !Array.isArray(against.rows) || (target.rows || []).some((x) => { const b = against.rows.find((y) => y.id === x.id); return !!b && String(b.label || "") !== String(x.label || ""); }));   // (only rows in that copy: one added since, here or by the merge just above, is no renumbering of his)   // v314: his Reorder's claim holds only while his numbers still differ from the copy he last read (the v314 review: kept past the save that carried them, it undid her later Start this exercise)
+      const keepAll = new Map([data, live].map((x) => [x, renumbered(x)]));   // his Reorder's numbering: no row takes the server's number one by one; settleOrder places the cards once the rows are merged
       for (const sr of (serverData && serverData.rows) || []) {
         for (const target of [data, live]) {
           const lr = target && (target.rows || []).find((x) => x.id === sr.id); if (!lr) continue;
@@ -265,9 +295,10 @@ const cloudBackend = {
           if (!touched.has(sr.id)) { lr.weights = sr.weights || []; lr.done = !!sr.done; lr.repsDone = sr.repsDone || []; if (sr.unit === "kg" || sr.unit === "lb") lr.unit = sr.unit; if (sr.setsDone != null) lr.setsDone = sr.setsDone; else delete lr.setsDone; if (sr.earlyReason) lr.earlyReason = String(sr.earlyReason); else delete lr.earlyReason; } else { const br = against && (against.rows || []).find((x) => x.id === sr.id); if (br) mergeSets(lr, br, sr); }   // (15 Nov 2026, the audit's #2) a row the coach changed: set by set, his value where he changed that set since he last read it, the client's everywhere else (with no copy read, his row stands whole, as before)
           if (!noted.has(sr.id)) { if (sr.clientNote) { lr.clientNote = String(sr.clientNote); if (sr.clientNoteBy) lr.clientNoteBy = String(sr.clientNoteBy); else delete lr.clientNoteBy; if (sr.clientNoteAt) lr.clientNoteAt = String(sr.clientNoteAt); else delete lr.clientNoteAt; } else { delete lr.clientNote; delete lr.clientNoteBy; delete lr.clientNoteAt; } }
           if (!named.has(sr.id) && typeof sr.name === "string") { lr.name = sr.name; lr.alts = Array.isArray(sr.alts) ? sr.alts : []; } // the client swapped in an alternative
-          if (typeof sr.label === "string" && sr.label !== lr.label) { const br = against && (against.rows || []).find((x) => x.id === sr.id); if (br && String(br.label || "") === String(lr.label || "")) lr.label = sr.label; }   // the client put an exercise ahead ("Start this exercise"): her number stands wherever the coach did not renumber that row himself since he last read it
+          if (!keepAll.get(target) && typeof sr.label === "string" && sr.label !== lr.label) { const br = against && (against.rows || []).find((x) => x.id === sr.id); if (br && String(br.label || "") === String(lr.label || "")) lr.label = sr.label; }   // the client put an exercise ahead ("Start this exercise"): her number stands wherever the coach did not renumber that row himself since he last read it; none at all while his Reorder's numbers still differ from that copy (v314, "order" in trainerState, keepAll): his whole numbering stands, so a cross never leaves two cards on one number
         }
       }
+      for (const target of [data, live]) if (target && Array.isArray(target.rows) && keepAll.get(target)) settleOrder(target, serverData, incoming.get(target) || new Set());
       liftSeq(serverData);
       repairTimed(data); if (live) repairTimed(live);              // seconds the client's old app typed as a weight go to the time column before this write
     };

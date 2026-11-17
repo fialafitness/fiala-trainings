@@ -88,6 +88,7 @@
     --disc-edge: inset 0 1.67px 0 -0.67px rgba(255,255,255,0.5), inset 0 -1.67px 0 -0.67px rgba(255,255,255,0.5), inset 0 5px 0 -4.33px rgba(255,255,255,0.8), inset 0 -5px 0 -4.33px rgba(255,255,255,0.8), inset 0 20px 5px -17px rgba(255,255,255,0.6), inset 0 -10px 3px -8.67px rgba(255,255,255,0.2), inset 0 10px 5px 6px rgba(0,0,0,0.016), 0 0 0 0.33px rgba(0,0,0,0.052), 0 0 0 0.67px rgba(0,0,0,0.052), 1px 0 0 -0.33px rgba(0,0,0,0.2), -1px 0 0 -0.33px rgba(0,0,0,0.2), 0 7.67px 5.33px rgba(0,0,0,0.013);   /* its edge, lit from above and below: a white line inside the top and bottom fading round the ends, a 0.5-point grey ring (10% at the top and bottom, 33% at the ends), a faint shadow below; offsets in whole iPhone pixels (WebKit snaps shadows to them) */
     --glass-sheet-fill: #f8f8f8; --glass-sheet-edge: var(--disc-edge);   /* on a sheet (the preview), in light the same glass */
     --card-disc: rgba(120,120,128,0.215);   /* a round button inside a card (the "…", the chevron, the swap): Apple's plain system fill, as Reminders' card closes (measured: 226 on white) */
+    --ro-edge: rgba(60,60,67,0.3); --ro-tint: rgba(120,120,128,0.07);   /* Reorder's folded cards (his pick, 17 Nov 2026: grey, not the finished green): the outline in Apple's tertiary label grey, a breath of Apple's grey fill inside, as the finished card's fern wash */
     --ink-on: #ffffff;
     --btn-bg: var(--brand-fill);        /* the primary action wears the brand, as Fitness+ wears its green */
     --btn-fg: #ffffff;
@@ -154,6 +155,7 @@
       --disc-edge: inset 0 19px 0 -18.67px rgba(255,255,255,0.094), inset 0 -19px 0 -18.67px rgba(255,255,255,0.094), inset 0 1.67px 0 -1px rgba(255,255,255,0.02), inset 0 -1.67px 0 -1px rgba(255,255,255,0.02), inset 0 8.33px 0 -7.33px rgba(255,255,255,0.034), inset 0 -8.33px 0 -7.33px rgba(255,255,255,0.034), inset 0 1.33px 0 -0.33px rgba(255,255,255,0.063), inset 0 -1.33px 0 -0.33px rgba(255,255,255,0.063), inset 0 24.67px 8px -24.33px rgba(255,255,255,0.112), inset 0 -24.67px 8px -24.33px rgba(255,255,255,0.112), inset 0 17.33px 0 -16.67px rgba(255,255,255,0.048), inset 0 -17.33px 0 -16.67px rgba(255,255,255,0.048);
       --glass-sheet-fill: #3a3a3c; --glass-sheet-edge: inset 0 1.67px 0 -0.67px rgba(255,255,255,0.07), inset 0 -1.67px 0 -0.67px rgba(255,255,255,0.07), inset 0 5px 0 -4.33px rgba(255,255,255,0.1), inset 0 -5px 0 -4.33px rgba(255,255,255,0.1), inset 0 20px 4.67px -19.33px rgba(255,255,255,0.11), inset 0 -20px 4.67px -19.33px rgba(255,255,255,0.11), 1px 0 0 -0.33px rgba(0,0,0,0.62), -1px 0 0 -0.33px rgba(0,0,0,0.62);   /* on the #1c1c1e preview: 13% white, a lighter line top and bottom, a dark line at the ends (Calendar's event sheet) */
       --card-disc: rgba(120,120,128,0.335);   /* 59 on the #1c1c1e card, as Reminders' (measured) */
+      --ro-edge: rgba(235,235,245,0.3); --ro-tint: rgba(120,120,128,0.12);
       --ink-on: #1d1d1f;
       --btn-bg: var(--brand-fill);
       --btn-fg: #ffffff;
@@ -220,6 +222,7 @@
     --disc-edge: inset 0 19px 0 -18.67px rgba(255,255,255,0.094), inset 0 -19px 0 -18.67px rgba(255,255,255,0.094), inset 0 1.67px 0 -1px rgba(255,255,255,0.02), inset 0 -1.67px 0 -1px rgba(255,255,255,0.02), inset 0 8.33px 0 -7.33px rgba(255,255,255,0.034), inset 0 -8.33px 0 -7.33px rgba(255,255,255,0.034), inset 0 1.33px 0 -0.33px rgba(255,255,255,0.063), inset 0 -1.33px 0 -0.33px rgba(255,255,255,0.063), inset 0 24.67px 8px -24.33px rgba(255,255,255,0.112), inset 0 -24.67px 8px -24.33px rgba(255,255,255,0.112), inset 0 17.33px 0 -16.67px rgba(255,255,255,0.048), inset 0 -17.33px 0 -16.67px rgba(255,255,255,0.048);
     --glass-sheet-fill: #3a3a3c; --glass-sheet-edge: inset 0 1.67px 0 -0.67px rgba(255,255,255,0.07), inset 0 -1.67px 0 -0.67px rgba(255,255,255,0.07), inset 0 5px 0 -4.33px rgba(255,255,255,0.1), inset 0 -5px 0 -4.33px rgba(255,255,255,0.1), inset 0 20px 4.67px -19.33px rgba(255,255,255,0.11), inset 0 -20px 4.67px -19.33px rgba(255,255,255,0.11), 1px 0 0 -0.33px rgba(0,0,0,0.62), -1px 0 0 -0.33px rgba(0,0,0,0.62);   /* on the #1c1c1e preview: 13% white, a lighter line top and bottom, a dark line at the ends (Calendar's event sheet) */
     --card-disc: rgba(120,120,128,0.335);   /* 59 on the #1c1c1e card, as Reminders' (measured) */
+    --ro-edge: rgba(235,235,245,0.3); --ro-tint: rgba(120,120,128,0.12);
     --ink-on: #1d1d1f;
     --btn-bg: var(--brand-fill);
     --btn-fg: #ffffff;
@@ -1640,6 +1643,33 @@
   .swipe-act .sa-lbl { margin: 0 -5.5px; font-size: 0.8125rem; line-height: 1.2; letter-spacing: 0; color: var(--swipe-label); white-space: nowrap; transition: opacity 150ms ease; }   /* "Reschedule" is 72 px to the capsule's 61: it overhangs it by 5.5 px a side, so the action is the capsule's width and the gaps are measured from the capsule (a larger Text Size widens the action instead, the title always clear of the row) */
   .armed .swipe-act:last-child .sa-lbl { opacity: 0; }
   body.rs-drag, body.rs-drag * { cursor: grabbing !important; }      /* a mouse dragging a row */
+  /* Reorder (his ask, 17 Nov 2026: "folded cards for all exercises like in the pictures attached except not green"; his picks after the pictures: grey, the one held in purple as the day picker's moving workout, an exercise moving inside its own card, workouts and templates). The page keeps its title and the cards, nothing else (Apple's Fitness: "Tap Reorder, touch and hold an interval, then reposition it. When you're finished, tap Done") */
+  #vTraining.ro .date-row, #vTraining.ro .session-row, #vTraining.ro #fromTpl, #vTraining.ro #dayMore, #vTraining.ro #limitsNote, #vTraining.ro #startRow, #vTraining.ro #finishWrap, #vTraining.ro #useWrap, #vTraining.ro > .foot { display: none !important; }
+  body.ro-on #dock { visibility: hidden; }                            /* Coach | Client and the + have no part in it (visibility, as the keyboard's: never display) */
+  .ro-hint { margin: 2px 0 0; font-size: 0.9375rem; line-height: 1.35; color: var(--text-secondary); }
+  .ro-hint[hidden] { display: none; }
+  .ro-block { position: relative; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }   /* nothing selects or calls out under a hold: decided at touch start (WebKit) */
+  .list.ro-card { background: var(--ro-tint); border-color: var(--ro-edge); }   /* the finished card's fold (1 point, its 26 corners), grey */
+  .list.ro-card li.swipe-row:not(.swiped):not(.ro-lifted) > :not(.swipe-acts) { background: transparent; }   /* the card's grey shows through; swiped, the row's grey as every row's; held, its own solid card (the v314 review: it was see-through over the rows it passed) */
+  .list.ro-card li.ro-foot { border-top: 0; }                         /* the card's line says what it is, under its last exercise with no rule between, as the folded card's status line */
+  .ro-line { display: flex; align-items: center; min-height: 58px; padding: 6px 16px 0; box-sizing: border-box; }   /* the folded card's exercise row: 58 tall, the number 16 in, the name 64 after it (measured on the finished card) */
+  .ro-lab { flex: none; min-width: 56px; max-width: 40%; overflow-wrap: anywhere; margin-right: 8px; font-size: 1.1875rem; line-height: 1.5rem; font-weight: 500; letter-spacing: -0.009em; color: var(--text-primary); }
+  .ro-name { flex: 1 1 auto; min-width: 0; font-size: 1.1875rem; line-height: 1.5rem; font-weight: 600; letter-spacing: -0.009em; color: var(--text-primary); overflow-wrap: break-word; }
+  .ro-block.ro-fixed .ro-lab, .ro-block.ro-fixed .ro-name { color: var(--text-secondary); }   /* begun (his rule, 17 Nov 2026: only exercises not done or started move): it stays, grey as a finished card's names, with no grip */
+  .list.ro-card .ro-grip { flex: none; appearance: none; border: 0; background: none; padding: 0; margin: -6px -8px -6px 4px; width: 44px; height: 44px; min-height: 0; gap: 0; display: inline-flex; align-items: center; justify-content: center; transition: none; color: var(--text-tertiary); cursor: grab; -webkit-tap-highlight-color: transparent; touch-action: pan-y; }   /* an exercise's grip: Apple's reorder lines, 44 to the finger, centred under the card's disc */
+  .ro-g { display: block; width: 18px; height: 13px; }
+  .ro-sum { display: flex; align-items: center; gap: 8px; min-height: 58px; padding: 8px 12px 10px 16px; box-sizing: border-box; font-size: 0.8125rem; line-height: 1.55; color: var(--text-secondary); }   /* "4 sets · 6 reps", "Superset · 4 sets": the folded card's status line */
+  .ro-sum > span { flex: 1 1 auto; min-width: 0; }
+  .list.ro-card .ro-move { flex: none; appearance: none; border: 0; padding: 0; width: 36px; height: 36px; min-height: 0; gap: 0; transition: none; border-radius: 50%; background: var(--card-disc); color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; cursor: grab; -webkit-tap-highlight-color: transparent; touch-action: pan-y; }   /* the whole card's grip, in the folded card's disc */
+  .list.ro-card .ro-move .ro-g { width: 16px; height: 11.5px; }
+  .ro-slide { transition: transform 200ms cubic-bezier(0.25, 0.1, 0.25, 1); }   /* the others glide out of the way */
+  .ro-block.ro-lifted, .list.ro-card li.ro-lifted { z-index: 5; }
+  .ro-block.ro-lifted .list.ro-card { background: var(--card); border-color: var(--brand-text); box-shadow: 0 16px 36px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.12); }   /* held: lifted, in purple (his pick: as the day picker's moving workout) */
+  .list.ro-card.ro-open { overflow: visible; }                        /* an exercise held lifts over its card's edge */
+  .list.ro-card li.ro-lifted, .list.ro-card li.ro-lifted + li { border-top-color: transparent; }
+  .list.ro-card li.ro-lifted > .ro-body { background: var(--card); border-radius: 18px; box-shadow: inset 0 0 0 1.5px var(--brand-text), 0 16px 36px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.12); }
+  body.ro-drag, body.ro-drag * { cursor: grabbing !important; }
+  @media (prefers-reduced-motion: reduce) { .ro-slide { transition: none; } }
   .card-head { margin: 12px 0 0; padding: 14px 20px 2px; background: var(--card); border: 1px solid var(--card-edge); border-bottom: 0; border-radius: var(--r-card) var(--r-card) 0 0; font-size: 1.0625rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; text-transform: none; color: var(--text-primary); }   /* Today, Up next: the title inside its card, as Weather's cards carry theirs */
   .card-head[hidden] { display: none; }
   .card-head + .list { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
@@ -2117,6 +2147,7 @@
     <div class="ttl">
       <div class="ttl-row"><textarea id="tTitle" class="title" rows="1" placeholder="Focus, e.g. Bench-press and back" autocapitalize="sentences"></textarea></div>
       <div class="date-row"><button class="datefield" id="tDate" type="button"></button></div>
+      <p class="ro-hint" id="roHint" hidden>Hold and drag to move. Swipe left to delete.</p>
       <div class="session-row" id="sessionRow" hidden><button class="session-pill" id="sessionPill" type="button" hidden></button></div>
       <button class="tpl-pill trainer-only" id="fromTpl" type="button" hidden><span id="fromTplText"></span><span class="chev">&rsaquo;</span></button>
       <button class="tpl-pill" id="dayMore" type="button" hidden><span id="dayMoreText"></span><span class="chev" aria-hidden="true">&rsaquo;</span></button>
@@ -2208,7 +2239,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=313";
+  import { boot } from "./app/main.js?v=314";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
