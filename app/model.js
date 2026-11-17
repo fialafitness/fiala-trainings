@@ -186,6 +186,11 @@ export const sessionNo = (plan, list, t) => {                      // "Session 3
 };
 export const planActive = (plan, day) => !plan || plan.kind !== "monthly" || !plan.until || plan.until >= day;   // a monthly plan past its day is over
 export const setsOf = (r) => Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20));
+// v313 (the owner's rule, 17 Nov 2026: "superset will always have the same number as default", and one exercise may have fewer, set in its "…"): the card's
+// sets button moves the superset's own number, the exercises at the card's most; one given fewer keeps them, unless the superset goes below them (then it follows).
+export const cardSetsTo = (was, most, n) => (was >= most ? n : Math.min(was, n));
+// The sets an exercise holds something on: its sets done (one finished before the set counter existed: all its own), and any set with a weight or reps in it.
+export const loggedSets = (r) => { let n = Math.min(doneCount(r), setsOf(r)); for (const a of [r.weights, r.repsDone]) for (let i = (a || []).length - 1; i >= n; i--) if (String(a[i] == null ? "" : a[i]).trim()) { n = i + 1; break; } return n; };
 
 // "W", "Wa", "Wb" … = warm-up: groups like a number and sorts before 1; then the numbers with their letters; anything else last, by its text
 export const labelKey = (l) => { const s = String(l || "").trim(); const m = s.match(/^(\d+)\s*([a-z]*)/i); if (m) return [parseInt(m[1], 10), m[2].toLowerCase()]; const w = s.match(/^w\s*([a-z]?)$/i); return w ? [-1, w[1].toLowerCase()] : [Infinity, s.toLowerCase()]; };

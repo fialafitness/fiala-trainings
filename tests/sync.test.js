@@ -722,3 +722,69 @@ test("a full answer from the server marks the day it came: the week's filing of 
   assert.deepStrictEqual([app.get().syncedOnce, app.get().syncedOn], [true, fns.today()], "today's");
   await settle();
 });
+test("v313: a row's number of sets merges as its number does: another of the coach's devices joined an exercise into a superset (a new number and the superset's count); this device, holding the copy from before, saves an unrelated edit: both the number and the count stand, and the client's sets past the old count are never cut", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const R = (id, label, name, sets, extra) => ({ ...row(id), label, name, sets, ...(extra || {}) });
+  for (const [label, fromSets, joinSets, logged] of [["lower", 4, 3, 0], ["raise", 3, 5, 5]]) {
+    const base = training("T" + label, { rows: [R("a", "1a", "Curl", joinSets), R("b", "1b", "Press", joinSets), R("c", "2", "Row", fromSets)] });
+    const stamp = sb.seed("ft_trainings", base.id, base, { client_id: "c1" });
+    maps.trainings.set(base.id, JSON.parse(JSON.stringify(base))); maps.seenAt.set("trainings/" + base.id, stamp); maps.seenDoc.set("trainings/" + base.id, JSON.stringify(base));
+    const srv = sb.tables.ft_trainings.get(base.id); Object.assign(srv.data.rows[2], { label: "1c", sets: joinSets });   // the other device's join
+    if (logged) Object.assign(srv.data.rows[2], { weights: ["30", "30", "30", "35", "35"], repsDone: ["10", "10", "10", "8", "8"], setsDone: 5, done: true });   // and the client's five sets
+    srv.updated_at = "2099-01-01T00:00:00Z";
+    maps.trainings.get(base.id).rows[0].rest = "90 sec";                                           // this device: an unrelated edit
+    fns.scheduleSave("trainings", base.id, 0); await settle();
+    const c = sb.tables.ft_trainings.get(base.id).data.rows[2];
+    assert.deepStrictEqual([c.label, c.sets, (c.weights || []).length, sb.tables.ft_trainings.get(base.id).data.rows[0].rest], ["1c", joinSets, logged, "90 sec"], label);
+    assert.deepStrictEqual([maps.trainings.get(base.id).rows[2].label, maps.trainings.get(base.id).rows[2].sets], ["1c", joinSets], label + ": this device too");
+  }
+  const own = training("Town", { rows: [R("a", "1a", "Curl", 4), R("b", "1b", "Press", 4)] });   // both devices changed the count: this device's own stands, as its number does
+  const st2 = sb.seed("ft_trainings", own.id, own, { client_id: "c1" });
+  maps.trainings.set(own.id, JSON.parse(JSON.stringify(own))); maps.seenAt.set("trainings/" + own.id, st2); maps.seenDoc.set("trainings/" + own.id, JSON.stringify(own));
+  const s2 = sb.tables.ft_trainings.get(own.id); s2.data.rows[1].sets = 2; s2.updated_at = "2099-01-01T00:00:00Z";
+  maps.trainings.get(own.id).rows[1].sets = 3; fns.scheduleSave("trainings", own.id, 0); await settle();
+  assert.strictEqual(sb.tables.ft_trainings.get(own.id).data.rows[1].sets, 3);
+});
+
+test("v313, the second review: sets the client logged after this copy was read are never cut by a count lowered here (a join, the \"…\" Sets, the sets button on a copy a set behind); a drop asked for over sets this copy had still drops", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const R = (id, label, name, sets, extra) => ({ ...row(id), label, name, sets, ...(extra || {}) });
+  const four = (n) => ({ weights: Array(n).fill("45"), repsDone: Array(n).fill("10"), setsDone: n, done: n >= 4 });
+  const base = training("Tlow", { rows: [R("a", "1", "Squat", 4), R("p", "2", "Plank", 4, four(3))] });
+  const st = sb.seed("ft_trainings", base.id, base, { client_id: "c1" });
+  maps.trainings.set(base.id, JSON.parse(JSON.stringify(base))); maps.seenAt.set("trainings/" + base.id, st); maps.seenDoc.set("trainings/" + base.id, JSON.stringify(base));
+  const srv = sb.tables.ft_trainings.get(base.id); Object.assign(srv.data.rows[1], four(4)); srv.updated_at = "2099-01-01T00:00:00Z";   // the client logs set 4
+  const lp = maps.trainings.get(base.id).rows[1]; lp.sets = 3; lp.done = true;   // the coach, a set behind, gives the plank 3 (nothing of his on set 4: no question)
+  if (!maps.trainerTouched.has(base.id)) maps.trainerTouched.set(base.id, new Set()); maps.trainerTouched.get(base.id).add("p");
+  fns.scheduleSave("trainings", base.id, 0); await settle();
+  const p = sb.tables.ft_trainings.get(base.id).data.rows[1];
+  assert.deepStrictEqual([p.sets, (p.repsDone || []).length, p.setsDone], [4, 4, 4], "her 4th set stands, and so does a count that holds it");
+  const b2 = training("Tdrop", { rows: [R("a", "1", "Squat", 4), R("p", "2", "Plank", 4, four(4))] });   // he saw all four and asked to drop the 4th; the client changed another row meanwhile
+  const st2 = sb.seed("ft_trainings", b2.id, b2, { client_id: "c1" });
+  maps.trainings.set(b2.id, JSON.parse(JSON.stringify(b2))); maps.seenAt.set("trainings/" + b2.id, st2); maps.seenDoc.set("trainings/" + b2.id, JSON.stringify(b2));
+  const s2 = sb.tables.ft_trainings.get(b2.id); Object.assign(s2.data.rows[0], { weights: ["100"], repsDone: ["5"], setsDone: 1 }); s2.updated_at = "2099-01-01T00:00:00Z";
+  const lq = maps.trainings.get(b2.id).rows[1]; lq.sets = 3; lq.setsDone = 3; lq.weights = lq.weights.slice(0, 3); lq.repsDone = lq.repsDone.slice(0, 3);
+  if (!maps.trainerTouched.has(b2.id)) maps.trainerTouched.set(b2.id, new Set()); maps.trainerTouched.get(b2.id).add("p");
+  fns.scheduleSave("trainings", b2.id, 0); await settle();
+  const q2 = sb.tables.ft_trainings.get(b2.id).data.rows;
+  assert.deepStrictEqual([q2[1].sets, (q2[1].repsDone || []).length, q2[0].setsDone], [3, 3, 1], "his drop stands; her set on the squat comes in");
+});
+
+test("v313, the final check: with no copy read (edited before the first sync), a drop the coach asked for stands, and only a row whose log is taken whole from the server is raised to hold the client's sets", async () => {
+  const sb = makeSupabase(); coach(sb);
+  const R = (id, label, name, sets, extra) => ({ ...row(id), label, name, sets, ...(extra || {}) });
+  const five = { weights: ["50", "50", "50", "50", "50"], repsDone: ["8", "8", "8", "8", "8"], setsDone: 5, done: true };
+  const d = training("Tnc1", { rows: [R("a", "1", "Squat", 4), R("p", "2", "Plank", 5, five)] }); sb.seed("ft_trainings", d.id, d, { client_id: "c1" });
+  const local = JSON.parse(JSON.stringify(d)); Object.assign(local.rows[1], { sets: 4, setsDone: 4, weights: five.weights.slice(0, 4), repsDone: five.repsDone.slice(0, 4), done: true });   // he dropped set 5 (asked and confirmed); no copy read
+  maps.trainings.set(d.id, local); maps.seenAt.delete("trainings/" + d.id); maps.seenDoc.delete("trainings/" + d.id);
+  if (!maps.trainerTouched.has(d.id)) maps.trainerTouched.set(d.id, new Set()); maps.trainerTouched.get(d.id).add("p");
+  fns.scheduleSave("trainings", d.id, 0); await settle();
+  const p = sb.tables.ft_trainings.get(d.id).data.rows[1];
+  assert.deepStrictEqual([p.sets, p.setsDone, (p.repsDone || []).length], [4, 4, 4], "his drop stands");
+  const u = training("Tnc2", { rows: [R("a", "1", "Squat", 4), R("p", "2", "Plank", 5, five)] }); sb.seed("ft_trainings", u.id, u, { client_id: "c1" });
+  const lu = JSON.parse(JSON.stringify(u)); Object.assign(lu.rows[1], { sets: 3, setsDone: 0, weights: [], repsDone: [], done: false });   // his copy never had her sets: he lowers the count; the row's log is not his
+  maps.trainings.set(u.id, lu); maps.seenAt.delete("trainings/" + u.id); maps.seenDoc.delete("trainings/" + u.id);
+  fns.scheduleSave("trainings", u.id, 0); await settle();
+  const q = sb.tables.ft_trainings.get(u.id).data.rows[1];
+  assert.deepStrictEqual([q.sets, q.setsDone, (q.repsDone || []).length], [5, 5, 5], "her five sets stand, and a count that holds them");
+});

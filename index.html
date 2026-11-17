@@ -83,7 +83,7 @@
     --search-fill: #e9e9eb;             /* a search field's capsule on the page (Look up an exercise) */
     --ink: #1d1d1f;                     /* the strong mark: black on light, white on dark */
     --disc-fill: #f8f8f8; --disc-ink: #1d1d1f;   /* the floating bar buttons (back, Messages, "…", + …; the preview's ×, ‹ ›, Edit): Apple's iOS 27.2 glass, measured pixel by pixel (his ask, 13 Nov: "measure exactly how Apple would do edit buttons"; his pick A: glass on the bar buttons, the page's own buttons plain as Apple's): light is the same on the page and on a sheet (Reminders, Photos, Calendar's event sheet) */
-    --menu-sep: rgba(0,0,0,0.08); --pop-chev: rgba(60,60,67,0.6);   /* a menu's line between its groups (Files, measured: 8% black on the glass, 8% white in the dark) and a pop-up button's up-and-down chevrons (Calendar's "None": Apple's secondary label, measured 138 on white) */
+    --menu-sep: rgba(0,0,0,0.08); --pop-chev: rgba(60,60,67,0.6); --menu-sub: #fefefe;   /* a menu's line between its groups (Files, measured: 8% black on the glass, 8% white in the dark) and a pop-up button's up-and-down chevrons (Calendar's "None": Apple's secondary label, measured 138 on white) */
     --wheel-dim: 0.39; --switch-off: rgba(60,60,67,0.3);   /* v299, measured on iOS 27.2 (a native UIPickerView and UISwitch on white): the rows off the wheel's band at 39% of the ink (Apple's 165 on white); the switch's track when off (197,197,199) */
     --disc-edge: inset 0 1.67px 0 -0.67px rgba(255,255,255,0.5), inset 0 -1.67px 0 -0.67px rgba(255,255,255,0.5), inset 0 5px 0 -4.33px rgba(255,255,255,0.8), inset 0 -5px 0 -4.33px rgba(255,255,255,0.8), inset 0 20px 5px -17px rgba(255,255,255,0.6), inset 0 -10px 3px -8.67px rgba(255,255,255,0.2), inset 0 10px 5px 6px rgba(0,0,0,0.016), 0 0 0 0.33px rgba(0,0,0,0.052), 0 0 0 0.67px rgba(0,0,0,0.052), 1px 0 0 -0.33px rgba(0,0,0,0.2), -1px 0 0 -0.33px rgba(0,0,0,0.2), 0 7.67px 5.33px rgba(0,0,0,0.013);   /* its edge, lit from above and below: a white line inside the top and bottom fading round the ends, a 0.5-point grey ring (10% at the top and bottom, 33% at the ends), a faint shadow below; offsets in whole iPhone pixels (WebKit snaps shadows to them) */
     --glass-sheet-fill: #f8f8f8; --glass-sheet-edge: var(--disc-edge);   /* on a sheet (the preview), in light the same glass */
@@ -149,7 +149,7 @@
       --search-fill: #38383b;
       --ink: #ffffff;
       --disc-fill: #1f1f1f; --disc-ink: #ffffff;   /* on the black page: 12% white, fitted to his Mail screenshot */
-      --menu-sep: rgba(255,255,255,0.08); --pop-chev: rgba(235,235,245,0.6);
+      --menu-sep: rgba(255,255,255,0.08); --pop-chev: rgba(235,235,245,0.6); --menu-sub: #212121;
       --wheel-dim: 0.355; --switch-off: rgba(235,235,245,0.3);   /* v299, measured on iOS 27.2 (a native UIPickerView and UISwitch on the dark card): the rows off the wheel's band at 35.5% of the ink; the switch's track when off */
       --disc-edge: inset 0 19px 0 -18.67px rgba(255,255,255,0.094), inset 0 -19px 0 -18.67px rgba(255,255,255,0.094), inset 0 1.67px 0 -1px rgba(255,255,255,0.02), inset 0 -1.67px 0 -1px rgba(255,255,255,0.02), inset 0 8.33px 0 -7.33px rgba(255,255,255,0.034), inset 0 -8.33px 0 -7.33px rgba(255,255,255,0.034), inset 0 1.33px 0 -0.33px rgba(255,255,255,0.063), inset 0 -1.33px 0 -0.33px rgba(255,255,255,0.063), inset 0 24.67px 8px -24.33px rgba(255,255,255,0.112), inset 0 -24.67px 8px -24.33px rgba(255,255,255,0.112), inset 0 17.33px 0 -16.67px rgba(255,255,255,0.048), inset 0 -17.33px 0 -16.67px rgba(255,255,255,0.048);
       --glass-sheet-fill: #3a3a3c; --glass-sheet-edge: inset 0 1.67px 0 -0.67px rgba(255,255,255,0.07), inset 0 -1.67px 0 -0.67px rgba(255,255,255,0.07), inset 0 5px 0 -4.33px rgba(255,255,255,0.1), inset 0 -5px 0 -4.33px rgba(255,255,255,0.1), inset 0 20px 4.67px -19.33px rgba(255,255,255,0.11), inset 0 -20px 4.67px -19.33px rgba(255,255,255,0.11), 1px 0 0 -0.33px rgba(0,0,0,0.62), -1px 0 0 -0.33px rgba(0,0,0,0.62);   /* on the #1c1c1e preview: 13% white, a lighter line top and bottom, a dark line at the ends (Calendar's event sheet) */
@@ -215,7 +215,7 @@
     --search-fill: #38383b;
     --ink: #ffffff;
     --disc-fill: #1f1f1f; --disc-ink: #ffffff;   /* on the black page: 12% white, fitted to his Mail screenshot */
-    --menu-sep: rgba(255,255,255,0.08); --pop-chev: rgba(235,235,245,0.6);
+    --menu-sep: rgba(255,255,255,0.08); --pop-chev: rgba(235,235,245,0.6); --menu-sub: #212121;
     --wheel-dim: 0.355; --switch-off: rgba(235,235,245,0.3);   /* v299, measured on iOS 27.2 (a native UIPickerView and UISwitch on the dark card): the rows off the wheel's band at 35.5% of the ink; the switch's track when off */
     --disc-edge: inset 0 19px 0 -18.67px rgba(255,255,255,0.094), inset 0 -19px 0 -18.67px rgba(255,255,255,0.094), inset 0 1.67px 0 -1px rgba(255,255,255,0.02), inset 0 -1.67px 0 -1px rgba(255,255,255,0.02), inset 0 8.33px 0 -7.33px rgba(255,255,255,0.034), inset 0 -8.33px 0 -7.33px rgba(255,255,255,0.034), inset 0 1.33px 0 -0.33px rgba(255,255,255,0.063), inset 0 -1.33px 0 -0.33px rgba(255,255,255,0.063), inset 0 24.67px 8px -24.33px rgba(255,255,255,0.112), inset 0 -24.67px 8px -24.33px rgba(255,255,255,0.112), inset 0 17.33px 0 -16.67px rgba(255,255,255,0.048), inset 0 -17.33px 0 -16.67px rgba(255,255,255,0.048);
     --glass-sheet-fill: #3a3a3c; --glass-sheet-edge: inset 0 1.67px 0 -0.67px rgba(255,255,255,0.07), inset 0 -1.67px 0 -0.67px rgba(255,255,255,0.07), inset 0 5px 0 -4.33px rgba(255,255,255,0.1), inset 0 -5px 0 -4.33px rgba(255,255,255,0.1), inset 0 20px 4.67px -19.33px rgba(255,255,255,0.11), inset 0 -20px 4.67px -19.33px rgba(255,255,255,0.11), 1px 0 0 -0.33px rgba(0,0,0,0.62), -1px 0 0 -0.33px rgba(0,0,0,0.62);   /* on the #1c1c1e preview: 13% white, a lighter line top and bottom, a dark line at the ends (Calendar's event sheet) */
@@ -916,6 +916,8 @@
   body.client .block:not(.ahead) .row .sum { column-gap: 22px; clip-path: inset(-40px -40px -40px -6px); }   /* reps • rest wrapping onto a second line: no bullet starts it (his screenshot, 13 Nov: "• 10 sec transition" alone on the second line, "I don't like how it brakes"). Each bullet sits in the gap before its words, so one at the start of a line falls left of the line, where it is clipped away: its dot is 8 or more points out at every Text Size; the 6 left show the phrase's focus ring (2 and 2 out; a review's catch) */
   body.client .block:not(.ahead) .row .sum .si + .si::before { content: "\2022"; display: inline-block; width: 22px; margin: 0 0 0 -22px; text-align: center; color: var(--text-tertiary); font-size: 0.85em; }   /* reps • rest: a real bullet in the 22 between them (it was 9, the bullet and 9), pulled back into the gap by its own width; on the words' baseline, as it was */
   body.client .block:not(.ahead) .row .sum .si.sum-sets + .si::before { content: none; }
+  body.client .block:not(.ahead) .row.fewer .sum .sum-sets { display: inline; }   /* v313 (the owner's pick, 17 Nov 2026): an exercise with fewer sets than its superset says how many from the first set ("3 sets \2022 30 reps \2022 60 sec rest"); the others' count is the chips' */
+  body.client .block:not(.ahead) .row.fewer .sum .si.sum-sets + .si::before { content: "\2022"; }
   body.client .block.ahead .row .sum { margin-top: 2px; font-size: 0.8125rem; color: var(--text-tertiary); }
   body.client .block.ahead .row .sum .sum-rest { display: none; }                          /* folded: sets and reps are enough */
   body.client .block.done:not(.open) .row .sum { display: none; }
@@ -977,9 +979,11 @@
   .tracker .tr-count:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }   /* the keyboard's place, a ring round the disc */
   .setlog { margin-top: 14px; }
   .setlog-short { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin-top: 10px; font-size: 0.9375rem; line-height: 1.3; color: var(--text-secondary); }   /* v312 (the owner's pick): an exercise with fewer sets than its card says so on the card's extra set, rather than look broken */
-  .setlog-short .add-set { flex: none; appearance: none; border: 0; background: none; box-shadow: none; min-height: 44px; padding: 0 2px 0 12px; font: inherit; font-size: 0.9375rem; font-weight: 500; color: var(--brand-text); cursor: pointer; -webkit-tap-highlight-color: transparent; }   /* as the card's Start this exercise: words in the brand colour, no box */
-  .setlog-short .add-set:active { opacity: 0.6; }
-  .setlog-short .add-set:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 8px; }
+  .setlog-short .short-done { display: inline-flex; align-items: center; gap: 8px; color: var(--text-primary); }   /* v313 (the owner's pick B, 17 Nov 2026): on the superset's extra set an exercise done with its own says Done, with a green tick */
+  .setlog-short .short-done svg { width: 1.25rem; height: 1.25rem; flex: none; color: var(--done); }
+  .setlog-short .short-done svg path { stroke: var(--done-ink); }
+  .row .own-sets { margin: 2px 0 0; font-size: 0.9375rem; line-height: 1.3; color: var(--text-secondary); }   /* v313: the coach's look, under the name of an exercise given fewer sets than its superset (in its "…"): "3 sets" */
+  .block.done:not(.open) .row .own-sets { display: none; }
   body.client .block.ahead .row .setlog-short, #rows.locked .block.peek .row .setlog-short, .block.done:not(.open) .row .setlog-short, #vTraining.tpl .setlog-short { display: none; }   /* the line stands in for the set boxes, so it hides wherever they do: a folded finished card, a card still to come in the client's look, a look at a finished workout, a template (the final check: it showed in folded cards, where Add set reopened a finished exercise) */
   .setlog .chip.stack { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: 74px; padding: 10px 14px; text-align: left; }   /* a label on top, the number below */
   .setlog .chip.stack .lab { font-size: 0.8125rem; line-height: 1.2; color: var(--text-secondary); }
@@ -1270,6 +1274,17 @@
   #whenPop.menu.long::-webkit-scrollbar { display: none; }
   #whenPop.menu.long::after { display: none; }   /* its rim drawn on the bubble itself (the inset shadows above), as the names' list draws its own: the ring of its own scrolled away with the rows (seen on the simulator, a line across the list) */
   #whenPop .msep { flex: none; height: 1px; margin: 10px 12px; background: var(--menu-sep); }   /* a line between the menu's groups, 24 in from either edge, 10 clear above and below (Files, measured) */
+  #whenPop.menu .wopt.two { min-height: 60px; }   /* v313: a row with the choice in effect under its name, and a list of its own (Reminders' Sort By, measured on iOS 27.2: 60 points, the choice in grey, a chevron at its end) */
+  #whenPop .wopt .mtwo { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
+  #whenPop .wopt .mtwo small { margin-top: 3px; font-size: 0.8125rem; letter-spacing: 0; color: var(--text-secondary); }   /* 13 points (measured: the choice's capitals 9.3 points tall under a 17-point name) */
+  #whenPop .wopt .mchev { width: 0.5em; height: 0.75em; margin-left: auto; flex: none; }
+  #whenPop .wopt.mhead .mchev { width: 0.75em; height: 0.5em; }
+  #whenPop .wopt.mhead .mtwo > span { font-weight: 600; }   /* the list's first row is the row tapped, its name in semibold (measured) */
+  #whenPop.subopen > :not(.msub) { opacity: 0.5; }   /* the menu behind its row's list: dimmed by half (measured on iOS 27.2, Reminders' Sort By: its words 131 on 254 in light, 140 on 32 in dark); the list itself is 254 in light, 33 in dark, solid: the menu's glass inside a glass would let the page show through */
+  #whenPop .msub { position: absolute; left: 0; right: 0; z-index: 3; display: flex; flex-direction: column; padding: 12px; border-radius: 28px; background: var(--menu-sub); box-shadow: 0 10px 30px var(--glass-menu-shadow), 0 0 0 0.5px var(--glass-menu-edge); }   /* the row's list, over the menu from that row */
+  #whenPop .msub .wopt:not(.mhead) { position: relative; padding-left: 32px; }   /* a choice of one: room for the tick */
+  #whenPop .msub { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: none; }   /* taller than what shows (capped in openKids): it scrolls inside, a finger too in a touch and hold's menu (whose bubble takes no pan), and the page under it never moves */
+  #whenPop .msub::-webkit-scrollbar { display: none; }
   /* touch and hold (the phone's right-click), as iOS 27.2 does it (measured on Contacts and the Home Screen): the item lifts where it is, growing a
      little with a shadow while the finger stays; at 0.4 s the page dims, the item stays lifted over it and its menu opens 16 under it */
   #ctxDim { position: fixed; inset: 0; z-index: 55; padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); box-sizing: border-box; background: var(--ctx-dim); opacity: 0; transition: opacity 200ms cubic-bezier(0.25, 0.1, 0.25, 1); touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }   /* the whole screen, bars and all (the padding only tells the code the safe areas) */
@@ -2193,7 +2208,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=312";
+  import { boot } from "./app/main.js?v=313";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

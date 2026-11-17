@@ -313,3 +313,15 @@ test("composeName: the exercise's name is its two lines together, keeping a comm
   const parts = splitName(composeName("Close-grip decline bench press", "fat bar with band/chains"), null);
   assert.deepStrictEqual([parts.title, parts.sub], ["Close-grip decline bench press", "fat bar with band/chains"], "and the split gives the two lines back");
 });
+
+test("v313: the card's sets button moves the superset's own number (the exercises at the card's most); one given fewer keeps them unless the superset goes below them; the sets an exercise holds something on", async () => {
+  const { cardSetsTo, loggedSets } = await import("../app/model.js");
+  assert.deepStrictEqual([cardSetsTo(4, 4, 5), cardSetsTo(3, 4, 5), cardSetsTo(4, 4, 3), cardSetsTo(3, 4, 3), cardSetsTo(3, 4, 2), cardSetsTo(4, 4, 2)], [5, 3, 3, 3, 2, 2]);
+  assert.deepStrictEqual([
+    loggedSets({ sets: 4, setsDone: 0, weights: [], repsDone: [] }),
+    loggedSets({ sets: 4, setsDone: 2, weights: ["20", "20"], repsDone: ["10", "10"] }),
+    loggedSets({ sets: 4, setsDone: 1, weights: ["20", "", "", "25"], repsDone: [] }),
+    loggedSets({ sets: 3, done: true, weights: ["20", "20", "20"], repsDone: [] }),
+    loggedSets({ sets: 4, setsDone: 0, weights: ["", " "], repsDone: [null, "8"] }),
+  ], [0, 2, 4, 3, 2], "nothing; two done; a weight planned on set 4; finished before the set counter (all its own); reps on set 2");
+});

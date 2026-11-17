@@ -29,3 +29,17 @@ test("the icons are filled shapes, sized like Apple's against the text", () => {
     assert.ok(/viewBox="[-\d.]+ [-\d.]+ ([\d.]+) \1"/.test(MI[k]), k + ": a square box, the glyph centred in it");
   }
 });
+
+test("v313: Sets, only when the row passes it (an exercise in a superset, the coach's own look): before Delete, its choice in effect under its name, and a list of its own: Default (the superset's number), a line, then fewer; each pick says which", () => {
+  const MI = fns.menuIcons(), got = [];
+  const on = { swap() {}, note() {}, remove() {}, sets: { most: 4, own: 3, pick: (k, e, def) => got.push([k, def]) } };
+  const items = fns.exerciseMenu({ note: "" }, on), s = items[2];
+  assert.deepStrictEqual(items.map((i) => i.label), ["Add alternatives", "Add instructions", "Sets", "Delete exercise"]);
+  assert.deepStrictEqual([s.sub, s.icon === MI.sets, !!s.danger], ["3 sets", true, false]);
+  assert.deepStrictEqual(s.kids.map((k) => [k.label, k.checked, !!k.sep]), [["Default (4 sets)", false, false], ["3 sets", true, true], ["2 sets", false, false], ["1 set", false, false]]);
+  s.kids.forEach((k) => k.onPick({}));
+  assert.deepStrictEqual(got, [[4, true], [3, false], [2, false], [1, false]]);
+  const def = fns.exerciseMenu({ note: "" }, { ...on, sets: { most: 2, own: 2, pick() {} } })[2];
+  assert.deepStrictEqual([def.sub, def.kids.map((k) => k.label + (k.checked ? " ✓" : ""))], ["Default (2 sets)", ["Default (2 sets) ✓", "1 set"]]);
+  assert.ok(/fill="currentColor"/.test(MI.sets) && !/stroke-width/.test(MI.sets) && /viewBox="0 0 24 24"/.test(MI.sets), "a filled glyph in a square box, as the others");
+});

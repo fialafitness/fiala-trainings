@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows, pendingProfile, profileTouched, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, fmtDayLong, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { carryOver, TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, labelKey, cmpLabel, validateBackup, doneCount, timedPlan, measurePlan, weightIn, weightStored, sameWeightText, kgOf, stampUnit, toTimeUnit, heightAs, weightAs, heightUnitOf, bodyUnitOf, fmtHeight, fmtBodyWeight, ageOn, profileGet, profilePut, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive, weekDays, weekAverage, rangeCounts, mondayOf, weightNumber, attendance, liftsOf, bestOf, strongerLifts, monthBests, discomforts, inPersonCount, numOf, nextPlan, planSwitch, sessionsTotal } from "./model.js";
+import { carryOver, TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, labelKey, cmpLabel, validateBackup, doneCount, timedPlan, measurePlan, weightIn, weightStored, sameWeightText, kgOf, stampUnit, toTimeUnit, heightAs, weightAs, heightUnitOf, bodyUnitOf, fmtHeight, fmtBodyWeight, ageOn, profileGet, profilePut, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive, weekDays, weekAverage, rangeCounts, mondayOf, weightNumber, attendance, liftsOf, bestOf, strongerLifts, monthBests, discomforts, inPersonCount, numOf, nextPlan, planSwitch, sessionsTotal, cardSetsTo, loggedSets } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { seenDoc, moveOut, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -2258,6 +2258,13 @@ import { reportRange, buildReport } from "./report.js";
   let dp = null;                          // { clientId, title, selected, month, onPick }
   // "Finish early" asks first. What's logged stays, the remaining sets stay open, and the reason (if any) lands on the card.
   let es = null;                                                   // { t, g, selKey, reason } while the sheet is up
+  function setsTo(T, r, to) {                                        // v313: an exercise's number of sets changed (the sets button, a join, the "…" Sets): its sets done kept within it, done when they reach it, open again when given more ("finished early" stays finished); one finished before the set counter existed keeps its own sets done and the ones added open (as v312's Add set did; the v313 review: they read as done). True when its log changed
+    const was = setsOf(r), sd = Math.min(doneCount(r), was), wasDone = !!r.done;
+    if (r.setsDone == null && r.done && to > was) r.setsDone = sd;
+    r.sets = to; if (sd > to) r.setsDone = to;
+    if (sd >= to) r.done = true; else if (r.done && sd >= was) { r.done = false; markEarly(T, r, ""); }
+    return r.done !== wasDone || sd > to;
+  }
   function markEarly(t, r, reason) {                               // the note on why; "" clears it
     if (reason) r.earlyReason = reason; else delete r.earlyReason;
     if (S.clientMode) { if (!pendingEarlyRows.has(t.id)) pendingEarlyRows.set(t.id, new Set()); pendingEarlyRows.get(t.id).add(r.id); }
@@ -4260,12 +4267,10 @@ import { reportRange, buildReport } from "./report.js";
             }
             const T = trainings.get(t.id); if (!T) return;   // a sync can replace the record while the question is up: the change goes into the one there now
             const rows = T === t ? g.rows : g.rows.map((r) => (T.rows || []).find((x) => x.id === r.id)).filter(Boolean);
+            const most = rows.length ? Math.max(...rows.map(setsOf)) : n;   // v313 (the owner's rule, 17 Nov 2026): the superset's own number moves, the exercises at the card's most; one given fewer in its "…" keeps them, unless the superset goes below them (cardSetsTo)
             for (const r of rows) {
-              const was = setsOf(r), sd = clamp(parseInt(r.setsDone, 10) || 0, 0, 20), wasDone = !!r.done;
-              r.sets = n;
-              if (sd > n) r.setsDone = n;
-              if (sd >= n) r.done = true; else if (r.done && sd >= was) { r.done = false; markEarly(T, r, ""); }   // a set added to a finished exercise reopens it; "finished early" stays finished
-              if (!isTpl && (r.done !== wasDone || sd > n)) { if (!trainerTouched.has(t.id)) trainerTouched.set(t.id, new Set()); trainerTouched.get(t.id).add(r.id); }
+              const to = cardSetsTo(setsOf(r), most, n);
+              if (setsTo(T, r, to) && !isTpl) { if (!trainerTouched.has(t.id)) trainerTouched.set(t.id, new Set()); trainerTouched.get(t.id).add(r.id); }   // a set added to a finished exercise reopens it; "finished early" stays finished (setsTo)
             }
             setSel.delete(selKey); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); back();
           };
@@ -4564,6 +4569,7 @@ import { reportRange, buildReport } from "./report.js";
   function showMenu(anchor, items, opts) {                           // the same frosted bubble with rows to tap: [{ label, icon?, onPick }]; opts.align "right" hangs it from the anchor's right edge (a disc at the edge of a card)
     const pop = $("whenPop"); pop.classList.remove("plain"); pop.classList.add("menu");
     let close = null; const openedAt = performance.now();   // a pop-up button's list opens over its button, so a double tap's second tap lands on a row: in its first 350 ms a tap there picks nothing, as the question sheets' buttons (a review's catch: a double tap on the sets' count picked "1 set"); a keyboard's pick is never held
+    const getClose = () => close;                                     // v313: a row's own list closes the whole menu when a choice in it is picked
     const checks = items.some((it) => typeof it.checked === "boolean"); pop.classList.toggle("checks", checks);   // a choice of one (Apple's pop-up menu, Calendar's Repeat measured): every row keeps room for the tick, the one in effect wears it
     pop.classList.toggle("long", !!(opts && opts.long));              // a list of more rows than a menu shows (the sets, 1 to 20): twelve in view and it scrolls, as Apple's own list of 20 (measured on iOS 27.2: 12 rows, then it scrolls)
     pop.replaceChildren(...items.flatMap((it, i) => {
@@ -4571,8 +4577,9 @@ import { reportRange, buildReport } from "./report.js";
       if (it.icon) b.innerHTML = it.icon;
       if (it.checked) { b.insertAdjacentHTML("afterbegin", MENU_CHECK); b.setAttribute("aria-current", "true"); }
       const s = document.createElement("span"); s.textContent = it.label; b.appendChild(s);
+      if (it.sub != null || it.kids) menuRowMore(b, s, it);   // v313: the choice in effect under the row's name, and a list of its own (Reminders' Sort By, measured on iOS 27.2)
       b.addEventListener("mousedown", (e) => e.preventDefault());   // pressing a row moves no focus: a field typed in keeps it (and its redraw waits) until the row is picked
-      b.addEventListener("click", (e) => { e.stopPropagation(); if (opts && opts.over && e.detail >= 1 && performance.now() - openedAt < 350) return; if (close) close(); if (opts && opts.lift && opts.lift.drop) opts.lift.drop(); it.onPick(e); });   // close() first: a keyboard's focus is back on the anchor, so a sheet the row opens returns there (a held item's copy goes at once: what the pick opens, or the page it glides, is not under a copy of the item as it was)
+      b.addEventListener("click", (e) => { e.stopPropagation(); if (((opts && opts.over) || pop.dataset.overAnchor === "1") && e.detail >= 1 && performance.now() - openedAt < 350) return; if (it.kids) { openKids(b, it, getClose, opts, byKeys(e)); return; } if (close) close(); if (opts && opts.lift && opts.lift.drop) opts.lift.drop(); it.onPick(e); });   // close() first: a keyboard's focus is back on the anchor, so a sheet the row opens returns there (a held item's copy goes at once: what the pick opens, or the page it glides, is not under a copy of the item as it was)
       if (!it.sep || !i) return [b];
       const line = document.createElement("div"); line.className = "msep"; line.setAttribute("role", "separator"); return [line, b];   // a new group: Apple's line across the menu (Files, measured)
     }));
@@ -4580,6 +4587,44 @@ import { reportRange, buildReport } from "./report.js";
     const rs = [...pop.querySelectorAll(".wopt")], ticked = rs.find((b) => b.getAttribute("aria-current") === "true") || null;
     if (opts && opts.long) pop.scrollTop = ticked ? Math.max(0, ticked.offsetTop - (pop.clientHeight - ticked.offsetHeight) / 2) : 0;   // it opens with the row ticked in view, in the middle where the list allows (Safari's own list of 1 to 20, measured: reopened on 18, it opens scrolled to it)
     if (opts && opts.focus) { const f = (opts.over && ticked) || pop.querySelector(".wopt"); if (f) f.focus({ preventScroll: true }); }   // opened from the keyboard or VoiceOver: into the menu, as a system menu takes focus (a tap leaves focus where it is); on the row ticked, where a Mac's pop-up menu opens (a pop-up's; a "…" with a choice in it, as the workout's Weights in, opens on its first row)
+  }
+  const SHORT_DONE = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="currentColor"/><path d="M5.6 10.3l2.9 2.9 5.9-6.3" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Done</span>';   // v313: the superset's extra set, for an exercise done with its own (his pick B): a green tick and Done
+  const MENU_MORE = '<svg class="mchev" viewBox="0 0 10 15" aria-hidden="true" fill="currentColor"><path d="M2.2 0.6 9 7.5 2.2 14.4 0.8 13 6.2 7.5 0.8 2z"/></svg>';   // a row with a list of its own ends in Apple's chevron (Reminders' Sort By, iOS 27.2)
+  const MENU_LESS = '<svg class="mchev" viewBox="0 0 15 10" aria-hidden="true" fill="currentColor"><path d="M0.6 2.2 7.5 9 14.4 2.2 13 0.8 7.5 6.2 2 0.8z"/></svg>';   // its list open: the chevron turns down, as Apple's, and a tap there closes the list
+  function menuRowMore(b, s, it) {                                   // v313: a menu row with the choice in effect under its name (it.sub) and a list of its own (it.kids: the row's tap opens it, openKids), as Reminders' Sort By (measured on iOS 27.2: a 60-point row, the choice in grey under the name, a chevron at its end)
+    if (it.sub != null) { const nm = document.createElement("span"), sm = document.createElement("small"); nm.textContent = s.textContent; sm.textContent = it.sub; s.textContent = ""; s.className = "mtwo"; s.append(nm, sm); b.classList.add("two"); }
+    if (!it.kids) return;
+    b.setAttribute("aria-haspopup", "menu"); b.setAttribute("aria-expanded", "false"); b.insertAdjacentHTML("beforeend", MENU_MORE);
+  }
+  function openKids(b, it, getClose, opts, keys) {                  // v313: the row's own list opens over the menu from that row, the menu dimmed behind (Reminders' Sort By, measured on iOS 27.2); its first row is the row tapped, its chevron down, and a tap there closes the list again
+    const pop = $("whenPop"), old = pop.querySelector(".msub"); if (old) old.remove();
+    const sub = document.createElement("div"); sub.className = "msub"; sub.setAttribute("role", "group"); sub.setAttribute("aria-label", it.label);
+    const shownAt = performance.now(), had = pop.contains(document.activeElement);   // (the keyboard's place was in the menu: it goes into the list, however the row was opened; the review: a pointer's click on Sets after a keyboard's Enter left it on the page)
+    const head = document.createElement("button"), hs = document.createElement("span"); head.type = "button"; head.className = "wopt mhead"; if (it.icon) head.innerHTML = it.icon; hs.textContent = it.label; head.appendChild(hs); menuRowMore(head, hs, { sub: it.sub }); head.setAttribute("aria-expanded", "true"); head.insertAdjacentHTML("beforeend", MENU_LESS);   // the row tapped, at the list's head: its name, the choice in effect, the chevron turned down
+    const shut = (focusRow) => { sub.remove(); pop.classList.remove("subopen"); for (const n of pop.children) n.inert = false; b.setAttribute("aria-expanded", "false"); if (focusRow) b.focus({ preventScroll: true }); };
+    head.addEventListener("mousedown", (e) => e.preventDefault());
+    head.addEventListener("click", (e) => { e.stopPropagation(); if (e.detail >= 1 && performance.now() - shownAt < 350) return; shut(byKeys(e) || sub.contains(document.activeElement)); });   // its first 350 ms take no tap: the head is drawn over the row tapped, and a double tap's second closed the list again (the v313 review)
+    const rows = it.kids.flatMap((k, i) => {
+      const r = document.createElement("button"); r.type = "button"; r.className = "wopt";
+      if (k.checked) { r.insertAdjacentHTML("afterbegin", MENU_CHECK); r.setAttribute("aria-current", "true"); }
+      const s = document.createElement("span"); s.textContent = k.label; r.appendChild(s);
+      r.addEventListener("mousedown", (e) => e.preventDefault());
+      r.addEventListener("click", (e) => { e.stopPropagation(); if (e.detail >= 1 && performance.now() - shownAt < 350) return; const c = getClose(); if (c) c(); if (opts && opts.lift && opts.lift.drop) opts.lift.drop(); k.onPick(e); });   // in its first 350 ms a tap picks nothing: it opens under the finger, and a double tap's second would land on a row
+      if (!k.sep || !i) return [r];
+      const line = document.createElement("div"); line.className = "msep"; line.setAttribute("role", "separator"); return [line, r];
+    });
+    const line = document.createElement("div"); line.className = "msep"; line.setAttribute("role", "separator");
+    sub.append(head, line, ...rows);
+    for (const n of pop.children) n.inert = true;                    // the menu behind: dimmed, and nothing in it is taken (a keyboard's up and down stay in the list)
+    pop.classList.add("subopen"); pop.appendChild(sub); b.setAttribute("aria-expanded", "true");
+    const pr0 = pop.getBoundingClientRect(), pr = { top: parseFloat(pop.style.top) || pr0.top }, dcs = getComputedStyle($("ctxDim")), vv = window.visualViewport, vt = vv ? Math.max(0, Number(vv.offsetTop) || 0) : 0, vb = vv && Number(vv.height) ? vt + Number(vv.height) : window.innerHeight;   // what shows: the keyboard's top when it is up, the status bar and the home indicator kept clear, as a pop-up's list is (openPop's over)
+    let lo = vt + (parseFloat(dcs.paddingTop) || 0) + 8; const hi = Math.min(vb, window.innerHeight - (parseFloat(dcs.paddingBottom) || 0)) - 8, sh = sub.offsetHeight, want = pr.top + b.offsetTop - (parseFloat(getComputedStyle(sub).paddingTop) || 0);
+    const lv = opts && opts.lift && opts.lift.vis; if (lv && hi - (lv.bottom + 16) >= 180) lo = Math.max(lo, lv.bottom + 16);   // a touch and hold's: never over the item it lifted, 16 under it as its menu is, where there is room for three rows (the second review)
+    if (sh > hi - lo) sub.style.maxHeight = Math.max(0, hi - lo) + "px";   // taller than what shows (an 8-set superset on a phone turned sideways: the v313 review): it scrolls inside, as the sets' long list does
+    sub.style.top = (Math.max(lo, Math.min(want, hi - Math.min(sh, hi - lo))) - pr.top) + "px";   // from the row tapped, as Apple's; moved up where it would run off the foot
+    const ws = rows.filter((x) => x.classList && x.classList.contains("wopt")), tick = ws.find((x) => x.getAttribute("aria-current") === "true") || null;
+    if (tick && sh > hi - lo) sub.scrollTop = Math.max(0, tick.offsetTop + tick.offsetHeight + 12 - Math.max(0, hi - lo));   // a list that scrolls opens with the choice in effect in view, scrolled no further than that needs, so its head shows where it can (the final check); placed from the menu's resting top, as a hold's menu may still be rising
+    if (keys || had) { const f = tick || ws[0]; if (f) f.focus({ preventScroll: true }); }   // from the keyboard: on the choice in effect
   }
   const MI = {                                                         // the menu's leading glyphs, in a 1.25 em box (see #whenPop.menu .mi); swap, pencil and trash traced from Apple's and filled like theirs
     calendar: '<svg class="mi" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.9" width="12" height="11.2" rx="2.2"/><path d="M2 6.5h12M5.2 1.6v2.6M10.8 1.6v2.6"/></svg>',
@@ -4608,10 +4653,18 @@ import { reportRange, buildReport } from "./report.js";
   const ALT_PLUS = '<svg class="alt-ic" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="11" fill="currentColor"/><path d="M11 6.5v9M6.5 11h9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
   MI.folder = SA_FOLDER;                                               // Move to in a menu: the swipe's folder
   MI.reorder = MI.swap.replace("<path ", '<path transform="rotate(90 21.88 10)" ');   // Reorder folders (his ask, 12 Nov): the swap arrows a quarter turn round, up beside down, as Apple's arrow.up.arrow.down
+  MI.sets = '<svg class="mi" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M4.6 3h1.8A1.1 1.1 0 0 1 7.5 4.1V5.9A1.1 1.1 0 0 1 6.4 7H4.6A1.1 1.1 0 0 1 3.5 5.9V4.1A1.1 1.1 0 0 1 4.6 3ZM10.25 4.25H19.75A.75.75 0 0 1 19.75 5.75H10.25A.75.75 0 0 1 10.25 4.25ZM4.6 10h1.8A1.1 1.1 0 0 1 7.5 11.1V12.9A1.1 1.1 0 0 1 6.4 14H4.6A1.1 1.1 0 0 1 3.5 12.9V11.1A1.1 1.1 0 0 1 4.6 10ZM10.25 11.25H19.75A.75.75 0 0 1 19.75 12.75H10.25A.75.75 0 0 1 10.25 11.25ZM4.6 17h1.8A1.1 1.1 0 0 1 7.5 18.1V19.9A1.1 1.1 0 0 1 6.4 21H4.6A1.1 1.1 0 0 1 3.5 19.9V18.1A1.1 1.1 0 0 1 4.6 17ZM10.25 18.25H19.75A.75.75 0 0 1 19.75 19.75H10.25A.75.75 0 0 1 10.25 18.25Z"/></svg>';   // v313, Sets: our own filled glyph, three rows each with its mark (the one in the pictures he approved, 17 Nov 2026)
+  function ownSetsItem(s) {                                          // v313 (the owner's ask, 17 Nov 2026: "an option in coaches view in the 3 dot button ... change the amount of sets for only that exercise"; his pick after the pictures): Apple's Notes, a folder's Sort By in its "…" led by "Default (Date Edited)", and the choice in effect in grey under the row's name (Reminders' Sort By, measured on iOS 27.2)
+    const word = (k) => k + (k === 1 ? " set" : " sets"), def = "Default (" + word(s.most) + ")";
+    const kids = [{ label: def, checked: s.own >= s.most, onPick: (e) => s.pick(s.most, e, true) }];
+    for (let k = s.most - 1; k >= 1; k--) kids.push({ label: word(k), checked: s.own === k, sep: k === s.most - 1, onPick: (e) => s.pick(k, e, false) });   // fewer only: the superset's own number is its sets button's
+    return { label: "Sets", sub: s.own >= s.most ? def : word(s.own), icon: MI.sets, kids };
+  }
   function exerciseMenu(r, on) {                                    // the coach's "…" on an exercise: swap it, its instructions, and last and red, delete it, as Apple ends a menu with its destructive row (his ask, 9 Nov: Delete was hidden in Alternate exercise); the video is the play disc's own business
     return [
       { label: (r.alts || []).some((a) => a && a !== r.name) ? "Edit alternatives" : "Add alternatives", icon: MI.swap, onPick: on.swap },   // no ellipsis on any menu row (his pick, 10 Nov: "I don't see the … in any apples design so drop it")
       { label: (r.note || "").trim() ? "Edit instructions" : "Add instructions", icon: MI.pencil, onPick: on.note },
+      ...(on.sets ? [ownSetsItem(on.sets)] : []),
       { label: "Delete exercise", icon: MI.trash, danger: true, onPick: on.remove },
     ];
   }
@@ -4629,7 +4682,7 @@ import { reportRange, buildReport } from "./report.js";
     const bg = $("whenBg"), pop = $("whenPop");
     const at = opts && opts.at;                                       // a right-click's menu: from the pointer itself, no pointer drawn (opts.at { x, y })
     const lift = opts && opts.lift;                                   // a touch and hold's: under the item it lifted (opts.lift { box, rect, grow, open })
-    bg.hidden = false; pop.classList.remove("above"); pop.classList.toggle("hung", !!(opts && (opts.align === "right" || at || lift || opts.over))); pop.classList.toggle("lift", !!lift);
+    bg.hidden = false; pop.classList.remove("above"); pop.classList.remove("subopen"); delete pop.dataset.overAnchor; pop.classList.toggle("hung", !!(opts && (opts.align === "right" || at || lift || opts.over))); pop.classList.toggle("lift", !!lift);
     pop.style.left = "0px"; pop.style.top = "0px"; pop.style.maxHeight = "";   // measured at its own size: where the last bubble was, a menu would be squeezed by the screen's edge (taller, its rows wrapped) and placed by that; and at its own height (a long list's cap is set again below, from what shows now)
     const r = (opts && opts.rect) || anchor.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, pw = pop.offsetWidth, ph = pop.offsetHeight;
     const box = anchor.closest(".group, .card, .plan-card, .overview"), bb = box ? box.getBoundingClientRect() : null;   // the bubble stays inside the card it belongs to, as Apple keeps a popover inside its content's margins, never out at the screen's edge
@@ -4648,7 +4701,7 @@ import { reportRange, buildReport } from "./report.js";
       const fit = opts.long && ph > hi - lo ? Math.max(0, hi - lo) : ph; if (fit < ph) pop.style.maxHeight = fit + "px";   // a list longer than what shows (the sets' 1 to 20 on a phone turned sideways, or a short window): it scrolls inside the room there is
       top = Math.max(lo, r.top); if (top + fit > hi) top = Math.max(lo, Math.min(r.bottom, hi) - fit);   // never under the status bar (a name scrolled up under it)
     }
-    else if (top + ph > vh - 8) { top = r.top - 8 - ph; pop.classList.add("above"); }
+    else if (top + ph > vh - 8) { const safe = parseFloat(getComputedStyle($("ctxDim")).paddingTop) || 0; if (r.top - 8 - ph >= safe) { top = r.top - 8 - ph; pop.classList.add("above"); } else { top = Math.max(safe + 8, Math.min(top, vh - 8 - ph)); pop.dataset.overAnchor = "1"; } }   // v313 (the second review): one that fits neither under nor over its button (the exercise's "…" with Sets on a phone turned sideways ran off the top) sits on the screen, over its button if it must, as iOS's, its rows then taking no tap in its first 350 ms (the final check: a double tap's second picked Do it today on a sideways phone); over it as v312 whenever that fits under the status bar
     pop.style.left = left + "px"; pop.style.top = top + "px"; pop.style.setProperty("--caret", Math.max(12, Math.min(r.left + r.width / 2 - left, pw - 12)) + "px");
     const close = () => {
       if (popClose === close) { popClose = null; popAnchor = null; } const inPop = pop.contains(document.activeElement);
@@ -4660,7 +4713,7 @@ import { reportRange, buildReport } from "./report.js";
     };
     const isMenu = pop.classList.contains("menu");                  // (showMenu sets it before it opens; a bubble of numbers has none)
     const onCtx = (e) => { if (lift && /^(touch|pen)$/.test(ctxBy(e))) { e.preventDefault(); return; } if (!pop.contains(e.target)) close(); else if (isMenu) e.preventDefault(); };   // (a touch and hold's own long press, Android's contextmenu coming after its menu: it keeps the menu, and its browser's own never shows)   // a right-click anywhere else closes the bubble (the browser's own menu, or the next item's, opens there); in a menu it does nothing; in a bubble of numbers the browser's own stays (Copy, Look Up)
-    const onKey = (e) => { if (e.key === "Escape") close(); else if (isMenu && (e.key === "ArrowDown" || e.key === "ArrowUp") && pop.contains(document.activeElement)) { const rs = [...pop.querySelectorAll(".wopt")], i = rs.indexOf(document.activeElement), to = rs[i < 0 ? 0 : clamp(i + (e.key === "ArrowDown" ? 1 : -1), 0, rs.length - 1)]; e.preventDefault(); if (to) to.focus(); } };   // ↑ ↓ go from row to row, as in a Mac's menu (the sets' list has 20)
+    const onKey = (e) => { if (e.key === "Escape") close(); else if (isMenu && (e.key === "ArrowDown" || e.key === "ArrowUp") && pop.contains(document.activeElement)) { const rs = [...pop.querySelectorAll(".wopt")].filter((x) => !x.closest("[inert]")), i = rs.indexOf(document.activeElement), to = rs[i < 0 ? 0 : clamp(i + (e.key === "ArrowDown" ? 1 : -1), 0, rs.length - 1)]; e.preventDefault(); if (to) to.focus(); } };   // ↑ ↓ go from row to row, as in a Mac's menu (the sets' list has 20)
     const onScroll = (e) => { if (e && pop.contains(e.target)) return; close(); };   // the page scrolled: the bubble goes; a long list scrolling inside itself stays (a scroll listened for in capture hears every scroll)
     let down = null, eat = null;                                     // a tap outside closes the bubble and goes no further (as a system menu's dismissing tap): nothing under it is pressed or given focus; a finger that drags the page does not close it
     const uneat = () => { if (eat) { document.removeEventListener("mousedown", eat, true); eat = null; } };
@@ -4886,7 +4939,8 @@ import { reportRange, buildReport } from "./report.js";
   function followRow(id, field, card, now) {                             // an exercise that just moved (a new number): the page goes to that exercise, not to the top of its card (his ask, 9 Nov: "if I just added 3c it jumps to 3c and not 3a"), and the keyboard on the field he was heading for
     const row = $("rows").querySelector('.row[data-id="' + id + '"]'); if (!row) return;
     const to = () => {
-      const el = followEl(row, card), head = document.querySelector("header"), hb = head ? head.getBoundingClientRect() : null, off = (hb ? Math.max(hb.bottom, hb.height) : 0) + 12, sc = document.scrollingElement || document.documentElement;   // room for the header even while the keyboard has slid it off the top (measured on the iPhone: 147-208 pt above the screen, 57 tall): when the keyboard goes, the header comes back over the top 57 pt and must not cover the exercise
+      const live = $("rows").querySelector('.row[data-id="' + id + '"]'); if (!live) return null;   // v313 (the second review): the row as drawn now; a pick that draws the cards again after this started (a number typed, then an alternative or a Sets count picked) left the glide following a row no longer on the page, to the top
+      const el = followEl(live, card), head = document.querySelector("header"), hb = head ? head.getBoundingClientRect() : null, off = (hb ? Math.max(hb.bottom, hb.height) : 0) + 12, sc = document.scrollingElement || document.documentElement;   // room for the header even while the keyboard has slid it off the top (measured on the iPhone: 147-208 pt above the screen, 57 tall): when the keyboard goes, the header comes back over the top 57 pt and must not cover the exercise
       return Math.max(0, Math.min(sc.scrollTop + el.getBoundingClientRect().top - off, sc.scrollHeight - sc.clientHeight));
     };
     if (now) (document.scrollingElement || document.documentElement).scrollTop = to();   // a field far down the page and no keyboard yet: the page is there at once, so the phone finds the field on screen and has no reason to slide the whole page (header and all) when its keyboard comes (measured: focused 3000 below, iOS slid it 396 up)
@@ -4992,6 +5046,7 @@ import { reportRange, buildReport } from "./report.js";
         <div class="labwrap"><input class="label tab" placeholder="#" autocomplete="off" autocapitalize="none" aria-label="Number"><div class="numpick" hidden></div></div>
         <div class="exwrap"><textarea class="name" rows="1" maxlength="120" placeholder="Exercise" autocomplete="off" autocapitalize="sentences" aria-label="Exercise"></textarea><button class="alt-pop trainer-only" type="button" hidden aria-label="Alternatives" aria-haspopup="menu">${POP_CHEV}</button><div class="ex-icons"><button class="ramp-btn trainer-only" type="button" aria-pressed="false" aria-label="Add weight each set" title="Add weight each set">${RAMP_ICON}</button><button class="pyr-btn trainer-only" type="button" aria-pressed="false" aria-label="Fewer reps, more weight" title="Fewer reps, more weight">${PYR_ICON}</button><button class="vid-btn" type="button" hidden aria-label="Video" title="Watch video"><svg class="i-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2z" fill="currentColor"/></svg><svg class="i-up" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></button><button class="more-btn trainer-only" type="button" aria-label="More" title="More"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" fill="currentColor"><circle cx="3.8" cy="10" r="1.75"/><circle cx="10" cy="10" r="1.75"/><circle cx="16.2" cy="10" r="1.75"/></svg></button></div><ul class="sugg" hidden></ul></div>
       </div>
+      <div class="own-sets trainer-only" hidden></div>
       <div class="sum"></div>
       <div class="newname trainer-only" hidden><span>New exercise</span><button class="btn tint addname" type="button">Add to database</button></div>
       <div class="player" hidden></div>
@@ -5004,7 +5059,7 @@ import { reportRange, buildReport } from "./report.js";
       <div class="tempo-wrap"><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"><div class="tempo-tiles" hidden></div></div>
       <div class="cnote" hidden><button class="cnote-btn" type="button" aria-expanded="false"><span class="cnote-lab">Instructions</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="cnote-text" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
-      <div class="setlog"><div class="pair"><div class="chip stack"><span class="lab">Weight</span><span class="valrow"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></span></div><div class="chip stack"><span class="lab">Reps</span><span class="valrow"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></span></div></div></div><div class="setlog-short" hidden><span class="short-text"></span><button type="button" class="add-set" hidden></button></div>
+      <div class="setlog"><div class="pair"><div class="chip stack"><span class="lab">Weight</span><span class="valrow"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></span></div><div class="chip stack"><span class="lab">Reps</span><span class="valrow"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></span></div></div></div><div class="setlog-short" hidden><span class="short-text"></span></div>
       <div class="lifts" hidden><button type="button" class="lift last"><span class="vh">Last time </span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.6V12l3.1 2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><b></b></button><button type="button" class="lift best"><span class="vh">Personal best </span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.2 17.2 2.5 7.4l4.8 3.3L12 4.6l4.7 6.1 4.8-3.3-1.7 9.8z" fill="currentColor"/><path d="M4.6 18.8h14.8v1.9H4.6z" fill="currentColor"/></svg><b></b></button></div>
 `;
     const q = (s) => el.querySelector(s);
@@ -5035,7 +5090,7 @@ import { reportRange, buildReport } from "./report.js";
       if (b && b.classList.contains("done")) { b.classList.add("open"); const f = b.querySelector(".fold-btn"); if (f) f.textContent = "Hide weights"; } // a folded card stays open to show the swap
     }
     const dropAltNamed = () => { if (altList().includes(r.name)) { r.alts = altList().filter((v) => v !== r.name); paintAltPop(); } };
-    const altItems = () => [{ label: String(r.name || "").trim() || "Exercise", checked: true, onPick: () => {} }, ...others().map((a) => ({ label: a, checked: false, onPick: () => swapTo(a) })), ...(asClient ? [] : [{ label: "Edit alternatives", sep: true, onPick: (e) => editAlts(t.id, r.id, byKeys(e)) }])];   // Apple's pop-up menu (his pick, 13 Nov): a tick on the exercise in effect, the alternatives under it; the coach's ends, after a line, in Edit alternatives
+    const altItems = () => [{ label: String(r.name || "").trim() || "Exercise", checked: true, onPick: () => {} }, ...others().map((a) => ({ label: a, checked: false, onPick: () => { letGo(); swapTo(a); } })), ...(asClient ? [] : [{ label: "Edit alternatives", sep: true, onPick: (e) => editAlts(t.id, r.id, byKeys(e)) }])];   // Apple's pop-up menu (his pick, 13 Nov): a tick on the exercise in effect, the alternatives under it; the coach's ends, after a line, in Edit alternatives
     const openAlts = (anchor, rect, e) => { q(".sugg").hidden = true; showMenu(anchor, altItems(), { over: true, align: asClient ? "left" : "right", rect, focus: e.detail === 0 }); };
     altPop.addEventListener("mousedown", (ev) => ev.preventDefault());   // a name being typed keeps its focus under the menu
     altPop.addEventListener("click", (e) => { e.stopPropagation(); const g = (altPop.querySelector(".pop-chev") || altPop).getBoundingClientRect(); openAlts(altPop, { left: g.left, right: g.right, top: g.top - 10, bottom: g.bottom + 10, width: g.width, height: g.height + 20 }, e); });   // from the chevrons, as Calendar's Repeat: the menu's edge at theirs, its top 10 above them (the button's own top, measured)
@@ -5126,6 +5181,14 @@ import { reportRange, buildReport } from "./report.js";
     bind(".rest", "rest");
     wireChip(q(".reps"), { readOnly: asClient, suffix: repsWord, show: showReps }); const fitRest = wireChip(q(".rest"), { readOnly: asClient });
     if (!asClient) q(".rest").addEventListener("blur", (e) => { const v = e.target.value.trim(); if (/^\d+([.,]\d+)?$/.test(v)) { r.rest = v + " sec"; e.target.value = r.rest; fitRest(); save(); } });
+    const takeCardSets = (from) => {                                // v313 (the owner's rule, 17 Nov 2026: "superset will always have the same number as default ... if I have a1 and a2 with 8 sets and I add another exercise it will let the 8 sets"): put into a superset, an exercise takes its sets; taken out, it keeps them (his answer: "keep it at 5 sets")
+      const i0 = t.rows.indexOf(r); if (i0 < 0) return; const key = String(groupKey(r.label, i0)); if (key === String(groupKey(from, i0))) return;   // still in its own card (a letter changed): nothing joins
+      if (r.done && Math.min(doneCount(r), setsOf(r)) >= setsOf(r)) return;   // an exercise finished with its own sets keeps its count (the second review: raised and opened again, it led the card's join rule to mark sets never lifted as done on the others); one under way takes the superset's (the final check)
+      const others = t.rows.filter((y, i) => y !== r && String(groupKey(y.label, i)) === key); if (!others.length) return;   // a card of its own: it keeps its number
+      const was = setsOf(r), to = Math.max(...others.map(setsOf), loggedSets(r)); if (to === was) return;   // the superset's number (its most), never fewer than it holds something on
+      if (setsTo(t, r, to) && !isTemplateClient(t.clientId)) { if (!trainerTouched.has(t.id)) trainerTouched.set(t.id, new Set()); trainerTouched.get(t.id).add(r.id); }   // done with its own and given more: open again; "finished early" stays finished (setsTo)
+      save();
+    };
     const numpick = q(".numpick");
     function showNumbers() {
       let max = 0;
@@ -5136,7 +5199,7 @@ import { reportRange, buildReport } from "./report.js";
         const b = document.createElement("button"); b.type = "button"; b.textContent = n; if (n === "W") b.title = "Warmup";
         if (n === cur) b.classList.add("cur");
         b.addEventListener("mousedown", (ev) => ev.preventDefault());
-        b.addEventListener("click", () => { r.label = n; lastEditedId = r.id; q(".label").value = n; numpick.hidden = true; save(); S.renderedTraining = null; render(); followRow(r.id, String(r.name || "").trim() ? null : "name"); });   // the card moves to its place; the coach goes with it, straight into the name if it is still empty
+        b.addEventListener("click", () => { r.label = n; lastEditedId = r.id; q(".label").value = n; numpick.hidden = true; takeCardSets(cur); save(); S.renderedTraining = null; render(); followRow(r.id, String(r.name || "").trim() ? null : "name"); });   // the card moves to its place; the coach goes with it, straight into the name if it is still empty
         return b;
       }));
       numpick.hidden = false;
@@ -5144,7 +5207,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!asClient) {
       let labelAtFocus = "";
       q(".label").addEventListener("focus", (e) => { labelAtFocus = e.target.value; if (el.closest && el.closest(".block.done:not(.open)")) return; showNumbers(); });   // a folded finished card takes no clicks: no picker there
-      q(".label").addEventListener("blur", (e) => { numpick.hidden = true; if (q(".label").value !== labelAtFocus) { const to = e.relatedTarget, field = to && el.contains(to) && /^(INPUT|TEXTAREA)$/.test(to.tagName) ? [...to.classList].find((c) => /^(name|reps|rest|tempo|w|rp)$/.test(c)) : null; S.renderedTraining = null; render(); followRow(r.id, field || null); } });   // the card moves to its place; the field tapped next is focused again in the moved card
+      q(".label").addEventListener("blur", (e) => { numpick.hidden = true; if (q(".label").value !== labelAtFocus) { const to = e.relatedTarget, field = to && el.contains(to) && /^(INPUT|TEXTAREA)$/.test(to.tagName) ? [...to.classList].find((c) => /^(name|reps|rest|tempo|w|rp)$/.test(c)) : null; takeCardSets(labelAtFocus); S.renderedTraining = null; render(); followRow(r.id, field || null); } });   // the card moves to its place; the field tapped next is focused again in the moved card
       q(".name").addEventListener("input", (e) => { r.name = e.target.value.replace(/\n/g, " "); markNamed(); dropAltNamed(); growName(); save(); suggest(e.target.value); renderWeights(); paintVideo(); paintNewName(); });
       q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
       q(".name").addEventListener("focus", (e) => { suggest(e.target.value); });
@@ -5202,7 +5265,21 @@ import { reportRange, buildReport } from "./report.js";
     };
     const moreBtn = q(".more-btn");                                  // the coach's "…" disc: the card's other actions, in a menu under it
     const letGo = () => { const a = document.activeElement; if (a && a !== document.body && /^(INPUT|TEXTAREA)$/.test(a.tagName) && a.blur) { a.blur(); document.body.classList.remove("typing"); } };   // a pick from the menu: a field still typed in is let go first (its redraw may draw this exercise again), and the typing look with it (a field its own redraw took off the page never tells the page it let go)
-    const moreItems = () => exerciseMenu(r, { swap: (e) => { letGo(); editAlts(t.id, r.id, byKeys(e)); }, note: (e) => { letGo(); editNote(t.id, r.id, byKeys(e)); }, remove: deleteRow });
+    const cardRowsNow = () => { const T = trainings.get(t.id) || t, rows = T.rows || [], x = rows.find((y) => y.id === r.id); if (!x) return null; const k = String(groupKey(x.label, rows.indexOf(x))); return { T, x, rows: rows.filter((y, i) => String(groupKey(y.label, i)) === k) }; };   // v313: this exercise's card as it is now (a template's rows carry no card; a sync or a renumber may have changed it since the draw)
+    const pickOwnSets = async (k, e, def) => {                      // v313: this exercise alone takes k sets (Default: the superset's own number, its most now); fewer with something logged on a set that goes asks first, as the sets button does
+      const keys = byKeys(e), back = () => { if (!keys) return; const row = $("rows").querySelector('.row[data-id="' + r.id + '"]'), blk = row && row.closest(".block"), folded = !!blk && blk.classList.contains("done") && !blk.classList.contains("open"), f = folded ? blk.querySelector(".card-chev") : row && row.querySelector(".more-btn"); if (f) f.focus({ preventScroll: true }); };   // a pick from the keyboard: the place back on this exercise's "…", drawn anew; a pick that finished the card folds it and hides the "…", so on its chevron, as the sets button's (the v313 review)
+      let c = cardRowsNow(); if (!c) return; if (def) k = Math.max(...c.rows.map(setsOf)); const was = setsOf(c.x); if (k === was) return;
+      const gone = [c.x.weights, c.x.repsDone].some((a) => (a || []).slice(k).some((v) => String(v || "").trim())) || (parseInt(c.x.setsDone, 10) || 0) > k;
+      if (k < was && gone) {
+        const one = was - k === 1, which = one ? "set " + was : was - k === 2 ? "sets " + (k + 1) + " and " + was : "sets " + (k + 1) + " to " + was;   // every set that would go, named
+        if (!(await askFirst({ title: "Drop " + which + "?", text: one ? "What was logged on it goes with it." : "What was logged on them goes with them.", yes: "Drop" }))) { back(); return; }
+        c = cardRowsNow(); if (!c) return;                           // a sync can replace the record while the question is up: the change goes into the one there now
+      }
+      if (setsTo(c.T, c.x, k) && !isTemplateClient(c.T.clientId)) { if (!trainerTouched.has(c.T.id)) trainerTouched.set(c.T.id, new Set()); trainerTouched.get(c.T.id).add(c.x.id); }   // more sets for an exercise done with its own: open again; "finished early" stays finished (setsTo)
+      scheduleSave("trainings", c.T.id); S.renderedTraining = null; render(); back();
+    };
+    const ownSetsOf = () => { if (S.clientMode || previewing()) return null; const c = cardRowsNow(); if (!c || c.rows.length < 2) return null; const most = Math.max(...c.rows.map(setsOf)); return most < 2 ? null : { most, own: setsOf(c.x), pick: (k, e, def) => { letGo(); pickOwnSets(k, e, def); } }; };   // only in a superset or more, only in the coach's own look (the "…" is the coach's), and only when there are fewer to give
+    const moreItems = () => exerciseMenu(r, { swap: (e) => { letGo(); editAlts(t.id, r.id, byKeys(e)); }, note: (e) => { letGo(); editNote(t.id, r.id, byKeys(e)); }, remove: deleteRow, sets: ownSetsOf() });
     if (moreBtn) moreBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       showMenu(moreBtn, moreItems(), { align: "right", focus: e.detail === 0 });
@@ -5287,16 +5364,9 @@ import { reportRange, buildReport } from "./report.js";
     const short = q(".setlog-short"); short.hidden = true;
     if (group && group.sel != null && group.sel >= setsOf(r)) {   // no such set for this exercise
       q(".setlog").hidden = true;
-      const n = setsOf(r), add = q(".add-set"), at = group.sel + 1;   // v312 (the owner's pick, 16 Nov 2026): it says so, rather than look broken, and the coach (either look) can add the set: an exercise put into a superset by mistake kept fewer sets
-      short.hidden = false; q(".short-text").textContent = n + (n === 1 ? " set only" : " sets only");
-      add.hidden = S.clientMode || !!t.completedAt || group.sel !== n; add.textContent = "Add set " + at; add.setAttribute("aria-label", "Add set " + at + " to " + (String(r.name || "").trim() || "this exercise"));   // only on the first set it does not have (Add set 5 over 3 sets made a 4th too and sent the card back: the final check)
-      add.addEventListener("click", (e) => {   // (the row is drawn anew each time: one listener)
-        e.stopPropagation(); const T = trainings.get(t.id), x = T && (T.rows || []).find((y) => y.id === r.id); if (!x || S.clientMode || T.completedAt) return;   // a sync can have replaced the record, or brought the client's finish
-        const was = setsOf(x), sd = Math.min(doneCount(x), was), wasDone = !!x.done; x.sets = Math.max(was, at);
-        if (x.done && sd < x.sets) { x.done = false; x.setsDone = sd; markEarly(T, x, ""); }   // done with its own sets: open again for the one added (done before the set counter existed: its sets stay done)
-        if (x.done !== wasDone) { if (!trainerTouched.has(T.id)) trainerTouched.set(T.id, new Set()); trainerTouched.get(T.id).add(x.id); }
-        scheduleSave("trainings", T.id); S.renderedTraining = null; render(); if (byKeys(e)) followRow(x.id, measurePlan(x.reps) ? "rp" : "w");   // from the keyboard: on to the new set's first box (a hold's Time)
-      });
+      const n = setsOf(r), fin = r.done === true && Math.min(doneCount(r), n) >= n, st = q(".short-text");   // v312: it says so rather than look broken; v313 (the owner's pick B, 17 Nov 2026): done with its own sets it says Done with a green tick, else how many it has (finished early: fewer done)
+      short.hidden = false; st.classList.toggle("short-done", fin);
+      if (fin) st.innerHTML = SHORT_DONE; else st.textContent = n + (n === 1 ? " set only" : " sets only");
     }
     else if (group && group.sel != null) {      // one set at a time: the boxes show the set the tracker points at
       const sel = group.sel; const unit = (clients.get(t.clientId) || {}).unit || "lb";
@@ -5329,6 +5399,8 @@ import { reportRange, buildReport } from "./report.js";
     const nSets = setsOf(r), sumEl = q(".sum"); sumEl.replaceChildren();   // "3 sets · 8–10 reps · 60 sec transition" (the open card hides the sets part: the chips above say it)
     const chips = [...el.querySelectorAll(".specs .chip")];
     for (const [text, cls] of [[nSets + (nSets === 1 ? " set" : " sets"), "si sum-sets"], [chipText(chips[0]), "si sum-reps"], [chipText(chips[1]), "si sum-rest"]]) { if (!text) continue; const e = document.createElement("span"); e.className = cls; e.textContent = text; sumEl.appendChild(e); }
+    { const all = t.rows || [], i0 = all.indexOf(r), k0 = String(groupKey(r.label, i0)), mates = group ? group.rows : all.filter((y, i) => String(groupKey(y.label, i)) === k0), fewer = mates.length > 1 && nSets < Math.max(...mates.map(setsOf)), own = q(".own-sets");   // v313 (the owner's pick, 17 Nov 2026): an exercise with fewer sets than its superset says how many from set 1, in the client's line ("3 sets · 30 reps") and under its name in the coach's look; a template's rows carry no card
+      el.classList.toggle("fewer", fewer); own.hidden = !fewer; own.textContent = fewer ? nSets + (nSets === 1 ? " set" : " sets") : ""; }
     const rampBtn = q(".ramp-btn"), pyrBtn = q(".pyr-btn");
     const paintRamp = () => {                                          // the exercise's sign (his asks, 13-14 Nov): add weight each set (↗), or fewer reps, more weight (the pyramid), each the coach's round button, solid when on, an outline when off; when on, the sign follows the reps in the client's line under the name. The coach's reps box shows none (his pick, 13 Nov, "button only": in it the arrow pushed a long pyramid's last numbers out on a phone, 13 of the templates' 144 reps; the solid button says it is on)
       const kind = signOf(r);
