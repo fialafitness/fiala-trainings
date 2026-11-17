@@ -976,6 +976,11 @@
   .tracker .tr-count:active { opacity: 0.6; }
   .tracker .tr-count:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }   /* the keyboard's place, a ring round the disc */
   .setlog { margin-top: 14px; }
+  .setlog-short { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin-top: 10px; font-size: 0.9375rem; line-height: 1.3; color: var(--text-secondary); }   /* v312 (the owner's pick): an exercise with fewer sets than its card says so on the card's extra set, rather than look broken */
+  .setlog-short .add-set { flex: none; appearance: none; border: 0; background: none; box-shadow: none; min-height: 44px; padding: 0 2px 0 12px; font: inherit; font-size: 0.9375rem; font-weight: 500; color: var(--brand-text); cursor: pointer; -webkit-tap-highlight-color: transparent; }   /* as the card's Start this exercise: words in the brand colour, no box */
+  .setlog-short .add-set:active { opacity: 0.6; }
+  .setlog-short .add-set:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 8px; }
+  body.client .block.ahead .row .setlog-short, #rows.locked .block.peek .row .setlog-short, .block.done:not(.open) .row .setlog-short, #vTraining.tpl .setlog-short { display: none; }   /* the line stands in for the set boxes, so it hides wherever they do: a folded finished card, a card still to come in the client's look, a look at a finished workout, a template (the final check: it showed in folded cards, where Add set reopened a finished exercise) */
   .setlog .chip.stack { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: 74px; padding: 10px 14px; text-align: left; }   /* a label on top, the number below */
   .setlog .chip.stack .lab { font-size: 0.8125rem; line-height: 1.2; color: var(--text-secondary); }
   .setlog .chip.stack .valrow { display: flex; align-items: baseline; gap: 5px; min-width: 0; max-width: 100%; font-size: 1.375rem; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
@@ -1166,18 +1171,26 @@
   .pg-cmp { margin-top: 12px; }
   .pg-cmp .pg-val { margin-top: 0; font-size: 1.625rem; }
   .pg-cmp .pg-val small { font-size: 0.9375rem; }
-  .pg-bar { display: flex; align-items: center; box-sizing: border-box; height: 1.5rem; margin-top: 6px; padding: 0 8px; border-radius: 6px; overflow: hidden; font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.005em; white-space: nowrap; width: fit-content; min-width: var(--w, 24px); max-width: 100%; }   /* as long as its count (--w), never shorter than its words, never wider than the card (the v311 review: words cut with no ellipsis) */
-  .pg-bar > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .pg-bar { display: flex; align-items: center; box-sizing: border-box; min-height: 1.5rem; margin-top: 6px; padding: 0.125rem 8px; border-radius: 6px; overflow: hidden; font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.005em; line-height: 1.2; width: fit-content; min-width: var(--w, 24px); max-width: 100%; }   /* as long as its count (--w), never shorter than its words, never wider than the card; 24 points at the default Text Size, taller as its words wrap at larger ones (the v311 review and checks) */
+  .pg-bar > span { min-width: 0; overflow-wrap: break-word; }
   .pg-bar.now { background: var(--lift); color: var(--lift-ink); }
   .pg-bar.then { background: var(--chart-cmp); color: var(--text-primary); }
   .pg-bar.done { background: var(--done); color: var(--done-ink); }
   .pg-bar.skip { background: var(--chart-cmp); color: var(--text-primary); }
   .pg-bar.miss { background: var(--danger); color: #fff; }
   .list .pg-lift { gap: 12px; }
-  .list .pg-lift .nm > span:first-child { white-space: normal; overflow-wrap: break-word; }   /* a long name wraps rather than end in "…" beside its value (the v311 check: two curls read the same) */
+  .list .pg-lift .nm > span:first-child { white-space: normal; overflow-wrap: break-word; }   /* a long name wraps at its spaces, as Apple's lists (no hyphens: the v311 checks found them at the default size); only a word longer than the line breaks */   /* a long name wraps rather than end in "…" beside its value (the v311 check: two curls read the same) */
   .list .pg-lift .n2, .pg-hist .n2 { font-weight: 400; color: var(--stat-grey); }   /* the pictures' lighter second line (Health's) */
   .list .pg-lift .chev, .list .pg-all .chev { color: var(--chart-axis); }   /* the cards' chevron grey, as in the pictures */
-  .list .pg-lift:focus-visible, .list .pg-all:focus-visible { outline-offset: -2px; }   /* the ring inside its row: the list clips what is outside */
+  .list .pg-lift:focus-visible, .list .pg-all:focus-visible { outline-offset: -2px; }
+  .list > li:first-child > .pg-lift:focus-visible { border-radius: calc(var(--r-card) - 1px) calc(var(--r-card) - 1px) 0 0; }   /* the ring follows the list's round corners rather than being cut by them */
+  .list > li:last-child > .pg-lift:focus-visible, .list > li:last-child > .pg-all:focus-visible { border-radius: 0 0 calc(var(--r-card) - 1px) calc(var(--r-card) - 1px); }
+  .list > li:only-child > .pg-lift:focus-visible { border-radius: calc(var(--r-card) - 1px); }
+  #pgStrong .pg-head { align-items: flex-start; }   /* a wrapped title: its chevron stays on the first line */
+  #pgStrong .pg-title { white-space: normal; align-items: flex-start; }   /* a long lift's name wraps in the card's title (the v311 checks) */
+  #pgStrong .pg-title > span { overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }   /* a name with no space in it wraps too, never off the card */
+  #pgStrong .pg-when { min-height: calc(0.9375rem * 1.25); }   /* the chevron on the middle of the title's first line */
+  #pgStrong .pg-title svg { margin-top: calc((1.25em - 17px) / 2); }   /* the icon on the first line's middle at any Text Size */   /* the ring inside its row: the list clips what is outside */
   .pg-up { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--glyph-fill); color: var(--gold); }
   .pg-up svg { width: 16px; height: 16px; }
   .list .pg-lift .nm { flex: 1 1 auto; }
@@ -1203,7 +1216,7 @@
   span.pg-hr { display: block; height: 0; }
   .pg-hr + .pg-cmp.sm { margin-top: 0; }
   .pg-cmp.sm .pg-val { font-size: 1.25rem; }   /* Attendance's three counts, smaller than a lift's comparison (the picture) */
-  .pg-cmp.sm .pg-val small { min-width: 0; white-space: normal; }   /* the skip reasons wrap under the number rather than leave the card (the v311 review, at 375 points) */
+  .pg-cmp.sm .pg-val small { min-width: 0; white-space: normal; line-height: 1.25; }   /* the skip reasons wrap under the number rather than leave the card (the v311 review, at 375 points) */
   .pg-notes .pg-note { margin: 0 0 10px; }   /* the coach's discomfort notes, above the tiles */
   .pg-note .lim-text b { display: block; color: var(--text-primary); font-weight: 600; }
   .limits-note.pg-note .lim-text { display: block; -webkit-line-clamp: none; overflow: visible; }   /* the whole note: its days are the point (the v311 check: cut at a larger Text Size); two classes, as .limits-note's own rule comes later */
@@ -2180,7 +2193,7 @@
 <div id="kbbar" hidden aria-label="Keyboard options"><button class="kb-mode" type="button" tabindex="-1" aria-label="Letters or numbers">Aa</button><div class="kb-chips"></div><button class="kb-next" type="button" tabindex="-1">Next</button><button class="kb-done" type="button" tabindex="-1" aria-label="Done"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div>
 
 <script type="module">
-  import { boot } from "./app/main.js?v=311";
+  import { boot } from "./app/main.js?v=312";
   boot();
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});

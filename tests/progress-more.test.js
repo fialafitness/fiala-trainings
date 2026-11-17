@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import { test, assert } from "./assert.js";
 import { load } from "./load.js";
-import { attendance, liftsOf, bestOf, gainOf, strongerLifts, monthBests, discomforts, inPersonCount } from "../app/model.js";
+import { attendance, liftsOf, bestOf, gainOf, strongerLifts, monthBests, discomforts, inPersonCount, nextPlan } from "../app/model.js";
 import { squash } from "../app/util.js";
 const app = await load();
 const { fns, maps } = app;
@@ -125,8 +125,8 @@ test("the coach's view: the Discomfort note on top, Attendance, Getting stronger
   setup(false, discomfort);
   assert.strictEqual(text($("pgNotes").innerHTML), "|Discomfort twice on Push-up|Finished it early on Nov 4 and Nov 11|›|");
   assert.strictEqual($("pgAttend").hidden, false);
-  assert.strictEqual(text($("pgAttend").innerHTML), "|Attendance|Last 4 weeks|100%|of planned workouts|5|finished|In person 2 · On their own 3|", "the five of the 4 weeks, each finished; In person inside the bar, the longest");
-  assert.ok(/<span class="pg-bar done" style="--w:100\.0%"><span>In person 2/.test($("pgAttend").innerHTML));
+  assert.strictEqual(text($("pgAttend").innerHTML), "|Attendance|Last 4 weeks|100%|of planned workouts|5|finished|In person\u00a02 · On their own\u00a03|", "the five of the 4 weeks, each finished; In person inside the bar, the longest");
+  assert.ok(/<span class="pg-bar done" style="--w:100\.0%"><span>In person\u00a02/.test($("pgAttend").innerHTML));
   assert.deepStrictEqual([$("pgStrongCap").hidden, $("pgStrong").hidden, $("pgStrong").dataset.key], [false, false, "gobletsquat"]);
   assert.strictEqual(text($("pgStrong").innerHTML), "|Goblet squat|›|Jane is lifting 15 lb more than the first time, Sep 30.|40 lb × 10|Today|25 lb|Sep 30|");
   assert.ok(/class="pg-bar now" style="--w:100\.0%"/.test($("pgStrong").innerHTML) && /class="pg-bar then" style="--w:62\.5%"/.test($("pgStrong").innerHTML), "the bars as long as their weights");
@@ -140,7 +140,7 @@ test("the client's own app: no Discomfort note, You’re … than on your first 
   setup(true, discomfort);
   assert.strictEqual($("pgNotes").innerHTML, "", "the coach's alone");
   assert.ok(text($("pgStrong").innerHTML).includes("|You’re lifting 15 lb more than on your first time, Sep 30.|"));
-  assert.ok(text($("pgAttend").innerHTML).includes("|In person 2 · On your own 3|"));
+  assert.ok(text($("pgAttend").innerHTML).includes("|In person\u00a02 · On your own\u00a03|"));
   assert.ok(text($("pgSessions").innerHTML).includes("|13|with your coach|"));
 }));
 
@@ -148,9 +148,9 @@ test("missed and skipped in Attendance: their bars as long as their counts, the 
   const skip = (id, d, why, missed) => ({ id, clientId: "c1", title: "Legs", date: d, createdAt: at("2026-10-01"), completedAt: null, skippedAt: at(d), skipReason: why, missed, rows: [] });
   setup(false, [skip("k1", "2026-10-26", "Travelling"), skip("k2", "2026-10-27", "Travelling"), skip("k3", "2026-10-28", "Sick"), skip("k4", "2026-10-29", null, true), skip("k5", "2026-10-30", null, true), skip("k6", "2026-10-31", null, true), skip("k7", "2026-11-01", null, true), skip("k8", "2026-11-03", null, true), skip("k9", "2026-11-05", null, true)]);
   const h = $("pgAttend").innerHTML;
-  assert.strictEqual(text(h), "|Attendance|Last 4 weeks|25%|of planned workouts|3|finished|In person 2 · On their own 1|3|skipped · Travelling 2, Sick|6|missed|", "the commonest reason first");
+  assert.strictEqual(text(h), "|Attendance|Last 4 weeks|25%|of planned workouts|3|finished|In person\u00a02 · On their own\u00a01|3|skipped · Travelling\u00a02, Sick|6|missed|", "the commonest reason first");
   assert.deepStrictEqual([...h.matchAll(/pg-bar (\w+)" style="--w:([\d.]+)%"/g)].map((m) => m[1] + " " + m[2]), ["done 50.0", "skip 50.0", "miss 100.0"]);
-  assert.ok(/<span class="pg-sub">In person 2/.test(h), "under the finished bar: it is not the longest");
+  assert.ok(/<span class="pg-sub">In person\u00a02/.test(h), "under the finished bar: it is not the longest");
 }));
 
 test("words a person typed are escaped: an exercise's name never becomes markup", () => pinned(() => {
@@ -231,9 +231,9 @@ test("after the second review: every tap that opens a lift carries its name (an 
   fns.leaveSettings();
   assert.ok(/data-key="gobletsquat" data-name="Goblet squat"/.test($("pgBests").innerHTML) && $("pgStrong").dataset.name === "Goblet squat");
   const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.ok(html.includes("width: fit-content; min-width: var(--w, 24px); max-width: 100%;") && html.includes(".pg-bar > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }"), "as long as its count, never shorter than its words, never wider than the card");
+  assert.ok(html.includes("width: fit-content; min-width: var(--w, 24px); max-width: 100%;") && html.includes(".pg-bar > span { min-width: 0; overflow-wrap: break-word; }"), "as long as its count, never shorter than its words, never wider than the card (its words wrap at large Text Sizes)");
   assert.ok(html.includes(".pg-lift-chart .plot { position: absolute; left: 6px; right: calc(var(--gut, 6ch) + 10px); top: 10px; bottom: 0; font-size: 0.8125rem; }") && html.includes(".pg-lift-chart .yl { position: absolute; right: calc(-1 * (var(--gut, 6ch) + 10px)); transform") && !/\.pg-lift-chart \.yl \{[^}]*width: 40px/.test(html), "the labels as wide as their words, the room as wide as the longest");
-  assert.ok(html.includes(".pg-cmp.sm .pg-val small { min-width: 0; white-space: normal; }"), "the skip reasons wrap");
+  assert.ok(html.includes(".pg-cmp.sm .pg-val small { min-width: 0; white-space: normal; line-height: 1.25; }"), "the skip reasons wrap");
   const js = fs.readFileSync(new URL("../app/main.js", import.meta.url), "utf8");
   assert.ok(js.includes('b.addEventListener("click", (ev) => { askEat(ev); ovPick = k;'), "a suggestion's double tap lands on nothing");
 }));
@@ -274,8 +274,8 @@ test("after the deeper check: the chart counts in whole steps, a part of a minut
   assert.deepStrictEqual(labs(fns.liftChart(pts([0.5, 0.75, 1.25], "time"), "lb")).slice(-1), ["80 sec"], "a part of a minute: the chart in seconds");
   const wide = fns.liftChart({ kind: "reps", points: [{ date: "2026-11-02", top: { w: 25, rp: 10, u: "lb" }, gold: false }, { date: "2026-11-09", top: { w: 40000000, rp: 10, u: "lb" }, gold: true }] }, "lb");
   assert.ok(/<div class="plot" style="--gut:11ch">/.test(wide), "the room as wide as \"40000000 lb\": " + wide.slice(0, 60));
-  const many = fns.liftChart(pts(Array.from({ length: 30 }, (_, k) => 10 + (k % 5))), "lb");
-  assert.deepStrictEqual([(many.match(/class="pt"/g) || []).length, (many.match(/class="pt best"/g) || []).length], [0, 1], "past two dozen sessions: the line and the bests");
+  const many = fns.liftChart(pts(Array.from({ length: 30 }, (_, k) => 10 + (k % 5))), "lb"), ml = [...many.matchAll(/class="pt[^"]*" style="left:([\d.]+)%/g)].map((m) => Number(m[1])).sort((p, q) => p - q);
+  assert.ok((many.match(/class="pt best"/g) || []).length === 1 && ml.every((v, k) => !k || v - ml[k - 1] >= 5 - 1e-9), "thirty sessions three days apart: the rings thinned to the room they have, the best kept: " + ml.length);
   const few = fns.liftChart(pts([10, 12, 11]), "lb"); assert.ok(few.indexOf('class="pt best"') > few.lastIndexOf('class="pt"'), "the bests drawn last, on top");
 }));
 
@@ -287,7 +287,46 @@ test("after the deeper check: Sessions without a package counts the In person ma
   assert.ok(!$("pgAttend").innerHTML.includes("pg-go"), "no chevron");
   $("ovSugg").hidden = false; fns.openLift("gobletsquat", false); assert.strictEqual($("ovSugg").hidden, true, "closed before the page is left (the swipe back's picture)"); fns.leaveSettings();
   $("ovSugg").hidden = false; fns.openBests(); assert.strictEqual($("ovSugg").hidden, true); fns.leaveSettings();
-  assert.ok(html.includes(".ov-pick input::placeholder { color: var(--stat-grey); }") && html.includes(".ov-pick .ov-clear { position: absolute; top: 20px; }") && html.includes(".limits-note.pg-note .lim-text { display: block; -webkit-line-clamp: none; overflow: visible; }") && html.includes("height: 1.5rem; margin-top: 6px;"), "the placeholder's grey, the × inside the field, the whole note, bars that grow with the text");
+  assert.ok(html.includes(".ov-pick input::placeholder { color: var(--stat-grey); }") && html.includes(".ov-pick .ov-clear { position: absolute; top: 20px; }") && html.includes(".limits-note.pg-note .lim-text { display: block; -webkit-line-clamp: none; overflow: visible; }") && html.includes("min-height: 1.5rem; margin-top: 6px;"), "the placeholder's grey, the × inside the field, the whole note, bars that grow with the text");
+}));
+
+test("after the second round of checks: the Bodyweight key is no load in words, the fallback needs the same weight, more assisted spellings, a best dated by the day that very set was lifted", () => pinned(() => {
+  const L = (rows) => liftsOf(rows, canon, T0, "lb"), names = (l) => strongerLifts(l, T0).map((x) => x.e.name);
+  assert.deepStrictEqual(names(L([done("a", "2026-10-20", [row("Push-up", ["BW"], ["10"])]), done("b", "2026-11-09", [row("Push-up", ["BW", "BW"], ["15", "16"])])])), ["Push-up"], "BW, the keyboard's Bodyweight key, is none added");
+  assert.deepStrictEqual(names(L([done("a", "2026-10-20", [row("Dip", ["BW+10"], ["8"])]), done("b", "2026-11-09", [row("Dip", ["BW+10"], ["10"])])])), [], "a load in words stays out");
+  assert.deepStrictEqual(names(L([done("a", "2026-09-28", [row("Goblet squat", ["60"], [])]), done("b", "2026-10-20", [row("Goblet squat", ["20"], ["8"])]), done("c", "2026-11-09", [row("Goblet squat", ["20"], ["12"])])])), [], "60 lb then 20 lb is not growing from Oct 20");
+  assert.deepStrictEqual(names(L([done("a", "2026-10-20", [row("Gravitron pull-up", ["40"], ["8"])]), done("b", "2026-11-09", [row("Gravitron pull-up", ["60"], ["8"])])])), [], "Gravitron: more help");
+  assert.deepStrictEqual(names(L([done("a", "2026-10-20", [row("Asst. dip", ["40"], ["8"])]), done("b", "2026-11-09", [row("Asst. dip", ["60"], ["8"])])])), [], "Asst.: more help");
+  const tie = L([done("k", "2026-11-02", [row("Bench press", ["61.2"], ["5"], { unit: "kg" })]), done("l", "2026-11-09", [row("Bench press", ["135"], ["5"])])]).get("benchpress");
+  assert.deepStrictEqual([bestOf(tie).top.w, bestOf(tie).date], [135, "2026-11-09"], "135 lb beside the day 135 lb was lifted");
+}));
+
+test("after the second round of checks: the chart keeps the bodyweight sessions, spaces its rings and month names; Sessions never drops at a package switch; any page change closes the Look up's list", () => pinned(() => {
+  const P = (list) => ({ kind: "reps", points: list.map(([d, w, rp], k) => ({ date: d, top: { w, rp, u: "lb" }, gold: k === list.length - 1, words: false })) });
+  const labs = (h) => [...h.matchAll(/class="yl"[^>]*>([^<]+)</g)].map((m) => m[1]), dots = (h) => (h.match(/class="pt/g) || []).length;
+  const pull = P([["2026-09-07", null, 5], ["2026-09-14", null, 6], ["2026-09-21", null, 7], ["2026-09-28", null, 8], ["2026-10-05", null, 8], ["2026-10-12", null, 9], ["2026-10-19", null, 9], ["2026-10-26", null, 9], ["2026-11-09", 10, 5]]);
+  const hp = fns.liftChart(pull, "lb"); assert.ok(dots(hp) === 9 && labs(hp)[0] === "0 lb" && labs(hp).every((t) => / lb$/.test(t)), "bodyweight, then a weighted best: charted by the weight (0 added before), rising as its sentence says (the v312 checks): " + labs(hp));
+  const bw = P([["2026-10-05", null, 10], ["2026-10-12", null, 12], ["2026-10-19", null, 15]]); assert.ok(labs(fns.liftChart(bw, "lb")).every((t) => / reps?$/.test(t)), "bodyweight alone: the reps");
+  const mostly = P([["2026-10-05", 20, 10], ["2026-10-12", 20, 10], ["2026-10-19", 25, 10], ["2026-10-26", null, 12], ["2026-11-02", 25, 10]]);
+  const hm = fns.liftChart(mostly, "lb"); assert.ok(dots(hm) === 5 && labs(hm)[0] === "0 lb" && labs(hm).every((t) => / lb$/.test(t)), "a session with no weight after weighted ones is none added, as logged and as Getting stronger reads it: 0 lb (the last check: a Bodyweight-key session left out stopped the line early, while one before the first weight was drawn): " + labs(hm));
+  const mwf = (n) => P(Array.from({ length: n }, (_, k) => [fns.localIso(new Date(2026, 8, 7 + [0, 2, 4][k % 3] + 7 * Math.floor(k / 3), 12)), 20 + k, 10]));
+  const lefts = (h) => [...h.matchAll(/class="pt[^"]*" style="left:([\d.]+)%/g)].map((m) => Number(m[1])).sort((p, q) => p - q);
+  assert.strictEqual(dots(fns.liftChart(mwf(12), "lb")), 12, "Mon/Wed/Fri for a month: every ring has room");
+  const l24 = lefts(fns.liftChart(mwf(24), "lb")); assert.ok(l24.length > 8 && l24.every((v, k) => !k || v - l24[k - 1] >= 5 - 1e-9), "eight weeks: a ring only where it has 5% of the plot, never all gone for one close pair (the v312 checks): " + l24.length);
+  const xs = [...fns.liftChart(P(Array.from({ length: 14 }, (_, k) => [fns.localIso(new Date(2025, k, 3, 12)), 20 + k, 10])), "lb").matchAll(/class="xl" style="left:([\d.]+)%"/g)].map((m) => Number(m[1])).sort((p, q) => p - q);
+  assert.ok(xs.every((v, k) => !k || v - xs[k - 1] >= 20) && xs.every((v) => v <= 88), "a month named only a fifth of the plot from the next: " + xs);
+  const jn = [...fns.liftChart(P([["2026-06-15", 20, 10], ["2026-08-10", 22, 10], ["2026-11-13", 25, 10]]), "lb").matchAll(/class="xl"[^>]*>([^<]+)</g)].map((m) => m[1]);
+  assert.ok(jn.includes("Oct"), "named from the newest back: the latest months are named (the v312 checks): " + jn);
+  setup(false); const cl = maps.clients.get("c1"), was = { id: "p10", name: "10 sessions", kind: "sessions", size: 10, startedOn: "2026-09-01", adjust: 5 };   // 5 marks and 5 added by hand: a full 10
+  cl.plan = nextPlan(was, { id: "p20", name: "20 sessions", kind: "sessions", size: 20 }, [...maps.trainings.values()], T0); fns.render(); quiet();
+  assert.strictEqual(text($("pgSessions").innerHTML), "|Sessions|10|with you|This package: 0 of 20|", "a package switch keeps the 5 added by hand (the owner's ask); no Package 1: " + text($("pgSessions").innerHTML));
+  setup(false); fns.showLift("plank", false); assert.strictEqual($("liftKeyText").textContent, "New best: longer, or heavier"); fns.leaveSettings();
+  $("ovSugg").hidden = false; fns.showClientCard(); assert.strictEqual($("ovSugg").hidden, true, "the photo disc's card too: the list never rides into the swipe back's picture"); fns.leaveSettings();
+}));
+
+test("after the third round: a best repeated after a switch of units keeps its first day (the app's own copy of 25 lb in kg is a hair heavier)", () => pinned(() => {
+  const L = liftsOf([done("s1", "2026-11-02", [row("Goblet squat", ["25"], ["10"])]), done("s2", "2026-11-09", [row("Goblet squat", ["25"], ["10"])]), done("s3", T0, [row("Goblet squat", ["11.34"], ["10"], { unit: "kg" })])], canon, T0, "kg").get("gobletsquat");
+  assert.deepStrictEqual([bestOf(L, "kg").date, bestOf(L, "lb").date], ["2026-11-02", "2026-11-02"], "25 lb and 11.34 kg read the same in either unit: the first day");
 }));
 
 test("the Look up's Best opens that exercise's page; the markup has the new cards in the order of the pictures and the two pages after Workouts", () => pinned(() => {

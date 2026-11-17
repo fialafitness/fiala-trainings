@@ -134,12 +134,12 @@ test("a sessions package counts finished in-person workouts since it started, ro
   const tr = (id, date, inPerson, done, extra) => ({ id, clientId: "c1", date, createdAt: date + "T10:00:00.000Z", completedAt: done ? date + "T18:00:00.000Z" : null, skippedAt: null, inPerson, rows: [], ...(extra || {}) });
   const plan = { id: "p", name: "10 sessions", kind: "sessions", size: 10, startedOn: "2026-10-01", adjust: 0 };
   const list = [tr("a", "2026-09-28", true, true), tr("b", "2026-10-02", true, true), tr("c", "2026-10-04", false, true), tr("d", "2026-10-06", true, true), tr("e", "2026-10-08", true, false), tr("f", "2026-10-10", true, false, { skippedAt: "x" })];
-  assert.deepStrictEqual(planProgress(plan, list), { used: 2, size: 10, packNo: 1, inPack: 2, left: 8, complete: false }, "before the start and solo workouts do not count; unfinished ones not yet");
+  assert.deepStrictEqual(planProgress(plan, list), { used: 2, raw: 2, size: 10, packNo: 1, inPack: 2, left: 8, complete: false }, "before the start and solo workouts do not count; unfinished ones not yet");
   assert.deepStrictEqual(sessionNo(plan, list, list[1]), { n: 1, size: 10, packNo: 1 }); assert.deepStrictEqual(sessionNo(plan, list, list[4]), { n: 3, size: 10, packNo: 1 }, "a planned session gets the next number");
   const stale = tr("z", "2026-10-03", true, false); assert.deepStrictEqual(sessionNo(plan, [...list, stale], list[3]).n, 2, "a planned session dated earlier never shifts a finished one"); assert.deepStrictEqual(sessionNo(plan, [...list, stale], stale).n, 3, "it queues after the finished ones");
   assert.strictEqual(sessionNo(plan, list, list[2]), null, "a solo workout has no number"); assert.strictEqual(sessionNo(plan, list, list[5]), null, "a skipped one neither");
   assert.deepStrictEqual(planProgress({ ...plan, adjust: 1 }, list).inPack, 3, "a session outside the app, added by hand");
-  assert.deepStrictEqual(planProgress({ ...plan, adjust: -5 }, list).used, 0, "never below zero");
+  assert.deepStrictEqual([planProgress({ ...plan, adjust: -5 }, list).used, planProgress({ ...plan, adjust: -5 }, list).raw], [0, -3], "never below zero (raw keeps the count before the clamp, for Sessions: v312)");
   const ten = Array.from({ length: 10 }, (_, i) => tr("s" + i, "2026-10-" + String(11 + i).padStart(2, "0"), true, true));
   const full = planProgress(plan, [...list, ...ten]); assert.deepStrictEqual([full.used, full.inPack, full.complete, full.packNo], [12, 2, false, 2], "12 done: package 2, session 2");
   const exact = planProgress(plan, [...list, ...ten.slice(0, 8)]); assert.deepStrictEqual([exact.inPack, exact.complete, exact.packNo], [10, true, 1], "exactly full reads 10 of 10, complete");

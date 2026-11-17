@@ -2,7 +2,7 @@
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
 import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows, pendingProfile, profileTouched, ui, planTouched } from "./state.js";
 import { uid, now, today, localIso, fmtDate, fmtDay, fmtDayLong, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { carryOver, TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, labelKey, cmpLabel, validateBackup, doneCount, timedPlan, measurePlan, weightIn, weightStored, sameWeightText, kgOf, stampUnit, toTimeUnit, heightAs, weightAs, heightUnitOf, bodyUnitOf, fmtHeight, fmtBodyWeight, ageOn, profileGet, profilePut, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive, weekDays, weekAverage, rangeCounts, mondayOf, weightNumber, attendance, liftsOf, bestOf, strongerLifts, monthBests, discomforts, inPersonCount, numOf } from "./model.js";
+import { carryOver, TEMPLATES_ID, isTemplateClient, effDate, freshRow, isEmptyWorkout, setsOf, groupKey, labelKey, cmpLabel, validateBackup, doneCount, timedPlan, measurePlan, weightIn, weightStored, sameWeightText, kgOf, stampUnit, toTimeUnit, heightAs, weightAs, heightUnitOf, bodyUnitOf, fmtHeight, fmtBodyWeight, ageOn, profileGet, profilePut, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive, weekDays, weekAverage, rangeCounts, mondayOf, weightNumber, attendance, liftsOf, bestOf, strongerLifts, monthBests, discomforts, inPersonCount, numOf, nextPlan, planSwitch, sessionsTotal } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
 import { seenDoc, moveOut, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
@@ -724,9 +724,10 @@ import { reportRange, buildReport } from "./report.js";
     if (monthly && document.activeElement !== $("planUntil")) $("planUntil").value = c.plan.until || "";
   }
   let planEdit = null;                                               // { clientId, adjust }: the correction being tried on the card, until Save
+  const planKeyOf = (p) => [p.id, p.startedOn || "", parseInt(p.adjust, 10) || 0, parseInt(p.carried, 10) || 0].join("|");   // v312: the plan a Change was opened on, as it was then: any change to it (another device's switch, even one put back, or its own Change) closes it (the final check: a switch there and back kept it open, and its Save counted the finished packages twice)
   function renderPlanCard(c) {
     const card = $("planCard"), plan0 = c.plan && c.plan.id ? c.plan : null; card.hidden = !plan0; if (!plan0) { planEdit = null; return; }
-    if (planEdit && planEdit.clientId !== c.id) planEdit = null;
+    if (planEdit && (planEdit.clientId !== c.id || planEdit.planKey !== planKeyOf(plan0))) planEdit = null;   // v312: the plan changed since the Change was opened (a switch from another device): it closes
     const plan = planEdit ? { ...plan0, adjust: planEdit.adjust } : plan0;
     $("planChange").hidden = !!planEdit; $("planSteps").hidden = !planEdit; $("planActions").hidden = !planEdit || S.clientMode;
     const bar = $("planBar"), big = $("planBig"), small = $("planSmall"), adj = $("planAdjust"); big.classList.remove("over");
@@ -749,20 +750,18 @@ import { reportRange, buildReport } from "./report.js";
   $("planCard").addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); e.currentTarget.click(); } });
   $("planCard").addEventListener("click", (e) => {
     const c = clients.get(S.view.id); if (!c || S.clientMode || !c.plan) return;
-    if (e.target.closest("#planChange")) { planEdit = { clientId: c.id, adjust: parseInt(c.plan.adjust, 10) || 0 }; renderClient(); return; }           // the one knob for mistakes: shown on request, kept only on Save
+    if (e.target.closest("#planChange")) { planEdit = { clientId: c.id, planKey: planKeyOf(c.plan), adjust: parseInt(c.plan.adjust, 10) || 0 }; renderClient(); return; }           // the one knob for mistakes: shown on request, kept only on Save
     const step = e.target.closest(".step"); if (step && planEdit) { planEdit.adjust += step.id === "planPlus" ? 1 : -1; renderClient(); return; }
     if (e.target.closest("#planCancel")) { planEdit = null; renderClient(); return; }
-    if (e.target.closest("#planSave")) { c.plan.adjust = planEdit ? planEdit.adjust : c.plan.adjust; planEdit = null; planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); return; }
+    if (e.target.closest("#planSave")) { if (planEdit && planEdit.planKey === planKeyOf(c.plan)) c.plan.adjust = planEdit.adjust; planEdit = null; planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); return; }
     if (e.target.closest(".plan-adjust, .plan-actions")) return;
     backScroll = window.scrollY; showClientCard(); window.scrollTo(0, 0);   // the plan lives on the client's card
   });
   $("planSel").addEventListener("change", (e) => {
     const c = clients.get(S.view.id); if (!c || isTemplateClient(c.id)) return;
     const id = e.target.value; if ((c.plan && c.plan.id ? c.plan.id : "") === id) return;
-    const pk = packagesList().find((x) => x.id === id), carry = !!(pk && c.plan && c.plan.kind === "sessions" && pk.kind === "sessions");   // 10 -> 20, or a mis-pick put right: the sessions already used carry over
-    if (c.plan && c.plan.id && !carry) c.planHistory = [...(c.planHistory || []), { ...c.plan, endedOn: today() }].slice(-20);   // what they were on before stays on record
-    const carried = carry ? carryOver(c.plan, clientTrainings(c.id)) : 0;   // (15 Nov 2026, the audit's #10) only the open package carries over: a finished 10 moved to a 20 starts the 20 at 0, not at 10; 7 of 10 moved to a 20 is 7 of 20
-    c.plan = pk ? { id: pk.id, name: pk.name, kind: pk.kind, size: pk.size || null, startedOn: carry ? c.plan.startedOn : today(), adjust: carry ? (parseInt(c.plan.adjust, 10) || 0) - carried : 0, ...(pk.kind === "monthly" ? { until: daysLater(today(), 28) } : {}) } : null;
+    const pk = packagesList().find((x) => x.id === id), sw = planSwitch(c, pk, clientTrainings(c.id), today());   // 10 -> 20, or a mis-pick put right: the sessions already used carry over; what they were on before stays on record (model.js)
+    if (sw.planHistory) { if (sw.planHistory.length) c.planHistory = sw.planHistory; else delete c.planHistory; } planEdit = null; c.plan = sw.plan;   // an open Change never outlives a switch (the final check: its Save wrote the old package's correction into the new one)
     planTouched.add(c.id); scheduleSave("clients", c.id); renderClient();
   });
   $("planUntil").addEventListener("change", (e) => { const c = clients.get(S.view.id); if (!c || !c.plan || c.plan.kind !== "monthly" || !/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) return; c.plan.until = e.target.value; planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); });
@@ -1327,7 +1326,7 @@ import { reportRange, buildReport } from "./report.js";
   let seenTouch = false;                                            // pictures are only taken once the person has touched the app: every change before that is the app opening (it draws an empty Clients page as the script loads, and reopens a settings page over it), never a page they saw
   if (typeof document !== "undefined" && document.addEventListener) for (const t of ["pointerdown", "touchstart", "keydown"]) document.addEventListener(t, () => { seenTouch = true; }, { capture: true, passive: true });
   function navWillChange(kind) {                                    // a screen is about to change: what it was, and (for the edge swipe) a picture of it; kind: "back" or "land" (no new step)
-    rsForget();                                                     // a row out or closing goes back first: the picture shows it as the page will be
+    rsForget(); $("ovSugg").hidden = true;                          // a row out or closing goes back first: the picture shows it as the page will be (v312: and the Look up's list closed, however the tab is left)
     if (nav.pending) { if (kind) nav.pending.kind = nav.pending.kind || kind; return; }
     if ((swipeOn || deskOn) && seenTouch && !nav.backing && kind !== "back") { const k = nav.curKey || screenKey(), shot = captureScreen(); if (shot) { shotByKey.delete(k); shotByKey.set(k, shot); if (shotByKey.size > 14) shotByKey.delete(shotByKey.keys().next().value); } }   // the first call of a change: the screen is still the old one
     nav.pending = { sig: navSig(), kind: kind || "" };
@@ -3689,9 +3688,9 @@ import { reportRange, buildReport } from "./report.js";
     att.hidden = a.pct == null;
     if (a.pct != null) {
       const max = Math.max(a.finished, a.skipped, a.missed, 1), wid = (k) => Math.max(8, (k / max) * 100).toFixed(1) + "%";   // --w: the bar never shorter than its words (index.html .pg-bar)
-      const why = Object.entries(a.reasons).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])).map(([r, k]) => esc(r) + (k > 1 ? " " + k : "")).join(", "), md = a.missedDays;   // the commonest reason first
+      const why = Object.entries(a.reasons).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])).map(([r, k]) => esc(r) + (k > 1 ? "\u00a0" + k : "")).join(", "), md = a.missedDays;   // the commonest reason first; a reason and its count never part
       const when = md.length === 1 ? " · " + esc(whenDay(md[0], true)) : md.length === 2 ? " · " + esc(shortDay(md[0]) + " and " + shortDay(md[1])) : "";
-      const how = "In person " + a.inPerson + " · On " + (S.clientMode ? "your" : "their") + " own " + a.onOwn, inside = a.finished > 0 && a.finished === max;   // inside the finished bar when it is the longest (the picture); under it when not, where it would not fit
+      const how = "In person\u00a0" + a.inPerson + " · On " + (S.clientMode ? "your" : "their") + " own\u00a0" + a.onOwn, inside = a.finished > 0 && a.finished === max;   // inside the finished bar when it is the longest (the picture); under it when not, where it would not fit
       const row = (k, w, cls, label) => '<span class="pg-cmp sm">' + pgNum(k, w) + (k ? '<span class="pg-bar ' + cls + '" style="--w:' + wid(k) + '">' + (label ? "<span>" + label + "</span>" : "") + "</span>" : "") + "</span>";
       att.innerHTML = pgHead("cal", "Attendance", "Last 4 weeks") + pgNum(a.pct + "%", "of planned workouts") + '<span class="pg-hr"></span>' +
         row(a.finished, "finished", "done", inside ? how : "") + (a.finished && !inside ? '<span class="pg-sub">' + how + "</span>" : "") +
@@ -3719,10 +3718,10 @@ import { reportRange, buildReport } from "./report.js";
       mb.slice(0, 3).map((x) => pgLiftRow(x.e.key, x.e.name, dayWord(x.p.date, t0), fmtTop(x.p.top, x.e, cu))).join("") +
       '<li><button type="button" class="pg-all" data-act="bests"><span>All bests</span><span class="chev" aria-hidden="true">&rsaquo;</span></button></li>';
     // Sessions with the coach: the finished workouts marked In person (counted from the first, as the mark began on 14 Oct 2026), and the package, as the plan card counts it
-    const ip = inPersonCount(list, t0), pr = c.plan ? planProgress(c.plan, list) : null, se = $("pgSessions"), nS = pr ? pr.used : ip.n;   // the package's count with its correction (the v311 check: "3 with you" beside "5 of 10")
+    const tot = sessionsTotal(c, list, t0), ip = { n: tot.marks, since: tot.since }, pr = c.plan ? planProgress(c.plan, list) : null, se = $("pgSessions"), nS = tot.n;   // v312 (the owner's ask: "fix that as well"): the session package's own count with the finished packages it carried over at a switch, as its plan card counts it; with none now, the last on record; with none ever, the In person marks
     se.hidden = !nS && !pr;
-    se.innerHTML = pgHead("people", "Sessions", pr ? "Package " + pr.packNo : "") + pgNum(nS, S.clientMode ? "with your coach" : "with you") +
-      (pr ? '<span class="pg-sub">This package: ' + pr.inPack + " of " + pr.size + "</span>" : ip.n ? '<span class="pg-sub">Counted since ' + esc(shortDay(ip.since)) + "</span>" : "");
+    se.innerHTML = pgHead("people", "Sessions", pr && pr.packNo > 1 ? "Package " + pr.packNo : "") + pgNum(nS, S.clientMode ? "with your coach" : "with you") +
+      (pr ? '<span class="pg-sub">This package: ' + pr.inPack + " of " + pr.size + "</span>" : ip.n && !tot.added ? '<span class="pg-sub">Counted since ' + esc(shortDay(ip.since)) + "</span>" : "");   // as the plan card: no "Package 1"; "Counted since" only for the marks alone
   }
   // the taps: a lift's card or row opens its page, All bests the Bests page, the coach's discomfort note that exercise's page
   function pgTap(e) {
@@ -3739,7 +3738,7 @@ import { reportRange, buildReport } from "./report.js";
   function paintBests() {
     const c = clients.get(healthId()); if (!c) return;
     const t0 = today(), cu = c.unit || "lb", lifts = liftsOf(clientTrainings(c.id), liftKey, t0, cu), q = squash($("bestsFind").value || "");
-    const rows = [...lifts.values()].map((e) => ({ e, p: bestOf(e) })).filter((x) => !q || x.e.key.includes(q) || squash(x.e.name).includes(q)).sort((a, b) => b.p.date.localeCompare(a.p.date) || a.e.name.localeCompare(b.e.name));
+    const rows = [...lifts.values()].map((e) => ({ e, p: bestOf(e, cu) })).filter((x) => !q || x.e.key.includes(q) || squash(x.e.name).includes(q)).sort((a, b) => b.p.date.localeCompare(a.p.date) || a.e.name.localeCompare(b.e.name));
     $("bestsList").innerHTML = rows.map((x) => pgLiftRow(x.e.key, x.e.name, dayWord(x.p.date, t0), fmtTop(x.p.top, x.e, cu))).join("");
     $("bestsList").hidden = !rows.length; $("bestsEmpty").hidden = !!rows.length; $("bestsEmpty").textContent = lifts.size ? "No exercise by that name yet." : "No lifts logged yet.";
   }
@@ -3762,26 +3761,29 @@ import { reportRange, buildReport } from "./report.js";
     return k;
   };
   function liftChart(e, cu) {
-    const byW = e.kind === "reps" && e.points.some((p) => p.top.w != null); let unit = byW ? cu : e.kind === "time" ? e.tunit || "sec" : e.kind === "m" ? "m" : "reps";
-    let pts = e.points.map((p) => ({ p, y: byW ? (p.top.w != null ? weightNumber(weightIn(String(p.top.w), p.top.u || cu, cu)) : null) : p.top.rp })).filter((x) => x.y != null && Number.isFinite(x.y));
+    const best = bestOf(e, cu), byW = e.kind === "reps" && best && best.top.w != null; let unit = byW ? cu : e.kind === "time" ? e.tunit || "sec" : e.kind === "m" ? "m" : "reps";   // the weight when the best set has one (a bodyweight lift that took weight rises with it, as its sentence says: the v311 checks), else the reps
+    let pts = e.points.map((p) => ({ p, y: byW ? (p.top.w != null ? weightNumber(weightIn(String(p.top.w), p.top.u || cu, cu)) : p.words ? null : 0) : p.top.rp })).filter((x) => x.y != null && Number.isFinite(x.y));   // a session with no weight is none added (0) wherever it falls, as logged and as gainOf reads it (the v312 last check: a Bodyweight-key session after a weighted one was left out and the line stopped early); a load in words is left out
     if (!pts.length) return "";
     if (unit === "min" && pts.some((q) => !Number.isInteger(Math.round(q.y * 100) / 100))) { pts = pts.map((q) => ({ ...q, y: Math.round(q.y * 60) })); unit = "sec"; }   // a part of a minute: the chart in seconds, as the card and the history write it
     const whole = pts.every((q) => Number.isInteger(Math.round(q.y * 1e6) / 1e6));
     let lo = Math.min(...pts.map((x) => x.y)), hi = Math.max(...pts.map((x) => x.y));
     const step = axisStep(lo, hi, whole);   // about four lines at round values, at any size (the v311 review: a weight typed 40000 drew 41 labels, a longer typo hung the page)
     lo = Math.floor(lo / step + 1e-9) * step; hi = Math.ceil(hi / step - 1e-9) * step; if (hi - lo < step / 2) { hi += step; lo = Math.max(0, lo - step); }
-    const t0 = Date.parse(pts[0].p.date + "T12:00:00"), t1 = Date.parse(pts[pts.length - 1].p.date + "T12:00:00"), x = (d) => (t1 > t0 ? ((Date.parse(d + "T12:00:00") - t0) / (t1 - t0)) * 100 : 50), y = (v) => (1 - (v - lo) / (hi - lo)) * 100;
+    const first = e.points[0].date, last = e.points[e.points.length - 1].date, t0 = Date.parse(first + "T12:00:00"), t1 = Date.parse(last + "T12:00:00"), x = (d) => (t1 > t0 ? ((Date.parse(d + "T12:00:00") - t0) / (t1 - t0)) * 100 : 50), y = (v) => (1 - (v - lo) / (hi - lo)) * 100;   // across every session, as the dates above it (a session left out is a dot missing, never a shorter span)
     const lab = (v) => { const x = whole ? Math.round(v) : Math.round(v * 10) / 10; return x + " " + (unit === "reps" && x === 1 ? "rep" : unit); }, labs = [];
     for (let k = 0, nl = Math.round((hi - lo) / step); k <= nl; k++) labs.push([lo + k * step, lab(lo + k * step)]);
     let h = '<div class="plot" style="--gut:' + Math.max(...labs.map(([, t]) => t.length)) + 'ch">';   // the room on the right as wide as the longest label (index.html: the v311 check found "107.5 sec" reaching into the plot)
     for (const [v, t] of labs) h += '<span class="gl' + (v === lo ? " zero" : "") + '" style="top:' + y(v).toFixed(3) + '%"></span><span class="yl" style="top:' + y(v).toFixed(3) + '%">' + t + "</span>";
-    const a = pgAt(pts[0].p.date), last = pts[pts.length - 1].p.date, months = [];
-    for (let k = 1; ; k++) { const m1 = new Date(a.getFullYear(), a.getMonth() + k, 1, 12), iso = localIso(m1); if (iso > last) break; months.push([iso, m1]); }
-    const every = Math.max(1, Math.ceil(months.length / 6));   // about six months named at most, so no name runs into the next (the v310 review's collisions)
-    months.forEach(([iso, m1], k) => { if (k % every) return; const xm = x(iso); h += '<span class="vl" style="left:' + xm.toFixed(3) + '%"></span>' + (xm <= 88 ? '<span class="xl" style="left:' + xm.toFixed(3) + '%">' + m1.toLocaleDateString(undefined, { month: "short" }) + "</span>" : ""); });   // none at the right edge, where it would meet the weights' labels
+    const a = pgAt(first), months = [];
+    for (let k = 1; ; k++) { const m1 = new Date(a.getFullYear(), a.getMonth() + k, 1, 12), iso = localIso(m1); if (iso > last) break; months.push([x(iso), m1.toLocaleDateString(undefined, { month: "short" })]); }
+    const room = Math.max(20, 5 * Math.max(0, ...months.map(([, t]) => t.length)));   // a name's room in the plot by its length (the v311 checks: "thg 10" ran into the next in Vietnamese)
+    const named = []; let prevX = 1000; for (const [xm, t] of months.reverse()) { if (xm > 88 || prevX - xm < room) continue; prevX = xm; named.unshift([xm, t]); }   // chosen from the newest back, so the latest months are named; none past 88%, where it would meet the labels
+    for (const [xm, t] of named) h += '<span class="vl" style="left:' + xm.toFixed(3) + '%"></span><span class="xl" style="left:' + xm.toFixed(3) + '%">' + t + "</span>";   // written left to right
     h += '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + pts.map((q) => x(q.p.date).toFixed(3) + "," + y(q.y).toFixed(3)).join(" ") + '" class="ln" fill="none" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>';
-    const dot = (q) => '<span class="pt' + (q.p.gold ? " best" : "") + '" style="left:' + x(q.p.date).toFixed(3) + "%;top:" + y(q.y).toFixed(3) + '%"></span>';   // the bests drawn last, on top; past two dozen sessions the line and the bests alone (11-point rings ran into a chain: the v311 check)
-    h += (pts.length <= 24 ? pts.filter((q) => !q.p.gold).map(dot).join("") : "") + pts.filter((q) => q.p.gold).map(dot).join("") + "</div>";
+    const dot = (q) => '<span class="pt' + (q.p.gold ? " best" : "") + '" style="left:' + x(q.p.date).toFixed(3) + "%;top:" + y(q.y).toFixed(3) + '%"></span>';
+    const golds = pts.filter((q) => q.p.gold), gx = golds.map((q) => x(q.p.date)), rings = []; let lastX = -100;
+    for (const q of pts) { if (q.p.gold) continue; const xq = x(q.p.date); if (xq - lastX < 5 || gx.some((g) => Math.abs(g - xq) < 5)) continue; rings.push(q); lastX = xq; }   // a ring only where it has room (5% of the plot, about 13 points on a phone at a large Text Size) and clear of a best's dot (the v311 checks: one close pair hid them all)
+    h += rings.map(dot).join("") + golds.map(dot).join("") + "</div>";   // the bests drawn last, on top
     return h;
   }
   function paintLift() {
@@ -3791,11 +3793,11 @@ import { reportRange, buildReport } from "./report.js";
     $("liftName").textContent = liftCur.name; const has = !!(e && e.points.length);
     for (const id of ["liftCap", "liftDates", "liftChart", "liftHistCap", "liftList"]) $(id).hidden = !has;
     if (!has) { $("liftBest").textContent = "Nothing logged yet"; $("liftKey").hidden = true; return; }
-    const p0 = bestOf(e), P = e.points, chart = liftChart(e, cu);
+    const p0 = bestOf(e, cu), P = e.points, chart = liftChart(e, cu);
     $("liftBest").textContent = fmtTop(p0.top, e, cu);
     $("liftDates").textContent = P[0].date !== P[P.length - 1].date ? dayRange(P[0].date, P[P.length - 1].date, true) : whenDay(P[0].date, true);   // two sessions on one day: that day, never "Nov 16–16"
     $("liftChart").innerHTML = chart; $("liftChart").hidden = !chart; $("liftChart").setAttribute("aria-label", e.name + ", the best set each time: " + P.map((p) => fmtTop(p.top, e, cu) + " on " + whenDay(p.date, true)).join("; "));
-    $("liftKey").hidden = !chart || !P.some((p) => p.gold); $("liftKeyText").textContent = e.kind === "time" ? "New best: longer" : e.kind === "m" ? "New best: farther, or heavier" : "New best: heavier, or more reps";
+    $("liftKey").hidden = !chart || !P.some((p) => p.gold); $("liftKeyText").textContent = e.kind === "time" ? "New best: longer, or heavier" : e.kind === "m" ? "New best: farther, or heavier" : "New best: heavier, or more reps";
     $("liftList").innerHTML = P.slice().reverse().map((p) => '<li><div class="pg-hist"><span>' + esc(dayWord(p.date, t0) + (p.title ? " · " + p.title : "")) + '</span><span class="n2">' + esc(fmtSets(p, e, cu) || fmtTop(p.top, e, cu)) + "</span></div></li>").join("");
   }
   // ---- what a client did on their own that the coach has not seen: finished workouts (cleared when the profile opens) and notes (each cleared when tapped).
@@ -5002,7 +5004,7 @@ import { reportRange, buildReport } from "./report.js";
       <div class="tempo-wrap"><input class="tempo tab" inputmode="decimal" placeholder="Normal" autocapitalize="characters"><div class="tempo-tiles" hidden></div></div>
       <div class="cnote" hidden><button class="cnote-btn" type="button" aria-expanded="false"><span class="cnote-lab">Instructions</span><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button><div class="cnote-text" hidden></div></div>
       <div class="weights"><div class="cap"><span class="wunit">Weights &middot; lb</span><span class="last"></span></div><div class="boxes"></div></div>
-      <div class="setlog"><div class="pair"><div class="chip stack"><span class="lab">Weight</span><span class="valrow"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></span></div><div class="chip stack"><span class="lab">Reps</span><span class="valrow"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></span></div></div></div>
+      <div class="setlog"><div class="pair"><div class="chip stack"><span class="lab">Weight</span><span class="valrow"><span class="val"></span><input class="w tab" inputmode="decimal" autocapitalize="none" aria-label="Weight"><span class="suffix unit">lb</span></span></div><div class="chip stack"><span class="lab">Reps</span><span class="valrow"><span class="val"></span><input class="rp tab" inputmode="numeric" autocapitalize="none" aria-label="Reps"><span class="suffix">reps</span></span></div></div></div><div class="setlog-short" hidden><span class="short-text"></span><button type="button" class="add-set" hidden></button></div>
       <div class="lifts" hidden><button type="button" class="lift last"><span class="vh">Last time </span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.6V12l3.1 2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><b></b></button><button type="button" class="lift best"><span class="vh">Personal best </span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.2 17.2 2.5 7.4l4.8 3.3L12 4.6l4.7 6.1 4.8-3.3-1.7 9.8z" fill="currentColor"/><path d="M4.6 18.8h14.8v1.9H4.6z" fill="currentColor"/></svg><b></b></button></div>
 `;
     const q = (s) => el.querySelector(s);
@@ -5134,7 +5136,7 @@ import { reportRange, buildReport } from "./report.js";
         const b = document.createElement("button"); b.type = "button"; b.textContent = n; if (n === "W") b.title = "Warmup";
         if (n === cur) b.classList.add("cur");
         b.addEventListener("mousedown", (ev) => ev.preventDefault());
-        b.addEventListener("click", () => { r.label = n; lastEditedId = r.id; q(".label").value = n; numpick.hidden = true; save(); S.renderedTraining = null; render(); followRow(r.id, String(r.name || "").trim() ? null : "name"); });   // the card moves to its place; he goes with it, straight into the name if it is still empty
+        b.addEventListener("click", () => { r.label = n; lastEditedId = r.id; q(".label").value = n; numpick.hidden = true; save(); S.renderedTraining = null; render(); followRow(r.id, String(r.name || "").trim() ? null : "name"); });   // the card moves to its place; the coach goes with it, straight into the name if it is still empty
         return b;
       }));
       numpick.hidden = false;
@@ -5142,7 +5144,7 @@ import { reportRange, buildReport } from "./report.js";
     if (!asClient) {
       let labelAtFocus = "";
       q(".label").addEventListener("focus", (e) => { labelAtFocus = e.target.value; if (el.closest && el.closest(".block.done:not(.open)")) return; showNumbers(); });   // a folded finished card takes no clicks: no picker there
-      q(".label").addEventListener("blur", (e) => { numpick.hidden = true; if (q(".label").value !== labelAtFocus) { const to = e.relatedTarget, field = to && el.contains(to) && /^(INPUT|TEXTAREA)$/.test(to.tagName) ? [...to.classList].find((c) => /^(name|reps|rest|tempo|w|rp)$/.test(c)) : null; S.renderedTraining = null; render(); followRow(r.id, field || null); } });   // the card moves to its place; the field he tapped next is focused again in the moved card
+      q(".label").addEventListener("blur", (e) => { numpick.hidden = true; if (q(".label").value !== labelAtFocus) { const to = e.relatedTarget, field = to && el.contains(to) && /^(INPUT|TEXTAREA)$/.test(to.tagName) ? [...to.classList].find((c) => /^(name|reps|rest|tempo|w|rp)$/.test(c)) : null; S.renderedTraining = null; render(); followRow(r.id, field || null); } });   // the card moves to its place; the field tapped next is focused again in the moved card
       q(".name").addEventListener("input", (e) => { r.name = e.target.value.replace(/\n/g, " "); markNamed(); dropAltNamed(); growName(); save(); suggest(e.target.value); renderWeights(); paintVideo(); paintNewName(); });
       q(".name").addEventListener("blur", () => setTimeout(() => { q(".sugg").hidden = true; }, 120));
       q(".name").addEventListener("focus", (e) => { suggest(e.target.value); });
@@ -5282,7 +5284,20 @@ import { reportRange, buildReport } from "./report.js";
     }
     renderWeights();
     if (group && group.rows.length > 1 && group.rows[group.rows.length - 1] !== r) q(".rest-suffix").textContent = "transition";
-    if (group && group.sel != null && group.sel >= setsOf(r)) q(".setlog").hidden = true;   // no such set for this exercise
+    const short = q(".setlog-short"); short.hidden = true;
+    if (group && group.sel != null && group.sel >= setsOf(r)) {   // no such set for this exercise
+      q(".setlog").hidden = true;
+      const n = setsOf(r), add = q(".add-set"), at = group.sel + 1;   // v312 (the owner's pick, 16 Nov 2026): it says so, rather than look broken, and the coach (either look) can add the set: an exercise put into a superset by mistake kept fewer sets
+      short.hidden = false; q(".short-text").textContent = n + (n === 1 ? " set only" : " sets only");
+      add.hidden = S.clientMode || !!t.completedAt || group.sel !== n; add.textContent = "Add set " + at; add.setAttribute("aria-label", "Add set " + at + " to " + (String(r.name || "").trim() || "this exercise"));   // only on the first set it does not have (Add set 5 over 3 sets made a 4th too and sent the card back: the final check)
+      add.addEventListener("click", (e) => {   // (the row is drawn anew each time: one listener)
+        e.stopPropagation(); const T = trainings.get(t.id), x = T && (T.rows || []).find((y) => y.id === r.id); if (!x || S.clientMode || T.completedAt) return;   // a sync can have replaced the record, or brought the client's finish
+        const was = setsOf(x), sd = Math.min(doneCount(x), was), wasDone = !!x.done; x.sets = Math.max(was, at);
+        if (x.done && sd < x.sets) { x.done = false; x.setsDone = sd; markEarly(T, x, ""); }   // done with its own sets: open again for the one added (done before the set counter existed: its sets stay done)
+        if (x.done !== wasDone) { if (!trainerTouched.has(T.id)) trainerTouched.set(T.id, new Set()); trainerTouched.get(T.id).add(x.id); }
+        scheduleSave("trainings", T.id); S.renderedTraining = null; render(); if (byKeys(e)) followRow(x.id, measurePlan(x.reps) ? "rp" : "w");   // from the keyboard: on to the new set's first box (a hold's Time)
+      });
+    }
     else if (group && group.sel != null) {      // one set at a time: the boxes show the set the tracker points at
       const sel = group.sel; const unit = (clients.get(t.clientId) || {}).unit || "lb";
       const last = lastWeights(t, r);

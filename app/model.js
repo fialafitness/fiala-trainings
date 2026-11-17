@@ -142,15 +142,38 @@ export const sameSet = (a, b) => !!a && !!b && cmpW(a, b, -1) === 0 && a.rp === 
 // before"), so they follow the correction. A later set with a different number was typed on purpose and stays.
 export const followFrom = (arr, i, was) => { const old = String(was == null ? "" : was).trim(); const out = []; if (old) for (let j = i + 1; j < (arr || []).length; j++) if (String(arr[j] == null ? "" : arr[j]).trim() === old) out.push(j); return out; };   // which later sets were copied from this one: decided when editing begins, so every keystroke of the correction reaches them
 export const correctFrom = (arr, i, value, was, follow) => { const out = [...(arr || [])]; while (out.length <= i) out.push(""); const js = follow || followFrom(out, i, was == null ? out[i] : was); out[i] = value; for (const j of js) if (j < out.length) out[j] = value; return out; };
-// Packages. A client's plan: { id, name, kind: "sessions" | "monthly", size, startedOn, adjust, until }.
+// Packages. A client's plan: { id, name, kind: "sessions" | "monthly", size, startedOn, adjust, until, carried }. carried (v312): the sessions of finished packages a switch moved out of adjust.
 // A sessions package counts finished workouts marked "in person" since it started, plus the trainer's correction;
 // package 2 starts by itself once package 1 is full. A monthly plan is just a day it is active until.
 export const planProgress = (plan, list) => {
   if (!plan || plan.kind !== "sessions" || !(plan.size > 0)) return null;
-  const used = Math.max(0, list.filter((t) => t.inPerson && t.completedAt && !t.skippedAt && t.missed !== true && effDate(t) >= (plan.startedOn || "")).length + (parseInt(plan.adjust, 10) || 0));   // the same workouts the session pill counts
+  const raw = list.filter((t) => t.inPerson && t.completedAt && !t.skippedAt && t.missed !== true && effDate(t) >= (plan.startedOn || "")).length + (parseInt(plan.adjust, 10) || 0), used = Math.max(0, raw);   // the same workouts the session pill counts
   const size = plan.size, packNo = used === 0 ? 1 : Math.floor((used - 1) / size) + 1, inPack = used === 0 ? 0 : ((used - 1) % size) + 1;
-  return { used, size, packNo, inPack, left: size - inPack, complete: used > 0 && used % size === 0 };
+  return { used, raw, size, packNo, inPack, left: size - inPack, complete: used > 0 && used % size === 0 };   // raw: the count before the clamp at 0 (Sessions, v312)
 };
+// A package picked on the client's card (v312, so Sessions keeps every correction through switches; the owner's ask, 16 Nov 2026: "fix that as well"): a session package
+// moved to another goes on from its open package (carryOver, the audit's #10) and keeps the finished packages it moved out of adjust in carried; anything else starts today.
+export function nextPlan(old, pk, list, todayIso) {
+  const carry = !!(pk && old && old.kind === "sessions" && pk.kind === "sessions"), carried = carry ? carryOver(old, list) : 0;
+  return pk ? { id: pk.id, name: pk.name, kind: pk.kind, size: pk.size || null, startedOn: carry ? old.startedOn : todayIso, adjust: carry ? (parseInt(old.adjust, 10) || 0) - carried : 0, ...(carry ? { carried: (parseInt(old.carried, 10) || 0) + carried } : {}), ...(pk.kind === "monthly" ? { until: daysLater(todayIso, 28) } : {}) } : null;
+}
+// The client's card's Plan pop-up, a package picked: { plan, planHistory } (planHistory only when it changed; an empty list means none left). As v311 had it: a
+// session package moved to another goes on from its open package (nextPlan, carryOver: the audit's #10), now keeping the finished packages it moves out of adjust in
+// carried (v312, the owner's ask, 16 Nov 2026: "fix that as well", so Sessions keeps the corrections); anything else puts the plan left on record (planHistory, the
+// last 20) and starts today. A plan left today and picked again the same day (a mis-pick put right through None, a monthly plan or another plan on record) comes back
+// exactly as it was (v312, the checks: put back by hand with Change, its sessions counted twice). The v312 checks tried more (every pick of a day as a draft) and
+// found each version changed a number in another route; a mis-pick through another session package reads as v311 did (Sessions stays right through carried).
+export function planSwitch(c, pk, list, todayIso) {
+  const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v), old = c && isObj(c.plan) && c.plan.id ? c.plan : null, hist0 = c && Array.isArray(c.planHistory) ? c.planHistory : [];
+  const again = pk ? [...hist0].reverse().find((h) => isObj(h) && h.id === pk.id && h.endedOn === todayIso) || null : null;
+  const carry = !again && !!(pk && old && old.kind === "sessions" && pk.kind === "sessions");
+  let hist = again ? hist0.filter((h) => h !== again) : hist0;
+  if (old && !carry) hist = [...hist, { ...old, endedOn: todayIso }].slice(-20);
+  let plan;
+  if (again) { const { endedOn, ...was } = again; plan = was; }
+  else plan = nextPlan(old, pk, list, todayIso);
+  return { plan, planHistory: hist !== hist0 ? hist : null };
+}
 export const carryOver = (plan, list) => { const p = planProgress(plan, list); return p ? p.used - (p.complete ? 0 : p.inPack) : 0; };   // (15 Nov 2026, the audit's #10) the sessions of the packages already finished: a switch to another size goes on from the open one
 export const sessionNo = (plan, list, t) => {                      // "Session 3 of 10": finished in-person workouts rank by the day they were finished (the card's count); a planned one comes after them, in date order
   if (!plan || plan.kind !== "sessions" || !(plan.size > 0) || !t || !t.inPerson || t.skippedAt || t.missed === true || effDate(t) < (plan.startedOn || "")) return null;
@@ -162,7 +185,7 @@ export const sessionNo = (plan, list, t) => {                      // "Session 3
   return { n: ((n - 1) % plan.size) + 1, size: plan.size, packNo: Math.floor((n - 1) / plan.size) + 1 };
 };
 export const planActive = (plan, day) => !plan || plan.kind !== "monthly" || !plan.until || plan.until >= day;   // a monthly plan past its day is over
-export const setsOf = (r) => Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20));   // blank = the default 4; 0 still counts as one
+export const setsOf = (r) => Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20));
 
 // "W", "Wa", "Wb" … = warm-up: groups like a number and sorts before 1; then the numbers with their letters; anything else last, by its text
 export const labelKey = (l) => { const s = String(l || "").trim(); const m = s.match(/^(\d+)\s*([a-z]*)/i); if (m) return [parseInt(m[1], 10), m[2].toLowerCase()]; const w = s.match(/^w\s*([a-z]?)$/i); return w ? [-1, w[1].toLowerCase()] : [Infinity, s.toLowerCase()]; };
@@ -196,7 +219,7 @@ export function validateBackup(d, knownClient) {                  // the whole f
     if (c.notes != null && typeof c.notes !== "string" && !(isObj(c.notes) && optList(c.notes.log, 5000))) throw new Error("bad client");
     if (!optStr(c.birthday) || !(c.sex == null || ["female", "male", "other", ""].includes(c.sex)) || !optMeasure(c.height, "in", "cm") || !optMeasure(c.bodyWeight, "lb", "kg") || !(c.heightUnit == null || c.heightUnit === "in" || c.heightUnit === "cm") || !(c.bodyUnit == null || c.bodyUnit === "lb" || c.bodyUnit === "kg")) throw new Error("bad client");
     if (c.health != null && !(isObj(c.health) && optStr(c.health.limits) && optStr(c.health.conditions) && optStr(c.health.medications) && optStr(c.health.allergies) && optBool(c.health.pregnant) && optStr(c.health.emergency) && optStr(c.health.doctor))) throw new Error("bad client");   // Health & safety (v299): what its page reads as text
-    if (c.plan != null && !(isObj(c.plan) && optStr(c.plan.id) && optStr(c.plan.name) && optStr(c.plan.kind) && optNum(c.plan.size) && optNum(c.plan.adjust) && optStr(c.plan.startedOn) && optStr(c.plan.until))) throw new Error("bad client");
+    if (c.plan != null && !(isObj(c.plan) && optStr(c.plan.id) && optStr(c.plan.name) && optStr(c.plan.kind) && optNum(c.plan.size) && optNum(c.plan.adjust) && optNum(c.plan.carried) && optStr(c.plan.startedOn) && optStr(c.plan.until))) throw new Error("bad client");
     if (!optList(c.planHistory, LIMIT.history) || (c.planHistory || []).some((h) => !isObj(h))) throw new Error("bad client");
     if (!optList(c.packages, LIMIT.packages) || (c.packages || []).some((pk) => !isObj(pk) || typeof pk.id !== "string" || !pk.id || typeof pk.name !== "string" || !pk.name.trim() || !optStr(pk.kind) || !optNum(pk.size) || !optBool(pk.inPerson) || (pk.kind !== "monthly" && !(Number(pk.size) >= 1)))) throw new Error("bad client");   // a package is shown by its name and counted by its size
     if (!optList(c.folders, LIMIT.folders) || (c.folders || []).some((x) => !isObj(x))) throw new Error("bad client");   // the coach's template folders (12 Nov): a list the Templates pages read with .filter
@@ -299,7 +322,7 @@ export function liftsOf(list, canon, todayIso, clientUnit) {
       s.tops.push(st); s.rows.push({ own, ou });                                  // every row's top: in the unit shown (tops, the card's Best folds rows, not sessions) and in its own plan's (rows, for its NEW BEST)
       const n = Math.max(setsOf(r), ((r.weights || []).length), ((r.repsDone || []).length));
       for (let i = 0; i < n; i++) if (setCounts(r, i)) {
-        const w = (r.weights || [])[i]; if (String(w == null ? "" : w).trim() && weightNumber(w) == null) s.words = true;   // "BW+10", "2x20", "Band 3": a load in words, never compared as a weight
+        const w = (r.weights || [])[i], wt = String(w == null ? "" : w).trim(); if (wt && weightNumber(wt) == null && !/^(bw|body ?weight)$/i.test(wt)) s.words = true;   // "BW+10", "2x20", "Band 3": a load in words, never compared as a weight; "BW" (the keyboard's Bodyweight key) is none added (the v311 checks)
         s.sets.push({ w, rp: (r.repsDone || [])[i], u: own.u, m: mu ? mu.unit : null });
       }
     }
@@ -319,13 +342,13 @@ export function liftsOf(list, canon, todayIso, clientUnit) {
   return by;
 }
 // An exercise's best: the set as the card's Best and the Look up fold every row, newest first (a better set takes it, an equal one only when heavier: 135 lb, not
-// the 134.9 lb of a 61.2 kg; the v311 review), and the day it was set: its last new best (the chart's last filled dot), or the first time when none came after. A best
-// matched again later keeps its day (the v311 check: a top set repeated each week read "Today" and sorted first).
-export const bestOf = (e) => {
+// the 134.9 lb of a 61.2 kg; the v311 review), and the day it was first lifted as it reads in the client's unit (cu): the first session holding a set that reads the
+// same. A repeat keeps the first day, and so does a switch of units (the app's own copy of 25 lb in kg is a hair heavier, and took the day: the v311 checks).
+export const bestOf = (e, cu) => {
   let top = null, at = null;
-  for (let i = e.points.length - 1; i >= 0; i--) for (const st of e.points[i].tops || [e.points[i].top]) if (!top || betterSet(st, top, e.timed) || (sameSet(st, top) && kgOf(st) > kgOf(top))) top = st;
-  for (const p of e.points) if (p.gold) at = p;
-  at = at || e.points[0];
+  for (let i = e.points.length - 1; i >= 0; i--) { const p = e.points[i]; for (const st of p.tops || [p.top]) if (!top || betterSet(st, top, e.timed) || (sameSet(st, top) && kgOf(st) > kgOf(top))) { top = st; at = p; } }
+  const reads = (st) => (st.w == null ? "" : weightIn(String(st.w), st.u || cu || "lb", cu || st.u || "lb")) + "x" + st.rp, want = top ? reads(top) : "";
+  for (const p of e.points) if ((p.tops || [p.top]).some((st) => st && sameSet(st, top) && reads(st) === want)) { at = p; break; }
   return { top, date: at.date, title: at.title, tid: at.tid };
 };
 // What grew from one session's top set to another's, in one measure, or null when nothing clearly did. A hold: longer (or, as long, heavier); a carry: farther (or, as far,
@@ -346,10 +369,10 @@ export function strongerLifts(lifts, todayIso, days = 56) {
   for (const e of lifts.values()) {
     const p = e.points; if (p.length < 2) continue;
     const recent = p.filter((x) => x.date >= since).length; if (!recent) continue;
-    const last = p[p.length - 1], assisted = /assist/i.test(e.name); if (last.words) continue;
+    const last = p[p.length - 1], assisted = /assist|\basst\b|gravitron/i.test(e.name); if (last.words) continue;
     const grew = (base) => { if (!base || base === last || base.words || !(base.date < last.date)) return null; const g = gainOf(base.top, last.top, e.kind); return g && !(assisted && g.by === "weight") ? g : null; };   // two sessions on one day are no first time to grow from
     let first = p[0], gain = grew(first), firstTime = true;
-    if (!gain && first.top.rp == null) { const b = p.find((x) => x.top.rp != null && x !== last); const g = grew(b); if (g) { first = b; gain = g; firstTime = false; } }
+    if (!gain && first.top.rp == null) { const b = p.find((x) => x.top.rp != null && x !== last); const g = b && Math.abs(kgOr(b.top, 0) - kgOr(first.top, 0)) <= TIE_KG + 1e-9 ? grew(b) : null; if (g) { first = b; gain = g; firstTime = false; } }   // only from the same weight (the v311 checks: 60 lb then 20 lb read as growing)
     if (gain) out.push({ e, first, last, recent, gain, firstTime });
   }
   return out.sort((a, b) => b.recent - a.recent || b.last.date.localeCompare(a.last.date) || a.e.name.localeCompare(b.e.name));
@@ -372,6 +395,16 @@ export function discomforts(list, canon, todayIso, days = 28) {
     if (!x.days.has(effDate(t))) x.days.set(effDate(t), doneCount(r) === 0 ? "skipped" : "early");
   }
   return [...by.values()].filter((x) => x.days.size >= 2).map((x) => ({ key: x.key, name: x.name, days: [...x.days.keys()].sort(), skipped: [...x.days.values()].every((v) => v === "skipped"), early: [...x.days.values()].every((v) => v === "early") }));
+}
+// Sessions with the coach (v312, the owner's ask: "fix that as well"): the session package's own count, as its plan card counts it (In person marks since it began
+// and the corrections made with Change, up or down), with the finished packages a switch carried over (plan.carried), so a switch never loses them; with no session
+// package now, the most a package on record counts; with none ever, the In person marks. A package's progress put back by hand with Change counts once (the checks:
+// summing every correction on top of the marks counted it twice).
+export function sessionsTotal(c, list, todayIso) {
+  const ip = inPersonCount(list, todayIso), run = (p) => { const pr = p && p.kind === "sessions" ? planProgress(p, list) : null; return pr ? pr.raw + (parseInt(p.carried, 10) || 0) : null; };
+  const cur = c && c.plan ? run(c.plan) : null; if (cur != null) { const n = Math.max(0, cur); return { n, marks: ip.n, added: n - ip.n, since: ip.since }; }   // a correction counts below the package's own zero (raw): a session taken off at 0 of 20 that carried a finished 10 reads 9
+  const recs = ip.n ? ((c && c.planHistory) || []).map(run).filter((v) => v != null) : [], n = recs.length ? Math.max(ip.n, ...recs) : ip.n;   // no package now: the most a package on record counts, never below the marks (a switch in v304-v311 kept no carried; the checks: a package picked and left the same day read lower); only with marks to count, as a paused or lapsed client's phone is sent no workouts (the final check: it read the corrections alone)
+  return { n, marks: ip.n, added: recs.length ? n - ip.n : 0, since: ip.since };
 }
 // Sessions with the coach: the finished workouts marked In person (the mark exists since 14 Oct 2026, so the count says from when).
 export function inPersonCount(list, todayIso) {
