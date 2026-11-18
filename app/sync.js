@@ -1,7 +1,7 @@
 // Saving and syncing: the device copy, the debounced save queue, the cloud backend (coach), the client backend (RPCs),
 // the paged read of the server and the merge back into the local maps. Screens are reached only through `ui`.
-import { lsGet, lsSet, norm, clamp, today, uid } from "./util.js";
-import { isTemplateClient, planActive, repairTimed, timedPlan, cmpLabel, groupKey, stampUnit, profileGet, profilePut, setsOf, loggedSets } from "./model.js";
+import { lsGet, lsSet, norm, clamp, today, uid, laToday } from "./util.js";
+import { isTemplateClient, planActive, repairTimed, timedPlan, cmpLabel, groupKey, stampUnit, profileGet, profilePut, setsOf, loggedSets, zoneOf, hereZone } from "./model.js";
 import { mergeNotes } from "./notes.js";
 import { ALIASES } from "./catalog.js";
 import { S, ui, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, planTouched, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows, pendingProfile, profileTouched } from "./state.js";
@@ -18,7 +18,6 @@ const reasonOf = (e) => {
 };
 
 function key(kind, id) { return kind + "/" + id; }
-const laToday = () => { try { const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date()), g = (t) => (p.find((x) => x.type === t) || {}).value; return g("year") + "-" + g("month") + "-" + g("day"); } catch (_) { return today(); } };   // the server's day: client_my_data hides a lapsed plan's workouts by the Los Angeles date (the audit's #22: a phone in Hawaii is a day behind it for three hours a night)
 const seenDoc = new Map();                                        // "kind/id" -> the server copy the stamp belongs to: the base a two-device merge measures changes against
 function markDirty(kind, id) { const k = key(kind, id); dirty.set(k, (dirty.get(k) || 0) + 1); }
 const recMap = (k) => { const kind = String(k).slice(0, String(k).indexOf("/")); return kind === "clients" ? clients : kind === "trainings" ? trainings : null; };
@@ -120,6 +119,7 @@ function scheduleSave(kind, id, delay = 500) {
 }
 
 const dropIntent = (id) => { planTouched.delete(id); profileTouched.delete(id); for (const [n, cid] of [...deletedNotes]) if (cid === id) deletedNotes.delete(n); for (const [pk, cid] of [...deletedPackages]) if (cid === id) deletedPackages.delete(pk); for (const [n, cid] of [...deletedFolders]) if (cid === id) deletedFolders.delete(n); for (const [n, cid] of [...folderTouched]) if (cid === id) folderTouched.delete(n); };   // the save that carried them is on the server: the markers have done their work
+const dropMarks = (kind, id) => { if (kind === "trainings") { trainerState.delete(id); trainerTouched.delete(id); trainerNamed.delete(id); trainerNoted.delete(id); } if (kind === "clients") dropIntent(id); };   // the coach's marks on a record (a workout's state, rows, names and notes; a client's plan, profile and deletion intents): gone once a save carried them, or once a restore replaced the copy they were made on (v315)
 function flushAll() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); flushOne(kind, id); } }
 function flushOne(kind, id) {
   const k = key(kind, id);
@@ -141,10 +141,10 @@ function flushOne(kind, id) {
     }
     for (;;) {
       try {
-        if (data) await S.backend.set(kind, id, data); else await S.backend.del(kind, id);
+        if (data) await S.backend.set(kind, id, data, version); else await S.backend.del(kind, id);
         S.failed = false;
         if (fromFile.has(k) && version >= fromFile.get(k)) fromFile.delete(k);   // the write that carried the backup's copy landed: every later save merges as usual, even one queued meanwhile
-        if (dirty.get(k) === version) { dirty.delete(k); if (kind === "trainings") { trainerState.delete(id); trainerTouched.delete(id); trainerNamed.delete(id); trainerNoted.delete(id); } if (kind === "clients") dropIntent(id); }   // the coach's state changes went with this save; a later touch keeps its flag
+        if (dirty.get(k) === version) { dirty.delete(k); dropMarks(kind, id); }   // the coach's state changes went with this save; a later touch keeps its flag
         confirmedAt.set(k, Date.now());
         return;
       } catch (e) {
@@ -233,15 +233,17 @@ const saveDeadline = () => S.saveWait || 15000;                       // a save 
 const rpc = (name, args) => withTimeout(S.sb.rpc(name, args), saveDeadline());
 
 const cloudBackend = {
-  async set(kind, id, data) {
+  async set(kind, id, data, version) {
     const k = key(kind, id);
     const row = { id, data };
     if (kind === "trainings") row.client_id = data.clientId;
     let base = seenDoc.get(k) ? JSON.parse(seenDoc.get(k)) : null; const map = kind === "clients" ? clients : trainings;
+    const takeZone = (serverData) => { if (kind === "clients" && serverData) for (const target of [data, map.get(id)]) { if (!target) continue; if (serverData.zone === undefined) delete target.zone; else target.zone = serverData.zone; } };   // v315: the time zone the client's phone reported is never the coach's to change: always the server's copy, a restore's write included (the check round: a backup's old report went over the phone's newer one)
     const takeFields = (serverData) => {                      // two of his own devices: a field this one did not change since it last read the record takes the other device's value
+      takeZone(serverData);
       if (kind === "clients" && serverData && !base) { takeProfile(serverData); return; }   // v299: nothing read to measure against (a save made before this session's first sync, after a relaunch with no signal): the fields the client writes themselves stay the server's unless this device changed them (the v299 review's catch: the client's Health & safety was overwritten by the coach's device copy)
       if (!base || !serverData) return;
-      const skip = kind === "clients" ? ["id", "notes", "packages", "folders", "rootOrder", "plan", "planHistory", "health"] : ["id", ...(isTemplateClient(data.clientId) ? [] : ["rows"]), "completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"];   // the fields with their own merge rules (a template's exercises have none: no client logs on one, so rows this copy did not change take the other device's, as a field does; else Move to on a stale copy undid an edit made there, the v283 review)
+      const skip = kind === "clients" ? ["id", "notes", "packages", "folders", "rootOrder", "plan", "planHistory", "health", "zone"] : ["id", ...(isTemplateClient(data.clientId) ? [] : ["rows"]), "completedAt", "completedBy", "completedZone", "skippedAt", "skipReason", "missed", "date", "inPerson"];   // the fields with their own merge rules (a template's exercises have none: no client logs on one, so rows this copy did not change take the other device's, as a field does; else Move to on a stale copy undid an edit made there, the v283 review)
       for (const target of [data, map.get(id)]) {
         if (!target) continue;
         for (const f of new Set([...Object.keys(serverData), ...Object.keys(base)])) {
@@ -273,6 +275,7 @@ const cloudBackend = {
       }
     };
     const verbatim = () => fromFile.has(k);                    // restored from a backup: the file's copy replaces what the server holds, nothing of the server's is merged in (asked at merge time: a save already out when Restore was tapped must not merge into the restored record either)
+    const noCopy = () => { if (verbatim() && version >= fromFile.get(k)) { seenAt.delete(k); seenDoc.delete(k); fromFile.delete(k); persistPending(); } };   // v315 (the fifth and sixth rounds): the restore's own write finds no copy on the server, on its first read or after a conflict (a deletion here that landed with its answer lost; one made on another device that this one has not synced since): nothing is left to keep out, so it goes as a join of a record this device never had (no marker, no stamp, no copy read), and a send again after its own answer is lost merges what the client logged on it since; the stamp goes before the queue is saved (a queue with the old stamp and no marker made a relaunch take the restored record for a deletion made elsewhere); only the restore's own write, never an older save still out when Restore was tapped
     const mergeServerRows = (serverData, against) => {        // take the client's weights/done/swaps for rows the trainer did not touch; `against`: the copy this device last read, to tell her new numbers from his
       const touched = trainerTouched.get(id) || new Set(), named = trainerNamed.get(id) || new Set(), noted = trainerNoted.get(id) || new Set(), claimed = (trainerState.get(id) || new Set()).has("order");   // three separate claims per row: the log, the name, the note — a coach who only wrote a note keeps nothing else
       const live = trainings.get(id), incoming = new Map();             // per copy: the rows the three-way merge brought in from the server (v314's settleOrder places them last)
@@ -311,7 +314,7 @@ const cloudBackend = {
       const takeState = (serverData) => {                      // the client may have finished, skipped or moved it meanwhile: keep that, field by field, unless the coach changed that field
         if (kind !== "trainings" || !serverData) return;
         const mine = trainerState.get(id) || new Set();
-        for (const f of ["completedAt", "completedBy", "skippedAt", "skipReason", "missed", "date", "inPerson"]) { if (mine.has(f)) continue; for (const target of [data, trainings.get(id)]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; } }
+        for (const f of ["completedAt", "completedBy", "completedZone", "skippedAt", "skipReason", "missed", "date", "inPerson"]) { if (mine.has(f)) continue; for (const target of [data, trainings.get(id)]) { if (!target) continue; if (serverData[f] === undefined) delete target[f]; else target[f] = serverData[f]; } }
         for (const target of [data, trainings.get(id)]) if (target && target.completedAt && (target.skippedAt || target.missed === true)) { delete target.skippedAt; delete target.skipReason; target.missed = false; }   // finished on one side, skipped on the other: finished stands, and the card and the session pill count the same workouts
       };
       const takeNotes = (serverData, against = base) => {      // another device may have written notes: keep both (against: the copy this device last read, for the folders)
@@ -337,7 +340,8 @@ const cloudBackend = {
       if (!seen && attempt === 0) {                               // no stamp (edited offline, app relaunched): read first, never write over the other side blind
         const existing = await withTimeout(S.sb.from(TABLE[kind]).select("data,updated_at").eq("id", id).maybeSingle(), saveDeadline());
         if (existing.error) throw existing.error;
-        if (existing.data) { if (!verbatim()) { takeFields(existing.data.data); if (kind === "trainings" && !isTemplateClient(data.clientId)) { mergeServerRows(existing.data.data, base); takeState(existing.data.data); } takeNotes(existing.data.data); } else if (kind === "trainings") liftSeq(existing.data.data); seen = existing.data.updated_at; seenAt.set(k, seen); }
+        if (existing.data) { if (!verbatim()) { takeFields(existing.data.data); if (kind === "trainings" && !isTemplateClient(data.clientId)) { mergeServerRows(existing.data.data, base); takeState(existing.data.data); } takeNotes(existing.data.data); } else { if (kind === "trainings") liftSeq(existing.data.data); takeZone(existing.data.data); } seen = existing.data.updated_at; seenAt.set(k, seen); }
+        else noCopy();
       }
       let res;
       if (seen) res = await withTimeout(S.sb.from(TABLE[kind]).update(row).eq("id", id).eq("updated_at", seen).select("updated_at"), saveDeadline());
@@ -360,10 +364,10 @@ const cloudBackend = {
       if (fresh.error) throw fresh.error;
       if (!fresh.data) {
         if (seen && seenDoc.has(k) && !fromFile.has(k)) { map.delete(id); dirty.delete(k); seenAt.delete(k); seenDoc.delete(k); localBackend.save(); return; }   // a record this device had seen is gone from the server: deleted on another device; it is not brought back
-        seenAt.delete(k); continue;
+        noCopy(); seenAt.delete(k); continue;
       }
       seenAt.set(k, fresh.data.updated_at);
-      if (verbatim()) { if (kind === "trainings") liftSeq(fresh.data.data); continue; }
+      if (verbatim()) { if (kind === "trainings") liftSeq(fresh.data.data); takeZone(fresh.data.data); continue; }
       takeFields(fresh.data.data); const against = base; base = JSON.parse(JSON.stringify(fresh.data.data)); seenDoc.set(k, JSON.stringify(fresh.data.data));   // the next conflict measures against this copy
       if (kind === "trainings" && !isTemplateClient(data.clientId)) { mergeServerRows(fresh.data.data, against); takeState(fresh.data.data); }
       takeNotes(fresh.data.data, against);
@@ -448,8 +452,9 @@ const clientBackend = {
       else { if (error && error.code !== "P0001") throw error; if (error || same(labelsOf(live()), labels)) pendingOrder.delete(id); }   // moved again while this was out: still queued, goes next
     }
     if (pendingFinish.has(id)) {
-      const finished = !!data.completedAt;
-      let { error } = await rpc("client_finish_training", { p_training: id, p_finished: finished, p_at: finished ? data.completedAt || null : null });   // finished at the time the phone says, not when the upload got through
+      const finished = !!data.completedAt, zone = finished && !S.zoneMissing ? zoneOf(data) : "";   // v315: the zone stamped with this very finish (one left from an earlier finish is never sent)
+      let { error } = await rpc("client_finish_training", { p_training: id, p_finished: finished, p_at: finished ? data.completedAt || null : null, ...(zone ? { p_zone: zone } : {}) });   // finished at the time the phone says, not when the upload got through; v315: and in the time zone it was finished in
+      if (error && error.code === "PGRST202" && zone) { S.zoneMissing = true; ({ error } = await rpc("client_finish_training", { p_training: id, p_finished: finished, p_at: finished ? data.completedAt || null : null })); }   // v315: the rule without the zone (client-finish.sql not run yet): the finish still lands, read on each device's own clock as before, and no later finish asks again until the next launch
       if (error && error.code === "PGRST202") ({ error } = await rpc("client_finish_training", { p_training: id, p_finished: finished }));   // the rule not updated yet: the old shape
       if (error && error.code !== "P0001") throw error;
       if (error || (!!live().completedAt === finished && (!finished || live().completedAt === data.completedAt))) pendingFinish.delete(id);   // Undo tapped while Finish was out, or finished again at a later time: still queued, goes next
@@ -550,6 +555,10 @@ async function syncDownNow() {
     }
     c = { data: res.data.clients || [] }; t = { data: res.data.trainings || [] };
     const me = c.data[0]; { const was = (me && me.data && me.data.unit) || "lb"; for (const r of t.data) if (r && r.data) stampUnit(r.data, was); }   // v299: each answer read in its own unit: an exercise logged with no unit of its own was logged in the unit the client's record had when this was read (the client's rule stamps them so before the client's unit changes), so a read from before the client's switch never shows lb as kg, and a copy that did not change compares the same (no redraw under the client's finger: the v299 review's catches)
+    if (me && !S.zoneSetMissing) {                                      // v315: the phone's time zone, for the line under the client's name on the coach's page: sent when it changed, or every 30 minutes so the coach can tell how fresh it is
+      const here = hereZone(), z = me.data && me.data.zone, fresh = !!z && z.zone === here && Date.now() - Date.parse(z.at) < 30 * 60e3;
+      if (here && !fresh && me.id) rpc("client_set_zone", { p_client: me.id, p_zone: here }).then((res) => { const error = res && res.error; if (error && (error.code === "PGRST202" || /client_set_zone/.test(error.message || ""))) S.zoneSetMissing = true; }).catch(() => {});   // client-zone.sql not run yet: asked no more until a reload; offline: next sync
+    }
     const authoritative = !!me && !(me.data && me.data.paused) && planActive(me.data && me.data.plan, today()) && planActive(me.data && me.data.plan, laToday());   // paused, or a monthly plan past its day: the server hides the workouts, it has not deleted them, so nothing queued is dropped
     if (authoritative) {                                                   // a training the trainer deleted: nothing queued for it can land
       const serverIds = new Set(t.data.map((r) => r.id));
@@ -616,4 +625,4 @@ async function fetchAll(table) {                                 // every row, p
   }
 }
 
-export { adoptQueue, seenDoc, moveOut, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll };
+export { adoptQueue, dropMarks, seenDoc, moveOut, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll };

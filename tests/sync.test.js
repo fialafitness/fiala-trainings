@@ -617,7 +617,7 @@ test("a day's workouts: planned and finished count, a skipped one does not, a fi
   maps.trainings.set("a", { id: "a", clientId: "c1", title: "Morning", date: "2026-11-04", createdAt: "2026-11-01T08:00:00.000Z", completedAt: null, skippedAt: null, rows: [] });
   maps.trainings.set("b", { id: "b", clientId: "c1", title: "Evening", date: "2026-11-04", createdAt: "2026-11-01T09:00:00.000Z", completedAt: null, skippedAt: null, rows: [] });
   maps.trainings.set("s", { id: "s", clientId: "c1", title: "Skipped", date: "2026-11-04", createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: "2026-11-04T10:00:00.000Z", rows: [] });
-  maps.trainings.set("f", { id: "f", clientId: "c1", title: "Moved", date: "2026-11-03", createdAt: "2026-11-01T07:00:00.000Z", completedAt: "2026-11-04T18:00:00.000Z", skippedAt: null, rows: [] });
+  maps.trainings.set("f", { id: "f", clientId: "c1", title: "Moved", date: "2026-11-03", createdAt: "2026-11-01T07:00:00.000Z", completedAt: "2026-11-04T18:00:00.000Z", completedZone: { zone: "America/Los_Angeles", at: "2026-11-04T18:00:00.000Z" }, skippedAt: null, rows: [] });   // finished at 10 am in Los Angeles (v315: filed under that day on a computer in any zone; with no zone it was this computer's day, and the suite failed in Tokyo)
   const ids = (l) => l.sort(fns.byMade).map((t) => t.id);
   assert.deepStrictEqual(ids(fns.dayList("c1", "2026-11-04")), ["f", "a", "b"], "the finished one under the day it was finished, the skipped one not at all, the morning one before the evening one");
   assert.deepStrictEqual(fns.dayList("c1", "2026-11-03"), [], "nothing left on the planned day once it was finished elsewhere");

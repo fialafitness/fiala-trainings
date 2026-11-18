@@ -3,7 +3,41 @@ import { uid, clamp, localIso, daysLater } from "./util.js";
 
 export const TEMPLATES_ID = "00000000-0000-4000-8000-0000000000f1";
 export const isTemplateClient = (id) => id === TEMPLATES_ID;
-export const effDate = (t) => t.completedAt ? localIso(new Date(t.completedAt)) : (t.date || "");
+// v315 (17 Nov 2026), the owner's ask: "if my client travels to a different country with a different time zone .. scheduled workouts fall into a different day".
+// A finished workout keeps the day, and the clock time, of the place where it was finished. The finish carries the time zone it was made in, stamped with
+// the finish time it belongs to: completedZone = { zone: "Europe/Paris", at: <that completedAt> }. So a Tuesday workout done at 8 am in Paris stays Tuesday's
+// on the coach's Mac in Los Angeles, where it was 11 pm on Monday. The zone counts only beside that same finish: a writer that knows no zones (a v314 page
+// still open, client-finish.sql not run yet) can change completedAt and leave an old stamp behind, and that one is never read (the v315 review's catch).
+// A finish with no counted zone (made before v315), and a zone this device does not know, are read on this device's own clock, as before.
+// A workout to do has a day, never a time: the same everywhere.
+const zoneFmt = new Map();                                            // one formatter per time zone: making one is slow
+const inZone = (zone) => { if (typeof zone !== "string" || !zone) return null; let f = zoneFmt.get(zone); if (f === undefined) { try { f = new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" }); } catch (_) { f = null; } zoneFmt.set(zone, f); } return f; };   // null: a zone this device does not know (the day is then read on its own clock)
+const ZONE_NOW = new Map([["Africa/Asmera", "Africa/Asmara"], ["America/Buenos_Aires", "America/Argentina/Buenos_Aires"], ["America/Catamarca", "America/Argentina/Catamarca"], ["America/Cordoba", "America/Argentina/Cordoba"], ["America/Jujuy", "America/Argentina/Jujuy"], ["America/Mendoza", "America/Argentina/Mendoza"], ["America/Coral_Harbour", "America/Atikokan"], ["America/Indianapolis", "America/Indiana/Indianapolis"], ["America/Louisville", "America/Kentucky/Louisville"], ["America/Godthab", "America/Nuuk"], ["Asia/Saigon", "Asia/Ho_Chi_Minh"], ["Asia/Katmandu", "Asia/Kathmandu"], ["Asia/Calcutta", "Asia/Kolkata"], ["Asia/Rangoon", "Asia/Yangon"], ["Atlantic/Faeroe", "Atlantic/Faroe"], ["Europe/Kiev", "Europe/Kyiv"], ["Pacific/Truk", "Pacific/Chuuk"], ["Pacific/Enderbury", "Pacific/Kanton"], ["Pacific/Ponape", "Pacific/Pohnpei"]]);   // Chrome and Android (V8) name these 19 zones by their old names ("Asia/Calcutta", "Europe/Kiev"), an iPhone (WebKit) by the current ones ("Asia/Kolkata", "Europe/Kyiv"): every zone of macOS 27's JavaScriptCore against Node 24's and Chrome 157's V8, measured 17 Nov 2026 (the v315 check round)
+const nowName = (z) => { const n = ZONE_NOW.get(z); return n && inZone(n) ? n : z; };   // one name for one place: the coach reads the city as Apple writes it, and a client's iPhone and Chrome laptop never take turns rewriting their report (each saw "another zone" on record)
+export const hereZone = () => { try { const z = nowName(Intl.DateTimeFormat().resolvedOptions().timeZone); return z && inZone(z) ? z : ""; } catch (_) { return ""; } };   // this device's time zone, as its clock is set (a phone sets it by itself when it lands): no location is asked for; "" for a name it cannot use ("Etc/Unknown"); its current name on every engine (nowName)
+export const zoneOf = (t) => { const s = t && t.completedZone; if (!s || typeof s !== "object" || !inZone(s.zone)) return ""; const a = Date.parse(s.at); return !isNaN(a) && a === Date.parse(t.completedAt) ? s.zone : ""; };   // the zone this finish was made in, or "" (none, unknown here, or stamped for another finish); moments compared, not text: the server writes "+00:00"
+export const zoneOpt = (t) => { const z = zoneOf(t); return z ? { timeZone: z } : {}; };   // a finish's date and time written as they were on the clock where it was finished
+export const dayIn = (at, zone) => { const f = inZone(zone), d = new Date(at); if (!f || isNaN(d)) return ""; const p = f.formatToParts(d), g = (n) => (p.find((x) => x.type === n) || {}).value; return g("year") && g("month") && g("day") ? g("year") + "-" + g("month") + "-" + g("day") : ""; };   // a moment's day on a zone's clock ("" when it cannot say)
+const dayCache = new WeakMap();                                       // per record, while its finish and its stamp stay the same: no cap and no key text (the Clients list reads every finish at each sync)
+export const doneDay = (t) => {                                       // the day a finished workout was finished, where it was finished
+  const at = t.completedAt, st = t.completedZone, c = dayCache.get(t);
+  if (c && c.at === at && c.st === st) return c.day;
+  const z = zoneOf(t), day = (z && dayIn(at, z)) || localIso(new Date(at));
+  if (z) dayCache.set(t, { at, st, day }); else if (c) dayCache.delete(t);   // a day read on this device's own clock is never kept: the device can change zones while the app is open
+  return day;
+};
+export const effDate = (t) => t.completedAt ? doneDay(t) : (t.date || "");
+// The zone the coach's own finish of t is stamped with (main.js's finishZone; a client's phone always stamps its own): `here` when this clock puts the finish
+// on its planned day (a past session's time is set on its day first); else where the client last said they were, their newest own finish of the last 7 days,
+// unless a session with the coach (In person) came after it, when that keeps the finish on its planned day (a client in Tokyo on Tuesday while the Mac in
+// Los Angeles is still on Monday); else none, so each device reads its own clock, as before v315 (the v315 review: a guess with nothing to go on, or the
+// package's In person default, filed a client's workout a day early on the client's own phone). The workout's own In person mark never decides.
+export const pickZone = (t, here, list, nowMs) => {
+  if (dayIn(t.completedAt, here) === t.date) return here;
+  const since = nowMs - 7 * 864e5, last = (list || []).filter((x) => x && x.id !== t.id && x.completedAt && Date.parse(x.completedAt) > since && (x.inPerson || (x.completedBy === "client" && zoneOf(x)))).sort((a, b) => Date.parse(b.completedAt) - Date.parse(a.completedAt))[0];
+  const theirs = last && last.completedBy === "client" ? zoneOf(last) : "";
+  return theirs && dayIn(t.completedAt, theirs) === t.date ? theirs : "";
+};
 export const freshRow = (r) => { const x = { ...r, id: uid(), weights: [], repsDone: [], setsDone: 0, done: false, alts: [...(r.alts || [])] }; delete x.earlyReason; delete x.clientNote; delete x.clientNoteBy; delete x.clientNoteAt; delete x.unit; delete x.logSeq; return x; };   // the plan, with nothing logged: the unit comes with the first weight the new client logs
 export const isEmptyWorkout = (t) => !!t && !t.completedAt && !t.skippedAt && !(t.rows || []).length && !String(t.title || "").trim() && !isTemplateClient(t.clientId);
 // A plan written in time ("30 sec", "45 s", "1 min", "60 sec / side") is logged as time held, not reps: { n: "30", unit: "sec" }.
@@ -185,6 +219,30 @@ export const sessionNo = (plan, list, t) => {                      // "Session 3
   return { n: ((n - 1) % plan.size) + 1, size: plan.size, packNo: Math.floor((n - 1) / plan.size) + 1 };
 };
 export const planActive = (plan, day) => !plan || plan.kind !== "monthly" || !plan.until || plan.until >= day;   // a monthly plan past its day is over
+// v315, the owner's ask (17 Nov 2026): "maybe under clients name I can have their age and location ? in the way apple would do it" (his picks after the
+// pictures: age · city · the client's day and time; the city from the phone's time zone). One grey line under a client's name, in the coach's view only:
+// "34 years old · Tokyo · Tue 3:00 AM". The age as Health's Medical ID writes it ("42 years old"); the facts joined by " · " as Find My's people rows; the
+// client's own day and time only while their clock differs from this device's (as Calendar adds a second zone); the place is the time zone the client's
+// phone last reported (c.zone = { zone, at }, written by client_set_zone), named by its city. A report more than a day old: how long ago instead of the
+// time ("3 days ago"), as Find My does. A part not known is left out; nothing known, no line.
+export const zoneCity = (zone) => { const z = String(ZONE_NOW.get(zone) || zone || ""); if (!z.includes("/") || /^(Etc|SystemV|US|Canada|Mexico|Brazil|Chile)\//.test(z)) return ""; return z.slice(z.lastIndexOf("/") + 1).replace(/_/g, " "); };   // "Asia/Tokyo" → "Tokyo", "America/Los_Angeles" → "Los Angeles"; "" for a zone with no city ("Etc/GMT+5"); an old name a report may still carry reads as today's ("Asia/Calcutta" → "Kolkata")
+const offsetName = (zone, nowMs) => { try { const p = new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName: "shortOffset" }).formatToParts(new Date(nowMs)); return (p.find((x) => x.type === "timeZoneName") || {}).value || ""; } catch (_) { return ""; } };   // "GMT+9": a zone with no city is named by its offset
+const wallFmt = new Map();
+const wallClock = (zone, nowMs) => { let f = wallFmt.get(zone); if (f === undefined) { try { f = new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }); } catch (_) { f = null; } wallFmt.set(zone, f); } return f ? f.format(new Date(nowMs)) : null; };
+export const sameClock = (a, b, nowMs) => { const x = wallClock(a, nowMs); return x != null && x === wallClock(b, nowMs); };   // two zones whose clocks read the same now (Vancouver and Los Angeles: no time shown)
+export const agoWords = (atMs, todayIso) => { const d = Math.round((Date.parse(todayIso + "T12:00:00") - Date.parse(localIso(new Date(atMs)) + "T12:00:00")) / 864e5); return d <= 1 ? "Yesterday" : d < 14 ? d + " days ago" : d < 60 ? Math.round(d / 7) + " weeks ago" : Math.round(d / 30.44) + " months ago"; };   // how long ago a report came, in this device's days
+export const clientLine = (c, nowMs, here, todayIso) => {             // the parts of the line, and whether one of them is a clock to keep current
+  const parts = []; let live = false; if (!c) return { parts, live };
+  const age = ageOn(c.birthday, todayIso), s = c.zone, z = s && typeof s === "object" && inZone(s.zone) ? s.zone : "", at = z ? Date.parse(s.at) : NaN;
+  if (age != null) parts.push(age + (age === 1 ? " year old" : " years old"));
+  if (z && !isNaN(at)) {
+    const place = zoneCity(z) || offsetName(z, nowMs); if (place) parts.push(place);
+    if (!(here && sameClock(z, here, nowMs))) { if (nowMs - at > 864e5) parts.push(agoWords(at, todayIso)); else { parts.push(new Date(nowMs).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: z })); live = true; } }
+  }
+  return { parts, live };
+};
+export const daysLeft = (until, days) => Math.round((Date.parse(until) - Date.parse(days.slice().sort().pop())) / 864e5);   // v315: a monthly plan's days left, counted from the later of these days (the device's and the server's, Los Angeles), as planOver ends it
+export const planOver = (c, days) => !!c && (!!c.paused || days.some((d) => !planActive(c.plan, d)));   // v315: paused by hand, or a monthly plan past its day on any of these clocks (the page passes its own day and the server's, Los Angeles: a phone in Hawaii past Los Angeles midnight gets no workouts from the server, so its page says Plan ended too, never an empty list)
 export const setsOf = (r) => Math.max(1, clamp(parseInt(r.sets, 10) || 4, 0, 20));
 // v313 (the owner's rule, 17 Nov 2026: "superset will always have the same number as default", and one exercise may have fewer, set in its "…"): the card's
 // sets button moves the superset's own number, the exercises at the card's most; one given fewer keeps them, unless the superset goes below them (then it follows).
@@ -221,6 +279,7 @@ export function validateBackup(d, knownClient) {                  // the whole f
     if (!isObj(c) || !isUuid(c.id) || ids.has(c.id)) throw new Error("bad client");
     if (!optList(c.seenNotes, 5000) || (c.seenNotes || []).some((x) => typeof x !== "string") || !optWhen(c.seenDoneAt)) throw new Error("bad client");
     if (!optStr(c.name) || !optStr(c.email) || !optStr(c.kind) || !optBool(c.paused) || !optNum(c.sort) || !optUnit(c.unit)) throw new Error("bad client");
+    if (!(c.zone == null || (isObj(c.zone) && typeof c.zone.zone === "string" && c.zone.zone.length <= 64 && typeof c.zone.at === "string" && !isNaN(new Date(c.zone.at))))) throw new Error("bad client");   // v315: the time zone the client's phone last reported
     if (c.notes != null && typeof c.notes !== "string" && !(isObj(c.notes) && optList(c.notes.log, 5000))) throw new Error("bad client");
     if (!optStr(c.birthday) || !(c.sex == null || ["female", "male", "other", ""].includes(c.sex)) || !optMeasure(c.height, "in", "cm") || !optMeasure(c.bodyWeight, "lb", "kg") || !(c.heightUnit == null || c.heightUnit === "in" || c.heightUnit === "cm") || !(c.bodyUnit == null || c.bodyUnit === "lb" || c.bodyUnit === "kg")) throw new Error("bad client");
     if (c.health != null && !(isObj(c.health) && optStr(c.health.limits) && optStr(c.health.conditions) && optStr(c.health.medications) && optStr(c.health.allergies) && optBool(c.health.pregnant) && optStr(c.health.emergency) && optStr(c.health.doctor))) throw new Error("bad client");   // Health & safety (v299): what its page reads as text
@@ -236,7 +295,7 @@ export function validateBackup(d, knownClient) {                  // the whole f
     if (!isObj(t) || !isUuid(t.id) || tids.has(t.id) || !isUuid(t.clientId) || !Array.isArray(t.rows) || t.rows.length > LIMIT.rows) throw new Error("bad training");
     if (t.template != null && !(isObj(t.template) && optStr(t.template.program) && optStr(t.template.phaseName) && optNum(t.template.phase) && optNum(t.template.stage) && optNum(t.template.n) && optStr(t.template.folder))) throw new Error("bad training");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(t.date || ""))) throw new Error("bad date");   // every workout has a day (the app's own backups always carry one)
-    if (!optStr(t.title) || !optStr(t.createdAt) || !optWhen(t.completedAt) || !optStr(t.completedBy) || !optWhen(t.skippedAt) || !optStr(t.skipReason) || !optBool(t.missed) || !optBool(t.inPerson)) throw new Error("bad training");
+    if (!optStr(t.title) || !optStr(t.createdAt) || !optWhen(t.completedAt) || !optStr(t.completedBy) || !(t.completedZone == null || (isObj(t.completedZone) && typeof t.completedZone.zone === "string" && t.completedZone.zone.length <= 64 && typeof t.completedZone.at === "string" && !isNaN(new Date(t.completedZone.at)))) || !optWhen(t.skippedAt) || !optStr(t.skipReason) || !optBool(t.missed) || !optBool(t.inPerson)) throw new Error("bad training");
     if (!ids.has(t.clientId) && !knownClient(t.clientId)) throw new Error("orphan training");
     const rids = new Set();
     for (const r of t.rows) {
@@ -392,7 +451,7 @@ export function monthBests(lifts, todayIso) {
 // itself cut short (skipped, or finished early); a stale reason on a complete row never counts. Days, not rows.
 export function discomforts(list, canon, todayIso, days = 28) {
   const from = daysLater(todayIso, -(days - 1)), by = new Map();
-  const ws = list.filter((t) => effDate(t) >= from && effDate(t) <= todayIso).sort((a, b) => effDate(b).localeCompare(effDate(a)));
+  const ahead = daysLater(todayIso, 2), ws = list.filter((t) => effDate(t) >= from && effDate(t) <= (t.completedAt ? ahead : todayIso)).sort((a, b) => effDate(b).localeCompare(effDate(a)));   // v315: a finish whose day is already further on where it was made counts now (a client east of here: up to two days, UTC−12 to UTC+14)
   for (const t of ws) for (const r of t.rows || []) {
     if (r.earlyReason !== "Discomfort" || r.done !== true || Math.min(doneCount(r), setsOf(r)) >= setsOf(r)) continue;
     const k = canon(r.name); if (!k) continue;
@@ -414,6 +473,6 @@ export function sessionsTotal(c, list, todayIso) {
 // Sessions with the coach: the finished workouts marked In person (the mark exists since 14 Oct 2026, so the count says from when).
 export function inPersonCount(list, todayIso) {
   let n = 0, since = "";
-  for (const t of list) { if (!(t.inPerson && t.completedAt && !t.skippedAt && t.missed !== true)) continue; const e = effDate(t); if (!e || e > todayIso) continue; n++; if (!since || e < since) since = e; }
+  for (const t of list) { if (!(t.inPerson && t.completedAt && !t.skippedAt && t.missed !== true)) continue; const e = effDate(t); if (!e || e > daysLater(todayIso, 2)) continue; n++; if (!since || e < since) since = e; }   // v315: a finish dated up to two days further on where it was made (a client east of here) is a session used already
   return { n, since };
 }

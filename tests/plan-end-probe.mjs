@@ -20,5 +20,10 @@ const t = { id: "T", clientId: "c1", title: "Pull", date: phoneDay, createdAt: "
   rows: [{ id: "r1", label: "1", name: "Deadlift", sets: 3, reps: "5", weights: ["225", "225", "235"], repsDone: ["5", "5", "5"], setsDone: 3, done: true, unit: "lb", note: "", alts: [] }] };
 maps.trainings.set("T", t); maps.dirty.set("trainings/T", 1); maps.pendingFinish.add("T"); maps.pendingWeightRows.set("T", new Set(["r1"]));
 await fns.syncDownNow(); await settle();
-console.log(JSON.stringify({ phoneDay, finish: maps.pendingFinish.has("T"), sets: maps.pendingWeightRows.has("T"), dirty: maps.dirty.has("trainings/T"), onDevice: maps.trainings.has("T") }));
+app.set({ view: { name: "client", id: "c1" }, tab: "workouts" }); fns.render();   // v315: the client page as the phone shows it now (the server already holds the workouts back)
+const $ = (id) => document.getElementById(id);
+const { daysLater } = await import("../app/util.js");
+const words = (until) => fns.packWords({ id: "x", name: "X", plan: { id: "m", name: "Monthly plan", kind: "monthly", until } });   // the coach's Clients list (v315: on the later of the two days)
+console.log(JSON.stringify({ phoneDay, finish: maps.pendingFinish.has("T"), sets: maps.pendingWeightRows.has("T"), dirty: maps.dirty.has("trainings/T"), onDevice: maps.trainings.has("T"),
+  view: app.get().view.name, kicker: $("pausedKicker").hidden ? "" : $("pausedKicker").textContent, card: !$("pausedCard").hidden, cardText: $("pausedText").textContent, planBig: $("planBig").textContent, listEnded: words(phoneDay), listNext: words(daysLater(phoneDay, 1)) }));
 process.exit(0);
