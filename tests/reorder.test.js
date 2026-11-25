@@ -57,6 +57,7 @@ test("Reorder on: the cards fold, the title stays as it is with the hint under i
     assert.ok(document.body.classList.contains("ro-on") && $("vTraining").classList.contains("ro"), "the page's own look (the bar at the foot hidden, the pills and buttons under the cards gone)");
     assert.deepStrictEqual([$("barMsg").hidden], [true], "no Messages meanwhile");
     const bar = fns.barFor("training/w1"); assert.deepStrictEqual([bar.navDone, bar.tMore, bar.barMsg], [true, false, false], "the swipe back's bar agrees");
+    assert.deepStrictEqual([$("viewSeg").hidden, bar.viewSeg], [true, false], "(v317) no Coach | Client in the top bar meanwhile, as the bar at the foot had none");
     fns.setPreview(true); fns.render();
     assert.deepStrictEqual([on(), $("tMore").hidden, $("navDone").hidden], [true, true, false], "his Client view keeps it (Done, Back and another page: reorder-probe.mjs)");
     page("w1", null, {}, { preview: true }); fns.moreItems(T()).find((it) => it.label === "Reorder").onPick();

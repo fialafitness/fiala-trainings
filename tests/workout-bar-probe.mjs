@@ -23,7 +23,8 @@ document.contains = (x) => !!x;
 const listens = (e) => { const H = {}; e.addEventListener = (type, fn) => { (H[type] ||= []).push(fn); }; e.fire = (type, ev = {}) => { for (const fn of [...(H[type] || [])]) fn(ev); }; return e; };
 // the bar at the foot: its real items (render() shows and hides them), where the live bar is put (its transform, in order), and a copy that
 // keeps its id and its classes, as a browser's cloneNode(true) does
-const items = ["viewSeg", "tabbar", "addBtn", "addExBtn"].map((id) => { const e = listens(el("div")); e.id = id; byId.set(id, e); return e; });
+const items = ["tabbar", "addBtn", "addExBtn"].map((id) => { const e = listens(el("div")); e.id = id; byId.set(id, e); return e; });
+const seg = listens(el("div")); seg.id = "viewSeg"; byId.set("viewSeg", seg);   // Coach | Client: in the top bar since v317 (his pick, 25 Nov 2026), not in the bar at the foot
 const dock = el("div"); dock.id = "dock"; dock.children = items; byId.set("dock", dock);
 const moves = []; dock.style = new Proxy({ setProperty() {}, removeProperty() {} }, { set(t, k, v) { t[k] = v; if (k === "transform") moves.push(v); return true; } });
 dock.cloneNode = () => { const c = el("div"); c.id = dock.id; c.style = {}; for (const k of dock.classes) c.classList.add(k); c.children = items.map((k) => ({ id: k.id, hidden: k.hidden })); c.isCopy = true; return c; };
@@ -118,7 +119,7 @@ if (MODE === "swipe") {
   maps.clients.set("c1", { id: "c1", name: "Jane", unit: "lb" }); maps.clients.set(TEMPLATES_ID, { id: TEMPLATES_ID, name: "Templates", kind: "templates" });
   maps.trainings.set("tp", { id: "tp", clientId: TEMPLATES_ID, title: "Legs", date: null, createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [] });
   app.set({ view: { name: "client", id: "c1" } }); fns.render();
-  const at = () => ({ view: app.get().view.name, wsdock: body.classList.contains("wsdock"), ws: dock.classList.contains("ws"), bar: items.filter((k) => !k.hidden).map((k) => k.id).join(",") });
+  const at = () => ({ view: app.get().view.name, wsdock: body.classList.contains("wsdock"), ws: dock.classList.contains("ws"), bar: items.filter((k) => !k.hidden).map((k) => k.id).join(","), seg: !seg.hidden });
   const swipe = async (label) => {                                      // a finger from the left edge to 240 of 390, and let go
     const target = { closest: () => null }; let ts = 1000;
     fire("touchstart", { touches: [{ clientX: 5, clientY: 300 }], target, timeStamp: ts });
@@ -152,7 +153,7 @@ if (MODE === "swipe") {
   // a workout the coach switched to the client's view himself (Settings: Coach), Settings opened from it: the picture is that workout as the client sees it
   app.set({ view: { name: "client", id: "c1" } }); fns.render(); await wait(10);
   fns.go({ name: "training", id: "w2" }); await wait(10);
-  items[0].fire("click", { target: { closest: () => ({ dataset: { view: "client" } }) } }); await wait(10);
+  seg.fire("click", { target: { closest: () => ({ dataset: { view: "client" } }) } }); await wait(10);
   const switched = body.classList.contains("client"); fns.showSettings(); await wait(10);
   await swipe("settingsToClientView"); out.settingsToClientView.switched = switched; out.settingsToClientView.under = under() ? under().className : null; out.settingsToClientView.landedClient = body.classList.contains("client");
   // typing as a page was left: its picture keeps no passing state of the body

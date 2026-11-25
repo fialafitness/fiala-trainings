@@ -10,12 +10,12 @@ document.removeEventListener = (t, fn) => { const a = L[t] || []; const i = a.fi
 const fire = (type, ev = {}) => { ev.type = type; ev.preventDefault ||= () => {}; ev.stopPropagation ||= () => {}; const ls = L[type] || []; for (const l of [...ls.filter((x) => x.capture), ...ls.filter((x) => !x.capture)]) l.fn(ev); };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // the bar: the real elements in the page's order, a copy that keeps ids and hidden flags (as cloneNode(true) does)
-const IDS = ["back", "brand", "status", "barMsg", "tAdd", "tMore", "meDisc", "navDone"];
+const IDS = ["back", "brand", "viewSeg", "status", "barMsg", "tAdd", "tMore", "meDisc", "navDone"];   // (v317: Coach | Client in the bar, before the status, as index.html has it)
 const animFn = () => () => ({ cancel() {} });
 const mkBar = (kids) => {
   const b = { children: kids, style: {}, attrs: {}, removed: false };
   b.querySelector = (s) => { const m = /^#(\w+)$/.exec(s); return m ? kids.find((k) => k.id === m[1]) || null : null; };
-  b.cloneNode = () => mkBar(kids.map((k) => { const c = el("div"); c.id = k.id; c.hidden = !!k.hidden; c.style = {}; c.animate = animFn(); return c; }));
+  b.cloneNode = () => mkBar(kids.map((k) => { const c = el("div"); c.id = k.id; c.hidden = !!k.hidden; c.textContent = k.textContent || ""; c.style = {}; c.animate = animFn(); return c; }));   // (a copy keeps the status's words, as cloneNode does)
   b.setAttribute = (k, v) => { b.attrs[k] = v; };
   b.after = () => {}; b.remove = () => { b.removed = true; };
   b.getBoundingClientRect = () => ({ top: 0, left: 0, width: 402, height: 56 });
@@ -63,13 +63,16 @@ const fromClientPage = async (label, client, w, opts = {}) => {      // her page
   app.set({ view: { name: "client", id: "c1" }, renderedTraining: null }); fns.render(); await wait(5);
   fns.go({ name: "training", id: "w1" }); await wait(5);
   if (opts.preview) { fns.setPreview(true); app.set({ renderedTraining: null }); fns.render(); }
+  if (opts.saved) $("status").textContent = "Saved";               // (v317) the status saying Saved as the finger moves
   out[label] = { workout: shows(), ...(await swipe()) };
+  $("status").textContent = "";
 };
 await fromClientPage("clientToDo", true, {});
 await fromClientPage("clientFinished", true, { completedAt: DONE });
 await fromClientPage("clientSkipped", true, { skippedAt: DONE });
 await fromClientPage("previewFinished", false, { completedAt: DONE }, { preview: true });
 await fromClientPage("coachFinished", false, { completedAt: DONE });
+await fromClientPage("coachSaved", false, { completedAt: DONE }, { saved: true });   // (v317) Saved, beside Coach | Client on the workout and beside the Messages circle on her page
 // a template back to the library: Back stays where it is, and the … (the template's Delete; the library's New folder)
 setup(false); app.set({ view: { name: "client", id: TEMPLATES_ID }, renderedTraining: null }); fns.render(); await wait(5);
 fns.go({ name: "training", id: "tp" }); await wait(5);

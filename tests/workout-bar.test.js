@@ -3,6 +3,8 @@
 // name; the black "+ Add exercise" button is gone, from an empty workout too ("Remove it, template full width"), where From template has the
 // row to itself. The switch stays while he previews the client's look (the + goes); a template has the + alone; the client's own view has
 // neither. On the swipe back a page's bar goes with its page, unless the page underneath has the same bar.
+// v317 (his ask, 25 Nov 2026, and his pick B after the pictures): Coach | Client moves to the top bar, centred, in words (Apple's own top-bar
+// switch, measured on iOS 27.2); the bar at the foot keeps only the +, now the client page's round + (no pill).
 // His ask, 12 Nov: the + Add exercise button comes back (white in the dark, black in the light) "where it was right bellow the last
 // exercise with full width and also at the beginning next to template split half and half", and the bar's + stays.
 // (This stand-in page draws no exercise cards, so the workouts drawn here are empty; the + is checked up to its draw, and its page move through followRow.
@@ -38,7 +40,7 @@ const redraw = () => { app.set({ renderedTraining: null }); fns.render(); };
 const bar = () => ({ wsdock: document.body.classList.contains("wsdock") && $("dock").classList.contains("ws"), seg: !$("viewSeg").hidden, plus: !$("addExBtn").hidden, tabs: !$("tabbar").hidden, newWorkout: !$("addBtn").hidden });
 const NONE = { wsdock: false, seg: false, plus: false, tabs: false, newWorkout: false }, COACH = { wsdock: true, seg: true, plus: true, tabs: false, newWorkout: false };
 
-test("the coach's workout page: Coach | Client at the foot with the round +; a client's page keeps its tabs and its +; the Clients page has neither", () => {
+test("the coach's workout page: Coach | Client (in the top bar since v317) and the round + at the foot; a client's page keeps its tabs and its +; the Clients page has neither", () => {
   page({ name: "training", id: "w1" }); assert.deepStrictEqual(bar(), COACH);
   page({ name: "client", id: "c1" }); assert.deepStrictEqual(bar(), { wsdock: false, seg: false, plus: false, tabs: true, newWorkout: true });
   page({ name: "clients" }); assert.deepStrictEqual(bar(), NONE);
@@ -112,37 +114,61 @@ test("the + puts its new exercise under the header at once, before asking for th
   assert.ok(src.includes("const r = newRow(nextLabel(t)); t.rows.push(r); scheduleSave(\"trainings\", t.id);"), "the new exercise: the next number, at the end, saved");
 });
 
-test("the page: + Add exercise in ink beside From template outlined; the bar's switch in the tab bar's glass and its + with its name", () => {
+test("the page: + Add exercise in ink beside From template outlined; the + at the foot is the client page's round +, with its name; Coach | Client has left the bar at the foot (v317)", () => {
   assert.ok(html.includes('<div class="start-row" id="startRow" hidden><button class="btn ink trainer-only" id="addRow" type="button">+ Add exercise</button><button class="btn outline trainer-only" id="tplFill" type="button" hidden>From template</button></div>'), "+ Add exercise first, then From template; never in the client's look (trainer-only)");
   assert.ok(html.includes(".btn.ink { background: var(--ink); color: var(--ink-on); }"), "ink: white on the dark page, black on the light one (his ask: \"in white\")");
   assert.match(html, /\.start-row #addRow, \.start-row #tplFill \{ flex: 1 1 0;/, "half and half, or one across the row");
   assert.ok(html.includes("  .start-row #addRow, .start-row #tplFill { min-width: 0; white-space: normal; line-height: 1.2; text-align: center; }"), "with the phone's larger Text Size a label wraps inside its half, never past the screen's edge");
   assert.ok(src.includes('$("addRow").addEventListener("click", addExercise);'), "it adds as the bar's + does");
-  const seg = (html.match(/<div id="dock">\s*(<div class="view-seg" id="viewSeg"[\s\S]*?<\/button><\/div>)/) || [])[1] || "";
-  assert.strictEqual(seg.replace(/<svg[\s\S]*?<\/svg>/g, "<svg/>"), '<div class="view-seg" id="viewSeg" role="radiogroup" aria-label="See it as" hidden><button type="button" role="radio" data-view="coach" class="on" aria-checked="true"><svg/><span>Coach</span></button><button type="button" role="radio" data-view="client" aria-checked="false"><svg/><span>Client</span></button></div>', "Coach | Client lives in the bar at the foot, first, each a symbol over its word");
-  const [coachIcon, clientIcon] = [...seg.matchAll(/<svg[\s\S]*?<\/svg>/g)].map((m) => m[0]);
-  assert.ok(/^<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="[^"]+"\/><path fill-rule="evenodd" d="[^"]+"\/><\/svg>$/.test(coachIcon || ""), "Coach: a clipboard, filled as Apple's list.clipboard.fill (his picks: a clipboard, to Apple's standard): the board with its three lines cut out, and the clip with its hole");
-  assert.ok(/^<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><ellipse cx="12" cy="7\.5" rx="3\.9" ry="4\.3"\/><path d="M3\.8 19\.8A8\.2 6\.3 0 0 1 20\.2 19\.8A1 1 0 0 1 19\.2 20\.8H4\.8A1 1 0 0 1 3\.8 19\.8Z"\/><\/svg>$/.test(clientIcon || ""), "Client: a person, filled as Apple's person.fill: an upright oval head over a half-oval body (traced to its measures)");
-  assert.match(html, /#dock \.view-seg button \{[^}]*display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;[^}]*font-size: 0\.6875rem;/, "the symbol over its word, in the tabs' small letters");
-  assert.ok(html.includes("#dock .view-seg button svg { width: 22px; height: 22px; }"), "the tabs' symbol size");
-  assert.ok(!/class="date-row">[^\n]*viewSeg/.test(html), "and no longer beside the date");
-  assert.ok(html.includes('<button class="dock-add dock-pill trainer-only" id="addExBtn" type="button" aria-label="Add exercise" title="Add exercise" hidden>'), "the + says Add exercise to VoiceOver and to a Mac's pointer; never in the client's look (trainer-only)");
-  assert.match(html, /id="addExBtn"[^>]*><svg viewBox="0 0 24 24"[^>]*><path d="M12 3\.1V20\.9M3\.1 12H20\.9" fill="none" stroke="currentColor" stroke-width="1\.9" stroke-linecap="round"\/><\/svg><span>Exercise<\/span><\/button>/, "a big plus over the word Exercise (his ask: as Photos' pills), with Apple's plus's round-ended arms at its thickness to length (0.107)");
-  assert.ok(html.includes(".dock-add.dock-pill { width: auto; min-width: 96px; border-radius: 50px; padding: 0 18px 2px; flex-direction: column; gap: 3px; font: inherit; font-size: 0.6875rem; font-weight: 600;"), "a pill as the tabs: the plus on top, the word under it in the tabs' small letters");
-  assert.ok(html.includes(".dock-add.dock-pill svg { width: 24px; height: 24px; }"), "the plus big");
-  assert.match(html, /#dock \.view-seg \{[^}]*background: var\(--tab-fill\);[^}]*box-shadow: var\(--tab-shadow\);/, "the switch in the tab bar's glass");
-  assert.match(html, /#dock \.view-seg button\.on \{ background: var\(--tab-on\); color: var\(--brand-text\); box-shadow: var\(--tab-on-shadow\); \}/, "the chosen side lit as the tab bar's");
+  const plusOf = (id) => (html.match(new RegExp('<button class="dock-add[^"]*" id="' + id + '"[^>]*>(<svg[\\s\\S]*?<\\/svg>)<\\/button>')) || [])[1];
+  assert.ok(html.includes('<button class="dock-add trainer-only" id="addExBtn" type="button" aria-label="Add exercise" title="Add exercise" hidden>'), "the + says Add exercise to VoiceOver and to a Mac's pointer; never in the client's look (trainer-only); round, no pill");
+  assert.ok(plusOf("addExBtn") && plusOf("addExBtn") === plusOf("addBtn"), "the very + of the client page's New workout (his ask, 25 Nov 2026: \"the + exercise button stays in coaches view but it can become the same just + button like in the main view to add a workout\")");
+  assert.ok(!/dock-pill/.test(html), "no pill left, no word under the plus");
+  const dock = (html.match(/<div id="dock">([\s\S]*?)\n<\/div>/) || [])[1] || "";
+  assert.ok(dock.includes('id="addExBtn"') && !dock.includes("viewSeg") && !html.includes("#dock .view-seg"), "Coach | Client is no longer in the bar at the foot, nor styled there");
   assert.ok(src.includes('b.classList.toggle("on", on); b.setAttribute("aria-checked", String(on));'), "VoiceOver hears which side is chosen");
 });
 
-test("the bar's place, as Photos': the switch at the leading edge, the + at the trailing one, 21 in, kept to the page's column; above a template's Unsaved changes bar; side by side on the narrowest screens", () => {
-  assert.ok(html.includes("#dock.ws { justify-content: space-between; padding: 0 21px; max-width: 680px; margin: 0 auto; }"), "marked on the bar itself, so a picture's copy of it keeps the layout");
+test("(v317) Coach | Client in the top bar, centred: his pick B of 25 Nov 2026 (the words), drawn as Apple's own switch for a top bar, measured on iOS 27.2", () => {
+  assert.ok(html.includes('<div class="view-seg" id="viewSeg" role="radiogroup" aria-label="See it as" data-on="coach" hidden><button type="button" role="radio" data-view="coach" class="on" aria-checked="true">Coach</button><button type="button" role="radio" data-view="client" aria-checked="false">Client</button></div>'), "the words alone, Coach first; VoiceOver hears a pair of choices and which is chosen");
+  assert.match(html, /<header>\s*<div class="bar">\s*<button class="back" id="back"[^\n]*\n\s*<div class="brand" id="brand">[^\n]*\n\s*<div class="view-seg" id="viewSeg"[^\n]*\n\s*<div id="status"/, "in the top bar after Back and the logo, right before the status (whose rule reads it)");
+  assert.ok(html.includes("  header .bar { position: relative; }"), "centred in the bar's own box, its row of buttons, never the header's (75% of the screen wide)");
+  assert.ok(html.includes("  .bar > .view-seg { position: absolute; top: 0; left: 0; right: 0; width: max-content; margin: 0 auto; z-index: 1; display: flex; height: 44px; border-radius: 22px; background: var(--disc-fill); box-shadow: var(--disc-edge); }"), "the circles' own glass and their 44, on their line, centred on the screen (Apple's 48 lost its top 2 on an iPhone: WebKit clips the pinned bar at the clock strip's edge, measured on the simulator)");
+  const rule = (html.match(/\n  \.bar > \.view-seg \{[^}]*\}/) || [""])[0];
+  assert.ok(rule && !/transform/.test(rule), "centred without a transform: the swipe back's fade of the bar's buttons sets one, which would throw it to the side");
+  assert.ok(html.includes('  .bar > .view-seg::before { content: ""; position: absolute; top: 4px; left: 4px; width: 56px; height: 36px; border-radius: 18px; background: var(--bar-lens); transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1); pointer-events: none; }'), "Apple's lens, 4 in all round, under the coach's half, sliding across (the v317 check round: its slide was untested)");
+  assert.ok(html.includes('  .bar > .view-seg[data-on="client"]::before { transform: translateX(64px); }'), "under the client's half when that is chosen, sliding across");
+  assert.ok(html.includes("  @media (prefers-reduced-motion: reduce) { .bar > .view-seg::before { transition: none; } }"), "Reduce Motion: no slide");
+  assert.ok(html.includes("  .bar > .view-seg button { position: relative; appearance: none; border: 0; background: none; margin: 0; padding: 0; width: 64px; height: 44px; border-radius: 22px; font: inherit; font-size: 15px; font-weight: 500; letter-spacing: 0; color: var(--set-cur-ink);"), "equal halves of 64, the words at 15 in Inter 500, both black (white in the dark): only the lens tells which is chosen, as Apple's");
+  assert.strictEqual((html.match(/--bar-lens: linear-gradient\(rgba\(0,0,0,0\.08\), rgba\(0,0,0,0\.06\)\);/g) || []).length, 1, "the lens: 8% of black at its top to 6% at its foot, over the glass (Apple's #e6e6e6 to #ebebeb on #fafafa)");
+  assert.strictEqual((html.match(/--bar-lens: rgba\(0,0,0,0\.72\);/g) || []).length, 2, "dark: darker than the glass too (Apple's #090909 on #202020), in both dark blocks");
+  assert.ok(html.includes("  .view-seg:not([hidden]) ~ #status { flex: 0 1 auto; margin-right: auto; max-width: calc(min(340px, 50vw) - 148px); text-align: left; font-size: 13px; line-height: 15px; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }"), "Saved after the back circle, the bar's 12 short of the switch, never under it; in points (never cut by a larger Text Size), and two lines for Offline · will sync or Couldn't save (the v317 check round)");
+  assert.ok(html.includes('  @media (max-width: 383px) { .bar > .view-seg { position: relative; left: auto; right: auto; margin: 0; flex: none; } .bar > .view-seg button { width: 52px; font-size: 13px; } .bar > .view-seg::before { width: 44px; } .bar > .view-seg[data-on="client"]::before { transform: translateX(52px); } .view-seg:not([hidden]) ~ #status { flex: 1 1 auto; max-width: none; margin-right: 0; text-align: right; font-size: 11px; line-height: 13px; } }'), "narrower than 384: the switch follows the back circle, smaller, the status beside Messages (centred, it ran under the Messages circle at 320)");
+  assert.ok(html.includes("  @media (max-width: 359px) { .view-seg:not([hidden]) ~ #status { display: none; } }"), "320 wide: no words beside it");
+});
+
+test("(v317) the switch shows on the coach's own workouts in either view, its lens on the side chosen; never on a template, in the client's app or over another page; the swipe back's bar agrees and fades it with the other buttons", () => {
+  page({ name: "training", id: "w1" }); assert.deepStrictEqual([$("viewSeg").hidden, $("viewSeg").dataset.on, fns.barFor("training/w1").viewSeg], [false, "coach", true]);
+  fns.setPreview(true); redraw(); assert.deepStrictEqual([$("viewSeg").hidden, $("viewSeg").dataset.on, fns.barFor("training/w1").viewSeg], [false, "client", true], "the Client view: the lens on Client, the switch still there to come back");
+  fns.setPreview(false); redraw(); assert.strictEqual($("viewSeg").dataset.on, "coach");
+  page({ name: "training", id: "tp" }); assert.deepStrictEqual([$("viewSeg").hidden, fns.barFor("training/tp").viewSeg], [true, false], "a template has no Client view");
+  page({ name: "training", id: "w1" }, { clientMode: true, myClientId: "c1" }); assert.deepStrictEqual([$("viewSeg").hidden, fns.barFor("training/w1").viewSeg], [true, false], "the client's own app");
+  page({ name: "training", id: "w1" }); assert.strictEqual(fns.barFor("training/w1|exercise").viewSeg, false, "not over the exercise's page");
+  page({ name: "client", id: "c1" }); assert.deepStrictEqual([$("viewSeg").hidden, fns.barFor("client/c1").viewSeg], [true, false], "not on the client's page");
+  assert.ok(fns.glass().includes("viewSeg"), "it goes and comes with the bar's other buttons on the swipe back");
+  assert.ok(src.includes('$("viewSeg").hidden = S.clientMode || isTpl || exOrderOn(); $("viewSeg").dataset.on = previewClient ? "client" : "coach";'), "drawn with the workout, out of Reorder's bar (reorder.test.js)");
+  assert.ok(src.includes('if (sg.dataset.for !== t.id) { sg.dataset.for = t.id; if (typeof sg.getAnimations === "function") for (const x of sg.getAnimations({ subtree: true })) x.finish(); }'), "another workout opened in the other view: the lens lands at once (it slid, the v317 check round); a tap on the same workout still slides");
+  assert.ok(/NO_SWIPE = "[^"]*, \.view-seg"/.test(src), "a finger slid along the switch never starts the swipe back (the home-screen app: it went back to the client's page)");
+  assert.ok(src.includes('const stFlip = !!nb && vis(live, "viewSeg") !== vis(nb, "viewSeg"); if (stFlip && $("status").textContent) sw.glassOut.push($("status"));') && src.includes('|| (k.id === "status" && stFlip && !!k.textContent && !String(bk).split("|")[1]);'), "the swipe back between a bar with the switch and one without: Saved goes with the buttons and comes in its new place (it jumped 150 points as the page landed)");
+});
+
+test("the bar's place: the round + at the trailing edge, 21 in, kept to the page's column, where the Templates pages have theirs; above a template's Unsaved changes bar", () => {
+  assert.ok(html.includes("#dock.ws { justify-content: flex-end; padding: 0 21px; max-width: 680px; margin: 0 auto; }"), "marked on the bar itself, so a picture's copy of it keeps the layout");
+  assert.ok(html.includes("#dock.tp { justify-content: flex-end; padding: 0 21px; max-width: 680px; margin: 0 auto; }"), "where the Templates pages have theirs");
   assert.ok(!/body\.[\w-]+ #(dock|addExBtn)[^{]*\{[^}]*(justify-content|padding|max-width|margin)/.test(html), "no page class lays the bar out: during a swipe that class is the other page's");
-  assert.ok(html.includes("#dock.ws #addExBtn { margin-left: auto; }"), "the + stays at the trailing edge alone (a template)");
-  assert.ok(html.includes("body.wsdock #vTraining { padding-bottom: 100px; }"), "the last thing on the page clears the bar");
+  assert.ok(html.includes("body.wsdock:not(.client) #vTraining { padding-bottom: 100px; }"), "the last thing on the page clears the +, in his own look only: his Client view has nothing at its foot (the v317 check round: 100 points of nothing)");
   assert.ok(html.includes("body.draft #dock { bottom: calc(79px + env(safe-area-inset-bottom, 0px)); }"), "14 above the Unsaved changes bar");
-  assert.ok(html.includes("#dock .view-seg button { appearance: none; border: 0; background: none; width: 100px; min-width: 0; flex: 1 1 100px; height: 56px; padding: 0 8px;"), "100 each, as Photos' (208 with the glass); on a screen too narrow (320) they give way, to 80 each, as the tabs do");
-  assert.match(html, /\.dock-add \{ flex: none;/, "the + never gives way, so the switch never runs under it");
+  assert.match(html, /\.dock-add \{ flex: none;/, "the + never gives way");
 });
 
 test("typing on a phone: the bar gives the keyboard the bottom, from the + on; it is back once the field is let go", () => {
@@ -175,42 +201,42 @@ test("a double click on + Add exercise under the exercises adds one; its second 
 });
 
 test("the swipe back: each picture keeps its own page's bar, laid out as that page lays it out", () => {
-  assert.deepStrictEqual(swipe.workout, { view: "training", wsdock: true, ws: true, bar: "viewSeg,addExBtn" }, "a new, empty workout from the client page's +");
-  assert.deepStrictEqual(swipe.templatesToWorkout.live, { view: "client", wsdock: false, ws: false, bar: "" }, "From template: the Templates page, no bar");
-  assert.deepStrictEqual(swipe.templatesToWorkout.picture, { classes: "shot-dock ws", shows: "viewSeg,addExBtn" }, "the workout comes back in with its bar at its edges, as it lands");
-  assert.deepStrictEqual(swipe.templatesToWorkout.landed, { view: "training", wsdock: true, ws: true, bar: "viewSeg,addExBtn" });
+  assert.deepStrictEqual(swipe.workout, { view: "training", wsdock: true, ws: true, bar: "addExBtn", seg: true }, "a new, empty workout from the client page's +");
+  assert.deepStrictEqual(swipe.templatesToWorkout.live, { view: "client", wsdock: false, ws: false, bar: "", seg: false }, "From template: the Templates page, no bar");
+  assert.deepStrictEqual(swipe.templatesToWorkout.picture, { classes: "shot-dock ws", shows: "addExBtn" }, "the workout comes back in with its bar at its edges, as it lands");
+  assert.deepStrictEqual(swipe.templatesToWorkout.landed, { view: "training", wsdock: true, ws: true, bar: "addExBtn", seg: true });
   assert.deepStrictEqual(swipe.workoutToClient.picture, { classes: "shot-dock", shows: "tabbar,addBtn" }, "the client page comes in with its tabs and + centred as it has them, not at the workout's edges");
-  assert.deepStrictEqual(swipe.workoutToClient.landed, { view: "client", wsdock: false, ws: false, bar: "tabbar,addBtn" });
+  assert.deepStrictEqual(swipe.workoutToClient.landed, { view: "client", wsdock: false, ws: false, bar: "tabbar,addBtn", seg: false });
 });
 
 test("(v286) a workout the coach shows as the client (Settings: Open workouts in Client): the swipe back slides over the client's page as Back shows it, in the coach's own look (it was the plain page colour), the copy under a body of its own with that page's classes and not the client's look", () => {
-  assert.deepStrictEqual(swipe.asClient, { view: "training", wsdock: true, ws: true, bar: "viewSeg", client: true }, "the workout in the client's look (no + of the coach's)");
+  assert.deepStrictEqual(swipe.asClient, { view: "training", wsdock: true, ws: true, bar: "", seg: true, client: true }, "the workout in the client's look (no + of the coach's; Coach | Client in the top bar)");
   const a = swipe.asClientToClient;
   assert.deepStrictEqual(a.picture, { classes: "shot-dock", shows: "tabbar,addBtn" }, "the client's page under it, its tabs and the coach's + as Back brings them");
   assert.deepStrictEqual([a.under, a.layerIn, a.clientMid, a.landedClient], ["tabs", "html", true, false], "its body: the page's own class (its tabs), not the client's look the live page keeps while the finger holds it, beside the live body (inside it, body.client's rules would restyle it); landed: the coach's look");
-  assert.deepStrictEqual(a.landed, { view: "client", wsdock: false, ws: false, bar: "tabbar,addBtn" });
+  assert.deepStrictEqual(a.landed, { view: "client", wsdock: false, ws: false, bar: "tabbar,addBtn", seg: false });
 });
 
 test("(v286) the picture is taken in the look Back lands in, every way: a brand-new workout a template is being chosen for opens as the coach even with Open workouts in Client; a workout switched to the client's view by hand comes back as the client's from Settings; the client's own app keeps its look; a passing state (typing) is never in a picture", () => {
-  assert.deepStrictEqual([swipe.fillAsClient.picture, swipe.fillAsClient.under, swipe.fillAsClient.landedClient], [{ classes: "shot-dock ws", shows: "viewSeg,addExBtn" }, "wsdock", false], "the brand-new workout, as the coach (its + and Coach | Client)");
+  assert.deepStrictEqual([swipe.fillAsClient.picture, swipe.fillAsClient.under, swipe.fillAsClient.landedClient], [{ classes: "shot-dock ws", shows: "addExBtn" }, "wsdock", false], "the brand-new workout, as the coach (its +)");
   const st = swipe.settingsToClientView;
-  assert.deepStrictEqual([st.switched, st.picture, st.under, st.landedClient], [true, { classes: "shot-dock ws", shows: "viewSeg" }, "wsdock client", true], "Settings over a workout shown as the client: back to it as the client sees it");
+  assert.deepStrictEqual([st.switched, st.picture, st.under, st.landedClient], [true, null, "wsdock client", true], "Settings over a workout shown as the client: back to it as the client sees it (nothing at its foot: Coach | Client is in the top bar since v317)");
   assert.strictEqual(swipe.typingToClient.under, "tabs", "taken while typing: no typing class under the picture");
   assert.deepStrictEqual([swipe.clientApp.picture, swipe.clientApp.under], [{ classes: "shot-dock", shows: "tabbar" }, "tabs client"], "the client's own app: their page in their look");
 });
 
 
 test("Back refused (a template's Unsaved changes): the + that went with the page comes back in with it", () => {
-  assert.deepStrictEqual(swipe.template, { view: "training", wsdock: true, ws: true, bar: "addExBtn", dirty: true });
+  assert.deepStrictEqual(swipe.template, { view: "training", wsdock: true, ws: true, bar: "addExBtn", seg: false, dirty: true });
   const m = swipe.refused.moves;
   assert.deepStrictEqual(m.slice(m.indexOf("")), ["", "translate3d(390px,0,0)", "translate3d(0px,0,0)", ""], "off with the page; when Back is refused, put back beside the page, then home with it (not home at once, the page still off the screen)");
-  assert.deepStrictEqual(swipe.refused.landed, { view: "training", wsdock: true, ws: true, bar: "addExBtn" }, "still the template, its changes kept");
+  assert.deepStrictEqual(swipe.refused.landed, { view: "training", wsdock: true, ws: true, bar: "addExBtn", seg: false }, "still the template, its changes kept");
 });
 
 test("the swipe back: a page's bar goes with it, unless the page underneath has the same bar", () => {
-  const dock = { children: [{ id: "viewSeg", hidden: false }, { id: "tabbar", hidden: true }, { id: "addBtn", hidden: true }, { id: "addExBtn", hidden: false }] };
-  const clientShot = { _dock: true, _dockSig: "tabbar,addBtn" }, workoutShot = { _dock: true, _dockSig: "viewSeg,addExBtn" }, noBar = { _dock: false, _dockSig: "" };
-  assert.strictEqual(fns.dockGoes(true, clientShot, dock), true, "a workout back to its client's page: Coach | Client goes with the workout, the tabs come with the client's page");
+  const dock = { children: [{ id: "tabbar", hidden: true }, { id: "addBtn", hidden: true }, { id: "addExBtn", hidden: false }] };
+  const clientShot = { _dock: true, _dockSig: "tabbar,addBtn" }, workoutShot = { _dock: true, _dockSig: "addExBtn" }, noBar = { _dock: false, _dockSig: "" };
+  assert.strictEqual(fns.dockGoes(true, clientShot, dock), true, "a workout back to its client's page: the + goes with the workout, the tabs come with the client's page");
   assert.strictEqual(fns.dockGoes(true, workoutShot, dock), false, "the same bar on both pages (the day's other workout): it stays");
   assert.strictEqual(fns.dockGoes(true, noBar, dock), true, "a page underneath with no bar (History): it goes");
   assert.strictEqual(fns.dockGoes(true, null, dock), true, "no picture of the page underneath: it goes");

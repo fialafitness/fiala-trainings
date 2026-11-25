@@ -1702,8 +1702,8 @@ import { winLost, winHooks, winTab } from "./win.js";   // v316: one window at a
   // The move that holds does nothing else, so its answer reaches WebKit at once; should the page scroll anyway, the swipe settles back.
   let swipeOn = (() => { try { return (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || (typeof navigator !== "undefined" && navigator.standalone === true); } catch (_) { return false; } })();
   const deskOn = (() => { try { return typeof matchMedia === "function" && matchMedia("(hover: hover) and (pointer: fine)").matches; } catch (_) { return false; } })();   // a computer (mouse or trackpad): two fingers swipe the page back there too, in a browser tab as in the Dock's web app (the web app's own swipe has no page behind it, and Chrome's is off under overscroll-behavior-x: none)
-  const SWIPE_EDGE = 24, SWIPE_GO = 8, NO_SWIPE = "#calView, #week, #weekView, #dpGrid, .tr-chips, .kb-chips, .grip, .sugg, input, textarea, select, [contenteditable], li.swipe-row.swiped, .hd-col";   // things that drag sideways or scroll themselves keep the touch (Apple's rule for its swipe from anywhere)
-  const GLASS_RES = 0.416, GLASS_DAMP = 0.75, GLASS = ["back", "meDisc", "navDone", "tMore", "tAdd", "barMsg"];   // the bar's buttons, and their change on release
+  const SWIPE_EDGE = 24, SWIPE_GO = 8, NO_SWIPE = "#calView, #week, #weekView, #dpGrid, .tr-chips, .kb-chips, .grip, .sugg, input, textarea, select, [contenteditable], li.swipe-row.swiped, .hd-col, .view-seg";   // things that drag sideways or scroll themselves keep the touch (Apple's rule for its swipe from anywhere)
+  const GLASS_RES = 0.416, GLASS_DAMP = 0.75, GLASS = ["back", "meDisc", "navDone", "tMore", "tAdd", "barMsg", "viewSeg"];   // the bar's buttons, and their change on release (v317: the coach's Coach | Client too, in the bar since his pick of 25 Nov 2026)
   const easeMemo = new Map();
   const springEase = (v0, response, damping) => {                   // a spring (from rest at 0 to 1, starting at speed v0 in "whole distances per second") as a CSS easing and its length,
     const key = v0.toFixed(2) + "|" + response + "|" + damping; if (easeMemo.has(key)) return easeMemo.get(key);   // ending where it first arrives: past that it only overshoots (0.6% at rest, 1.2% at the fastest start allowed, 2.8% for the buttons) and comes back, which a page underneath shows as a bounce past its place
@@ -1724,9 +1724,9 @@ import { winLost, winHooks, winTab } from "./win.js";   // v316: one window at a
     if (easeMemo.size > 200) easeMemo.clear(); easeMemo.set(key, out); return out;
   };
   const calmMotion = () => { try { return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (_) { return false; } };
-  const dockSig = (dock) => [...dock.children].filter((k) => !k.hidden).map((k) => k.id).join(",");   // which bar the page shows at its foot: a client page's tabs and +, a workout's Coach | Client and +
+  const dockSig = (dock) => [...dock.children].filter((k) => !k.hidden).map((k) => k.id).join(",");   // which bar the page shows at its foot: a client page's tabs and +, a workout's + (Coach | Client is in the top bar since v317)
   const dockShows = (dock) => !!dock && [...dock.children].some((k) => !k.hidden) && !document.body.classList.contains("typing") && !document.body.classList.contains("kb");   // the bar at the foot is on screen (the keyboard, or its bar of keys, has the bottom: index.html)
-  const dockGoes = (dockOn, shot, dock) => !!dockOn && !(shot && shot._dock && shot._dockSig === dockSig(dock));   // the swipe back: this page's bar goes with this page; the same bar on both pages stays (the copy's then stays hidden); a different one (the workout's Coach | Client and +, the client page's tabs and +) goes with its page while the other comes in with its own
+  const dockGoes = (dockOn, shot, dock) => !!dockOn && !(shot && shot._dock && shot._dockSig === dockSig(dock));   // the swipe back: this page's bar goes with this page; the same bar on both pages stays (the copy's then stays hidden); a different one (the workout's +, the client page's tabs and +) goes with its page while the other comes in with its own
   function captureScreen() {                                        // a still copy of the page as it is, to sit under the swipe later
     const secs = [...document.querySelectorAll("main > section")].filter((s) => !s.hidden && s.getClientRects().length);
     if (!secs.length) return null;
@@ -1775,7 +1775,7 @@ import { winLost, winHooks, winTab } from "./win.js";   // v316: one window at a
     const [vk, sub] = String(key).split("|"), [name, id, prog] = vk.split("/"), home = !sub && (name === "clients" || (S.clientMode && name === "client"));
     const tplMore = !sub && name === "client" && isTemplateClient(id) && !prog && !S.clientMode && !pickFor;   // the Templates page and his folders: his "…" (keep in step with tplPageOn)
     const ord = !sub && name === "training" && exOrdering === id && !S.clientMode && roOpen(trainings.get(id));   // v314: Reorder's bar, Done alone at the right
-    return { back: !home, brand: home, meDisc: !sub && name === "client" && !isTemplateClient(id), navDone: sub === "exercise" || ord, tMore: (!sub && name === "training" && moreOn(trainings.get(id)) && !ord) || tplMore, tAdd: tplMore, barMsg: !sub && (name === "client" || name === "training") && !!msgTarget(name, id) && !ord, id };
+    return { back: !home, brand: home, meDisc: !sub && name === "client" && !isTemplateClient(id), navDone: sub === "exercise" || ord, tMore: (!sub && name === "training" && moreOn(trainings.get(id)) && !ord) || tplMore, tAdd: tplMore, barMsg: !sub && (name === "client" || name === "training") && !!msgTarget(name, id) && !ord, viewSeg: !sub && name === "training" && !S.clientMode && !!trainings.get(id) && !isTemplateClient(trainings.get(id).clientId) && !ord, id };
   }
   function barCopy(key) {                                           // the bar as the screen Back goes to will show it, when there is no copy of that screen
     const live = document.querySelector("header .bar"); if (!live) return null;
@@ -1878,6 +1878,7 @@ import { winLost, winHooks, winTab } from "./win.js";   // v316: one window at a
       const slot = (b, id) => { const ks = [...((b && b.children) || [])], i = ks.findIndex((k) => k.id === id), st = ks.findIndex((k) => k.id === "status"); return i < st ? "L" + ks.slice(0, i).filter((k) => !k.hidden).length : "R" + ks.slice(i + 1).filter((k) => !k.hidden).length; };   // a button's place, counted from its own edge (every circle 44, the bar's 12 between)
       const stays = (id) => vis(live, id) && vis(nb, id) && slot(live, id) === slot(nb, id) && (id !== "tMore" || vis(live, "tAdd") === vis(nb, "tAdd"));   // (the … alone is a circle, beside the + the capsule's half: in another shape it goes and comes, as the v280 review caught)   // the same button in the same place on both bars stays put (the Messages circle from a workout to her page); in another place it goes and comes, as UIKit cross-fades bar items (a finished workout has no "…": its Messages circle is at the edge, on her page it is beside her photo)
       for (const id of GLASS) if (vis(live, id) && !stays(id)) sw.glassOut.push($(id));   // a button only this page has, or in another place: it goes when the finger lets go
+      const stFlip = !!nb && vis(live, "viewSeg") !== vis(nb, "viewSeg"); if (stFlip && $("status").textContent) sw.glassOut.push($("status"));   // v317: Saved sits after the back circle beside Coach | Client and beside the Messages circle without it, so between those two bars it goes with the buttons and comes in its new place (the check round: it jumped 150 points as the page landed)
       if (nb) {
         sw.barRect = live.getBoundingClientRect();
         const put = (b) => { b.setAttribute("aria-hidden", "true"); b.style.position = "absolute"; b.style.top = "0"; b.style.left = "0"; b.style.pointerEvents = "none"; live.after(b); return b; };
@@ -1890,7 +1891,7 @@ import { winLost, winHooks, winTab } from "./win.js";   // v316: one window at a
         for (const k of tb.children) if (!(k.id === "brand" && !k.hidden && $("brand").hidden)) k.style.visibility = "hidden";
         win.appendChild(tb); live.after(win); sw.textWin = win; sw.textBar = tb;
         const gb = put(nb.cloneNode(true));                         // the page underneath's buttons this page does not have: they come when the finger lets go
-        for (const k of gb.children) { const g = GLASS.includes(k.id) && !k.hidden && !stays(k.id); k.style.visibility = "hidden"; if (g) sw.glassIn.push(k); }
+        for (const k of gb.children) { const g = (GLASS.includes(k.id) && !k.hidden && !stays(k.id)) || (k.id === "status" && stFlip && !!k.textContent && !String(bk).split("|")[1]); k.style.visibility = "hidden"; if (g) sw.glassIn.push(k); }
         sw.glassBar = gb;
       }
     }
@@ -3282,7 +3283,7 @@ import { winLost, winHooks, winTab } from "./win.js";   // v316: one window at a
     $("vClient").hidden = S.view.name !== "client";
     const tabs = S.view.name === "client" && !isTemplateClient(S.view.id); $("tabbar").hidden = !tabs; $("addBtn").hidden = !tabs || S.clientMode; document.body.classList.toggle("tabs", tabs);   // the coach's +: beside the bar on a client's page, on every tab
     const tplPlus = tplPageOn() && !tplOrderOn(); if (tplPlus) $("addBtn").hidden = false; $("addBtn").setAttribute("aria-label", tplPlus ? "New template" : "New workout"); document.body.classList.toggle("tplus", tplPlus); $("dock").classList.toggle("tp", tplPlus);   // the Templates page and his folders: the same glass + alone at the bar's trailing edge, a new template where he is (his ask, 12 Nov)
-    const wsDock = S.view.name === "training" && !S.clientMode;     // the coach's workout page: Coach | Client and the + in the bar at the foot, as Photos' (his pick, 10 Nov); the + is not in the client's look
+    const wsDock = S.view.name === "training" && !S.clientMode;     // the coach's workout page: the + at the foot (his pick, 10 Nov; the round + of the client page since v317, his pick of 25 Nov 2026, Coach | Client then moving to the top bar: renderTraining); the + is not in the client's look
     $("addExBtn").hidden = !wsDock || previewing(); if (!wsDock) $("viewSeg").hidden = true; document.body.classList.toggle("wsdock", wsDock); $("dock").classList.toggle("ws", wsDock);   // its layout marked on the bar itself: a picture's copy of the bar keeps it
     for (const b of $("tabbar").querySelectorAll("button")) { const on = b.dataset.tab === S.tab; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
     $("vTraining").hidden = S.view.name !== "training";
@@ -4503,7 +4504,7 @@ import { winLost, winHooks, winTab } from "./win.js";   // v316: one window at a
     $("dayMore").hidden = !others.length;
     if (others.length) { const d = effDate(t), when = d === today() ? "today" : "on " + whenDay(d); $("dayMoreText").textContent = others.length === 1 ? "Also " + when + ": " + (String(others[0].title || "").trim() || "Workout") : others.length + " more " + when; }   // "Also today: Core", "2 more on Nov 5"
     $("vTraining").classList.toggle("tpl", isTpl); $("useWrap").hidden = !isTpl || S.clientMode;
-    $("viewSeg").hidden = S.clientMode || isTpl; for (const b of $("viewSeg").querySelectorAll("button")) { const on = (b.dataset.view === "client") === previewClient; b.classList.toggle("on", on); b.setAttribute("aria-checked", String(on)); } if (!isTpl || S.renderedTraining !== t.id) $("usePick").hidden = true;   // the client list built for another template must not survive onto this one
+    $("viewSeg").hidden = S.clientMode || isTpl || exOrderOn(); $("viewSeg").dataset.on = previewClient ? "client" : "coach"; { const sg = $("viewSeg"); if (sg.dataset.for !== t.id) { sg.dataset.for = t.id; if (typeof sg.getAnimations === "function") for (const x of sg.getAnimations({ subtree: true })) x.finish(); } } for (const b of $("viewSeg").querySelectorAll("button")) { const on = (b.dataset.view === "client") === previewClient; b.classList.toggle("on", on); b.setAttribute("aria-checked", String(on)); } if (!isTpl || S.renderedTraining !== t.id) $("usePick").hidden = true;   // the client list built for another template must not survive onto this one; v317: Coach | Client is in the top bar, never in Reorder's (as barFor has it), its lens on the side chosen (data-on, index.html), sliding only for a tap on the same workout: another workout opened in the other view lands at once (dataset.for, the v317 check round)
     $("tTitle").placeholder = isTpl ? "Template name, e.g. Upper body A" : "Focus, e.g. Bench-press and back";
     paintLimits(t);                                                 // v299: the client's injuries and limits at the top, the coach's own look (a sync that changes only the client's record draws it too: it is outside the cards)
     paintFinish(t);
