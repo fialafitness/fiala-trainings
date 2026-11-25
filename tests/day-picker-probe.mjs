@@ -2,6 +2,7 @@
 // loads (the shared stand-in drops them), so this loads the real app/main.js with recording stand-ins for the picker and the "…" menu, and
 // prints, as JSON, where the months are after each gesture and which day, if any, a click picked.
 import { byId, el } from "./env.js";
+{ const now = new Date(), next = new Date(now); next.setHours(24, 0, 0, 0); const left = next - now; if (left < 15000) await new Promise((r) => setTimeout(r, left + 50)); }   // v316 (the twenty-second check round): a run that would cross local midnight starts in the next day (it seeds workouts by one day and reads them by the next: a false failure)
 const W = 350;
 const kids = (e) => {                                                    // an element that keeps what is put in it, as the page's own do
   e.replaceChildren = (...k) => { e.children = k; e.firstElementChild = k[0] || null; };
@@ -20,7 +21,7 @@ const recorder = (id, extra = {}) => { const e = listens(kids(el("div"))); Objec
 const g = recorder("dpGrid", { clientWidth: W, setPointerCapture() {} });
 recorder("dpPrev"); const next = recorder("dpNext"); recorder("dpToday"); const pickBg = recorder("datePick"), pickCancel = recorder("dpCancel");
 const pop = recorder("whenPop"); pop.querySelector = (sel) => (sel === ".wopt" ? pop.children.find((c) => /\bwopt\b/.test(c.className)) || null : null); pop.contains = (x) => !!x && pop.children.includes(x);
-const bg = recorder("whenBg"); const more = recorder("tMore");
+const bg = recorder("whenBg"); const more = recorder("tMore"); const tDate = recorder("tDate");   // (the workout page's date: Move to)
 const attrs = (e) => { const A = {}; e.setAttribute = (k, v) => { A[k] = String(v); }; e.getAttribute = (k) => (k in A ? A[k] : null); return e; };   // a row keeps its aria-current (v299: the "…" with a ticked choice in it)
 const make = document.createElement; document.createElement = (t) => attrs(listens(kids(make(t))));
 pop.querySelectorAll = (sel) => (sel === ".wopt" ? pop.children.filter((c) => /\bwopt\b/.test(c.className)) : []);
@@ -140,7 +141,7 @@ fns.closeDatePicker();
   const bgTap = () => { pickBg.fire("click", { target: pickBg, detail: 1 }); return !!fns.datePicker(); }, cancelTap = () => { pickCancel.fire("click", { target: pickCancel, detail: 1 }); return !!fns.datePicker(); };
   const when = (ms, fn) => { setup(); later = ms; try { return fn(); } finally { later = 0; } };
   out.settle = { day: when(340, () => click(1, 20)), backdrop: when(340, bgTap), cancel: when(340, cancelTap), keyboard: when(0, () => click(0, 20)),
-    dayLater: when(360, () => click(1, 20) && picked[0]), backdropLater: when(360, bgTap), cancelLater: when(360, cancelTap) };
+    dayLater: when(360, () => { const m = fns.datePicker().month; return click(1, 20) && picked[0] === m + "-20"; }), backdropLater: when(360, bgTap), cancelLater: when(360, cancelTap) };   // (the 20th of the month the days opened on, read as they opened: a run across the last midnight of a month read one month and picked in the next, the twenty-first check round)
   const early = (type) => when(150, () => { g.fire("pointerdown", ev(200, 300, 0, type)); g.fire("pointerup", ev(200, 300, 60, type)); return { picked: click(2, 20), letGo: g.classes.has("dragged") }; });   // the day that tap landed on lets go of the grey iOS leaves on it, as a catch's does (a mouse is really there: its hover stays)
   out.settle.earlyTouch = early("touch"); out.settle.earlyMouse = early("mouse");
   performance.now = realNow; }
@@ -172,7 +173,18 @@ document.activeElement = null; more.fire("click", { detail: 1, stopPropagation()
   out.chips = {};
   seed(); fns.openDatePicker({ clientId: "c1", moving: "w1", title: "Reschedule", selected: day(1), onPick: () => {} }); out.chips.moving = chipsOn(day(1)); fns.closeDatePicker();
   seed(); fns.openDatePicker({ clientId: "c1", moving: "x4", title: "Reschedule", selected: day(3), onPick: () => {} }); out.chips.inMore = chipsOn(day(3)); fns.closeDatePicker();
-  seed(); fns.openDatePicker({ clientId: "c1", title: "Add to Jane", onPick: () => {} }); out.chips.addTo = chipsOn(day(1)); out.chips.today = dayBtn(new Date().getDate(), fns.datePicker().months.indexOf(fns.today().slice(0, 7))).classes.has("today"); fns.closeDatePicker(); }
+  seed(); fns.openDatePicker({ clientId: "c1", title: "Add to Jane", onPick: () => {} }); out.chips.addTo = chipsOn(day(1)); out.chips.today = dayBtn(new Date().getDate(), fns.datePicker().months.indexOf(fns.today().slice(0, 7))).classes.has("today"); fns.closeDatePicker();
+  seed(); maps.trainings.set("g1", { id: "g1", clientId: "c1", title: "", date: day(-2), createdAt: new Date(Date.now() - 3 * 864e5).toISOString(), completedAt: null, skippedAt: null, rows: [] });   // the nineteenth check round: an empty workout whose day has gone (an accidental day tap) beside a real one
+  maps.trainings.set("g2", { id: "g2", clientId: "c1", title: "Core", date: day(-2), createdAt: "2026-11-01T09:00:00.000Z", completedAt: null, skippedAt: null, rows: [{ id: "q", label: "1", name: "Plank", sets: 3, reps: "60", weights: [], repsDone: [], setsDone: 0, done: false }] });
+  fns.openDatePicker({ clientId: "c1", title: "Move to", selected: day(-2), onPick: () => {} }); out.chips.gone = chipsOn(day(-2)); fns.closeDatePicker();
+  fns.openDatePicker({ clientId: "c1", moving: "g1", title: "Move to", selected: day(-2), onPick: () => {} }); out.chips.goneMoving = chipsOn(day(-2)); fns.closeDatePicker(); }
+
+// ---------- the twenty-first check round: each real path that opens the days for a workout passes that workout (its chip outlined, and an empty one whose day has gone still shown) ----------
+{ const movingNow = () => { const dp = fns.datePicker(); return dp ? [dp.title, dp.moving || null] : null; }, close = () => { try { fns.closeDatePicker(); } catch (_) {} };
+  out.paths = {};
+  workout(false); tDate.fire("click", { preventDefault() {}, stopPropagation() {} }); out.paths.moveTo = movingNow(); close();   // the coach's workout page: its date
+  for (const [k, client] of [["coachMore", false], ["clientMore", true]]) { workout(client); const it = fns.moreItems(maps.trainings.get("w1")).find((x) => x.label === "Reschedule"); if (it) it.onPick({}); out.paths[k] = it ? movingNow() : "no item"; close(); }   // the page's "…" Reschedule, coach and client
+  for (const [k, client] of [["rowCoach", false], ["rowClient", true]]) { workout(client); app.set({ view: { name: "client", id: "c1" } }); fns.render(); out.paths[k] = fns.rowReschedule("w1") ? movingNow() : "refused"; close(); } }   // a row's Reschedule, coach and client   // the twentieth check round: the days opened for that empty workout itself (Move to, Reschedule, From template's Use, Use all)
 
 console.log(JSON.stringify(out));
 process.exit(0);

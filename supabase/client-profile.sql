@@ -12,6 +12,7 @@
 --                            text, 500 characters at most (the emergency contact and the doctor are written as one line: name, relationship, phone)
 --   health.pregnant          true | false
 -- A null value takes the field away (Not set). The coach changes the same fields on the client's card.
+-- v316: every field but unit is refused until the client agreed to store health details (client-consent.sql).
 -- When the workout unit changes, every logged exercise of the client's that carries no unit of its own
 -- is stamped with the old one first, as the coach's card does: 100 lb never becomes 100 kg.
 -- Needs cloud.sql and client-access.sql (my_email) to have been run before, as they were.
@@ -29,6 +30,7 @@ declare
   r jsonb;
   v_rows jsonb;
   v_changed boolean;
+  v_np boolean;
 begin
   if my_email() = '' then raise exception 'not signed in'; end if;
   if p_client is null or p_key is null then raise exception 'missing argument'; end if;
@@ -70,6 +72,14 @@ begin
     for update;
   if not found then raise exception 'not allowed'; end if;
   v_data := coalesce(v_data, '{}'::jsonb);
+  -- v316: health details only once the client agreed in the app, or the coach recorded a signed paper form (client-consent.sql); "Weights in" is no health detail
+  if p_key <> 'unit' and coalesce(v_data #>> '{choices,health,state}', '') not in ('agreed', 'paper') then raise exception 'no agreement'; end if;   -- v316: no agreement on record (yet): the phone keeps the detail until there is one, or drops it once a withdrawal stands
+  if p_key <> 'unit' and v_val is not null and coalesce(v_data ->> 'paused', '') = 'true' then raise exception 'paused'; end if;   -- v316 (the check round): a paused client stores no new health detail (clearing one still goes)
+  -- v316 (the check round): a parent still to agree (client-consent.sql's ft_needs_parent, when installed): refused, so the phone keeps it and asks the parent, never answered OK and kept as stored by the guard (a date of birth can still be put right, unless the coach's Under 18 decides)
+  if p_key <> 'unit' and v_val is not null and to_regprocedure('public.ft_needs_parent(jsonb)') is not null and not (p_key = 'birthday' and coalesce(v_data ->> 'minor', '') <> 'true') then
+    execute 'select public.ft_needs_parent($1)' into v_np using v_data;
+    if v_np then raise exception 'parent needed'; end if;
+  end if;
 
   -- the workout unit: stamp what was logged without a unit with the old one, before it changes
   if p_key = 'unit' and v_val is not null then

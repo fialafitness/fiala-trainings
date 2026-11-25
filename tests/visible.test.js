@@ -16,6 +16,7 @@ const app = await load();
 const { fns, maps } = app;
 const $ = (id) => document.getElementById(id);
 const r = JSON.parse(execFileSync(process.execPath, [path.join(here, "visible-probe.mjs")], { encoding: "utf8", timeout: 90000 }).trim().split("\n").pop());
+const ranAt = new Date();   // (v316, the twenty-third check round: the month the probe ran in)
 const settle = async () => { const until = Date.now() + 15000; do await tick(5); while ((app.get().inflight > 0 || maps.timers.size) && Date.now() < until); };
 
 // ---------- #12: "Mark set N as not done" ----------
@@ -120,7 +121,8 @@ test("(#24) sign-in: Email and Password are labelled rows in one card, the hints
   assert.ok(html.includes('      <ul class="list sign-rows">\n'
     + '        <li><label><span class="lab">Email</span><input id="loginEmail" type="email" placeholder="name@example.com" autocomplete="username" inputmode="email" autocapitalize="none" required></label></li>\n'
     + '        <li><label><span class="lab">Password</span><input id="loginPassword" type="password" placeholder="Required" autocomplete="current-password" required></label></li>\n'
-    + '      </ul>\n      <button class="btn" type="submit" id="loginBtn"'));
+    + '      </ul>\n      <div class="sign-privacy">'));
+  { const form = html.slice(html.indexOf('<form id="loginForm"'), html.indexOf('</form>', html.indexOf('<form id="loginForm"'))); assert.ok(form.indexOf('href="privacy.html">Privacy Policy</a>') > 0 && form.indexOf('href="health-privacy.html">Consumer Health Data Privacy Policy</a>') > 0 && form.indexOf('class="sign-privacy"') < form.indexOf('id="loginBtn"') && form.includes('<p>Your coach uses your information to plan and track your training.<a class="sp-link" href="privacy.html">'), "v316: the privacy note with both policies (Connecticut wants the word Privacy; Washington and Nevada their own link), just above Sign in, where Apple puts it"); }
   assert.ok(!/placeholder="Email" autocomplete="username"[^>]*>\n\s*<input id="loginPassword"/.test(html), "the old hint-only boxes are gone");
   assert.ok(html.includes("  .sign-rows .lab { flex: none; width: 92px; font-size: 1.0625rem; letter-spacing: -0.01em; color: var(--text-primary); }\n"));
   assert.ok(html.includes("  .sign-rows input::placeholder { color: var(--text-secondary); }\n"), "the hint at 4.6:1, not 1.5:1");
@@ -150,7 +152,7 @@ test("(#6) one Monthly report button; its sheet opens on this month with the not
   assert.ok(html.includes('<span class="rep-cap">Report PDF</span><button class="pill" type="button" id="reportBtn" aria-haspopup="dialog">Monthly report</button></div>'));
   assert.ok(!/id="reportNow"|id="reportMonth"|select\.pill/.test(html), "This month, Pick a month and their style are gone");
   assert.deepStrictEqual(r.opened, { open: true, lead: "Jane Smith", notes: "false", foot: "Off: safe to send to Jane. Your private notes stay in the app.", inert: true, focus: true, asking: true });
-  const now = new Date(), iso = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+  const now = ranAt, iso = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
   assert.strictEqual(r.months.count, 25); assert.strictEqual(r.months.first[0], iso); assert.strictEqual(r.months.value, iso, "this month chosen");
   assert.deepStrictEqual(r.early, { ...r.opened, shared: 0 });
 });
@@ -166,8 +168,8 @@ test("(#6) the switch turns the notes on and off, its line with it; Share closes
 });
 
 test("(#6) the month picked is the month shared; Cancel, the dim (a press begun on it) and Escape close it and share nothing; a press begun on the sheet and let go on the dim keeps it", () => {
-  const prev = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1, 12);   // last month, by the local calendar
-  assert.strictEqual(r.sharedPrev.month, prev.toLocaleDateString(undefined, prev.getFullYear() === new Date().getFullYear() ? { month: "long" } : { month: "long", year: "numeric" }));
+  const prev = new Date(ranAt.getFullYear(), ranAt.getMonth() - 1, 1, 12);   // last month, by the local calendar
+  assert.strictEqual(r.sharedPrev.month, prev.toLocaleDateString(undefined, prev.getFullYear() === ranAt.getFullYear() ? { month: "long" } : { month: "long", year: "numeric" }));
   assert.strictEqual(r.sharedPrev.pdf.name, "Jane Smith " + prev.toLocaleDateString(undefined, { month: "long", year: "numeric" }) + ".pdf");
   assert.strictEqual(r.sharedPrev.pdf.note, false);
   assert.deepStrictEqual([r.cancel.open, r.cancel.inert, r.cancel.shared], [false, false, 3]);

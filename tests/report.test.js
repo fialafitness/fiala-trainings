@@ -6,8 +6,6 @@ import { test, assert } from "./assert.js";
 import { load } from "./load.js";
 const app = await load();
 const { fns, maps } = app;
-const day = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return fns.localIso(d); };
-const at = (n, h) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(h, 0, 0, 0); return d.toISOString(); };
 const checkPdf = (bytes) => {
   const s = Buffer.from(bytes).toString("latin1");
   const m = /startxref\n(\d+)\n%%EOF$/.exec(s); assert.ok(m, "startxref"); const x = Number(m[1]); assert.strictEqual(s.slice(x, x + 4), "xref");
@@ -16,8 +14,8 @@ const checkPdf = (bytes) => {
   return { text: s, pages: (s.match(/\/Type \/Page \/Parent/g) || []).length };
 };
 const seed = () => {
-  app.reset(); const c = { id: "c1", name: "Jiří Novák", unit: "lb", notes: { log: [{ id: "n1", at: at(-1, 19), text: "Twinge on set 2.", workout: { id: "a", title: "Lower", date: day(-1) } }] } }; maps.clients.set("c1", c);
   const first = new Date(); first.setDate(1); const inMonth = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(Math.max(1, d.getDate() - n)); return fns.localIso(d); };
+  app.reset(); const c = { id: "c1", name: "Jiří Novák", unit: "lb", notes: { log: [{ id: "n1", at: new Date(inMonth(1) + "T19:00:00").toISOString(), text: "Twinge on set 2.", workout: { id: "a", title: "Lower", date: inMonth(1) } }] } }; maps.clients.set("c1", c);   // v316 (the twentieth check round): the note in this month too (dated yesterday, the 1st of every month failed)
   maps.trainings.set("a", { id: "a", clientId: "c1", title: "Lower", date: inMonth(1), createdAt: "2026-10-01T10:00:00.000Z", completedAt: new Date(inMonth(1) + "T18:00:00").toISOString(), skippedAt: null,
     rows: [{ id: "r1", name: "Back squat", setsDone: 2, weights: ["140", "140"], repsDone: ["5", "5"], earlyReason: "Short on time" }, { id: "r2", name: "Plank", setsDone: 1, weights: ["60 sec"], repsDone: [""] }] });
   maps.trainings.set("b", { id: "b", clientId: "c1", title: "Push", date: inMonth(0), createdAt: "2026-10-01T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [{ id: "r3", name: "Bench", setsDone: 0 }] });

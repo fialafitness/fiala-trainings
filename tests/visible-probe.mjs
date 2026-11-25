@@ -4,6 +4,7 @@
 // export sheet"). The stand-ins are sets-count-probe.mjs's.
 import { byId, el } from "./env.js";
 import { today } from "../app/util.js";
+{ const now = new Date(), next = new Date(now); next.setHours(24, 0, 0, 0); const left = next - now; if (left < 15000) await new Promise((r) => setTimeout(r, left + 50)); }   // (v316, the twenty-third check round: a run that would cross local midnight starts in the next day)
 let NOW = 10000, SEQ = 0; const Q = [];
 globalThis.setTimeout = (fn, ms) => { const id = ++SEQ; Q.push({ id, at: NOW + Math.max(0, ms || 0), fn }); return id; };
 globalThis.clearTimeout = (id) => { const i = Q.findIndex((q) => q.id === id); if (i >= 0) Q.splice(i, 1); };

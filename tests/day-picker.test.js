@@ -56,7 +56,7 @@ test("a sync's redraw waits for the months to land (a settle, an arrow's slide) 
 });
 
 test("the second tap of a double tap (on a row's Reschedule, on the \"…\" menu's) lands on the days as they come up: in their first 350 ms it picks no day and closes nothing, as the skip sheet's; a keyboard's Enter always picks; after them a tap picks, the backdrop and Cancel close", () => {
-  assert.deepStrictEqual(r.settle, { day: false, backdrop: true, cancel: true, keyboard: true, dayLater: r.open.month + "-20", backdropLater: false, cancelLater: false,
+  assert.deepStrictEqual(r.settle, { day: false, backdrop: true, cancel: true, keyboard: true, dayLater: true, backdropLater: false, cancelLater: false,
     earlyTouch: { picked: false, letGo: true }, earlyMouse: { picked: false, letGo: false } },
     "340 ms after the days opened a day is not picked and the backdrop and Cancel leave them up; Enter (detail 0) picks at once; 360 ms after, the tap picks its day and the backdrop and Cancel close; a finger's early tap lets go of its day's grey (iOS keeps a tap's hover until the next touch), a mouse's keeps its hover");
 });
@@ -90,4 +90,7 @@ test("the picker's days carry the month's chips (his ask, 12 Nov: every calendar
   assert.deepStrictEqual(r.chips.inMore, ["day-ev plan:X1", "day-ev plan moving:X4", "day-ev-more:+2"], "four on a day: two and +2, the one being moved always among the two");
   assert.deepStrictEqual(r.chips.addTo, ["day-ev plan:Arms", "day-ev plan:Legs"], "Add to a client: nothing is being moved");
   assert.strictEqual(r.chips.today, true);
+  assert.deepStrictEqual(r.chips.gone, ["day-ev miss:Core"], "an empty workout whose day has gone has no chip (the nineteenth check round: a red \"Workout\" on the day, beside the real one)");
+  assert.deepStrictEqual(r.paths, { moveTo: ["Move to", "w1"], coachMore: ["Reschedule", "w1"], clientMore: ["Reschedule", "w1"], rowCoach: ["Reschedule", "w1"], rowClient: ["Reschedule", "w1"] }, "Move to, the page's \u2026 Reschedule (coach and client) and a row's Reschedule each open the days for that workout (the twenty-first check round: any of them could stop passing it, its chip gone, with every test passing)");
+  assert.deepStrictEqual(r.chips.goneMoving, ["day-ev miss:Core", "day-ev miss moving:Workout"], "the days opened for that empty workout itself: its chip on its day, outlined (the twentieth check round: logging yesterday's session through From template, Move to or Reschedule showed nothing on its day)");
 });

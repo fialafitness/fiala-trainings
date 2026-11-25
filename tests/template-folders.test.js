@@ -356,9 +356,9 @@ test("a restore never wipes his folders: a backup from before them leaves them a
   const old = fns.planRestore({ app: "fiala-trainings", format: 1, clients: { [TPL]: copy }, trainings: {} });
   assert.deepStrictEqual([old.cs.length, old.text], [0, ""], "the same record but for the folders and the order: nothing to do");
   const other = fns.planRestore({ app: "fiala-trainings", format: 1, clients: { [TPL]: { ...copy, folders: [node("Z", "Winter", null, "folder", 1)] } }, trainings: {} });
-  assert.strictEqual(other.text, "the packages list and the template folders from the file go into the app. It replaces a copy already here. Everything else stays as it is.");
+  assert.strictEqual(other.text, "The packages list and the template folders from the file go into the app. It replaces a copy already here. Everything else stays as it is.");
   const order = fns.planRestore({ app: "fiala-trainings", format: 1, clients: { [TPL]: { ...copy, folders: JSON.parse(JSON.stringify(maps.clients.get(TPL).folders)), rootOrder: ["A", "H", "p:Fat Burn"] } }, trainings: {} });
-  assert.strictEqual(order.text, "the packages list and the order of the programs from the file go into the app. It replaces a copy already here. Everything else stays as it is.", "another Programs order in the file: said so");
+  assert.strictEqual(order.text, "The packages list and the order of the programs from the file go into the app. It replaces a copy already here. Everything else stays as it is.", "another Programs order in the file: said so");
   assert.deepStrictEqual(fns.tplNodes().map((f) => f.id), ["A", "H", "B", "S1", "S2"], "planning changed nothing here");
   quiet();
 });
@@ -595,7 +595,7 @@ test("his folder changes are kept on the device across a relaunch and cleared on
   assert.deepStrictEqual(names(sb.tables.ft_clients.get(TPL).data.folders), ["f1:Push day"], "the rename and the delete landed (read first: no stamp)");
   assert.deepStrictEqual([maps.folderTouched.size, maps.deletedFolders.size], [0, 0], "the save that carried them clears them");
   maps.folderTouched.set("x", TPL); maps.deletedFolders.set("y", TPL); app.reset(); assert.deepStrictEqual([maps.folderTouched.size, maps.deletedFolders.size], [0, 0], "resetState");
-  assert.strictEqual(src.split("folderTouched.clear(); deletedFolders.clear();").length - 1, 2, "the account switch and the coach's sign-out forget them, as the packages'");
+  assert.strictEqual(src.split("folderTouched.clear(); deletedFolders.clear();").length - 1, 3, "the account switch, the coach's sign-out and a session ended elsewhere with nothing waiting (v316: wipeDevice) forget them, as the packages'");
 });
 
 test("the page: the name field in the question sheet, the + alone at the foot's trailing edge, the last template clear of it, a long slide name cut short", () => {

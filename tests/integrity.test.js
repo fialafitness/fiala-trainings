@@ -19,7 +19,7 @@ const clone = (x) => JSON.parse(JSON.stringify(x));
 
 test("(#1) the queue on the device holds each unsent record as it is now, and each one deleted here", () => {
   app.reset(); app.set({ clientMode: false });
-  maps.trainings.set("A", training("A", { title: "Edited" })); maps.dirty.set("trainings/A", 1); maps.dirty.set("trainings/GONE", 1);
+  maps.trainings.set("A", training("A", { title: "Edited" })); maps.dirty.set("trainings/A", 1); maps.dirty.set("trainings/GONE", 1); maps.deleting.add("trainings/GONE"); maps.dirty.set("trainings/LEFT", 1);   // GONE: deleted here (deleteRec); LEFT: a record that only left the map (v316, the check rounds: never kept as a deletion)
   fns.persistPending();
   const p = JSON.parse(localStorage.getItem("fiala.pending.v1"));
   assert.deepStrictEqual(p.recs.map(([k]) => k), ["trainings/A"]); assert.strictEqual(p.recs[0][1].title, "Edited");
@@ -34,7 +34,7 @@ test("(#1) after a relaunch the queue's records win over a device copy that stop
   localStorage.setItem("fiala.pending.v1", JSON.stringify({ dirty: ["trainings/A", "trainings/LOST", "trainings/D"], recs: [["trainings/A", training("A", { title: "New" })]], gone: ["trainings/D"], owner: "" }));
   fns.restorePending();
   assert.strictEqual(maps.trainings.get("A").title, "New", "the queued record, not the old copy");
-  assert.ok(!maps.trainings.has("D") && maps.dirty.has("trainings/D"), "deleted here: the deletion stands and still goes to the server");
+  assert.ok(!maps.trainings.has("D") && maps.dirty.has("trainings/D") && maps.deleting.has("trainings/D"), "deleted here: the deletion stands and still goes to the server (marked as a Delete again: v316, the check rounds)");
   assert.ok(!maps.dirty.has("trainings/LOST"), "lost by the device, never deleted here: not queued, so the server's copy comes back");
   app.reset();
 });

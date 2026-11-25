@@ -227,19 +227,53 @@ export const planActive = (plan, day) => !plan || plan.kind !== "monthly" || !pl
 // time ("3 days ago"), as Find My does. A part not known is left out; nothing known, no line.
 export const zoneCity = (zone) => { const z = String(ZONE_NOW.get(zone) || zone || ""); if (!z.includes("/") || /^(Etc|SystemV|US|Canada|Mexico|Brazil|Chile)\//.test(z)) return ""; return z.slice(z.lastIndexOf("/") + 1).replace(/_/g, " "); };   // "Asia/Tokyo" → "Tokyo", "America/Los_Angeles" → "Los Angeles"; "" for a zone with no city ("Etc/GMT+5"); an old name a report may still carry reads as today's ("Asia/Calcutta" → "Kolkata")
 const offsetName = (zone, nowMs) => { try { const p = new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName: "shortOffset" }).formatToParts(new Date(nowMs)); return (p.find((x) => x.type === "timeZoneName") || {}).value || ""; } catch (_) { return ""; } };   // "GMT+9": a zone with no city is named by its offset
+export const zoneName = (zone, nowMs) => zoneCity(zone) || offsetName(zone, nowMs);   // the place as the line under the name writes it: the city, or for a zone with no city its offset ("GMT-8", never IANA's inverted "Etc/GMT+8") (v316, the check rounds)
 const wallFmt = new Map();
 const wallClock = (zone, nowMs) => { let f = wallFmt.get(zone); if (f === undefined) { try { f = new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }); } catch (_) { f = null; } wallFmt.set(zone, f); } return f ? f.format(new Date(nowMs)) : null; };
 export const sameClock = (a, b, nowMs) => { const x = wallClock(a, nowMs); return x != null && x === wallClock(b, nowMs); };   // two zones whose clocks read the same now (Vancouver and Los Angeles: no time shown)
 export const agoWords = (atMs, todayIso) => { const d = Math.round((Date.parse(todayIso + "T12:00:00") - Date.parse(localIso(new Date(atMs)) + "T12:00:00")) / 864e5); return d <= 1 ? "Yesterday" : d < 14 ? d + " days ago" : d < 60 ? Math.round(d / 7) + " weeks ago" : Math.round(d / 30.44) + " months ago"; };   // how long ago a report came, in this device's days
-export const clientLine = (c, nowMs, here, todayIso) => {             // the parts of the line, and whether one of them is a clock to keep current
-  const parts = []; let live = false; if (!c) return { parts, live };
-  const age = ageOn(c.birthday, todayIso), s = c.zone, z = s && typeof s === "object" && inZone(s.zone) ? s.zone : "", at = z ? Date.parse(s.at) : NaN;
-  if (age != null) parts.push(age + (age === 1 ? " year old" : " years old"));
+// v316 (the owner's decisions, 18 Nov 2026, after legal research): a client's own choices, kept by the server (choices, supabase/client-consent.sql).
+// Health details show only once the client agreed in the app (a teen with a parent), the coach recorded a signed paper form, or they were saved before
+// v316 and wait for the client's answer (read-only); the time zone reaches the coach only after Allow.
+export const healthState = (c) => { const s = c && c.choices && typeof c.choices === "object" && c.choices.health && c.choices.health.state; return s === "agreed" || s === "paper" || s === "legacy" || s === "declined" ? s : "none"; };
+export const healthShown = (c) => { const s = healthState(c); return s === "agreed" || s === "paper" || s === "legacy"; };   // health details may be shown (the coach's card, the age, the limits note)
+const dayList = (days) => (Array.isArray(days) ? days : [days === undefined ? localIso(new Date()) : days]).filter(Boolean);   // the days a rule reads: the device's, and (main.js) the server's, Los Angeles's
+const ageUnder = (birthday, days, n) => dayList(days).some((d) => { const a = ageOn(birthday, d); return a != null && a < n; });   // under n on any of these days: the phone is never less strict than the server (the check round: an 18th birthday in Tokyo before Los Angeles's)
+export const isMinor = (c, days) => !!c && (c.minor === true || (Number.isInteger(c.minorUntil) && dayList(days).some((d) => +String(d).slice(0, 4) <= c.minorUntil)) || ageUnder(c.birthday, days, 18));   // the coach's Under 18 switch, the year kept after a Don't Allow (minorUntil: under 18 until that year ends), or a birthday under 18
+export const minorBy = (c, days) => (!c ? "" : ageUnder(c.birthday, days, 18) ? "birthday" : c.minor === true ? "switch" : isMinor(c, days) ? "year" : "");   // what says so (the coach's switch can't overrule a birthday)
+export const tooYoung = (birthday, days) => ageUnder(birthday, days, 13);   // the app is for 13 and up (COPPA)
+export const youngRec = (c, days) => !!c && (tooYoung(c.birthday, days) || (Number.isInteger(c.minorUntil) && dayList(days).some((d) => +String(d).slice(0, 4) <= c.minorUntil - 5)));   // a client under 13: by the birthday, or by the year kept after the details went (the birth year + 18: under 13 until the end of that year less five, as the server's ft_young; the check round: a child whose details the coach deleted could agree again)
+export const hasParent = (c) => { const p = c && c.choices && c.choices.health && c.choices.health.parent; return !!p && typeof p === "object"; };   // a parent or guardian agreed too: by name in the app, or signed the paper form
+export const needsParent = (c, days) => { const s = healthState(c); return (s === "agreed" || s === "paper") && !hasParent(c) && isMinor(c, days); };   // agreed alone (in the app, or a paper form signed alone) and known to be under 18 since: read-only until a parent or guardian agrees too (the policy's promise; the server's guard keeps the same: client-consent.sql ft_needs_parent)
+export const healthEditable = (c, days) => { const s = healthState(c); return (s === "agreed" || s === "paper") && !needsParent(c, days); };   // and changed
+export const birthdayOpen = (c, days) => healthEditable(c, days) || (needsParent(c, days) && c.minor !== true);   // the date of birth can still be put right while a parent is awaited (a teen year picked by mistake), unless the coach's switch decides (the server's guard lets the birthday through the same way)
+export const heldLive = (c, h) => { const at = c && c.choices && c.choices.health && c.choices.health.at; return !!h && (!at || (Date.parse(at) || 0) <= (Date.parse(h.at) || 0)); };   // a parent's wait marked on the phone (an Agree refused for one) still stands: no newer health answer on record (a Don't Allow, a parent's Disagree, the coach's withdrawal or paper form) (the check rounds)
+export const zoneState = (c) => { const s = c && c.choices && typeof c.choices === "object" && c.choices.zone && c.choices.zone.state; return s === "allow" || s === "deny" ? s : ""; };   // "" = never asked
+export const HEALTH_KEYS = ["birthday", "sex", "height", "bodyWeight", "heightUnit", "bodyUnit", "health"];   // the health details a Don't Allow deletes (the server's guard strips the same)
+export const dropHealth = (rec, days) => { if (ageUnder(rec.birthday, days, 18)) rec.minorUntil = +String(rec.birthday).slice(0, 4) + 18; for (const k of HEALTH_KEYS) delete rec[k]; return rec; };   // as the server's ft_drop_health: the details go, a birthday under 18 leaves the year the client turns 18 (never the date)
+export const applyChoice = (rec, kind, answer, parent, at, days, by = "client", id = null) => {    // an answer laid on a client record as the server writes it (client_set_choice): the phone shows it at once, and a sync keeps it while it is on its way
+  if (!rec || typeof rec !== "object") return rec;
+  const ch = rec.choices && typeof rec.choices === "object" ? { ...rec.choices } : {};
+  if (kind === "zone") { ch.zone = { state: answer, at, by }; if (answer === "deny") delete rec.zone; }
+  else if (kind === "health") { if (answer === "agree") ch.health = { state: "agreed", at, by, ...(parent ? { parent: { name: parent, at } } : {}), ...(id ? { id } : {}) }; else { ch.health = { state: "declined", at, by, ...(id ? { id } : {}) }; dropHealth(rec, days); } }
+  rec.choices = ch; return rec;
+};
+const ageWords = (age) => age + (age === 1 ? " year old" : " years old");
+export const clientLine = (c, nowMs, here, todayIso) => {             // the parts of the line, their kinds (age, place, time: the place and the time wear icons), and whether one of them is a clock to keep current
+  const parts = [], kinds = []; let live = false; if (!c) return { parts, kinds, live };
+  const age = healthShown(c) ? ageOn(c.birthday, todayIso) : null, s = zoneState(c) === "allow" ? c.zone : null, z = s && typeof s === "object" && inZone(s.zone) ? s.zone : "", at = z ? Date.parse(s.at) : NaN;
+  if (age != null) { parts.push(ageWords(age)); kinds.push("age"); }
   if (z && !isNaN(at)) {
-    const place = zoneCity(z) || offsetName(z, nowMs); if (place) parts.push(place);
-    if (!(here && sameClock(z, here, nowMs))) { if (nowMs - at > 864e5) parts.push(agoWords(at, todayIso)); else { parts.push(new Date(nowMs).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: z })); live = true; } }
+    const place = zoneCity(z) || offsetName(z, nowMs); if (place) { parts.push(place); kinds.push("place"); }
+    if (!(here && sameClock(z, here, nowMs))) { if (nowMs - at > 864e5) parts.push(agoWords(at, todayIso)); else { parts.push(new Date(nowMs).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: z })); live = true; } kinds.push("time"); }
   }
-  return { parts, live };
+  return { parts, kinds, live };
+};
+export const ownLine = (c, nowMs, here, todayIso) => {                // v316 (the owner's pick: "Their own line"): the client's own page, their age and the city of the phone's own time zone, read on the phone (nothing sent), no time
+  const parts = [], kinds = []; if (!c) return { parts, kinds };
+  const age = healthShown(c) ? ageOn(c.birthday, todayIso) : null; if (age != null) { parts.push(ageWords(age)); kinds.push("age"); }
+  const place = here && inZone(here) ? zoneCity(here) || offsetName(here, nowMs) : ""; if (place) { parts.push(place); kinds.push("place"); }
+  return { parts, kinds };
 };
 export const daysLeft = (until, days) => Math.round((Date.parse(until) - Date.parse(days.slice().sort().pop())) / 864e5);   // v315: a monthly plan's days left, counted from the later of these days (the device's and the server's, Los Angeles), as planOver ends it
 export const planOver = (c, days) => !!c && (!!c.paused || days.some((d) => !planActive(c.plan, d)));   // v315: paused by hand, or a monthly plan past its day on any of these clocks (the page passes its own day and the server's, Los Angeles: a phone in Hawaii past Los Angeles midnight gets no workouts from the server, so its page says Plan ended too, never an empty list)
@@ -258,6 +292,30 @@ export function groupKey(label, index) {
   const m = s.match(/^(\d+)/);
   if (m) return m[1];
   return /^w\s*[a-z]?$/i.test(s) ? "w" : (s || "row-" + index);
+}
+export function tidyLabels(rows, editedId = null) {                 // the numbers as a page tidies them: an exercise alone in its group is "2", never "2a"; a superset's letters run a, b, c in their order, the exercise just typed into (editedId) where its letter asks; true when any changed. main.js draws every workout through it (normalizeLabels), and v316 (the twenty-second check round) a template's merge reads its exercises through it (sync.js bareRows: a page that tidied a saved "2a" made no change of its own, and its first Save after the iPad's took the iPad's new exercise away)
+  const groups = new Map();
+  (Array.isArray(rows) ? rows : []).forEach((r, i) => { if (!r || typeof r !== "object") return; const k = groupKey(r.label, i); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+  let changed = false;
+  for (const [k, members] of groups) {
+    if (!/^(\d+|w)$/.test(k)) continue;
+    const base = k === "w" ? "W" : k;
+    if (members.length === 1) {
+      if (members[0].label !== base) { members[0].label = base; changed = true; }
+      continue;
+    }
+    const letter = (r) => ((String(r.label || "").trim().match(/^(?:\d+|w)\s*([a-z]*)/i) || [])[1] || "").toLowerCase();
+    const edited = editedId == null ? null : members.find((r) => r.id === editedId) || null;
+    const ordered = members.filter((r) => r !== edited)
+      .sort((a, b) => { const la = letter(a) || "~", lb = letter(b) || "~"; return la < lb ? -1 : la > lb ? 1 : 0; });
+    if (edited) {
+      const L = letter(edited);
+      const at = L ? Math.max(0, Math.min(L.charCodeAt(0) - 97, ordered.length)) : ordered.length;
+      ordered.splice(at, 0, edited);
+    }
+    ordered.forEach((r, j) => { const want = base + String.fromCharCode(97 + Math.min(j, 25)); if (r.label !== want) { r.label = want; changed = true; } });
+  }
+  return changed;
 }
 
 export function validateBackup(d, knownClient) {                  // the whole file first: a backup is taken whole or refused whole, and only in the shape every screen reads
@@ -290,13 +348,13 @@ export function validateBackup(d, knownClient) {                  // the whole f
     if (!optList(c.rootOrder, LIMIT.folders + 100) || (c.rootOrder || []).some((k) => typeof k !== "string")) throw new Error("bad client");   // the Programs list's order (Reorder, 12 Nov): keys read with .map
     ids.add(c.id);
   }
-  const tids = new Set();
+  const tids = new Set(), kept = [];
   for (const t of ts) {
     if (!isObj(t) || !isUuid(t.id) || tids.has(t.id) || !isUuid(t.clientId) || !Array.isArray(t.rows) || t.rows.length > LIMIT.rows) throw new Error("bad training");
     if (t.template != null && !(isObj(t.template) && optStr(t.template.program) && optStr(t.template.phaseName) && optNum(t.template.phase) && optNum(t.template.stage) && optNum(t.template.n) && optStr(t.template.folder))) throw new Error("bad training");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(t.date || ""))) throw new Error("bad date");   // every workout has a day (the app's own backups always carry one)
     if (!optStr(t.title) || !optStr(t.createdAt) || !optWhen(t.completedAt) || !optStr(t.completedBy) || !(t.completedZone == null || (isObj(t.completedZone) && typeof t.completedZone.zone === "string" && t.completedZone.zone.length <= 64 && typeof t.completedZone.at === "string" && !isNaN(new Date(t.completedZone.at)))) || !optWhen(t.skippedAt) || !optStr(t.skipReason) || !optBool(t.missed) || !optBool(t.inPerson)) throw new Error("bad training");
-    if (!ids.has(t.clientId) && !knownClient(t.clientId)) throw new Error("orphan training");
+    const orphan = !ids.has(t.clientId) && !knownClient(t.clientId);   // v316 (the eighteenth check round): its client is neither in the file nor in the app (a workout planned on the coach's other device with no signal reached the server after Delete client): checked like the rest, then left out (refused whole, every backup made since said "That file is not a Fiala backup.")
     const rids = new Set();
     for (const r of t.rows) {
       if (!isObj(r) || typeof r.id !== "string" || !r.id || rids.has(r.id)) throw new Error("bad row");
@@ -306,9 +364,9 @@ export function validateBackup(d, knownClient) {                  // the whole f
       if ((r.alts || []).some((a) => typeof a !== "string") || [...(r.weights || []), ...(r.repsDone || [])].some((w) => w != null && typeof w !== "string" && typeof w !== "number")) throw new Error("bad row");
       rids.add(r.id);
     }
-    tids.add(t.id);
+    tids.add(t.id); if (!orphan) kept.push(t);
   }
-  return { cs, ts };
+  return { cs, ts: kept };
 }
 
 // ---------- the Progress tab's counts (v310; the owner's picks after the pictures, 16 Nov 2026) ----------

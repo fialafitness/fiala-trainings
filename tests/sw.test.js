@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { test, assert } from "./assert.js";
 const src = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "sw.js"), "utf8");
 const ORIGIN = "https://app.test", SW_URL = ORIGIN + "/sw.js", META = "fiala-meta", ASSETS = "fiala-assets", REL = "fiala-rel-";
-const FILES = ["/index.html", "/app/main.js", "/app/catalog.js", "/app/util.js", "/app/model.js", "/app/notes.js", "/app/pdf.js", "/app/report.js", "/app/state.js", "/app/sync.js", "/app/photos.js", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png", "/favicon.ico", "/fonts/Inter-Regular.ttf", "/fonts/Inter-Bold.ttf"];
+const FILES = ["/index.html", "/app/main.js", "/app/catalog.js", "/app/util.js", "/app/model.js", "/app/notes.js", "/app/pdf.js", "/app/report.js", "/app/state.js", "/app/sync.js", "/app/photos.js", "/app/win.js", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png", "/favicon.ico", "/fonts/Inter-Regular.ttf", "/fonts/Inter-Bold.ttf", "/privacy.html", "/health-privacy.html"];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function makeWorker() {
@@ -60,8 +60,8 @@ const PAGE = (n) => "/index.html v" + n + " main.js?v=" + n;
 
 test("install keeps the whole release on the device, and an offline open runs on it", async () => {
   const w = makeWorker(); await w.install(); await w.activate();
-  for (const f of FILES.slice(0, 11)) assert.ok(w.rel(1).has(ORIGIN + f), f + " not stored"); assert.strictEqual(await w.current(), 1);
-  for (const f of FILES.slice(11)) assert.ok(w.stores.get(ASSETS).has(ORIGIN + f), f + " not kept");
+  for (const f of FILES.slice(0, 12)) assert.ok(w.rel(1).has(ORIGIN + f), f + " not stored"); assert.strictEqual(await w.current(), 1);
+  for (const f of FILES.slice(12)) assert.ok(w.stores.get(ASSETS).has(ORIGIN + f), f + " not kept");
   w.server.down = true;
   const page = await w.open(); assert.strictEqual(page.text, PAGE(1)); await page.settle();
   assert.strictEqual((await w.script()).text, "/app/main.js v1");
@@ -113,7 +113,7 @@ test("the same release again: the open writes nothing to the device; a deploy wr
   const w = makeWorker(); await w.install(); w.device.writes = 0;
   assert.strictEqual((await w.open()).text, PAGE(1)); assert.strictEqual(w.device.writes, 0);
   w.server.version = 2;
-  assert.strictEqual((await w.open()).text, PAGE(2)); assert.strictEqual(w.device.writes, 11);
+  assert.strictEqual((await w.open()).text, PAGE(2)); assert.strictEqual(w.device.writes, 12);
 });
 test("the device refuses a file of the new release: the fresh page is served with its scripts from the server, and the release before is still whole for an offline open", async () => {
   const w = makeWorker(); await w.install(); w.server.version = 2; w.device.failPut = "/app/state.js"; w.server.hits.length = 0;
@@ -253,4 +253,18 @@ test("a page kept alive hears the newest whole release even when the pointer is 
   w.server.version = 2; w.device.failPut = "/current";
   assert.deepStrictEqual(await w.check(), [{ type: "release", current: 2 }], "release 2 is whole on the device: the page is told, pointer or no pointer");
   assert.deepStrictEqual(await w.check(), [{ type: "release", current: 2 }]);
+});
+
+test("v316: the privacy policies open with no signal: the server's page when it answers (kept for later), the copy kept when it doesn't", async () => {
+  const w = makeWorker(); await w.install(); await w.activate();
+  for (const f of ["/privacy.html", "/health-privacy.html"]) assert.ok(w.stores.get(ASSETS).has(ORIGIN + f), f + " kept at install");
+  w.server.version = 2;
+  const fresh = await w.request("./privacy.html?nc=1", { mode: "navigate" }); await fresh.settle();
+  assert.deepStrictEqual([fresh.handled, fresh.text], [true, "/privacy.html v2"], "online: the server's page");
+  assert.strictEqual(await w.stores.get(ASSETS).get(ORIGIN + "/privacy.html").clone().text(), "/privacy.html v2", "kept under its own address, whatever the query");
+  w.server.down = true;
+  const off = await w.request("./privacy.html", { mode: "navigate" });
+  assert.deepStrictEqual([off.ok, off.text], [true, "/privacy.html v2"], "offline: the copy kept");
+  const other = await w.request("./elsewhere.html", { mode: "navigate" });
+  assert.strictEqual(other.handled, false, "any other page on this origin is still the network's");
 });

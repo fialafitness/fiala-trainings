@@ -3,6 +3,7 @@
 // workouts in every state, opens the month with its own Month button, and prints, as JSON, what each day shows in the week and in all
 // three months on the slide track (found by the date VoiceOver hears, so it holds whatever day it runs on).
 import { byId, el } from "./env.js";
+{ const now = new Date(), next = new Date(now); next.setHours(24, 0, 0, 0); const left = next - now; if (left < 15000) await new Promise((r) => setTimeout(r, left + 50)); }   // v316 (the twenty-second check round): a run that would cross local midnight starts in the next day (it seeds workouts by one day and reads them by the next: a false failure)
 const kids = (e) => {
   e.replaceChildren = (...k) => { e.children = k; e.firstElementChild = k[0] || null; };
   e.appendChild = (c) => { e.children = [...e.children, c]; e.firstElementChild = e.children[0]; return c; };

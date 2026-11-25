@@ -44,3 +44,17 @@ test("every file the service worker installs is on disk, or no phone ever gets t
   const lib = sw.match(/const LIB = "([^"]+)"/)[1];
   assert.ok(fs.readFileSync(path.join(root, "index.html"), "utf8").includes(lib), "LIB in sw.js must match the <script src> in index.html");
 });
+
+test("no IF or ELSIF in the server's rules has a CASE in its condition outside brackets: PL/pgSQL reads the condition up to its first THEN, the CASE's own, and the file then fails in Supabase's SQL editor with \"syntax error at end of input\" (v316: client-consent.sql did, on release day, though every test passed: the stand-in server never runs the SQL)", () => {
+  const bad = [];
+  for (const f of fs.readdirSync(sqlDir).filter((x) => x.endsWith(".sql"))) {
+    const lines = fs.readFileSync(path.join(sqlDir, f), "utf8").split("\n");
+    lines.forEach((l, i) => {
+      const code = l.replace(/--.*$/, ""), m = /^\s*(?:if|elsif)\b([\s\S]*)$/i.exec(code); if (!m) return;
+      let cond = m[1], j = i; while (!/\bthen\b/i.test(cond) && j + 1 < lines.length && j < i + 8) { j++; cond += " " + lines[j].replace(/--.*$/, ""); }
+      cond = cond.slice(0, cond.search(/\bthen\b/i) < 0 ? cond.length : cond.search(/\bthen\b/i));
+      let depth = 0; for (const tok of cond.match(/\(|\)|\bcase\b/gi) || []) { if (tok === "(") depth++; else if (tok === ")") depth--; else if (depth <= 0) bad.push(f + ":" + (i + 1)); }
+    });
+  }
+  assert.deepStrictEqual(bad, [], "a CASE in an IF's condition outside brackets (wrap it: `if x = (case … end) then`)");
+});

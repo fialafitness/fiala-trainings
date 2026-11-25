@@ -26,7 +26,8 @@ function makeSupabase() {
     if (q.op === "select") {
       let out = rows.filter(match); if (q.order) out.sort((a, b) => String(a[q.order]).localeCompare(String(b[q.order])));
       if (q.range) out = out.slice(q.range[0], q.range[1] + 1); if (q.limit != null) out = out.slice(0, q.limit);
-      out = clone(out); return q.single ? { data: out[0] || null, error: null } : { data: out, error: null };
+      const pgKeys = (v) => (Array.isArray(v) ? v.map(pgKeys) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort((a, b) => { const A = Buffer.from(a), B = Buffer.from(b); return A.length - B.length || Buffer.compare(A, B); }).map((k) => [k, pgKeys(v[k])])) : v);   // v316 (the twenty-second check round): a record's data comes back as Postgres's jsonb keeps it, an object's keys shortest first, then byte by byte (jsonb_util.c), never in the order they were written: a field the device wrote itself read as changed by the device (a template moved on the iPad went back to its old folder)
+      out = clone(out).map((r) => (r && r.data && typeof r.data === "object" ? { ...r, data: pgKeys(r.data) } : r)); return q.single ? { data: out[0] || null, error: null } : { data: out, error: null };
     }
     if (q.op === "update") {
       const hit = rows.filter(match); for (const r of hit) { Object.assign(r, clone(q.payload)); r.updated_at = nextStamp(); }

@@ -52,12 +52,13 @@ test("a backup is accepted whole or refused whole", () => {
   for (const bad of [
     { app: "fiala-trainings", clients: { c1: { id: U(1), name: "A" } }, trainings: { t1: null } },
     { app: "other", clients: {}, trainings: {} },
-    { app: "fiala-trainings", clients: {}, trainings: { t1: { id: U(2), clientId: U(9), rows: [], date: "2026-10-01" } } },
     { app: "fiala-trainings", clients: { c1: { id: U(1), name: "A" } }, trainings: { t1: { id: U(2), clientId: U(1), rows: [], date: "yesterday" } } },
     { app: "fiala-trainings", clients: { c1: { id: "c1", name: "A" } }, trainings: {} },
     [], null, "text",
   ]) assert.throws(() => fns.validateBackup(bad));
   assert.strictEqual(maps.clients.size, 0, "validation never writes");
+  assert.deepStrictEqual(fns.validateBackup({ app: "fiala-trainings", clients: {}, trainings: { t1: { id: U(2), clientId: U(9), rows: [], date: "2026-10-01" } } }).ts, [], "v316 (the eighteenth check round): a workout whose client is neither in the file nor in the app is left out, the rest restores (refused whole, every backup made since Delete client met another device's new workout for that client said \"That file is not a Fiala backup.\")");
+  assert.throws(() => fns.validateBackup({ app: "fiala-trainings", clients: {}, trainings: { t1: { id: U(2), clientId: U(9), rows: [null], date: "2026-10-01" } } }), "a damaged one is still refused, whoever it belongs to");
 });
 test("the app's own backup shape, with a client without a name and a template, is accepted", () => {
   app.reset();

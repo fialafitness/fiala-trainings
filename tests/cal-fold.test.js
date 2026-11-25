@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { test, assert } from "./assert.js";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const run = (file, args = [], input) => JSON.parse(execFileSync(process.execPath, [path.join(here, file), ...args], { encoding: "utf8", timeout: 60000, input }).trim().split("\n").pop());
-const r = run("cal-fold-probe.mjs");
+const r = run("cal-fold-probe.mjs"), ranAt = new Date();   // (v316, the twenty-third check round: the day the probe ran on, never the day this test runs on: a run across midnight at a month's end failed falsely)
 const WEEK = { open: false, month: false, week: true, head: true, toggle: "Month", arrowUp: false };   // the strip, the month's name above it, "Month ⌄"
 const MONTH = { open: true, month: true, week: false, head: false, toggle: "Week", arrowUp: true };    // the month, its own title, "Week ⌃"
 const look = (s) => ({ open: s.open, month: s.month, week: s.week, head: s.head, toggle: s.toggle, arrowUp: s.arrowUp });
@@ -79,7 +79,7 @@ test("staying on the page keeps the month: a sync's redraw, the Skip question op
   assert.deepStrictEqual(look(r.stay.asking), MONTH, "the Skip question up");
   assert.deepStrictEqual(look(r.stay.closed), MONTH, "and closed");
   assert.deepStrictEqual(look(r.stay.paged), MONTH, "paged to the next month");
-  const d = new Date(), n = new Date(d.getFullYear(), d.getMonth() + 1, 1, 12);   // local dates, never UTC (after 4 pm in LA, UTC is tomorrow)
+  const d = ranAt, n = new Date(d.getFullYear(), d.getMonth() + 1, 1, 12);   // local dates, never UTC (after 4 pm in LA, UTC is tomorrow)
   assert.strictEqual(r.stay.paged.shown, n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0"), "the next month is the one shown");
 });
 

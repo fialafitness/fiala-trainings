@@ -17,8 +17,9 @@ const day = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.
 const settle = async () => { const until = Date.now() + 15000; do await tick(5); while ((app.get().inflight > 0 || maps.timers.size) && Date.now() < until); assert.strictEqual(app.get().inflight, 0); assert.strictEqual(maps.timers.size, 0); };
 const quiet = () => { for (const t of maps.timers.values()) clearTimeout(t); maps.timers.clear(); fns.setPreview(false); };
 const U = "11111111-1111-4111-8111-111111111111";
-const clientOn = (sb, extra) => { app.reset(); fns.leaveSettings(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend, sessionEmail: "jane@x.com", view: { name: "client", id: "c1" } }); maps.clients.set("c1", { id: "c1", name: "Jane Doe", unit: "lb", ...(extra || {}) }); };
-const coachOn = (sb, extra) => { app.reset(); fns.leaveSettings(); app.set({ sb, signedIn: true, clientMode: false, backend: fns.cloudBackend, sessionEmail: "coach@x.com", view: { name: "client", id: "c1" } }); maps.clients.set("c1", { id: "c1", name: "Jane Doe", unit: "lb", ...(extra || {}) }); };
+const AGREED = { health: { state: "agreed", at: "2026-11-18T08:00:00.000Z" } };   // v316: these tests are about a client who agreed to store health details (tests/consent.test.js covers the rest)
+const clientOn = (sb, extra) => { app.reset(); fns.leaveSettings(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend, sessionEmail: "jane@x.com", view: { name: "client", id: "c1" } }); maps.clients.set("c1", { id: "c1", name: "Jane Doe", unit: "lb", choices: AGREED, ...(extra || {}) }); };
+const coachOn = (sb, extra) => { app.reset(); fns.leaveSettings(); app.set({ sb, signedIn: true, clientMode: false, backend: fns.cloudBackend, sessionEmail: "coach@x.com", view: { name: "client", id: "c1" } }); maps.clients.set("c1", { id: "c1", name: "Jane Doe", unit: "lb", choices: AGREED, ...(extra || {}) }); };
 const sent = (sb) => sb.log.filter((l) => l.rpc === "client_set_profile").map((l) => l.args);
 const workout = (id, extra) => ({ id, clientId: "c1", title: "Legs", date: day(0), createdAt: "2026-11-01T10:00:00.000Z", completedAt: null, skippedAt: null, rows: [], ...(extra || {}) });
 const logged = (w, unit) => ({ id: "r1", label: "1", name: "Leg press", sets: 1, reps: "12", rest: "", tempo: "", weights: [w], repsDone: ["12"], setsDone: 1, done: true, note: "", alts: [], ...(unit ? { unit } : {}) });
@@ -64,14 +65,14 @@ test("before the client's rule is run: kept on the client's phone and shown, a s
   const sb = makeSupabase(); clientOn(sb);
   fns.setProfile("c1", "sex", "female"); fns.setProfile("c1", "health.allergies", "Latex"); await settle();
   assert.strictEqual(app.get().profileMissing, true, "the rule is missing"); assert.deepStrictEqual([...maps.pendingProfile.get("c1")], ["sex", "health.allergies"], "both kept");
-  fns.mergeDown(maps.clients, "clients", [{ id: "c1", data: { id: "c1", name: "Jane Doe", unit: "lb", paused: false, health: { limits: "From the coach" } } }], true, Date.now());
+  fns.mergeDown(maps.clients, "clients", [{ id: "c1", data: { id: "c1", name: "Jane Doe", unit: "lb", paused: false, choices: AGREED, health: { limits: "From the coach" } } }], true, Date.now());
   const c = maps.clients.get("c1"); assert.deepStrictEqual([c.sex, c.health], ["female", { limits: "From the coach", allergies: "Latex" }], "the client's ride on the server's copy, the coach's land");
   fns.persistPending(); maps.pendingProfile.clear(); maps.dirty.clear(); fns.restorePending();
   assert.deepStrictEqual([[...maps.pendingProfile.get("c1")], maps.dirty.has("clients/c1")], [["sex", "health.allergies"], true], "kept across a relaunch, and sent again on it");
   const got = []; sb.rpcs.client_set_profile = async (a) => { got.push(a.p_key + "=" + JSON.stringify(a.p_value)); return null; }; app.set({ profileMissing: false });
   const started = Date.now() - 1; fns.scheduleSave("clients", "c1", 0); await settle();   // a read that began before the client's change landed
   assert.deepStrictEqual(got, ['sex="female"', 'health.allergies="Latex"']); assert.strictEqual(maps.pendingProfile.has("c1"), false);
-  fns.mergeDown(maps.clients, "clients", [{ id: "c1", data: { id: "c1", name: "Jane Doe", unit: "lb" } }], true, started);
+  fns.mergeDown(maps.clients, "clients", [{ id: "c1", data: { id: "c1", name: "Jane Doe", unit: "lb", choices: AGREED } }], true, started);
   assert.strictEqual(maps.clients.get("c1").sex, "female", "a read that began before the client's change landed does not bring the old record back");
 });
 
@@ -81,7 +82,7 @@ test("a field that landed stays even when the next one fails on the way: a read 
   fns.setProfile("c1", "sex", "female"); fns.setProfile("c1", "health.allergies", "Latex");
   const started = Date.now() - 1; fns.scheduleSave("clients", "c1", 0); await tick(600); quiet();
   assert.deepStrictEqual([...(maps.pendingProfile.get("c1") || [])], ["health.allergies"], "the first landed, the second waits");
-  fns.mergeDown(maps.clients, "clients", [{ id: "c1", data: { id: "c1", name: "Jane Doe", unit: "lb" } }], true, started);
+  fns.mergeDown(maps.clients, "clients", [{ id: "c1", data: { id: "c1", name: "Jane Doe", unit: "lb", choices: AGREED } }], true, started);
   assert.deepStrictEqual([maps.clients.get("c1").sex, (maps.clients.get("c1").health || {}).allergies], ["female", "Latex"], "neither is taken back by the older read");
   maps.dirty.clear();
 });
@@ -94,6 +95,7 @@ test("a refusal drops that field (the server's comes back), no signal keeps it, 
   sb.rpcs.client_set_profile = async () => { const e = new Error("Failed to fetch"); e.code = "NET"; throw e; };
   fns.setProfile("c1", "health.limits", "Knee, both"); await tick(600); quiet();
   assert.deepStrictEqual([...(maps.pendingProfile.get("c1") || [])], ["health.limits"], "no signal: kept"); assert.strictEqual(app.get().profileMissing, false, "and not taken for a missing rule");
+  app.set({ offline: false });                                      // the signal is back and a sync has run (v316: health details wait for one after no signal, so a withdrawal made elsewhere meanwhile is heard first)
   let release; const got = []; sb.rpcs.client_set_profile = async (a) => { got.push(a.p_value); if (got.length === 1) await new Promise((r) => { release = r; }); return null; };
   fns.scheduleSave("clients", "c1", 0); await tick(20);
   fns.setProfile("c1", "health.limits", "Both knees"); release(); await settle();
@@ -131,7 +133,7 @@ test("the coach's card: an ordinary save (no rule), the coach's unit change stam
   fns.setLiftUnit("c1", "kg");
   assert.deepStrictEqual([maps.clients.get("c1").unit, maps.trainings.get("p1").rows[0].unit, maps.dirty.has("trainings/p1"), maps.dirty.has("clients/c1")], ["kg", "lb", true, true], "100 lb stays 100 lb, saved");
   assert.strictEqual(sent(sb).length, 0); quiet();
-  const sb2 = makeSupabase(); coachOn(sb2); const base = { id: "c1", name: "Jane Doe", unit: "lb", health: { limits: "Knee" } };
+  const sb2 = makeSupabase(); coachOn(sb2); const base = { id: "c1", name: "Jane Doe", unit: "lb", choices: AGREED, health: { limits: "Knee" } };
   const stamp = sb2.seed("ft_clients", "c1", base); fns.mergeDown(maps.clients, "clients", [{ id: "c1", data: base, updated_at: stamp }], true, Date.now());
   sb2.seed("ft_clients", "c1", { ...base, sex: "female", health: { limits: "Knee", medications: "Inhaler" } });   // the client's rule wrote meanwhile
   fns.setProfile("c1", "health.limits", "Left knee: no lunges"); maps.clients.get("c1").name = "Jane D.";
@@ -210,7 +212,8 @@ test("the markup: Settings in cards (the photo kept on top), \"Weights in\" for 
   assert.ok(html.includes('<li><div class="srow wrap"><span>Weights in</span><div class="seg" id="unitSeg" role="radiogroup" aria-label="Weights in">'), "the card's");
   const settings = html.slice(html.indexOf('<section id="vSettings"'), html.indexOf("</section>", html.indexOf('<section id="vSettings"')));
   assert.ok(settings.indexOf('id="meHero"') < settings.indexOf('id="meHealth"') && settings.indexOf('id="meHealth"') < settings.indexOf('id="meSafety"'), "the photo first, then the client's two pages");
-  assert.strictEqual((settings.match(/<ul class="list settings-list/g) || []).length, 4, "four cards");
+  assert.strictEqual((settings.match(/<ul class="list settings-list/g) || []).length, 6, "six cards (v316: the client's choices, and the two privacy policies)");
+  assert.ok(settings.indexOf('id="meUnitSeg"') < settings.indexOf('id="meChoices"') && settings.indexOf('id="meChoices"') < settings.indexOf('id="meEmail"') && settings.indexOf('href="privacy.html"') < settings.indexOf('id="signout"'), "v316: the choices after Weights in and Appearance, before Email; the privacy rows before Sign out");
   assert.ok(!html.includes('id="cBirthday"') && !src.includes('$("cBirthday")'), "the Birthday lives in Health details now");
   const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
   assert.ok(main.includes('<section id="vHealth" hidden>') && main.includes('<section id="vSafety" hidden>') && !main.includes('id="textSheet"'), "pages in main, the sheet outside it (no picture holds it)");
@@ -277,7 +280,7 @@ test("the client's workouts are read in each answer's own unit: a copy that did 
   app.set({ view: { name: "training", id: "w1" }, renderedTraining: "w1" });
   await fns.syncDownNow(); await settle(); assert.strictEqual(app.get().renderedTraining, "w1", "nothing changed: the client's open workout is not drawn again under the client's finger");
   assert.strictEqual(maps.trainings.get("p1").rows[0].unit, "lb");
-  hold.on = true; const late = fns.syncDownNow(); await tick(5); unitNow = "kg"; hold.on = false; hold.release(); await late; await settle();   // read before the client's rule ran (lb), answered after
+  hold.on = true; const late = fns.syncDownNow(); { const until = Date.now() + 5000; while (!hold.release && Date.now() < until) await tick(1); } unitNow = "kg"; hold.on = false; hold.release(); await late; await settle();   // read before the client's rule ran (lb), answered after (waits for the read itself, not a fixed 5 ms: a busy run once took the read after the switch, the sixteenth check round)
   assert.strictEqual(maps.trainings.get("p1").rows[0].unit, "lb", "the older read still reads 135 as lb");
   app.set({ view: { name: "client", id: "c1" }, renderedTraining: null }); quiet();
 });

@@ -1,23 +1,32 @@
 // v315, the owner's ask (17 Nov 2026): "maybe under clients name I can have their age and location ? in the way apple would do it", then, after the
 // pictures, "build it" (picks: age · city · the client's day and time; the city from the phone's time zone). One grey line under a client's name, in the
 // coach's view only: "34 years old · Tokyo · Tue 3:00 AM". The client's phone reports its time zone (client_set_zone); the coach's saves keep the server's copy.
+import fs from "node:fs";
 import { test, assert, tick } from "./assert.js";
 import { makeSupabase } from "./fake-supabase.js";
 import { load } from "./load.js";
 import { resetState } from "../app/state.js";
 import { clientLine, zoneCity, sameClock, agoWords, validateBackup, hereZone, setsOf, loggedSets } from "../app/model.js";
+const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8"), src = fs.readFileSync(new URL("../app/main.js", import.meta.url), "utf8");
 const app = await load();
 const { fns, maps } = app;
 const $ = (id) => document.getElementById(id);
 const LA = "America/Los_Angeles", NOW = Date.parse("2026-11-23T18:00:00.000Z"), TODAY = "2026-11-23";   // Monday 10 am in Los Angeles is Tuesday 3 am in Tokyo
 const hoursAgo = (h, now = NOW) => new Date(now - h * 3600e3).toISOString();
-const line = (c, here = LA) => clientLine(c, NOW, here, TODAY).parts.join(" · ");
+const OK = { health: { state: "agreed", at: "2026-11-18T08:00:00.000Z" }, zone: { state: "allow", at: "2026-11-18T08:00:00.000Z" } };   // v316: the client agreed to store health details and allowed the time zone (choices, client-consent.sql)
+const line = (c, here = LA) => clientLine({ choices: OK, ...c }, NOW, here, TODAY).parts.join(" · ");
 const clock = (zone, now = NOW) => new Date(now).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: zone });   // as the page writes it (en-US: "Tue 3:00 AM")
 const settle = async () => { const until = Date.now() + 15000; do await tick(5); while ((app.get().inflight > 0 || maps.timers.size) && Date.now() < until); };
 
 test("the line: age · city · the client's day and time, while their clock differs from this one", () => {
-  const r = clientLine({ birthday: "1992-05-10", zone: { zone: "Asia/Tokyo", at: hoursAgo(0.5) } }, NOW, LA, TODAY);
+  const r = clientLine({ choices: OK, birthday: "1992-05-10", zone: { zone: "Asia/Tokyo", at: hoursAgo(0.5) } }, NOW, LA, TODAY);
   assert.deepStrictEqual(r.parts, ["34 years old", "Tokyo", clock("Asia/Tokyo")]); assert.strictEqual(r.live, true, "a clock: kept current while the page is up");
+  assert.deepStrictEqual(r.kinds, ["age", "place", "time"], "v316: the place wears the pin, the time the clock, the age nothing (the owner's picks)");
+  const bare = { birthday: "1992-05-10", zone: { zone: "Asia/Tokyo", at: hoursAgo(0.5) } };
+  assert.deepStrictEqual(clientLine(bare, NOW, LA, TODAY).parts, [], "v316: nothing the client has not agreed to: no age, no city, no time");
+  assert.deepStrictEqual(clientLine({ ...bare, choices: { health: { state: "declined" }, zone: { state: "deny" } } }, NOW, LA, TODAY).parts, [], "Don't Allow, both");
+  assert.deepStrictEqual(clientLine({ ...bare, choices: { health: { state: "legacy" } } }, NOW, LA, TODAY).parts, ["34 years old"], "details saved before v316 still show while they wait for the answer; no city without Allow");
+  assert.deepStrictEqual(clientLine({ ...bare, choices: { health: { state: "paper" }, zone: { state: "allow" } } }, NOW, LA, TODAY).parts, ["34 years old", "Tokyo", clock("Asia/Tokyo")], "a signed paper form counts as agreed");
   assert.ok(/^Tue 3:00\sAM$/.test(clock("Asia/Tokyo")), "(Tuesday 3 am in Tokyo: " + clock("Asia/Tokyo") + ")");
   assert.strictEqual(line({ birthday: "1992-05-10", zone: { zone: LA, at: hoursAgo(0.5) } }), "34 years old · Los Angeles", "back home, the coach's own clock: no time");
   assert.strictEqual(line({ birthday: "1992-05-10", zone: { zone: "America/Tijuana", at: hoursAgo(0.5) } }), "34 years old · Tijuana", "another city on the same clock: no time either");
@@ -31,7 +40,7 @@ test("the line: age · city · the client's day and time, while their clock diff
 
 test("a report more than a day old: how long ago instead of the time, as Find My does; on the coach's own clock, nothing", () => {
   const T2 = fns.today(), N2 = Date.parse(T2 + "T12:00:00");            // noon on this computer's own day: the days below count the same on every computer, and a clock change of an hour either way never moves a report across a midnight (at 11 pm the 25-hour day of the autumn change read 3 days back as 2: the check round)
-  const s = (h, zone = "Asia/Tokyo") => clientLine({ zone: { zone, at: new Date(N2 - h * 3600e3).toISOString() } }, N2, LA, T2);
+  const s = (h, zone = "Asia/Tokyo") => clientLine({ choices: OK, zone: { zone, at: new Date(N2 - h * 3600e3).toISOString() } }, N2, LA, T2);
   const words = (h, zone) => s(h, zone).parts.join(" · "), tk = (now) => clock("Asia/Tokyo", now);
   assert.strictEqual(words(23), "Tokyo · " + tk(N2), "23 hours: still the time");
   assert.strictEqual(words(30), "Tokyo · Yesterday");
@@ -54,39 +63,50 @@ test("a zone with no city is named by its offset; a zone this device does not kn
   assert.strictEqual(sameClock("Asia/Tokyo", "Asia/Seoul", NOW), true); assert.strictEqual(sameClock("Asia/Tokyo", LA, NOW), false); assert.strictEqual(sameClock("Mars/Olympus_Mons", "Mars/Olympus_Mons", NOW), false);
 });
 
-test("the page: the line under the name in the coach's view; never on the client's own page or a templates page", () => {
+test("the page: the coach's line under the name (age, the pin and the city, the clock and their time); the client's own line on their page (age, the pin and the phone's own city); never a templates page", () => {
   const now = Date.now(), here = hereZone(), far = ["Pacific/Kiritimati", "Pacific/Pago_Pago"].find((z) => !sameClock(z, here, now));   // a zone whose clock differs from this computer's now
-  const c = { id: "c1", name: "Jane Doe", unit: "lb", birthday: (+fns.today().slice(0, 4) - 34) + "-01-01", zone: { zone: far, at: new Date(now - 600e3).toISOString() } };   // 34 on every day of the year (a fixed birthday failed the suite from that day on: the check round)
+  const c = { id: "c1", name: "Jane Doe", unit: "lb", choices: OK, birthday: (+fns.today().slice(0, 4) - 34) + "-01-01", zone: { zone: far, at: new Date(now - 600e3).toISOString() } };   // 34 on every day of the year (a fixed birthday failed the suite from that day on: the check round)
   app.reset(); app.set({ signedIn: true, clientMode: false, view: { name: "client", id: "c1" }, tab: "workouts" }); maps.clients.set("c1", c); fns.render();
-  const parts = clientLine(c, Date.now(), here, fns.today()).parts, want = parts.map((p) => p.replace(/ /g, "\u00a0").replace(/-/g, "\u2011")).join("\u00a0\u00b7 "), text = $("cSub").textContent;
-  assert.strictEqual($("cSub").hidden, false, "shown"); assert.strictEqual(text, want, "age · city · their time (" + parts.join(" · ") + ")"); assert.strictEqual(parts[0], "34 years old"); assert.strictEqual(parts.length, 3);
-  assert.deepStrictEqual(text.split(" ").map((x) => x.slice(-1)).slice(0, -1), ["\u00b7", "\u00b7"], "the line can wrap only after a dot: a part never splits (\"Mon 8:00\" then \"PM\" alone) and no line starts with one");
-  assert.ok(text.split(" ").every((x) => !x.startsWith("\u00b7")), "no line starts with a dot");
-  maps.clients.set("c1", { ...c, zone: { zone: "America/Port-au-Prince", at: new Date(now - 600e3).toISOString() } }); fns.render();
-  assert.ok($("cSub").textContent.includes("Port\u2011au\u2011Prince") && !/-/.test($("cSub").textContent), "a city with hyphens never breaks at one (\"Port-au-\" then \"Prince\": the final check): no-break hyphens");
-  maps.clients.set("c1", { id: "c1", name: "Jane Doe", unit: "lb" }); fns.render();
-  assert.strictEqual($("cSub").hidden, true, "nothing known: no line"); assert.strictEqual($("cSub").textContent, "");
+  const want = clientLine(c, Date.now(), here, fns.today());
+  assert.strictEqual($("cSub").hidden, false, "shown"); assert.deepStrictEqual(fns.nameLine(), { parts: want.parts, kinds: ["age", "place", "time"], mine: false }, "age, the city, their time (" + want.parts.join(", ") + ")"); assert.strictEqual(want.parts[0], "34 years old");
+  assert.ok(html.includes('<p class="name-sub" id="cSub" hidden></p>'), "v316: in the client's app too (no trainer-only)");
+  assert.ok(html.includes("  .name-sub:not([hidden]) { display: flex; flex-wrap: wrap; column-gap: 0.4333em; }") && html.includes("  .name-sub .g { white-space: nowrap; }") && html.includes("  .name-sub svg { width: 0.8667em; height: 0.8667em; vertical-align: -0.0667em; margin-right: 0.2667em; }"), "no dots: each part a group that never splits, 6.5 px apart; the icons as tall as the capitals, on the baseline, 4 px before the words (Apple's, measured), in em so they follow the Text Size");
+  assert.ok(/place: '<svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="M3\.73 9\.29/.test(src) && /time: '<svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="M1\.3 8A6\.7/.test(src), "our own filled pin and clock, hidden from VoiceOver (it hears the words, with commas)");
+  maps.clients.set("c1", { id: "c1", name: "Jane Doe", unit: "lb", birthday: c.birthday, zone: c.zone }); fns.render();
+  assert.strictEqual($("cSub").hidden, true, "v316: nothing the client agreed to or allowed: no line");
   app.reset(); app.set({ signedIn: true, clientMode: true, myClientId: "c1", view: { name: "client", id: "c1" }, tab: "workouts" }); maps.clients.set("c1", c); fns.render();
-  assert.strictEqual($("cSub").hidden, true, "the client's own page: no line");
+  const own = fns.nameLine(), city = zoneCity(here) || own.parts[1];
+  assert.strictEqual($("cSub").hidden, false, "the client's own page: their own line"); assert.deepStrictEqual(own, { parts: ["34 years old", city], kinds: ["age", "place"], mine: true }, "their age and the city of the phone's own time zone, no time (the owner's pick: \"Their own line\")");
+  maps.clients.set("c1", { id: "c1", name: "Jane Doe", unit: "lb", birthday: c.birthday }); fns.render();
+  assert.deepStrictEqual(fns.nameLine().parts, [city], "no health agreement: the city alone (read on the phone, nothing sent)");
   const TID = "00000000-0000-4000-8000-0000000000f1";
-  app.reset(); app.set({ signedIn: true, clientMode: false, view: { name: "client", id: TID }, tab: "workouts" }); maps.clients.set(TID, { id: TID, name: "Templates", unit: "lb", birthday: "1992-05-10" }); fns.render();
+  app.reset(); app.set({ signedIn: true, clientMode: false, view: { name: "client", id: TID }, tab: "workouts" }); maps.clients.set(TID, { id: TID, name: "Templates", unit: "lb", choices: OK, birthday: "1992-05-10" }); fns.render();
   assert.strictEqual($("cSub").hidden, true, "the templates page: no line");
   app.reset();
 });
 
-test("the client's phone reports its time zone when it syncs: when it changed, or every 30 minutes; a rule not installed yet is asked no more until a reload", async () => {
+test("the client's phone reports its time zone when it syncs, only once the server holds the client's Allow: when it changed, or every 30 minutes; a rule not installed yet is asked no more until a reload", async () => {
   const sb = makeSupabase(), calls = []; let me = { name: "Jane Doe", unit: "lb", email: "jane@x.com" };
   app.reset(); app.set({ sb, signedIn: true, clientMode: true, myClientId: "c1", backend: fns.clientBackend, sessionEmail: "jane@x.com", view: { name: "client", id: "c1" } }); maps.clients.set("c1", { id: "c1", ...me });
   sb.rpcs.client_my_data = async () => ({ clients: [{ id: "c1", data: me }], trainings: [] });
   sb.rpcs.client_set_zone = async (a) => { calls.push(a); return null; };
+  sb.rpcs.client_set_choice = async () => null;
   await fns.syncDownNow(); await settle();
-  assert.deepStrictEqual(calls, [{ p_client: "c1", p_zone: hereZone() }], "none on record: sent, with this phone's zone");
+  assert.deepStrictEqual(calls, [], "v316: not asked yet: nothing sent");
+  me = { ...me, choices: { zone: { state: "deny", at: new Date().toISOString() } } }; await fns.syncDownNow(); await settle();
+  assert.deepStrictEqual(calls, [], "Don't Allow: nothing sent");
+  me = { ...me, choices: { zone: { state: "allow", at: new Date().toISOString() } } }; await fns.syncDownNow(); await settle();
+  assert.deepStrictEqual(calls, [{ p_client: "c1", p_zone: hereZone() }], "allowed, none on record: sent, with this phone's zone");
   me = { ...me, zone: { zone: hereZone(), at: new Date(Date.now() - 5 * 60e3).toISOString() } }; await fns.syncDownNow(); await settle();
   assert.strictEqual(calls.length, 1, "the same zone, 5 minutes old: not sent again");
-  me = { ...me, zone: { zone: hereZone(), at: new Date(Date.now() - 40 * 60e3).toISOString() } }; await fns.syncDownNow(); await settle();
-  assert.strictEqual(calls.length, 2, "40 minutes old: sent again, so the coach can tell it is fresh");
+  { const realNow = Date.now; Date.now = () => realNow() + 40 * 60e3;   // 40 minutes on, by this phone's own clock (v316: the 30 minutes run from this phone's own last send, never the server's stamp read on a clock that may be set wrong)
+    try { me = { ...me, zone: { zone: hereZone(), at: new Date(realNow() - 40 * 60e3).toISOString() } }; await fns.syncDownNow(); await settle(); } finally { Date.now = realNow; } }
+  assert.strictEqual(calls.length, 2, "40 minutes on: sent again, so the coach can tell it is fresh");
   me = { ...me, zone: { zone: "Mars/Olympus_Mons", at: new Date().toISOString() } }; await fns.syncDownNow(); await settle();
   assert.strictEqual(calls.length, 3, "another zone on record (the phone moved): sent");
+  maps.pendingChoices.set("c1", new Map([["zone", { answer: "deny", parent: null, at: new Date().toISOString() }]])); sb.rpcs.client_set_choice = async () => new Promise(() => {});   // the client just turned it off; the answer is on its way
+  me = { ...me, zone: undefined }; const before = calls.length; await fns.syncDownNow(); await tick(20);
+  assert.strictEqual(calls.length, before, "an answer still on its way: nothing sent meanwhile"); maps.pendingChoices.clear(); sb.rpcs.client_set_choice = async () => null;
   sb.rpcs.client_set_zone = async (a) => { calls.push(a); const e = new Error("Could not find the function"); e.code = "PGRST202"; throw e; };
   me = { ...me, zone: undefined }; await fns.syncDownNow(); await settle();
   assert.strictEqual(app.get().zoneSetMissing, true, "client-zone.sql not run: noted"); const n = calls.length;
@@ -167,7 +187,7 @@ test("a restore takes the zone here as Restore is tapped: after a sync under the
   assert.deepStrictEqual(after(sb), ["Jane D.", undefined, undefined], "a client brought in under the question, whose phone never reported: the file's old report is not written either");
   sb = fresh(); sb.seed("ft_clients", C, { id: C, name: "Jane", unit: "lb", zone: phone }); await fns.syncDownNow(); await settle();
   navigator.onLine = false; sb.setFail({ times: 9999, message: "Failed to fetch" });
-  try { maps.clients.delete(C); fns.scheduleSave("clients", C, 0); await settle(); fns.applyRestore(fns.planRestore(file({ name: "Jane", unit: "lb" }))); await settle(); }   // deleted here with no signal (as Delete client does), restored from a backup made before v315
+  try { fns.deleteRec("clients", C); await settle(); fns.applyRestore(fns.planRestore(file({ name: "Jane", unit: "lb" }))); await settle(); }   // deleted here with no signal (as Delete client does), restored from a backup made before v315
   finally { navigator.onLine = true; sb.setFail(null); }
   await fns.syncDownNow(); await settle();                                // the signal back
   assert.deepStrictEqual(after(sb), ["Jane", phone, phone], "deleted here, its deletion still queued, then restored: the phone's report stands");
@@ -178,7 +198,7 @@ test("a restore takes the zone here as Restore is tapped: after a sync under the
   app.reset();
 });
 
-test("Delete client with the answers lost, then Restore: the client comes back with its workouts and the phone's report (a record not here keeps no stamp, so it is never taken for a deletion made elsewhere)", async () => {
+test("Delete client with the answers lost, then Restore: the client comes back with its workouts (a record not here keeps no stamp, so it is never taken for a deletion made elsewhere), with no time zone until the client allows it again", async () => {
   const C = "1b4e28ba-2fa1-41d2-883f-0016d3cca427", T1 = "2b4e28ba-2fa1-41d2-883f-0016d3cca427", T2 = "3b4e28ba-2fa1-41d2-883f-0016d3cca427", phone = { zone: "Asia/Tokyo", at: new Date(Date.now() - 60e3).toISOString() };
   const wk = (id, date) => ({ id, clientId: C, date, title: "Legs", rows: [{ id: "r1", name: "Squat", label: "1", sets: 3, reps: "10", weights: ["100", "100", "100"], done: true }] }), copy = (x) => JSON.parse(JSON.stringify(x));
   const sb = makeSupabase(); app.reset(); app.set({ sb, signedIn: true, clientMode: false, backend: fns.cloudBackend });
@@ -188,14 +208,14 @@ test("Delete client with the answers lost, then Restore: the client comes back w
   const realFrom = sb.from;
   try {
     sb.from = (table) => { const b = realFrom(table), del = b.delete; b.delete = () => { del(); const go = b.then; b.then = (res, rej) => go(() => res({ data: null, error: { message: "network timeout" } }), rej); return b; }; return b; };   // one bar of signal: each deletion reaches the server, its answer never comes back
-    for (const id of [T1, T2]) { maps.trainings.delete(id); fns.scheduleSave("trainings", id, 0); } maps.clients.delete(C); fns.scheduleSave("clients", C, 0); await settle();   // as Delete client does
+    for (const id of [T1, T2]) { fns.deleteRec("trainings", id); } fns.deleteRec("clients", C); await settle();   // as Delete client does
     sb.from = realFrom; navigator.onLine = false; sb.setFail({ times: 99999, message: "Failed to fetch" });   // still no signal: the restore's writes wait
     assert.deepStrictEqual([sb.tables.ft_clients.has(C), sb.tables.ft_trainings.has(T1), ["clients/" + C, "trainings/" + T1].every((k) => maps.seenAt.has(k))], [false, false, true], "gone from the server, the stamps kept here (the answers were lost)");
     fns.applyRestore(fns.planRestore(backup)); await settle();
   } finally { sb.from = realFrom; navigator.onLine = true; sb.setFail(null); }
   await fns.syncDownNow(); await settle();                                // the signal back
   assert.deepStrictEqual([sb.tables.ft_clients.has(C), sb.tables.ft_trainings.has(T1), sb.tables.ft_trainings.has(T2), maps.trainings.has(T1), maps.trainings.has(T2)], [true, true, true, true, true], "the client and the workouts the same restore put back land together (the workouts were dropped as if deleted on another device: the third round)");
-  assert.deepStrictEqual(sb.tables.ft_clients.get(C).data.zone, { zone: LA, at: "2026-11-01T10:00:00.000Z" }, "with the server holding no report any more, the file's is the only one left");
+  assert.deepStrictEqual([sb.tables.ft_clients.get(C).data.zone, sb.tables.ft_clients.get(C).data.choices], [undefined, undefined], "v316 (the check round): a client written anew comes back with no answers and no time zone: shared again only after the client taps Allow (the server's guard strips them from a record written anew too)");
   app.reset();
 });
 
@@ -213,7 +233,7 @@ test("a workout deleted here, then restored: the backup's copy comes back whole 
     if (how.includes("logging")) { const r = sb.tables.ft_trainings.get(T1), x = r.data.rows[0]; x.sets = 5; x.weights = ["100", "105", "110", "115", "120"]; x.repsDone = ["10", "10", "8", "8", "6"]; x.setsDone = 5; x.done = true; r.updated_at = "2099-01-01T00:00:00Z"; }   // after this device last read it
     try {
       if (how !== "signal") { navigator.onLine = false; sb.setFail({ times: 99999, message: "Failed to fetch" }); }
-      maps.trainings.delete(T1); fns.scheduleSave("trainings", T1, 0); await settle();   // Delete: with no signal it waits in the queue, the server still holding the deleted copy
+      fns.deleteRec("trainings", T1); await settle();   // Delete: with no signal it waits in the queue, the server still holding the deleted copy
       fns.applyRestore(fns.planRestore(backup)); await settle();
     } finally { navigator.onLine = true; sb.setFail(null); }
     await fns.syncDownNow(); await settle();                              // the signal back
@@ -248,7 +268,7 @@ test("a restore's own write lands with its answer lost, after a deletion whose a
     await fns.syncDownNow(); await settle();
     const backup = { app: "fiala-trainings", format: 1, clients: {}, trainings: { [T1]: { ...copy(maps.trainings.get(T1)), title: "From the file" } } };
     let back = lose(sb, ["delete"]);
-    try { maps.trainings.delete(T1); fns.scheduleSave("trainings", T1, 0); await settle(); } finally { back(); }   // Delete: it lands, its answer is lost
+    try { fns.deleteRec("trainings", T1); await settle(); } finally { back(); }   // Delete: it lands, its answer is lost
     const plan = fns.planRestore(copy(backup)); back = lose(sb, ["upsert", "update"]);
     try { fns.applyRestore(plan); await settle(); } finally { back(); }  // Restore: its write lands, its answer is lost
     assert.strictEqual(sb.tables.ft_trainings.get(T1).data.title, "From the file", "the restore's write is on the server");
@@ -286,7 +306,7 @@ test("the app closed while a restore's own write is out (it lands; the deletion 
   await fns.syncDownNow(); await settle();
   const backup = { app: "fiala-trainings", format: 1, clients: {}, trainings: { [T1]: { ...copy(maps.trainings.get(T1)), title: "From the file" } } };
   let back = wrap(sb, ["delete"], (res) => res({ data: null, error: { message: "network timeout" } }));
-  try { maps.trainings.delete(T1); fns.scheduleSave("trainings", T1, 0); await settle(); } finally { back(); }
+  try { fns.deleteRec("trainings", T1); await settle(); } finally { back(); }
   app.set({ saveWait: 600000 }); back = wrap(sb, ["upsert", "update"], () => new Promise(() => {}));
   try { fns.applyRestore(fns.planRestore(copy(backup))); const until = Date.now() + 5000; while (!(sb.tables.ft_trainings.has(T1) && sb.tables.ft_trainings.get(T1).data.title === "From the file") && Date.now() < until) await tick(1); await tick(5); } finally { back(); }
   const q = localStorage.getItem("fiala.pending.v1"), dev = localStorage.getItem("fiala.trainings.v1");   // what the device holds as the page goes
@@ -335,7 +355,7 @@ test("a restore clears the coach's marks on the copy it replaces: after an edit,
     let back = signal ? () => {} : lose(sb, ["update", "upsert", "delete"]);   // one bar: every request lands, no answer comes back
     try {
       { const t = maps.trainings.get(T1); t.rows[0].weights = ["100"]; if (!maps.trainerTouched.has(T1)) maps.trainerTouched.set(T1, new Set()); maps.trainerTouched.get(T1).add("r1"); fns.touchState(T1, "date"); fns.scheduleSave("trainings", T1, 0); await settle(); }   // the coach types a weight (the row and the day marked)
-      maps.trainings.delete(T1); fns.scheduleSave("trainings", T1, 0); await settle();   // Delete
+      fns.deleteRec("trainings", T1); await settle();   // Delete
       back(); back = lose(sb, ["update", "upsert"]);                       // the restore's own answer lost both ways
       fns.applyRestore(fns.planRestore(copy(backup))); await settle();
     } finally { back(); }

@@ -5,7 +5,8 @@
 // so it is not fetched again. A photo taken without signal waits in a small queue on the phone and goes up when the signal
 // returns: the file first, the marker after, so nobody is ever pointed at a file that is not there yet.
 import { lsGet, lsSet } from "./util.js";
-import { S, ui, clients, confirmedAt } from "./state.js";
+import { winLost } from "./win.js";   // v316 (one window at a time): no photo pass once Fiala is in another window
+import { S, ui, clients, confirmedAt, profileTouched } from "./state.js";
 import { scheduleSave, localBackend, withTimeout, isOffline } from "./sync.js";
 
 const BUCKET = "photos", QKEY = "fiala.photos.pending", CACHE = "fiala-photos";
@@ -13,6 +14,7 @@ const queue = new Map();                  // clientId -> { v, data: data URL | n
 let qOwner = "";                          // whose queue this is: another account signing in on the phone starts clean
 let trash = [];                           // file paths still to remove from the server (a removal that met no signal is tried again)
 let purge = [];                           // deleted clients whose whole folder still has to go
+export const photoWork = () => (queue.size > 0 && !S.photoMissing) || trash.length > 0 || purge.length > 0;   // v316 (the check rounds): photo work still to reach the server (a removal, a deleted client's folder): a sign-out waits for it
 let epoch = 0;                            // bumped at sign-out: a download or a save still on its way then lands nowhere
 const urls = new Map();                   // "clientId/version" -> an address the <img> can show (object URL or data URL)
 const loading = new Map();                // "clientId/version" -> the download in flight
@@ -232,28 +234,43 @@ export async function setPhoto(cid, blob) {   // blob: the new square JPEG, or n
   flushPhotos();
 }
 export function forgetPhoto(cid) {        // the client is deleted: her whole photo folder goes from the server (tried again until it is gone) and from the phone
-  queue.delete(cid); if (!purge.includes(cid)) purge.push(cid); trash = trash.filter((p) => !p.startsWith(cid + "/")); saveQueue();
+  queue.delete(cid); if (!purge.includes(cid)) purge.push(cid); trash = trash.filter((p) => !p.startsWith(cid + "/")); if (!qOwner) qOwner = S.sessionEmail || ""; saveQueue();
   flushPhotos();
+}
+export async function dropPhotoCopies() {   // v316 (the check rounds): a session ended elsewhere (SIGNED_OUT not asked for): the photos kept on the device go, the work still to reach the server stays for the same account (as S.pendingOwner keeps the records')
+  epoch++; loading.clear();
+  for (const u of urls.values()) if (typeof u === "string" && u.startsWith("blob:") && typeof URL !== "undefined" && URL.revokeObjectURL) URL.revokeObjectURL(u);
+  urls.clear(); failedAt.clear();
+  try { if (hasCaches() && !winLost()) await caches.delete(CACHE); } catch {}
 }
 export async function resetPhotos() {     // signed out: nothing of this account's photos stays on the phone
   epoch++; loading.clear();                                              // a download or a pick still on its way lands nowhere
   queue.clear(); qOwner = ""; trash = []; purge = []; saveQueue();
   for (const u of urls.values()) if (typeof u === "string" && u.startsWith("blob:") && typeof URL !== "undefined" && URL.revokeObjectURL) URL.revokeObjectURL(u);
   urls.clear(); failedAt.clear();
-  try { if (hasCaches()) await caches.delete(CACHE); } catch {}
+  try { if (hasCaches() && !winLost()) await caches.delete(CACHE); } catch {}
 }
 
+async function prunePhotos() {           // v316 (the check rounds: the policies promise deletion from the coach's devices): once this session has the server's whole copy, a photo kept on this device for a client no longer here (deleted here or on another device), or a version the record no longer points at (removed or replaced), goes from the device too
+  if (!S.syncedOnce || !hasCaches()) return; const ep = epoch, c = await caches.open(CACHE); if (ep !== epoch) return;
+  for (const req of await c.keys()) {
+    const m = /\/__photos\/([^/]+)\/([^/]+)\.jpg$/.exec(req.url); if (!m) continue; const [, cid, v] = m, rec = clients.get(cid), q = queue.get(cid);
+    if ((rec && rec.photo === v) || (q && q.v === v)) continue;
+    await c.delete(req); const u = urls.get(cid + "/" + v); urls.delete(cid + "/" + v); if (typeof u === "string" && u.startsWith("blob:") && typeof URL !== "undefined" && URL.revokeObjectURL) URL.revokeObjectURL(u);
+  }
+}
 let flushing = null, again = false;
 export function flushPhotos() {           // one pass at a time; a pick made during a pass gets a pass of its own right after
+  if (winLost()) return Promise.resolve();
   if (flushing) { again = true; return flushing; }
-  flushing = (async () => { let ok; do { again = false; ok = await sendAll().catch(() => false); } while (again && ok && !S.photoMissing); })().finally(() => { flushing = null; });   // a pass stopped by no signal is not repeated at once
+  flushing = (async () => { let ok; do { again = false; ok = await sendAll().catch(() => false); } while (again && ok && !S.photoMissing); await prunePhotos().catch(() => {}); })().finally(() => { flushing = null; });   // a pass stopped by no signal is not repeated at once
   return flushing;
 }
 async function mark(cid, v) {             // the record learns the new version (or that there is none)
   const c = clients.get(cid);
   if (!S.clientMode) {                    // the coach writes the record himself: a save like any other edit (queued, merged, retried)
     if (!c) return "gone";
-    if (v) c.photo = v; else delete c.photo;
+    if (v) c.photo = v; else delete c.photo; if (!profileTouched.has(cid)) profileTouched.set(cid, new Set()); profileTouched.get(cid).add("photo");   // v316 (the check rounds): the coach's own change, so a restore's write waiting meanwhile keeps it (main.js's keepGone)
     localBackend.save(); scheduleSave("clients", cid);                // the device copy knows the new photo before the old file is removed
     return true;
   }
@@ -270,16 +287,19 @@ async function mark(cid, v) {             // the record learns the new version (
 async function sendAll() {
   if (qOwner && S.sessionEmail && qOwner !== S.sessionEmail) { queue.clear(); trash = []; purge = []; qOwner = ""; saveQueue(); return true; }   // another account's leftovers are not sent as this one
   if (!S.sb || !S.sb.storage || !S.signedIn) return false;
+  const ep = epoch, lost = () => ep !== epoch || !S.signedIn;   // v316 (the check rounds): signed out during a request (a refresh refused mid-pass): nothing it answered counts
   const store = S.sb.storage.from(BUCKET);
   if (!S.clientMode) for (const cid of [...purge]) {                   // deleted clients: everything in the folder, whatever this phone knew of it
     let res; try { res = await withTimeout(store.list(cid, { limit: 1000 }), 15000); } catch (err) { res = { error: err }; }
+    if (lost()) return false;
     if (res.error) { if (isOffline(res.error)) return false; purge = purge.filter((x) => x !== cid); saveQueue(); continue; }
     const names = (res.data || []).map((o) => o && o.name).filter(Boolean);
-    if (names.length) { let r; try { r = await withTimeout(store.remove(names.map((n) => cid + "/" + n)), 15000); } catch (err) { r = { error: err }; } if (r.error && isOffline(r.error)) return false; }
+    if (names.length) { let r; try { r = await withTimeout(store.remove(names.map((n) => cid + "/" + n)), 15000); } catch (err) { r = { error: err }; } if (lost()) return false; if (r.error && isOffline(r.error)) return false; }
     purge = purge.filter((x) => x !== cid); saveQueue();
   }
   if (trash.length) {                                                   // files no record points at any more
     const batch = trash.slice(); let r; try { r = await withTimeout(store.remove(batch), 15000); } catch (err) { r = { error: err }; }
+    if (lost()) return false;
     if (r.error && isOffline(r.error)) return false;
     trash = trash.filter((p) => !batch.includes(p)); saveQueue();       // done, or refused for good (a client may not remove what is not hers)
   }
@@ -289,6 +309,7 @@ async function sendAll() {
     if (!S.clientMode && S.syncedOnce && !clients.has(cid)) { queue.delete(cid); toTrash(cid, [e.up && e.v, ...(e.gone || [])]); saveQueue(); continue; }   // the client was deleted meanwhile
     if (e.v && e.data && !e.up) {
       let res; try { res = await withTimeout(store.upload(pathOf(cid, e.v), fromDataUrl(e.data), { upsert: true, contentType: "image/jpeg", cacheControl: "31536000" }), 20000); } catch (err) { res = { error: err }; }
+      if (lost()) return false;
       if (res && res.error) {
         if (!isOffline(res.error) && isMissing(res.error)) { S.photoMissing = true; if (!S.clientMode && ui.$) ui.$("status").textContent = "Run supabase/client-photos.sql first"; }
         return false;                           // no signal, or no photo folder yet: it waits on the phone
@@ -298,6 +319,7 @@ async function sendAll() {
       e.up = true; saveQueue();
     }
     const ok = await mark(cid, e.v);
+    if (lost()) return false;
     if (ok === "missing") { S.photoMissing = true; return false; }
     if (ok === "gone") { if (queue.get(cid) === e) queue.delete(cid); toTrash(cid, [e.v, ...(e.gone || [])]); saveQueue(); continue; }   // refused for good: the server's photo comes back with the next sync; what was sent goes
     if (!ok) return false;
@@ -305,7 +327,7 @@ async function sendAll() {
     const tidy = [e.old, ...(e.gone || [])].filter((x) => typeof x === "string" && x && x !== e.v);
     if (tidy.length) {                                                   // the files no record points at any more; tried again later when there is no signal
       let r; try { r = await withTimeout(store.remove(tidy.map((v) => pathOf(cid, v))), 15000); } catch (err) { r = { error: err }; }
-      if (r.error && isOffline(r.error)) { toTrash(cid, tidy); saveQueue(); }
+      if (lost() || (r.error && isOffline(r.error))) { toTrash(cid, tidy); saveQueue(); }
     }
     if (ui.render) ui.render();
   }

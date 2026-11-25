@@ -9,8 +9,9 @@
 // are never cached.
 const META = "fiala-meta", ASSETS = "fiala-assets", REL = "fiala-rel-";
 const PAGE = "./index.html";
-const BUNDLE = [PAGE, "./app/main.js", "./app/catalog.js", "./app/util.js", "./app/model.js", "./app/notes.js", "./app/pdf.js", "./app/report.js", "./app/state.js", "./app/sync.js", "./app/photos.js"];
-const EXTRAS = ["./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./favicon.ico", "./fonts/Inter-Regular.ttf", "./fonts/Inter-Bold.ttf"];
+const BUNDLE = [PAGE, "./app/main.js", "./app/catalog.js", "./app/util.js", "./app/model.js", "./app/notes.js", "./app/pdf.js", "./app/report.js", "./app/state.js", "./app/sync.js", "./app/photos.js", "./app/win.js"];
+const EXTRAS = ["./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./favicon.ico", "./fonts/Inter-Regular.ttf", "./fonts/Inter-Bold.ttf", "./privacy.html", "./health-privacy.html"];
+const POLICIES = new Set(["./privacy.html", "./health-privacy.html"].map((rel) => new URL(rel, self.location.href).href));   // v316: the two privacy policies open with no signal too (the policy says "at any time"; the home-screen app has no Back to leave an error page)
 // keep LIB identical to the <script src> in index.html
 const LIB = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js";
 const FONTS = "https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap";   // keep identical to the stylesheet link in index.html
@@ -118,6 +119,14 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (isApi(url)) return;                                   // live data only, never from cache
 
+  if (req.mode === "navigate" && POLICIES.has(url.origin + url.pathname)) {   // a policy page: the server's, kept for the next time with no signal; with none, the copy kept
+    event.respondWith((async () => {
+      const cache = await caches.open(ASSETS), at = url.origin + url.pathname;
+      try { const res = await fetch(req); if (res && res.ok) { event.waitUntil(cache.put(at, res.clone()).catch(() => {})); return res; } const kept = await cache.match(at); return kept || res; }
+      catch { return (await cache.match(at)) || Response.error(); }
+    })());
+    return;
+  }
   if (req.mode === "navigate" && !isShellPage(url)) return;  // other pages on this origin: plain network
   if (isShellPage(url)) { event.respondWith(openShell(event)); return; }
   if (isBundleFile(url)) {                                  // the scripts and the templates: from the release the asking page runs on

@@ -1,6 +1,6 @@
 // The monthly client report: overview, progress, sessions, notes, laid out on US Letter.
 import { today, localIso, fmtDay, clamp } from "./util.js";
-import { effDate, measurePlan, topSet as modelTop, setCounts, setsOf, toTimeUnit, weightIn, betterSet, sameSet, kgOf } from "./model.js";
+import { effDate, isEmptyWorkout, measurePlan, topSet as modelTop, setCounts, setsOf, toTimeUnit, weightIn, betterSet, sameSet, kgOf } from "./model.js";
 import { noteEntries } from "./notes.js";
 import { pdfDoc } from "./pdf.js";
 
@@ -14,7 +14,7 @@ export function buildReport(kind, fonts, c, allTrainings, opts) {               
   const r = reportRange(kind), doc = pdfDoc(fonts), t = today(), made = new Date(), M = doc.M, R = doc.W - doc.M;
   const grey = "0.45 0.45 0.47", soft = "0.25 0.25 0.27", brand = "0.435 0.42 0.6", fern = "0.235 0.478 0.306", warn = "0.65 0.23 0.27";
   const inRange = (day) => day >= r.from && day <= r.to, unit = c.unit || "lb";
-  const sessions = allTrainings.filter((x) => inRange(effDate(x))).sort((a, b) => effDate(a).localeCompare(effDate(b)));
+  const sessions = allTrainings.filter((x) => inRange(effDate(x)) && !(isEmptyWorkout(x) && effDate(x) < t)).sort((a, b) => effDate(a).localeCompare(effDate(b)));   // v316 (the nineteenth check round): never an empty workout whose day has gone (nothing in it to miss: it read "Workout, Not done" and cut Attendance, as the app shows it nowhere)
   const notes = opts && opts.notes === true ? noteEntries(c).filter((n) => n.at && inRange(localIso(new Date(n.at)))).sort((a, b) => a.at.localeCompare(b.at)) : null;
   const status = (x) => x.completedAt ? "Finished" : x.skippedAt ? (x.missed === true ? "Missed" : "Skipped") : effDate(x) < t ? "Not done" : "Planned";
   const totals = { finished: 0, missed: 0, skipped: 0, planned: 0 };

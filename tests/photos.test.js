@@ -23,6 +23,15 @@ test("the coach's photo: the file goes up first, then the record points at it; t
   const ops = sb.log.filter((l) => l.storage).map((l) => l.storage); assert.deepStrictEqual(ops, ["upload", "remove"]);
   stopSave("c1");
 });
+test("the coach's photo change is his own until it is saved: a restore's write waiting meanwhile keeps it (the sixteenth check round)", async () => {
+  const sb = makeSupabase(); await coachOn(sb); maps.clients.get("c1").photo = "old1"; sb.storage.files.set("photos/c1/old1.jpg", jpeg(9));
+  await fns.setPhoto("c1", jpeg(5)); await settle();
+  const v = maps.clients.get("c1").photo; assert.ok(v && v !== "old1" && maps.profileTouched.get("c1").has("photo"), "the coach's mark, as for a field he typed");
+  const { ui } = await import("../app/state.js"), r = { id: "c1", name: "Jane Doe", photo: v };
+  ui.keepGone("clients", r, { id: "c1", name: "Jane Doe", photo: "old1" }); assert.strictEqual(r.photo, v, "the server's older photo is not taken over his change");
+  maps.profileTouched.delete("c1"); ui.keepGone("clients", r, { id: "c1", name: "Jane Doe" }); assert.strictEqual(r.photo, undefined, "without his mark the server's copy stands (the client removed the photo)");
+  stopSave("c1");
+});
 test("no signal: the photo waits on the phone, is shown already, survives a relaunch, and goes up when the signal returns", async () => {
   const sb = makeSupabase(); await coachOn(sb); sb.storage.fail = { op: "upload", times: 1, message: "Failed to fetch" };
   await fns.setPhoto("c1", jpeg(2)); await fns.flushPhotos();                 // the one try there is, without signal

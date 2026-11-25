@@ -101,7 +101,7 @@ test("inside a superset the rests keep their places (the transition between, the
     const [a, b] = T().rows.slice(1, 3);
     assert.deepStrictEqual([a.id + " " + a.label + " " + a.rest, b.id + " " + b.label + " " + b.rest], ["r 2a 10 sec", "l 2b 90 sec"], "the lunge after the deadlift: 10 seconds' transition, then the round's 90");
     assert.deepStrictEqual([a.clientNote, b.clientNote, b.clientNoteBy], [undefined, "Left knee felt fine", "client"], "the note stays on the lunge, where she wrote it: its id and its seen state stay (the final check: moved, it came back as unread under the other exercise)");
-    assert.ok(src.includes("const first = g.rows.find((r) => r.clientNote) || g.rows[0], noteKey = selKey;"), "the card shows whichever of its exercises holds the note");
+    assert.ok(src.includes("const first = g.rows.find((r) => r.clientNote) || g.rows[0], noteKey = () => "), "the card shows whichever of its exercises holds the note (v316, the twenty-third check round: its key read at the tap, from that exercise)");
     assert.strictEqual(fns.roRows(T(), "r", 0), false, "already first: nothing written");
   } finally { quiet(); }
 });
@@ -196,6 +196,21 @@ test("Delete from a swipe asks first, as every Delete: Cancel keeps it; Delete t
     assert.ok(app.get().templateDraft && app.get().templateDraft.id === "tp" && app.get().templateDraft.dirty, "a template's change waits in its draft");
     assert.ok(!claimed("tp"), "(a template's rows merge as one field: no claim)");
   } finally { byId.delete("askYes"); byId.delete("askNo"); quiet(); }
+});
+
+test("Delete from a swipe moves the card state with the numbers, as Delete exercise does: the deleted card's own set goes with it, and the cards after it keep their open card and their set picked on their new numbers (the twenty-second check round: no test held it)", async () => {
+  const H = {};
+  for (const id of ["askYes", "askNo"]) { const b = el("button"); b.addEventListener = (t, fn) => { (H[id] ||= []).push(fn); }; b.removeEventListener = (t, fn) => { H[id] = (H[id] || []).filter((f) => f !== fn); }; byId.set(id, b); }
+  const answer = (id) => { for (const fn of [...(H[id] || [])]) fn({}); };
+  const { openBlocks, setSel } = fns.cardSets();
+  try {
+    page("w1", [R("d", "1", "Deadlift"), R("g", "2", "Banded glute kickback"), R("s", "3", "Squat")]);
+    openBlocks.clear(); setSel.clear(); setSel.set("w1/1", 1); openBlocks.add("w1/2"); setSel.set("w1/3", 2);   // in the workout's own look before Reorder: Deadlift on Set 2, the glute kickback's card open, Squat on Set 3 of 4
+    fns.startOrder("w1");
+    const p = fns.roDelete("w1", "d"); await tick(400); answer("askYes"); assert.strictEqual(await p, true);
+    assert.deepStrictEqual(T().rows.map((r) => r.label + " " + r.name), ["1 Banded glute kickback", "2 Squat"], "Deadlift gone, the numbers closed up");
+    assert.deepStrictEqual([[...openBlocks].filter((k) => k.startsWith("w1/")), [...setSel].filter(([k]) => k.startsWith("w1/"))], [["w1/1"], [["w1/2", 2]]], "the glute kickback's open card and Squat's Set 3 stayed on their old numbers (2 is Squat's now, 3 nobody's), or the deleted Deadlift's Set 2 was left to the glute kickback, now 1");
+  } finally { if (fns.roOrdering()) { const t = maps.trainings.get(fns.roOrdering()); if (t) t.rows = []; fns.doneOrder(); } openBlocks.clear(); setSel.clear(); byId.delete("askYes"); byId.delete("askNo"); quiet(); }
 });
 
 test("a template's new order waits for Save template, as every change to a template", () => {

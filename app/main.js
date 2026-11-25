@@ -1,13 +1,14 @@
 // Fiala Trainings — the app. Loaded by index.html as an ES module; boot() starts it.
 import { NAMES, VIDEOS, ALIASES } from "./catalog.js";
-import { S, resetState, clients, trainings, dirty, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows, pendingProfile, profileTouched, ui, planTouched } from "./state.js";
+import { S, resetState, clients, trainings, dirty, deleting, deletedHere, heldBack, timers, chains, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, trainerState, pendingMove, pendingMiss, pendingSwap, pendingOrder, seenAt, trainerTouched, trainerNamed, trainerNoted, confirmedAt, deletedNotes, deletedPackages, folderTouched, deletedFolders, fromFile, pendingNoteRows, pendingProfile, profileUnder, carriedFrom, withdrawnAt, typedHere, deliv, pendingChoices, heldAgree, settledAnswers, profileTouched, ui, planTouched } from "./state.js";
 import { uid, now, today, laToday, localIso, fmtDate, fmtDay, fmtDayLong, clamp, norm, squash, lsGet, lsSet, daysLater } from "./util.js";
-import { carryOver, TEMPLATES_ID, isTemplateClient, effDate, hereZone, zoneOpt, pickZone, planOver, daysLeft, clientLine, freshRow, isEmptyWorkout, setsOf, groupKey, labelKey, cmpLabel, validateBackup, doneCount, timedPlan, measurePlan, weightIn, weightStored, sameWeightText, kgOf, stampUnit, toTimeUnit, heightAs, weightAs, heightUnitOf, bodyUnitOf, fmtHeight, fmtBodyWeight, ageOn, profileGet, profilePut, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive, weekDays, weekAverage, rangeCounts, mondayOf, weightNumber, attendance, liftsOf, bestOf, strongerLifts, monthBests, discomforts, inPersonCount, numOf, nextPlan, planSwitch, sessionsTotal, cardSetsTo, loggedSets } from "./model.js";
+import { carryOver, tidyLabels, TEMPLATES_ID, isTemplateClient, effDate, hereZone, zoneOpt, pickZone, planOver, daysLeft, clientLine, ownLine, zoneCity, zoneName, healthState, healthShown, healthEditable, needsParent, minorBy, birthdayOpen, dropHealth, heldLive, youngRec, zoneState, isMinor, tooYoung, applyChoice, HEALTH_KEYS, freshRow, isEmptyWorkout, setsOf, groupKey, labelKey, cmpLabel, validateBackup, doneCount, timedPlan, measurePlan, weightIn, weightStored, sameWeightText, kgOf, stampUnit, toTimeUnit, heightAs, weightAs, heightUnitOf, bodyUnitOf, fmtHeight, fmtBodyWeight, ageOn, profileGet, profilePut, timeAsWeight, repairTimed, planNumber, followFrom, autoSubtitle, splitName, composeName, perHand, betterSet, topSet, sameSet, setCounts, correctFrom, planProgress, sessionNo, planActive, weekDays, weekAverage, rangeCounts, mondayOf, weightNumber, attendance, liftsOf, bestOf, strongerLifts, monthBests, discomforts, inPersonCount, numOf, nextPlan, planSwitch, sessionsTotal, cardSetsTo, loggedSets } from "./model.js";
 import { noteEntries, packNotes, mergeNotes } from "./notes.js";
-import { dropMarks, seenDoc, moveOut, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll } from "./sync.js";
+import { sameRec, onStorage, forgetDraft, seedBases, gaveUpAt, ownTyped, dropMarks, coachSetPaper, coachWithdraw, seenDoc, moveOut, takenFrom, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll, shownAgain, deleteRec } from "./sync.js";
 import { parseTtf, pdfDoc } from "./pdf.js";
-import { initials, paintAvatar, photoFor, setPhoto, loadPhoto, squarePhoto, cropPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue } from "./photos.js";
+import { initials, paintAvatar, photoFor, setPhoto, loadPhoto, squarePhoto, cropPhoto, crop, flushPhotos, resetPhotos, dropPhotoCopies, forgetPhoto, loadPhotoQueue, photoQueue, photoWork } from "./photos.js";
 import { reportRange, buildReport } from "./report.js";
+import { winLost, winHooks, winTab } from "./win.js";   // v316: one window at a time (the owner's pick A, 19 Nov 2026)
 
   // ---------- helpers ----------
   const $ = (id) => document.getElementById(id);
@@ -74,21 +75,22 @@ import { reportRange, buildReport } from "./report.js";
   }
   const tidySave = (t) => { const d = S.templateDraft; if (isTemplateClient(t.clientId) && d && d.id === t.id && !d.dirty) { d.saving = true; scheduleSave("trainings", t.id); d.saving = false; d.snapshot = JSON.stringify(t); } else scheduleSave("trainings", t.id); };   // a label or a name tidied by the build: saved, never an "unsaved change"
   function paintDraftBar() {
-    const d = S.templateDraft; const show = !!(d && d.dirty && S.view.name === "training" && S.view.id === d.id);
+    const d = S.templateDraft; const show = !!(S.signedIn && d && d.dirty && S.view.name === "training" && S.view.id === d.id);
     $("draftBar").hidden = !show; document.body.classList.toggle("draft", show);
   }
   function saveDraft() {
     const d = S.templateDraft; if (!d) return;
-    const t = trainings.get(d.id); if (!t) { S.templateDraft = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); return; }
-    d.dirty = false; d.saving = true; scheduleSave("trainings", d.id, 0); d.saving = false; d.snapshot = JSON.stringify(t); lsSet("fiala.trainings.draft", null);
+    const t = trainings.get(d.id); if (!t) { S.templateDraft = null; forgetDraft(d.id); paintDraftBar(); return; }
+    d.dirty = false; d.saving = true; scheduleSave("trainings", d.id, 0); d.saving = false; d.snapshot = JSON.stringify(t); forgetDraft(d.id, !d.taken); d.taken = false;   // v316 (the twenty-second check round): the draft kept on the device goes, unless another window of the browser typed in it since (a draft this page only took at its launch was that window's: saved here, it goes)
     paintDraftBar(); const n = S.pendingGo; S.pendingGo = null; if (n) leaveDraft(n, d.id);
   }
   function discardDraft() {
     const d = S.templateDraft; if (!d) return;
-    if (trainings.has(d.id)) trainings.set(d.id, JSON.parse(d.snapshot));
-    d.dirty = false; lsSet("fiala.trainings.draft", null); localBackend.save(); S.renderedTraining = null; paintDraftBar();
+    if (trainings.has(d.id)) { const srv = d.server && d.server.of === d.snapshot ? d.server.doc : null; trainings.set(d.id, JSON.parse(srv || d.snapshot)); if (srv) seenDoc.set(key("trainings", d.id), srv); d.snapshot = JSON.stringify(trainings.get(d.id)); d.server = null; }   // v316 (the twenty-first check round): back to the template as saved: the server's copy when a sync passed over the draft since (the iPad's move and exercise vanished, and the next Save wrote the older copy over them), with the copy the next save measures against
+    d.dirty = false; forgetDraft(d.id, !d.taken); d.taken = false; localBackend.save(); S.renderedTraining = null; paintDraftBar();
     const n = S.pendingGo; S.pendingGo = null; if (n) leaveDraft(n, d.id); else render();
   }
+  function draftBase() { const d = S.templateDraft, k = d && d.dirty && d.snapshot ? key("trainings", d.id) : null; if (k && !seenDoc.has(k)) { seenDoc.set(k, d.snapshot); if (d.at && !seenAt.has(k)) seenAt.set(k, d.at); } }   // v316 (the twenty-first check round): a draft taken back at a relaunch: the template as saved here is the copy its Save measures the server's against (none was kept: Save template wrote the draft over the iPad's move and exercise); the twenty-second: with the server's stamp it was typed under, so a template deleted on the iPad meanwhile is taken as deleted there, never written back (its Save brought it back)
   function leaveDraft(n, id) {                                        // the move the unsaved template held up, once saved or discarded: a Back at once; a page opened from it (Use for a client's new workout) in a phone's browser tab once the template is drawn as it now is (no bar, no question, the client list folded: the browser's picture of it, leaveClean)
     if (n.back || !browserShots()) { go(n.next, n.back); return; }
     S.renderedTraining = null; render();                              // (drawn anew: as it now is, Use for a client's list folded with it)
@@ -98,16 +100,18 @@ import { reportRange, buildReport } from "./report.js";
   $("draftDiscard").addEventListener("click", async () => { if (await askFirst({ title: "Discard the unsaved changes?", text: "The template stays as it was.", yes: "Discard" })) discardDraft(); });
 
 
+  let restoreRead = false, restoring = 0, readFailedAt = 0, loginShown = 0;                          // v316 (the twenty-first check round): the read after Restore's tap is out (the page out of reach, Saving… in the bar, Back and every question wait for it); a backup is being restored, from the pick to the end (no new release reloads the page meanwhile)
   let bannerSig = "", bannerIO = null, bannerOff = false;          // the failed save's banner (v307, below): what it says now, the watch on it, and whether it is scrolled up out of sight
   function setStatus() {
     const el = $("status");
     const pending = timers.size + S.inflight, off = !!S.backend && S.backend !== localBackend && (S.offline || !navigator.onLine);
     saveBanner(S.failed && pending === 0 && !off);
     if (S.deviceFull) { el.className = "err"; el.textContent = "Not saved on this device \u00b7 free up space"; return; }
+    if (restoreRead) { el.className = ""; el.textContent = "Saving\u2026"; return; }   // v316 (the twenty-first check round): the page is out of reach until the restore's read is in (a sync already out ended first and said Saved over the frozen page)
     if (off) { el.className = ""; el.textContent = (dirty.size || pending) ? "Offline \u00b7 will sync" : "Offline"; return; }   // short enough for the bar beside its Messages circle (his pick, 10 Nov: "Offline")
     if (S.failed && pending === 0) { el.className = bannerOff ? "err" : ""; el.textContent = bannerOff ? "Couldn\u2019t save" : ""; return; }   // the banner says it (v307); the bar only while the banner is scrolled up out of sight, and a tap there scrolls up to it, as a tap on an iPhone's status bar does
     el.className = "";
-    el.textContent = pending > 0 ? "Saving\u2026" : (S.backend ? "Saved" : "");
+    el.textContent = pending > 0 ? "Saving\u2026" : (S.backend ? (readFailedAt && !(S.syncedPerf >= readFailedAt) ? "Couldn\u2019t sync" : "Saved") : "");   // v316 (the twenty-third check round): after a restore's read that failed with no words of its own, Couldn't sync until a sync lands (on the page's steady clock: a clock set back never holds it)
   }
   // ---------- a failed save, in a banner (v307, the audit's #25, his pick, 15 Nov 2026: "Banner with Try again", after pictures) ----------
   // The bar's "Couldn't save \u00b7 that email is already on another client \u00b7 tap to retry" was cut short on a 375-point iPhone, and its retry was a tap on words
@@ -177,6 +181,10 @@ import { reportRange, buildReport } from "./report.js";
     if (!(S.view.name === "training" && trainings.has(S.view.id))) S.view = { name: "client", id: S.myClientId };
     renderUnlessSwiping(); setStatus(); return true;   // (never the page or row under a finger rebuilt mid-swipe)
   }
+  const onlyMine = () => {                                           // v316 (the twenty-fourth check round): a client's page holds her own record, as the server sends it (no coach's notes), and her own workouts: nothing of anyone else's (the device copy kept another account's records, and her app opened on another client's workout)
+    for (const id of [...clients.keys()]) { const c = clients.get(id); if (isTemplateClient(id) || !c || norm(c.email) !== norm(S.sessionEmail)) clients.delete(id); else if (c.notes !== undefined) delete c.notes; }
+    const mineIds = new Set(clients.keys()); for (const id of [...trainings.keys()]) if (!mineIds.has(trainings.get(id).clientId)) trainings.delete(id);
+  };
   function paintRemembered(remembered, away) {   // what the device knows, on screen at once: the pages of the account that used it last; the server refreshes them in place (away: no signal, with the offline status)
     S.signedIn = true; S.sessionEmail = remembered.email || ""; S.clientMode = remembered.role !== "trainer";
     applyLook(); S.backend = S.clientMode ? clientBackend : cloudBackend;
@@ -184,7 +192,7 @@ import { reportRange, buildReport } from "./report.js";
     if (S.clientMode) {
       const me = [...clients.values()].find((c) => !isTemplateClient(c.id) && norm(c.email) === norm(S.sessionEmail));
       if (!me) { if (away) { hideAllViews(); showLogin("You\u2019re offline. Connect once to sign in."); } return false; }
-      S.myClientId = me.id;
+      S.myClientId = me.id; onlyMine(); localBackend.save();
       if (!(S.view.name === "training" && trainings.has(S.view.id))) S.view = { name: "client", id: S.myClientId };
       render(); setStatus(); return true;
     }
@@ -193,11 +201,12 @@ import { reportRange, buildReport } from "./report.js";
   }
   const onScreenAs = (email) => S.signedIn && norm(S.sessionEmail) === norm(email || "") && (!S.clientMode || !!S.myClientId);   // this account's pages are already up: whatever comes next refreshes them in place, never a blank in between
   function enterOffline(remembered) {     // no session could be read (token expired, no signal): use what the device knows
+    takeKept(remembered.email);             // v316 (one window at a time): the words kept for the account the device knows, as it carries on offline
     if (onScreenAs(remembered.email)) { S.offline = true; S.offlineEntry = "remembered"; setStatus(); return; }   // painted at boot already: only the status changes
     paintRemembered(remembered, true);
   }
   async function resumeOnline() {
-    if (!S.sb || !S.signedIn || S.resuming) return; S.resuming = true;
+    if (winLost() || !S.sb || !S.signedIn || S.resuming) return; S.resuming = true;
     try {
       if (S.offlineEntry === "remembered") {                  // no session yet: get one, then enter normally (enterCloud flushes what is queued)
         const { data } = await S.sb.auth.getSession().catch(() => ({ data: null }));
@@ -226,18 +235,64 @@ import { reportRange, buildReport } from "./report.js";
     for (const id of ["vLogin", "vSignup", "vPassword", "vExercises", "vExercise", "vPackages", "vSettings", "vClientCard", "vHealth", "vSafety", "vHistory", "vWorkouts", "vBests", "vLift", "vCatalog", "vData", "vNumber", "vRecovery", "vWaiting", "vCelebrate", "vClients", "vClient", "vTraining"]) $(id).hidden = true;
     $("navDone").hidden = true;
   }
+  const clearSignIn = () => { for (const id of ["loginEmail", "loginPassword", "suName", "suEmail", "suPhone", "suPassword", "suPassword2"]) { const el = $(id); if (el) el.value = ""; } };   // v316 (the twenty-sixth check round, R26-PRV-1): every sign-out and the wipe empty the sign-in and Create account boxes (one tap on Sign in opened the last person's account; the policy: "Signing out removes your … sign-in and email address from that phone")
   function showLogin(msg) {
-    dropWake(); if (askOpen) askOpen(false);                        // a sheet left up (v299's Health & safety editor, any question) never stays over the sign-in
+    dropWake(); if (askOpen) askOpen(false); if (paOpen) paOpen(null); if (es) closeFinishEarly(); for (const close of [() => popClose && popClose(), () => pv && closePreview(), () => sk && closeSkip(), () => dp && closeDatePicker(), () => { const b = document.querySelector(".crop-view .crop-cancel"); if (b) b.click(); }]) { try { close(); } catch (_) {} }   /* v316 (the check rounds): the early-finish sheet too (a session ended elsewhere wipes the device; its Skip then queued the workout as deleted), and every menu or bubble, the preview, the Skip sheet, the day picker and photo framing (a menu's Delete exercise left over the sign-in deleted the whole workout at the next sign-in) */   // a sheet left up (v299's Health & safety editor, any question) never stays over the sign-in
     S.signedIn = false; S.clientMode = false; S.myClientId = null; reordering = false; tplOrdering = null; exOrdering = null; document.body.classList.remove("client");
     $("localFoot").hidden = true; $("myExercises").hidden = true; $("packagesBtn").hidden = true; $("settingsBtn").hidden = true; $("catalogBtn").hidden = true; $("dataBtn").hidden = true; settingsOpen = false; fromSettings = false;
     hideAllViews(); $("vLogin").hidden = false;
-    $("back").hidden = true; $("brand").hidden = false; $("status").textContent = ""; saveBanner(false);   // (a banner left from the account signed out: none on the sign-in page)
+    $("back").hidden = true; $("brand").hidden = false; $("status").textContent = ""; saveBanner(false); readFailedAt = 0; loginShown++;   // (a banner left from the account signed out: none on the sign-in page; v316, the twenty-fourth check round: nor a restore's failed read, which held Couldn't sync into the next sign-in)
     $("loginMsg").textContent = msg || "";
   }
   function showSignup() {
     hideAllViews(); $("vSignup").hidden = false; $("suForm").hidden = false; $("suDone").hidden = true; $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
     $("suMsg").textContent = ""; $("suEmail").value = $("loginEmail").value.trim(); setTimeout(() => $("suName").focus(), 50);
   }
+  // ---------- one window at a time (v316) ----------
+  // app/win.js decides which window of this browser runs Fiala (the owner's pick A, 19 Nov 2026). Here: what this page does when it hands Fiala over
+  // (Use here in another window), when it has lost it, and the drafts add-on (the owner's yes, 19 Nov 2026): words typed and not saved yet, in an
+  // open sheet (Health & safety, an exercise's instructions, a folder's or slide's name) or a note box (a card's note, the coach's notes about a
+  // client), are kept on the device for the same account and come back in the window Fiala moves to: a note box as it was, a sheet's words the next
+  // time that sheet opens for the same thing (as Mail and Notes keep a draft).
+  const KEPT = "fiala.kept";                                         // per account: cleared at both sign-outs, the wipe and the account switch
+  const keptText = new Map();                                        // "safety:<client>/<field>", "note:<workout>/<exercise>", "name:…" -> words kept from the window Fiala left
+  let keptFor = "";                                                  // the account whose kept words this page took (v316, the twenty-sixth check round, R26-WAP-5)
+  let sheetKeep = null;                                              // the sheet up now with a box: { key, el, orig }
+  const keepOwner = () => String(S.pendingOwner || S.sessionEmail || (lsGet("fiala.trainings.role") || {}).email || "").toLowerCase();
+  function keepTyping() {                                            // the words not saved yet, for the window Fiala goes to (or this one, opened again)
+    const owner = keepOwner(), text = {}; sweepKept(); for (const [k, v] of keptText) text[k] = v;
+    if (sheetKeep && sheetKeep.el && sheetKeep.key) { const v = String(sheetKeep.el.value || ""); if (v !== sheetKeep.orig) text[sheetKeep.key] = v; }
+    const cards = [...cardNoteDraft], bases = [...cardNoteBase].filter(([k]) => cardNoteDraft.has(k)), notes = [...noteDraft];
+    if (!owner || (!cards.length && !notes.length && !Object.keys(text).length)) { try { localStorage.removeItem(KEPT); } catch (_) {} return; }
+    lsSet(KEPT, { owner, tab: winTab(), at: Date.now(), text, cards, bases, notes });
+  }
+  function takeKept(owner) {                                         // at a sign-in (or carrying on offline): the words kept for that account, once; another account's leave the device (never at boot: the account remembered may not be the one who signs in)
+    const k = lsGet(KEPT); if (!k || typeof k !== "object" || winLost()) return;
+    try { localStorage.removeItem(KEPT); } catch (_) {}
+    const known = String(owner || "").toLowerCase(); if (!known || k.owner !== known) return;
+    keptFor = known;
+    if (k.text && typeof k.text === "object") for (const [key, v] of Object.entries(k.text)) if (typeof v === "string") keptText.set(key, v);
+    for (const x of Array.isArray(k.cards) ? k.cards : []) if (Array.isArray(x) && typeof x[0] === "string" && typeof x[1] === "string") cardNoteDraft.set(x[0], x[1]);
+    for (const x of Array.isArray(k.bases) ? k.bases : []) if (Array.isArray(x) && typeof x[0] === "string" && cardNoteDraft.has(x[0])) cardNoteBase.set(x[0], x[1] == null ? null : String(x[1]));
+    for (const x of Array.isArray(k.notes) ? k.notes : []) if (Array.isArray(x) && typeof x[0] === "string" && typeof x[1] === "string") noteDraft.set(x[0], x[1]);
+  }
+  function sweepKept() {                                             // v316 (the twenty-sixth check round, R26-WAP-2): words kept about a client whose health details are no longer shown (withdrawn, a parent awaited), or who is gone, or about a workout gone, are kept no longer (her Don't Allow deleted her details everywhere but the coach's kept words); a record not read yet decides nothing
+    const healthGone = (cid) => { const c = clients.get(cid); return c ? !healthShown(c) : !!S.syncedOnce; };
+    for (const key of [...keptText.keys()]) { const m = /^safety:([^/]+)\//.exec(key), n = /^note:([^/]+)\//.exec(key); if ((m && healthGone(m[1])) || (n && S.syncedOnce && !trainings.has(n[1]))) keptText.delete(key); }
+    if (sheetKeep && /^safety:/.test(sheetKeep.key || "")) { const m = /^safety:([^/]+)\//.exec(sheetKeep.key); if (!m || healthGone(m[1])) sheetKeep = null; }
+    if (S.syncedOnce) { for (const id of [...noteDraft.keys()]) if (!clients.has(id)) noteDraft.delete(id); for (const ck of [...cardNoteDraft.keys()]) if (!trainings.has(ck.slice(0, ck.indexOf("/")))) { cardNoteDraft.delete(ck); cardNoteBase.delete(ck); } }
+  }
+  const closeUp = () => { if (askOpen) askOpen(false); if (paOpen) paOpen(null); if (es) closeFinishEarly(); for (const close of [() => popClose && popClose(), () => pv && closePreview(), () => sk && closeSkip(), () => dp && closeDatePicker(), () => { const b = document.querySelector(".crop-view .crop-cancel"); if (b) b.click(); }]) { try { close(); } catch (_) {} } };   // every question, sheet and menu, as Cancel (as the sign-in page closes them)
+  winHooks.handOver = async () => {                                  // Use here in another window: keep what is typed, close as Cancel, save what waits, then win.js lets go
+    keepTyping(); try { closeUp(); } catch (_) {}
+    const a = document.activeElement; if (a && a !== document.body && typeof a.blur === "function") a.blur();   // a box being typed in (a set's weight, the workout's name): saved as on leaving it
+    persistPending(); await localBackend.flushDb().catch(() => false);
+    const out = [...chains.values()]; if (out.length) await Promise.race([Promise.allSettled(out), new Promise((r) => setTimeout(r, 3000))]);   // the saves already on their way land first (their answers are this device's copy), up to 3 s
+    persistPending(); await localBackend.flushDb().catch(() => false);
+  };
+  winHooks.lose = () => { try { closeUp(); } catch (_) {} dropWake(); clearTimeout(S.syncTimer); try { if (S.sb && S.sb.auth && typeof S.sb.auth.stopAutoRefresh === "function") S.sb.auth.stopAutoRefresh(); } catch (_) {} };   // Fiala is in another window: nothing here runs on (the gate stops every write; the session's refresh is that window's)
+  winHooks.hidden = () => keepTyping();                              // out of sight, this page may be taken while it sleeps (a phone tab): its words wait on the device
+  winHooks.shown = () => { const k = lsGet(KEPT); if (k && k.tab === winTab()) { try { localStorage.removeItem(KEPT); } catch (_) {} } };   // back, still running Fiala: the words are on its page again
   const scrollMemo = new Map();          // page key -> how far it was scrolled when it was left: Back lands there (his rule: never at the top)
   const viewKey = (v) => [v.name, v.id || "", v.program || "", v.phase || "", v.stage || "", v.folder || "", (v.folder ? shownSlide(v) : v.slide) || ""].join("/");   // (his template folders and their slides too, 12 Nov: each its own page for Back, its place and its picture; a folder's page by the slide it shows, named or not, so the key it is left under is the key Back and the swipe look for)
   const setTab = (v) => { S.tab = v; lsSet("fiala.trainings.tab", v); };   // the client page's tab, remembered across a reload
@@ -304,11 +359,17 @@ import { reportRange, buildReport } from "./report.js";
   const setOpenAs = (v) => { lsSet(OPEN_KEY, v === "client" ? "client" : "coach"); paintOpenAs(); };
   paintOpenAs();
   $("openSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-open]"); if (b) setOpenAs(b.dataset.open); });
+  const madeHere = new Set(), aheadSeen = new Map(), MADE = "fiala.made", MADE_SPAN = 120 * 60e3;   // v316 (the sixteenth check round): the workouts this page made (a day tapped, the round +), and when this page first saw an empty workout stamped ahead of its clock; the seventeenth round: the ones this device made in the last 2 hours are kept on it too (MADE), so a page opened again (iOS closed the app, a reload) still counts them as its own (the reopened page spared an accidental day tap for hours, the client seeing "Nothing added yet")
+  const madeList = () => { const v = lsGet(MADE); return Array.isArray(v) ? v : []; };   // (a value of any other shape is none: the eighteenth check round)
+  const loadMade = () => { const n = Date.now(); for (const e of madeList()) if (Array.isArray(e) && typeof e[0] === "string" && n - e[1] >= 0 && n - e[1] < MADE_SPAN) madeHere.add(e[0]); };
+  const keepMade = (id) => { const n = Date.now(); lsSet(MADE, [...madeList().filter((e) => Array.isArray(e) && e[0] !== id && n - e[1] >= 0 && n - e[1] < MADE_SPAN), [id, n]].slice(-50)); };
+  const freshEmpty = (t) => { const made = Date.parse(t.createdAt || ""), n = Date.now(), span = (madeHere.has(t.id) ? 30 : 120) * 60e3; if (!(made > n - span)) return false; if (made <= n + 60e3) return true; if (!aheadSeen.has(t.id)) aheadSeen.set(t.id, n); return aheadSeen.get(t.id) > n - span; };   // an empty workout that may still be being filled: made on this page in the last 30 minutes, or anywhere else in the last 2 hours (on the coach's other device or in another tab: tidied, the new workout and the exercises added to it there were lost); one stamped more than a minute ahead of this clock (a clock set by hand where it was made) is timed from when this page first saw it, never spared for days
+  const syncedNow = (id) => { if (S.backend === localBackend) return true; const age = Date.now() - (S.syncedAt || 0), mono = performance.now() - (S.syncedPerf || 0); return !!S.sb && S.syncedOnce && age >= 0 && age < 90e3 && mono < 90e3 && !(id && heldBack.has(id)); };   // (the eighteenth check round: and by the page's steady clock, which a clock set by hand never moves: set back 2 hours, the device's clock reached the old sync's start again two hours later and a 2-hour-old copy counted as fresh)   // v316 (the sixteenth check round): this page's copy is the server's of a minute or so ago (a page woken after hours redraws before its sync lands, its copy showing empty a workout filled elsewhere since: tidied, that workout went from the server with the client's sets); the seventeenth round: a device with no cloud account always (a library that did not load is no proof: a days-old copy was tidied, its Deletes sent at the next open with signal); timed from when the read began, and never from a clock set back since (an hour-old copy counted as fresh for two hours); with an id, never a workout the last sync held back (heldBack)
   let freshWorkout = null;                                           // a workout just made (the +, a day tapped, a copy, a template used or filled in): it opens as the coach, to be filled in
   function showSettings() {
     settingsOpen = "settings"; fromSettings = false; hideAllViews(); $("vSettings").hidden = false; $("back").hidden = false; $("backLabel").textContent = "Back"; $("brand").hidden = true; $("status").textContent = "";
     const p = trainerPhone(); $("setNumberVal").textContent = fmtPhone(p) || "Not set"; $("setEmail").textContent = S.sessionEmail || ""; $("meEmail").textContent = S.sessionEmail || "";
-    paintHeroes(); paintUnitSegs();
+    paintHeroes(); paintUnitSegs(); paintChoices();
   }
   function showClientCard() {                                       // the coach's card for this client: everything about the person on one page, like a contact's card
     const c = clients.get(S.view.id); if (!c || S.clientMode || isTemplateClient(c.id)) return;
@@ -316,13 +377,45 @@ import { reportRange, buildReport } from "./report.js";
     paintCard();
   }
   const syncRadios = () => { for (const g of document.querySelectorAll('[role="radiogroup"]')) for (const b of g.querySelectorAll("button")) b.setAttribute("aria-checked", String(b.classList.contains("on"))); };   // the segmented controls: what the eye sees as chosen, a screen reader hears
+  // v316 (the owner's decisions, 18 Nov 2026, after legal research): a client's health details only after the client agreed in the app (a client under 18: the teen,
+  // then a parent or guardian), or the coach switched on "signed a paper form" for an in-person client; details saved before v316 wait read-only for the answer.
+  const DAYS = () => [today(), laToday()];                          // the days the consent rules read: this device's and the server's (Los Angeles), so the phone is never less strict than the server (the check round: an 18th birthday in Tokyo before Los Angeles's)
+  const longDate = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); };   // "Nov 18, 2026"
+  const cardHealthNote = (c) => {                                  // the line under the card's health rows: who agreed and when, or why the details can't be changed
+    const st = healthState(c), who = firstOf(c), ch = (c && c.choices && c.choices.health) || {};
+    if (c && youngRec(c, DAYS())) return who + " is under 13. Fiala Fitness is for ages 13 and up: Delete client, then delete their sign-in in Supabase (Authentication, Users).";   // the policy's promise: access paused and what was collected deleted
+    if (needsParent(c, DAYS())) return st === "paper" ? "Waiting for a parent or guardian to sign the paper form too." : "Waiting for a parent or guardian to agree in " + who + "\u2019s app." + (c.paused ? " Access is paused, so the app doesn\u2019t ask." : "");   // learned under 18 after agreeing alone
+    if (st === "agreed") return ch.parent && ch.parent.name ? who + " and " + ch.parent.name + " (parent) agreed \u00b7 " + longDate(ch.parent.at || ch.at) : who + " agreed in the app \u00b7 " + longDate(ch.at);
+    if (st === "paper") return ch.at ? "Signed on " + longDate(ch.at) : "";
+    if (st === "legacy") return c && c.paused ? who + " hasn\u2019t answered yet. Access is paused, so the app doesn\u2019t ask." : who + " hasn\u2019t answered yet: asked at their next open.";
+    if (st === "declined") return ch.by === "coach" ? "Health details deleted on request \u00b7 " + longDate(ch.at) : ch.by === "parent" ? "A parent or guardian chose not to store " + who + "\u2019s health details." : who + " chose not to store health details.";
+    const both = c && isMinor(c, DAYS()) ? who + " and a parent or guardian" : who;   // a teen's Agree is the teen's and a parent's (the check round)
+    return "Waiting for " + both + " to agree in the app." + (c && c.paused ? " Access is paused, so the app doesn\u2019t ask." : "");
+  };
+  const healthLockLine = (c) => {                                  // a health page's line when its details can't be changed ("" when they can)
+    const st = healthState(c), who = firstOf(c);
+    if (c && youngRec(c, DAYS())) return S.clientMode ? "Fiala Fitness is for ages 13 and up." : who + " is under 13. Fiala Fitness is for ages 13 and up.";
+    if (S.clientMode && c && c.paused && st !== "declined") return healthShown(c) ? "Your coach has paused your access, so these can\u2019t change now. To delete them, turn off Store health details in Settings." : "Your coach has paused your access, so nothing new is stored.";   // every tap answers "Access is paused": the line says so, and the one way that still works (the check rounds)
+    if (needsParent(c, DAYS())) { const dob = birthdayOpen(c, DAYS()) ? " You can correct the date of birth now, and edit the rest" : " You can edit these"; return S.clientMode ? (birthdayOpen(c, DAYS()) ? "A parent or guardian also agrees before these can change (you can still correct your date of birth). Tap a detail to ask them." : "A parent or guardian also agrees before these can change. Tap a detail to ask them.") : healthState(c) === "paper" ? "Waiting for a parent or guardian to sign the paper form too." + dob + " once they have." : "Waiting for a parent or guardian to agree in " + who + "\u2019s app." + (c.paused ? " Access is paused, so the app doesn\u2019t ask." : "") + dob + " once they agree."; }
+    if (st === "agreed" || st === "paper") return "";
+    if (S.clientMode) { const by = ((c.choices || {}).health || {}).by, on = c.paused ? "" : by === "parent" ? " Turn it on in Settings to ask again." : by === "coach" ? " Turn it on in Settings to store them again." : " Turn it on in Settings."; return st === "declined" ? (by === "parent" ? "A parent or guardian chose not to store your health details." : by === "coach" ? "Your health details were deleted on request." : "You chose not to store health details.") + on : ""; }   // paused: turning it on is refused, so it isn't offered (the check round)
+    const by = ((c && c.choices && c.choices.health) || {}).by;
+    const both = c && isMinor(c, DAYS()) ? who + " and a parent or guardian" : null;   // a teen's Agree is the teen's and a parent's (the check round)
+    return st === "legacy" ? who + " hasn\u2019t answered yet: asked " + (c && c.paused ? "once their access is active again" : "at their next open") + ". You can edit these once " + (both ? both + " agree." : who + " agrees.") : st === "declined" ? (by === "parent" ? "A parent or guardian chose not to store " + who + "\u2019s health details." : by === "coach" ? "Health details deleted on request." : who + " chose not to store health details.") : "Waiting for " + (both || who) + " to agree in the app." + (c && c.paused ? " Access is paused, so the app doesn\u2019t ask." : "");
+  };
+  const healthTap = (c) => !!c && (healthEditable(c, DAYS()) || (S.clientMode && healthState(c) !== "declined"));   // a health row answers a tap: to change it, or (the client, not asked yet) to be asked
   function paintCard() {                                            // the card's fields from the record; a field being typed in is left alone
     const c = clients.get(S.view.id); if (!c) return;
     $("cardName").textContent = c.name || "Client"; paintHeroes();
     if (document.activeElement !== $("cNameField")) $("cNameField").value = c.name || "";
     if (document.activeElement !== $("cEmail")) $("cEmail").value = c.email || "";
     if (document.activeElement !== $("cPhone")) $("cPhone").value = fmtPhone(c.phone);   // written as Apple writes a US number, "(310) 555-0142" (the record keeps what was typed)
-    $("cardHealthVal").textContent = healthSummary(c); $("cardSafetyVal").textContent = safetySummary(c);   // v299: the two pages' rows with what the coach must see at a glance (the Birthday moved into Health details)
+    { const st = healthState(c), shown = healthShown(c), days = DAYS(), minor = isMinor(c, days), waits = needsParent(c, days);   // v316: the client's choices about health details (the server keeps them: client-consent.sql)
+      $("cardHealthVal").textContent = shown ? healthSummary(c) : ""; $("cardSafetyVal").textContent = shown ? safetySummary(c) : "";
+      $("cardPaperLabel").textContent = firstOf(c) + (minor ? " and a parent signed a paper form" : " signed a paper form"); $("cardPaperRow").hidden = youngRec(c, days) || st === "agreed" || (st === "declined" && (((c.choices || {}).health || {}).by || "client") !== "coach"); $("cardPaper").setAttribute("aria-checked", String(st === "paper" && !waits));   // a teen's form is signed by a parent or guardian too (the policy); one signed alone, the client found to be under 18 since, shows off until the coach records the parent's signature (the check round)
+      $("cardHealthDelRow").hidden = !shown; const zo = zoneState(c) === "allow"; $("cardZoneList").hidden = !zo; $("cardZoneVal").textContent = zo ? (c.zone && c.zone.zone ? zoneName(c.zone.zone, Date.now()) || c.zone.zone : "Not reported yet") : "";   // v316 (the check round): a withdrawal told by email or in person (a paper form's own switch does it for a form)
+      for (const id of ["cardHealth", "cardSafety"]) { const b = $(id), li = b.closest && b.closest("li"); b.disabled = !shown; if (li) li.classList.toggle("hd-lock", !shown); }   // nothing to see until the client agrees (the final pictures: greyed, no tap)
+      $("cardMinor").setAttribute("aria-checked", String(minor)); $("cardMinor").disabled = minorBy(c, days) === "birthday"; $("cardMinorLabel").textContent = minorBy(c, days) === "birthday" ? "Under 18 (date of birth)" : "Under 18"; $("cardHealthNote").textContent = cardHealthNote(c); }   // Under 18 as the app counts it: on by the date of birth, it can't be switched off (the check round)   // v299: the two pages' rows with what the coach must see at a glance (the Birthday moved into Health details)
     for (const b of $("chatSeg").querySelectorAll("button")) b.classList.toggle("on", (c.chat || "sms") === b.dataset.chat);
     for (const b of $("unitSeg").querySelectorAll("button")) b.classList.toggle("on", (c.unit || "lb") === b.dataset.unit);
     for (const b of $("accessSeg").querySelectorAll("button")) b.classList.toggle("on", (c.paused ? "paused" : "active") === b.dataset.access);
@@ -340,12 +433,126 @@ import { reportRange, buildReport } from "./report.js";
   const healthId = () => { const id = S.clientMode ? S.myClientId : S.view.name === "training" ? ((trainings.get(S.view.id) || {}).clientId || null) : S.view.id; return id && clients.has(id) && !isTemplateClient(id) ? id : null; };   // whose details the page shows: the client's own (the client), or the client the coach is looking at (the client's card, or the note on the client's workout)
   const fmtPhone = (p) => { const t = String(p || "").trim(), d = t.replace(/\D/g, ""), n = d.length === 11 && d[0] === "1" && !t.startsWith("+") ? d.slice(1) : d; return n.length === 10 && !t.startsWith("+") ? "(" + n.slice(0, 3) + ") " + n.slice(3, 6) + "-" + n.slice(6) : t; };   // v299 (the approved pictures): a US number as Apple writes it; any other stays as typed
   const firstOf = (c) => String((c && c.name) || "").trim().split(/\s+/)[0] || "your client";
+  // ---------- the client's own choices (v316) ----------
+  // The owner's decisions (18 Nov 2026, after legal research: California, Washington, Nevada, Connecticut, the FTC, the EU): ask every client once before their
+  // phone's time zone reaches the coach (Don't Allow | Allow); store health details only after the client agrees in the app (a client under 18: the teen, then a
+  // parent or guardian, who types their name); details saved before v316 wait read-only for the client's answer ("Keep your health details?"); a switch for each
+  // in the client's Settings. The time zone is Apple's permission alert (iOS 27.2, measured: index.html .pa-*): two equal answers, neither bold. The health
+  // question is Apple's tall sheet (.hq-*, the final pictures): the words the law asks for there (the kinds of details, what they are for, who may get them, how
+  // to withdraw: Washington, Nevada) fill 19 lines, too many for the alert, and the sheet holds the policy's link and the parent's name. Every answer is kept by
+  // the server (client_set_choice, client-consent.sql) with its time; the phone shows it at once and keeps it until it lands (pendingChoices, sync.js).
+  const HQ_KINDS = ["Date of birth, sex, height and weight", "Injuries and limits", "Conditions, medications and allergies", "Pregnancy", "Emergency contact and doctor"];   // the kinds of health details, as both policies list them
+  const HQ_SHARE = "Only you and your coach can see them. In an emergency, your coach may share them with emergency services, your emergency contact or doctor to get you help.";
+  const CHOICE_WORDS = {
+    zone: { title: "Share your time zone with your coach?", texts: ["Your coach will see your time zone\u2019s main city and your local time, like Tokyo and 3:00 AM, to plan around your day. This uses only your phone\u2019s time-zone setting, not GPS or your exact location. You can change this anytime in Settings."], no: "Don\u2019t Allow", yes: "Allow" },
+    health: { sheet: true, title: "Store your health details?", lead: "To keep your training safe, your coach plans your workouts around the health details you enter or tell your coach:", kinds: HQ_KINDS, texts: [HQ_SHARE, "You can withdraw anytime: turn off Store health details in Settings, which deletes them."], no: "Don\u2019t Allow", yes: "Agree" },
+    keep: { sheet: true, title: "Keep your health details?", sub: "Health details were saved for you earlier. If you don\u2019t allow this, they\u2019re deleted.", lead: "To keep your training safe, your coach plans your workouts around the health details you enter or tell your coach:", kinds: HQ_KINDS, texts: [HQ_SHARE, "You can withdraw anytime: turn off Store health details in Settings, which deletes them."], no: "Don\u2019t Allow", yes: "Agree" },   // the warning in the grey line at the top, in sight on a 375-point phone and at larger Text Sizes (the check round), as the parent's page
+    parent: (who, saved) => ({ sheet: true, title: "Store " + who + "\u2019s health details?", sub: who + " is under 18, so a parent or guardian also agrees." + (saved ? " If you disagree, the health details already saved are deleted." : ""), lead: "I\u2019m " + who + "\u2019s parent or guardian. I agree that " + who + "\u2019s coach may store the health details " + who + " enters or tells the coach, and plan " + who + "\u2019s workouts around them to keep " + who + "\u2019s training safe:", kinds: HQ_KINDS, texts: ["Only " + who + " and the coach can see them. In an emergency, the coach may share them with emergency services, " + who + "\u2019s emergency contact or doctor to get " + who + " help.", who + " or I can withdraw anytime: turning off Store health details in " + who + "\u2019s Settings deletes them."], field: { placeholder: "Your name", max: 80 }, no: "Disagree", yes: "Agree" }),
+    young: (mine, who) => ({ title: "For ages 13 and up", texts: [mine ? "Fiala Fitness is for ages 13 and up. Please ask your parent or guardian to talk to your coach." : who + " would be under 13. Fiala Fitness is for ages 13 and up."], yes: "OK", one: true }),
+  };
+  const PRIV_GLYPH = '<svg viewBox="0 0 29 24" width="29" height="24" aria-hidden="true" fill="currentColor"><path d="M2.3 4.2A4.2 4.2 0 1 1 10.7 4.2A4.2 4.2 0 1 1 2.3 4.2ZM0 16A6.5 6 0 0 1 13 16V22A2 2 0 0 1 11 24H2A2 2 0 0 1 0 22Z"/><path class="two" d="M18.3 4.2A4.2 4.2 0 1 1 26.7 4.2A4.2 4.2 0 1 1 18.3 4.2ZM16 16A6.5 6 0 0 1 29 16V22A2 2 0 0 1 27 24H18A2 2 0 0 1 16 22Z"/></svg>';   // our own two-figure privacy glyph (the sign-in's too), the second figure at half strength
+  let paOpen = null;                                                  // the question up: its closer
+  function askChoice(w, { still = false } = {}) {                     // resolves true (or the typed name), false, or null when closed unanswered (asked again later); still: the sheet that follows another (the parent's page after the teen's) comes up without sliding
+    return new Promise((resolve) => {
+      if (askOpen) askOpen(false); if (paOpen) paOpen(null);
+      const sheet = !!w.sheet, bg = document.createElement("div"), box = document.createElement("div"), tid = "paT" + Date.now(); bg.className = sheet ? "hq-ask" + (still || calmMotion() ? " hq-still" : "") : "pa-ask"; box.className = sheet ? "hq-sheet" : "pa-alert"; box.setAttribute("role", sheet ? "dialog" : "alertdialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-labelledby", tid);
+      const body = document.createElement("div"); body.className = sheet ? "hq-body" : "pa-words"; box.appendChild(body);   // the words scroll; the answers always show (the check round: 320 points at the largest Text Size hid the alert's)
+      const back = document.activeElement;                            // the keyboard's or VoiceOver's place, put back after keys (the check round)
+      let bX = null; if (sheet) { bX = document.createElement("button"); bX.type = "button"; bX.className = "pv-x hq-x"; bX.setAttribute("aria-label", "Not now"); bX.innerHTML = '<svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M1.7 1.7 16.3 16.3M16.3 1.7 1.7 16.3"/></svg>'; box.appendChild(bX); }   // the sheet's close cross, as the preview's (Calendar's, measured): not now, asked again later (the check round: a teen's parent may not be there, and a phone had no other way out)
+      const h = document.createElement("h3"); h.className = sheet ? "hq-title" : "pa-title"; h.id = tid; h.textContent = w.title; body.appendChild(h);
+      const told = [], para = (t, cls) => { const p = document.createElement("p"); p.className = cls; p.textContent = t; body.appendChild(p); told.push(p); };
+      if (w.sub) para(w.sub, "hq-p hq-sub"); if (w.lead) para(w.lead, "hq-p");
+      if (w.kinds) { const ul = document.createElement("ul"); ul.className = "hq-kinds"; for (const k of w.kinds) { const li = document.createElement("li"); li.textContent = k; ul.appendChild(li); } body.appendChild(ul); told.push(ul); }
+      for (const t of w.texts) para(t, sheet ? "hq-p" : "pa-text");
+      told.forEach((el, i) => { el.id = tid + "x" + i; }); box.setAttribute("aria-describedby", told.map((el) => el.id).join(" "));
+      let inp = null; if (w.field) { inp = document.createElement("input"); inp.className = "hq-field"; inp.type = "text"; inp.placeholder = w.field.placeholder; inp.maxLength = w.field.max || 80; inp.autocomplete = "off"; inp.setAttribute("autocapitalize", "words"); inp.setAttribute("enterkeyhint", "done"); inp.setAttribute("aria-label", w.field.placeholder); }
+      const tray = sheet ? document.createElement("div") : box; if (sheet) { tray.className = "hq-tray"; const pol = document.createElement("div"); pol.className = "hq-policy"; pol.innerHTML = PRIV_GLYPH; const a = document.createElement("a"); a.href = "health-privacy.html"; a.textContent = "Consumer Health Data Privacy Policy"; pol.appendChild(a); tray.appendChild(pol); box.appendChild(tray); }   // Washington wants the health policy's link where health data is asked for
+      if (inp) tray.appendChild(inp);                                  // the parent's name sits with the answers, always in sight (the words above scroll; the keyboard lifts the sheet): in the words it fell below the fold on a 402-point phone once the cross came (measured)
+      const btns = document.createElement("div"), bNo = document.createElement("button"), bYes = document.createElement("button"); btns.className = sheet ? "hq-btns" : "pa-btns"; bNo.type = bYes.type = "button"; bNo.textContent = w.no || ""; bYes.textContent = w.yes;
+      if (w.one) btns.style.gridTemplateColumns = "1fr"; else btns.appendChild(bNo); btns.appendChild(bYes); tray.appendChild(btns); bg.appendChild(box);
+      const behind = [...document.body.children].filter((el) => !el.inert); for (const el of behind) el.inert = true;
+      let armed = false; const settle = setTimeout(() => { armed = true; }, 350);   // a double tap's second never answers it
+      const named = () => (inp ? String(inp.value || "").replace(/\s+/g, " ").trim().slice(0, w.field.max || 80) : "");
+      const sync = () => { if (inp) bYes.disabled = !named(); }; sync();
+      const vv = typeof visualViewport !== "undefined" ? visualViewport : null, lift = () => { if (!vv || !sheet) return; const kb = Math.max(0, (window.innerHeight || 0) - vv.height - vv.offsetTop); box.style.bottom = kb > 80 ? kb + "px" : ""; };   // the phone's keyboard lifts the sheet, so the parent's name and the answers stay in sight (askFirst's own lift, measured on the simulator)
+      if (vv && inp) { vv.addEventListener("resize", lift); vv.addEventListener("scroll", lift); }
+      const done = (ans, e) => { if (e) askEat(e); clearTimeout(settle); paOpen = null; S.asking = !!pv; document.removeEventListener("keydown", onKey); if (vv && inp) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); } for (const el of behind) el.inert = false; bg.remove(); if (keysLast && back && back.isConnected && typeof back.focus === "function") back.focus({ preventScroll: true }); resolve(ans); };
+      const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); done(null); } else if (e.key === "Enter" && inp && e.target === inp) { e.preventDefault(); inp.blur(); } };   // Return or the keyboard's done key only puts the keyboard away: Agree is its own button (the check round: done recorded Agree unseen)
+      bNo.addEventListener("click", (e) => { if (armed) done(false, e); });
+      bYes.addEventListener("click", (e) => { if (armed && !bYes.disabled) done(w.one ? true : inp ? named() : true, e); });
+      if (inp) inp.addEventListener("input", sync);
+      if (bX) bX.addEventListener("click", (e) => { if (armed) done(null, e); });
+      if (sheet) { let downOn = false; bg.addEventListener("pointerdown", (e) => { downOn = e.target === bg; }); bg.addEventListener("click", (e) => { if (armed && downOn && e.target === bg) done(null, e); downOn = false; }); }   // the dim over the sheet closes it unanswered ("later": the parent may not be there), as the app's other sheets, only for a press begun on it
+      document.addEventListener("keydown", onKey); paOpen = (ans) => done(ans); S.asking = true;
+      document.body.appendChild(bg);
+      if (sheet) { box.tabIndex = -1; (keysLast ? bX || bNo : box).focus({ preventScroll: true, focusVisible: keysLast }); } else (w.one ? bYes : bNo).focus({ preventScroll: true, focusVisible: keysLast });   // a sheet is read first: VoiceOver starts at its title, and a phone's keyboard comes up only when the parent taps the name field
+    });
+  }
+  function setChoice(kind, answer, parent, by = "client") {            // the client's own answer (by "parent": a parent's or guardian's Disagree): shown at once, kept on the phone until it lands
+    const cid = S.myClientId, c = cid && clients.get(cid); if (!c || !S.clientMode) return false;
+    const a = { id: uid(), answer, parent: parent || null, at: new Date().toISOString(), by }; { const was = c.choices && c.choices[kind]; if (was && typeof was === "object") a.prev = JSON.parse(JSON.stringify(was)); }   // the answer it replaces: put back on the phone if the server refuses or sets this one aside; the id: a copy another page sends, or one sent again after a lost reply, is never counted twice (the server keeps the ids it has had)
+    applyChoice(c, kind, answer, a.parent, a.at, DAYS(), by, a.id); if (kind === "health") heldAgree.delete(cid);   // someone answered: the parent's wait is over either way
+    if (!pendingChoices.has(cid)) pendingChoices.set(cid, new Map());
+    { const was = pendingChoices.get(cid).get(kind); if (was && (answer === "agree" || answer === "allow")) { const w = was.before || ((was.answer === "decline" || was.answer === "deny") ? { answer: was.answer, parent: was.parent || null, at: was.at, by: was.by || "client", ...(was.id ? { id: was.id } : {}) } : null); if (w) a.before = w; } }   // a Don't Allow given offline, then an Agree: both go, in order (the check round: the Agree alone kept the details that were to be deleted)
+    pendingChoices.get(cid).set(kind, a);
+    if (kind === "health" && answer === "decline") { const q = pendingProfile.get(cid); if (q) for (const k of [...q]) if (k !== "unit") q.delete(k); }   // health edits still on their way go with the details
+    localBackend.save(); scheduleSave("clients", cid);
+    if (settingsOpen === "settings") paintChoices(); else if (settingsOpen === "health" || settingsOpen === "safety") { safetySig = ""; paintSub(settingsOpen); } else render();
+    return true;
+  }
+  let askedZone = false, askedHealth = false, askedHeld = "";         // asked this session: a question closed unanswered comes back at the next open (askedHeld: the parent's wait last asked about, so "Not now" holds until a new one)
+  async function askZone() {
+    const cid = S.myClientId, c = cid && clients.get(cid); if (!c || !S.clientMode || zoneState(c) || paOpen || S.consentMissing || youngRec(c, DAYS())) return;   // under 13: never asked (the check round)
+    askedZone = true; const a = await askChoice(CHOICE_WORDS.zone); if (a === null) return;
+    if (a && (clients.get(cid) || {}).paused) { askChoice({ title: "Access is paused", texts: ["Your coach has paused your access, so nothing new is shared. Ask your coach."], yes: "OK", one: true }); return; }   // a pause that came by sync under the question: an Allow would be refused; Don't Allow still goes (the check round)
+    setChoice("zone", a ? "allow" : "deny");
+  }
+  async function askHealth(again = false, auto = false) {             // again: from the Settings switch, after a Don't Allow; auto: asked by itself (a page opened), never a tap
+    const cid = S.myClientId, c = cid && clients.get(cid); if (!c || !S.clientMode || paOpen || S.consentMissing) return;
+    if (heldAgree.has(cid) && !heldLive(c, heldAgree.get(cid))) { heldAgree.delete(cid); persistPending(); }   // a newer answer on record (a Don't Allow, a parent's Disagree, the coach's paper form) ended the parent's wait (the check rounds)
+    if (youngRec(c, DAYS())) { askedHealth = true; tooYoungNote(cid); return; }   // under 13: nothing is asked (the server refuses it), paused or not; the coach's card says so (the check rounds)
+    if (c.paused) { if (!auto) askChoice({ title: "Access is paused", texts: ["Your coach has paused your access, so nothing new is stored. Ask your coach."], yes: "OK", one: true }); return; }   // the server refuses a paused client's Agree and new details (the check rounds: it was asked, then silently dropped)
+    if (healthEditable(c, DAYS()) || (healthState(c) === "declined" && !again && !heldAgree.has(cid))) return;   // a parent still to be asked (an Agree refused for one) is asked even over a Don't Allow on record
+    askedHealth = true; { const hm = heldAgree.get(cid); if (hm) askedHeld = hm.at; }
+    const late = needsParent(c, DAYS()), saved = (late || healthState(c) === "legacy") && HEALTH_KEYS.some((k) => k === "health" ? !!c.health && typeof c.health === "object" && Object.keys(c.health).length > 0 : c[k] != null && c[k] !== "");   // the warning only when there are details to delete          // agreed before anyone knew the client was under 18 (the coach's Under 18, a birthday entered since): the parent's page alone (the policy's promise)
+    if (!late) { const a = await askChoice(healthState(c) === "legacy" ? CHOICE_WORDS.keep : CHOICE_WORDS.health); if (a === null) return; if (!a) { setChoice("health", "decline"); return; } }
+    let parent = null; const cc = clients.get(cid); if (!cc || !S.clientMode) return;
+    if (cc.paused) { askChoice({ title: "Access is paused", texts: ["Your coach has paused your access, so nothing new is stored. Ask your coach."], yes: "OK", one: true }); return; }   // a pause that came by sync under the question: the Agree would be refused (the check round: it showed agreed, then went quietly)
+    if (isMinor(cc, DAYS())) {                                         // a client under 18: a parent or guardian also agrees, on this phone, typing their name
+      const p = await askChoice(CHOICE_WORDS.parent(firstOf(cc), saved), { still: !late }); if (p === null) return;   // later (the cross, Escape): nothing recorded, asked again
+      if (!p) { setChoice("health", "decline", null, "parent"); return; }   // either one saying no is a no; the parent's is recorded as theirs
+      parent = p;
+    }
+    if ((clients.get(cid) || {}).paused) { askChoice({ title: "Access is paused", texts: ["Your coach has paused your access, so nothing new is stored. Ask your coach."], yes: "OK", one: true }); return; }   // and under the parent's page
+    setChoice("health", "agree", parent);
+  }
+  const tooYoungNote = (id) => { const c = clients.get(id); if (c && !paOpen) askChoice(CHOICE_WORDS.young(S.clientMode, firstOf(c))); };
+  let askTimer = 0;
+  const maybeAsk = () => {                                            // after the client's own page is drawn: the time zone once, then details saved before (one question at a time, never over another sheet)
+    clearTimeout(askTimer); if (!S.clientMode || !S.sb) return;   // asked only with the server there to take the answer (a page with no cloud, as the probes, never is)
+    askTimer = setTimeout(() => {
+      const c = clients.get(S.myClientId); if (!c || paOpen || askOpen || pv || S.asking || settingsOpen || S.view.name !== "client" || document.visibilityState === "hidden") return;
+      { const el = document.activeElement; if (held() || rowHolds() || (el && /^(INPUT|TEXTAREA)$/.test(el.tagName) && !el.readOnly && !/^(date|month|checkbox|radio|file|range)$/.test(el.type || ""))) { maybeAsk(); return; } }   // a menu, the day picker, a finger on a row or a box being typed in: later (the check rounds)
+      if (c.paused) return;                                            // paused: nothing new is asked (the server refuses a new Allow or Agree too)
+      if (!askedZone && !zoneState(c) && !youngRec(c, DAYS()) && !(pendingChoices.get(c.id) || new Map()).has("zone")) { askZone(); return; }
+      const hm = heldAgree.get(c.id), waits = !!hm && heldLive(c, hm);   // a parent's wait marked on the phone (an Agree refused for one): asked once when it comes, then "Not now" holds until the next open (the check rounds: it came back at every sync)
+      if ((!askedHealth || (waits && hm.at !== askedHeld)) && !youngRec(c, DAYS()) && !c.paused && (healthState(c) === "legacy" || needsParent(c, DAYS()) || waits)) askHealth();   // details saved before v316, or a parent still to agree: at the next open (the policy)
+    }, 900);
+  };
+  function paintChoices() {                                           // the client's Settings: Store health details, Share time zone with coach, and the city the coach sees
+    if (!S.clientMode) return; const c = clients.get(S.myClientId); if (!c) return;
+    { const st = healthState(c); $("meHealthSw").setAttribute("aria-checked", String(st === "agreed" || st === "paper" || st === "legacy")); }   // on while details are stored (a parent still to agree, or saved before v316 and not answered yet: on, so turning it off deletes them, as the policies say)
+    const on = zoneState(c) === "allow", here = c.paused ? (c.zone && c.zone.zone) || "" : hereZone(), city = on && here ? zoneName(here, Date.now()) || here : "";   // paused: nothing is sent, so the city the coach still sees, the last one sent (the check round)
+    $("meZoneSw").setAttribute("aria-checked", String(on)); $("meZoneRow").hidden = !city; $("meZoneVal").textContent = city;
+  }
+  const profileOpen = (c, k, ...val) => { const f = String(k).split(".")[0]; if (!HEALTH_KEYS.includes(f)) return true; const st = healthState(c), clearing = val.length > 0 && (val[0] == null || val[0] === ""); if (clearing && (st === "agreed" || st === "paper")) return true; if (S.clientMode && c.paused) return false; return f === "birthday" ? birthdayOpen(c, DAYS()) : healthEditable(c, DAYS()); };   // a detail cleared always goes while agreed (you can remove what you entered, a parent awaited or paused); a paused client stores nothing new (the check rounds)
   function setProfile(cid, k, v) {                                   // one field of a client's own profile, by the key client_set_profile takes ("sex", "height", "health.limits", …): the coach saves the whole record as ever, the client sends the field through the client's own rule, from a queue that waits out no signal (sync.js)
     const c = clients.get(cid); if (!c || isTemplateClient(cid)) return false;
+    if (!profileOpen(c, k, v === undefined ? null : v)) return false;                            // v316 (the check round): never a health detail the server would keep as stored (no agreement, saved before v316, a parent awaited): an editor left open over a sync writes nothing
     const was = profileGet(c, k), now = v === undefined || v === "" ? null : v;
     if (JSON.stringify(was) === JSON.stringify(now)) return false;
     profilePut(c, k, now);
-    if (S.clientMode) { if (!pendingProfile.has(cid)) pendingProfile.set(cid, new Set()); pendingProfile.get(cid).add(k); localBackend.save(); }   // the client's phone shows it at once and keeps it across a relaunch
+    if (S.clientMode) { if (!pendingProfile.has(cid)) pendingProfile.set(cid, new Set()); pendingProfile.get(cid).add(k); ownTyped(cid, k); if (!profileUnder.has(cid)) profileUnder.set(cid, new Map()); { const h = c.choices && c.choices.health; const last = Math.max(Date.parse(withdrawnAt.get(cid)) || 0, ...[...deliv].filter(([ck]) => ck.startsWith(cid + "\n")).map(([, t]) => Date.parse(t) || 0), ...[...profileUnder.get(cid).values()].map((u) => Date.parse(String(u || "").split("|")[2]) || 0)); profileUnder.get(cid).set(k, ((h && h.at) || "") + "|" + ((h && h.id) || "") + "|" + new Date(Math.max(Date.now(), last + 1)).toISOString()); } localBackend.save(); }   // the client's phone shows it at once and keeps it across a relaunch
     else { if (!profileTouched.has(cid)) profileTouched.set(cid, new Set()); profileTouched.get(cid).add(k); }   // the coach's mark: a save with nothing read to merge against keeps the server's value of every field the coach did not change (sync.js, takeProfile)
     scheduleSave("clients", cid);                                    // the client: marks the client's record dirty, and its save sends the client's queue
     return true;
@@ -375,7 +582,9 @@ import { reportRange, buildReport } from "./report.js";
     if (!SUB_PAGE[page] || !healthId() || (from === "card" && S.clientMode) || (from === "settings" && !S.clientMode)) return false;
     closeWheel(false); safetySig = "";
     fromSettings = from; settingsOpen = page; hideAllViews(); $(SUB_PAGE[page]).hidden = false; $("back").hidden = false; $("backLabel").textContent = parentLabel(); $("brand").hidden = true; $("status").textContent = "";
-    paintSub(page); return true;
+    paintSub(page);
+    if (S.clientMode) { const c = clients.get(healthId()); if (c && !healthEditable(c, DAYS()) && healthState(c) !== "declined") setTimeout(() => { if (settingsOpen === page) askHealth(false, true); }, 250); }   // v316: the first time a client opens their health details, the question (the owner's decision)
+    return true;
   }
   const openSub = (page, from, e) => { const y = window.scrollY; if (!showSub(page, from)) return; subY = y; askEat(e); window.scrollTo(0, 0); };   // a double tap's second must not land on the row now under the finger (it would open its editor)
   const paintSub = (page) => { if (page === "health") paintHealth(); else if (page === "safety") paintSafety(); };
@@ -389,18 +598,18 @@ import { reportRange, buildReport } from "./report.js";
   const hdText = (c, k) => (k === "dob" ? fmtBirthday(c.birthday) : k === "sex" ? (c.sex ? (SEXES.find((x) => x[0] === c.sex) || SEXES[0])[1] : "") : k === "height" ? heightText(c) : weightText(c)) || "Not set";
   function paintHealth() {
     const id = healthId(), c = id && clients.get(id); if (!c) return;
-    $("healthIntro").textContent = S.clientMode ? "Helps your coach plan your training. Only you and your coach can see these details." : "Only you and " + firstOf(c) + " can see these details.";
+    $("healthIntro").textContent = healthLockLine(c) || (S.clientMode ? "Helps your coach plan your training. Only you and your coach can see these details." : "Only you and " + firstOf(c) + " can see these details.");   // v316: why it can't be changed, when it can't
     const list = $("healthList"), have = HD_ROWS.map(([k]) => list.querySelector('li[data-k="' + k + '"]'));
-    if (list.dataset.cid === id && have.every((r) => r && r.isConnected)) { for (const [k] of HD_ROWS) if (k !== wheelOpen) { const v = list.querySelector('li[data-k="' + k + '"] .hd-val'); if (v) v.textContent = hdText(c, k); } return; }   // drawn already: a sync changes the values in place, never a wheel under the finger nor a keyboard's place on a row
-    stopWheels(); wheelOpen = null; list.dataset.cid = id;
+    if (list.dataset.cid === id && list.dataset.st === healthState(c) + ":" + healthTap(c) + ":" + birthdayOpen(c, DAYS()) && have.every((r) => r && r.isConnected)) { for (const [k] of HD_ROWS) if (k !== wheelOpen) { const v = list.querySelector('li[data-k="' + k + '"] .hd-val'); if (v) v.textContent = healthShown(c) ? hdText(c, k) : "Not set"; } return; }   // drawn already: a sync changes the values in place, never a wheel under the finger nor a keyboard's place on a row
+    stopWheels(); wheelOpen = null; list.dataset.cid = id; list.dataset.st = healthState(c) + ":" + healthTap(c) + ":" + birthdayOpen(c, DAYS());   // the lock as drawn (the check round: Under 18 switched on left the rows looking open)
     list.replaceChildren(...HD_ROWS.map(([k, label]) => {
       const li = document.createElement("li"); li.className = "hd-row"; li.dataset.k = k;
       const b = document.createElement("button"); b.type = "button"; b.setAttribute("aria-expanded", "false");
-      const l = document.createElement("span"); l.textContent = label; const v = document.createElement("span"); v.className = "hd-val"; v.textContent = hdText(c, k);
-      b.append(l, v); b.addEventListener("click", () => toggleWheel(k)); li.appendChild(b); return li;
+      const l = document.createElement("span"); l.textContent = label; const v = document.createElement("span"); v.className = "hd-val"; v.textContent = healthShown(c) ? hdText(c, k) : "Not set";
+      b.disabled = !(healthTap(c) || (k === "dob" && birthdayOpen(c, DAYS()))); b.append(l, v); b.addEventListener("click", () => toggleWheel(k)); li.appendChild(b); return li;
     }));
   }
-  function toggleWheel(k) { const id = healthId(), c = id && clients.get(id); if (!c) return; if (wheelOpen === k) { closeWheel(true); return; } closeWheel(false); openWheel(k, id); }
+  function toggleWheel(k) { const id = healthId(), c = id && clients.get(id); if (!c) return; if ((S.clientMode && c.paused) || !(k === "dob" ? birthdayOpen(c, DAYS()) : healthEditable(c, DAYS()))) { if (healthTap(c)) askHealth(); return; } if (wheelOpen === k) { closeWheel(true); return; } closeWheel(false); openWheel(k, id); }
   function closeWheel(repaint) {
     stopWheels(); const list = $("healthList"); for (const w of list.querySelectorAll(".hd-wheel-li")) w.remove();
     for (const r of list.querySelectorAll(".hd-open")) { r.classList.remove("hd-open"); const b = r.querySelector("button"); if (b) b.setAttribute("aria-expanded", "false"); }
@@ -474,31 +683,31 @@ import { reportRange, buildReport } from "./report.js";
       const val = [+m[2] - 1, +m[3] - 1, Math.max(0, Math.min(years.length - 1, +m[1] - y0))];
       const iso = () => { const y = y0 + val[2], mo = val[0] + 1, last = new Date(y, mo, 0, 12).getDate(), d = Math.min(val[1] + 1, last); return y + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0"); };   // the 31st of a short month is its last day
       const turn = (j) => (i) => { val[j] = i; show(fmtBirthday(iso())); };
-      const pick = (j) => (i) => { val[j] = i; const v = iso(); if (v > today()) { const cc = clients.get(id); show((cc && fmtBirthday(cc.birthday)) || "Not set"); return; } setProfile(id, "birthday", v); show(fmtBirthday(v)); };   // never a day to come: the row keeps what is kept
+      const pick = (j) => (i) => { val[j] = i; const v = iso(); if (!profileOpen(clients.get(id) || c, "birthday")) { closeWheel(true); return; } if (v > today() || tooYoung(v, DAYS())) { const cc = clients.get(id); show((cc && fmtBirthday(cc.birthday)) || "Not set"); if (v <= today()) tooYoungNote(id); return; } setProfile(id, "birthday", v); show(fmtBirthday(v)); };   // never a day to come: the row keeps what is kept
       cell.append(band(POS1)); [[MONTHS, "Month"], [days, "Day"], [years, "Year"]].forEach(([items, label], j) => cols.push(wheelCol({ items, sel: val[j], label, pos: POS3[j], onPick: pick(j), onTurn: turn(j) })));
       show(fmtBirthday(iso()));
     } else if (k === "sex") {
       const sel = Math.max(0, SEXES.findIndex((x) => x[0] === (c.sex || "")));
-      cell.append(band(POS1)); cols.push(wheelCol({ items: SEXES.map((x) => x[1]), sel, label: "Sex", pos: POS1, onPick: (i) => { setProfile(id, "sex", SEXES[i][0] || null); show(SEXES[i][1]); }, onTurn: (i) => show(SEXES[i][1]) }));
+      cell.append(band(POS1)); cols.push(wheelCol({ items: SEXES.map((x) => x[1]), sel, label: "Sex", pos: POS1, onPick: (i) => { if (!profileOpen(clients.get(id) || c, "sex")) { closeWheel(true); return; } setProfile(id, "sex", SEXES[i][0] || null); show(SEXES[i][1]); }, onTurn: (i) => show(SEXES[i][1]) }));
     } else if (k === "height") {
       const u = heightUnitOf(c), [lo, hi] = HT[u], had = heightAs(c.height, u), v = Math.max(lo, Math.min(hi, had == null ? (u === "cm" ? 162 : 63) : had));   // nothing set: 5' 3" or 162 cm (Fitness's own starts, measured)
       li.appendChild(unitSwitch([["in", "ft & in"], ["cm", "cm"]], u, (nu) => { setProfile(id, "heightUnit", nu); redo(); }));
       if (u === "cm") {
         const items = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i + " cm");
-        cell.append(band(POS1)); cols.push(wheelCol({ items, sel: v - lo, label: "Centimeters", pos: POS1, onPick: (i) => { setProfile(id, "height", { v: lo + i, u: "cm" }); show(fmtHeight(lo + i, "cm")); }, onTurn: (i) => show(fmtHeight(lo + i, "cm")) }));
+        cell.append(band(POS1)); cols.push(wheelCol({ items, sel: v - lo, label: "Centimeters", pos: POS1, onPick: (i) => { if (!profileOpen(clients.get(id) || c, "height")) { closeWheel(true); return; } setProfile(id, "height", { v: lo + i, u: "cm" }); show(fmtHeight(lo + i, "cm")); }, onTurn: (i) => show(fmtHeight(lo + i, "cm")) }));
       } else {
         const ft = [Math.floor(v / 12), v % 12], total = () => Math.max(lo, Math.min(hi, ft[0] * 12 + ft[1]));
         const feet = Array.from({ length: 9 }, (_, i) => i + 1 + "′"), inches = Array.from({ length: 12 }, (_, i) => i + "″");
         cell.append(band(POS2[0]), band(POS2[1]));
-        cols.push(wheelCol({ items: feet, sel: ft[0] - 1, label: "Feet", pos: POS2[0], onPick: (i) => { ft[0] = i + 1; setProfile(id, "height", { v: total(), u: "in" }); show(fmtHeight(total(), "in")); }, onTurn: (i) => { ft[0] = i + 1; show(fmtHeight(total(), "in")); } }));
-        cols.push(wheelCol({ items: inches, sel: ft[1], label: "Inches", pos: POS2[1], onPick: (i) => { ft[1] = i; setProfile(id, "height", { v: total(), u: "in" }); show(fmtHeight(total(), "in")); }, onTurn: (i) => { ft[1] = i; show(fmtHeight(total(), "in")); } }));
+        cols.push(wheelCol({ items: feet, sel: ft[0] - 1, label: "Feet", pos: POS2[0], onPick: (i) => { if (!profileOpen(clients.get(id) || c, "height")) { closeWheel(true); return; } ft[0] = i + 1; setProfile(id, "height", { v: total(), u: "in" }); show(fmtHeight(total(), "in")); }, onTurn: (i) => { ft[0] = i + 1; show(fmtHeight(total(), "in")); } }));
+        cols.push(wheelCol({ items: inches, sel: ft[1], label: "Inches", pos: POS2[1], onPick: (i) => { if (!profileOpen(clients.get(id) || c, "height")) { closeWheel(true); return; } ft[1] = i; setProfile(id, "height", { v: total(), u: "in" }); show(fmtHeight(total(), "in")); }, onTurn: (i) => { ft[1] = i; show(fmtHeight(total(), "in")); } }));
       }
       show(fmtHeight(v, u));
     } else {
       const u = bodyUnitOf(c), [lo, hi] = WT[u], had = weightAs(c.bodyWeight, u), v = Math.max(lo, Math.min(hi, had == null ? (u === "kg" ? 72 : 158) : had));   // nothing set: 158 lb or 72 kg (Fitness's own starts, measured)
       li.appendChild(unitSwitch([["lb", "lb"], ["kg", "kg"]], u, (nu) => { setProfile(id, "bodyUnit", nu); redo(); }));
       const items = Array.from({ length: hi - lo + 1 }, (_, i) => fmtBodyWeight(lo + i, u));
-      cell.append(band(POS1)); cols.push(wheelCol({ items, sel: v - lo, label: u === "kg" ? "Kilograms" : "Pounds", pos: POS1, onPick: (i) => { setProfile(id, "bodyWeight", { v: lo + i, u }); show(fmtBodyWeight(lo + i, u)); }, onTurn: (i) => show(fmtBodyWeight(lo + i, u)) }));
+      cell.append(band(POS1)); cols.push(wheelCol({ items, sel: v - lo, label: u === "kg" ? "Kilograms" : "Pounds", pos: POS1, onPick: (i) => { if (!profileOpen(clients.get(id) || c, "bodyWeight")) { closeWheel(true); return; } setProfile(id, "bodyWeight", { v: lo + i, u }); show(fmtBodyWeight(lo + i, u)); }, onTurn: (i) => show(fmtBodyWeight(lo + i, u)) }));
       show(fmtBodyWeight(v, u));
     }
     for (const w of cols) cell.appendChild(w.el);
@@ -517,16 +726,17 @@ import { reportRange, buildReport } from "./report.js";
     return us ? phoneDigits(us[1]) : "";
   };
   let safetySig = "";
+  const safetySigOf = (id, c) => JSON.stringify([id, healthShown(c) && c.health && typeof c.health === "object" ? c.health : {}, S.clientMode, firstOf(c), healthState(c), healthTap(c), healthEditable(c, DAYS())]);   // v316 (the check round): the page and the Pregnant switch's shortcut read the same, and a lock that arrives by sync redraws
   function paintSafety() {
     const id = healthId(), c = id && clients.get(id); if (!c) return;
-    const h = c.health && typeof c.health === "object" ? c.health : {}, who = firstOf(c), sig = JSON.stringify([id, h, S.clientMode, who]);
+    const shown = healthShown(c), h = shown && c.health && typeof c.health === "object" ? c.health : {}, who = firstOf(c), sig = safetySigOf(id, c);   // v316: nothing shown the client has not agreed to
+    $("safetyIntro").textContent = healthLockLine(c) || (S.clientMode ? "Helps your coach keep your training safe. Only you and your coach can see this." : "Only you and " + who + " can see this.");   // always: a pause, a resume or a parent wait that came by sync changes the line, not the rows (the check round)
     if (sig === safetySig) return; safetySig = sig;                 // a sync that changed nothing here draws nothing (a row keeps the keyboard's place)
-    $("safetyIntro").textContent = S.clientMode ? "Helps your coach keep your training safe. Only you and your coach can see this." : "Only you and " + who + " can see this.";
-    $("safetyFoot").textContent = S.clientMode ? "Your coach sees these at the top of your workouts." : "Shown at the top of " + who + "’s workouts while you build them.";
+    $("safetyFoot").textContent = S.clientMode ? "Your coach sees these at the top of your workouts." : "Shown at the top of " + who + "\u2019s workouts while you build them.";
     const row = (f) => {
       const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; b.className = "two-row"; b.dataset.f = f;
       const two = document.createElement("span"); two.className = "two"; const l = document.createElement("span"); l.textContent = SAFETY[f]; const sub = document.createElement("span"); sub.className = "two-sub"; sub.textContent = String(h[f] || "").trim() || "Not set"; two.append(l, sub);
-      b.appendChild(two); b.addEventListener("click", (e) => editSafety(id, f, e)); li.appendChild(b);
+      b.disabled = !healthTap(c); b.appendChild(two); b.addEventListener("click", (e) => editSafety(id, f, e)); li.appendChild(b);
       const digits = f === "emergency" && !S.clientMode ? phoneIn(h[f]) : "";   // the coach can call the client's emergency contact from here (the approved picture: a round button in place of the chevron)
       if (digits) { li.className = "call-row"; const a = document.createElement("a"); a.className = "call-disc"; a.href = "tel:+" + digits; a.setAttribute("aria-label", "Call " + (String(h[f]).split(/[(·,\n]/)[0].trim() || "emergency contact")); a.innerHTML = PHONE_ICON; li.appendChild(a); }
       else { const ch = document.createElement("span"); ch.className = "sub"; ch.innerHTML = '<span class="chev">&rsaquo;</span>'; b.appendChild(ch); }
@@ -534,24 +744,24 @@ import { reportRange, buildReport } from "./report.js";
     };
     const preg = document.createElement("li"), pr = document.createElement("div"); pr.className = "srow sw-row"; const pl = document.createElement("span"); pl.textContent = "Pregnant"; pl.id = "pregLabel";
     const sw = document.createElement("button"); sw.type = "button"; sw.className = "ios-switch"; sw.setAttribute("role", "switch"); sw.setAttribute("aria-labelledby", "pregLabel"); sw.setAttribute("aria-checked", String(!!h.pregnant));
-    sw.addEventListener("click", () => { const cc = clients.get(id); if (!cc) return; const on = !(cc.health && cc.health.pregnant); setProfile(id, "health.pregnant", on ? true : null); sw.setAttribute("aria-checked", String(on)); const hh = cc.health && typeof cc.health === "object" ? cc.health : {}; safetySig = JSON.stringify([id, hh, S.clientMode, firstOf(cc)]); });   // the switch shows it already: the page is not drawn again (the keyboard keeps its place)
+    sw.disabled = !healthTap(c); sw.addEventListener("click", () => { const cc = clients.get(id); if (!cc) return; if ((S.clientMode && cc.paused) || !healthEditable(cc, DAYS())) { if (healthTap(cc)) askHealth(); return; } const on = !(cc.health && cc.health.pregnant); if (setProfile(id, "health.pregnant", on ? true : null)) sw.setAttribute("aria-checked", String(on)); safetySig = safetySigOf(id, cc); });   // the switch shows it already: the page is not drawn again (the keyboard keeps its place)
     pr.append(pl, sw); preg.appendChild(pr);
     $("safetyTraining").replaceChildren(row("limits"));
     $("safetyMedical").replaceChildren(row("conditions"), row("medications"), row("allergies"), preg);
     $("safetyEmergency").replaceChildren(row("emergency"), row("doctor"));
   }
   function editSafety(id, f, e) {
-    const c = clients.get(id); if (!c) return; const who = firstOf(c);
-    editText({ title: SAFETY[f], lead: S.clientMode ? SAFETY_LEAD[f] : f === "limits" ? "Shown at the top of " + who + "’s workouts while you build them." : who + " sees this too.", value: String(profileGet(c, "health." + f) || ""), placeholder: SAFETY_HINT[f], max: 500, keys: byKeys(e),
+    const c = clients.get(id); if (!c) return; if ((S.clientMode && c.paused) || !healthEditable(c, DAYS())) { if (healthTap(c)) askHealth(); return; } const who = firstOf(c);
+    editText({ keep: "safety:" + id + "/" + f, locked: () => { const cc = clients.get(id); return !cc ? "" : profileOpen(cc, "health." + f) ? "" : healthLockLine(cc) || "This can\u2019t be changed now."; }, title: SAFETY[f], lead: S.clientMode ? SAFETY_LEAD[f] : f === "limits" ? "Shown at the top of " + who + "\u2019s workouts while you build them." : who + " sees this too.", value: String(profileGet(c, "health." + f) || ""), placeholder: SAFETY_HINT[f], max: 500, keys: byKeys(e),
       onSave: (v) => { if (setProfile(id, "health." + f, v || null)) { safetySig = ""; paintSafety(); } },
       back: () => document.querySelector('#vSafety button.two-row[data-f="' + f + '"]') });
   }
   function editText(o) {                                              // a text in the instructions' own sheet (the approved picture): the title, a line saying why, a box; Add, or Save when there is something, over Cancel; nothing changes until then, and Save with the box emptied takes it away
-    if (askOpen) askOpen(false);
+    if (askOpen) askOpen(false); if (paOpen) paOpen(null);   // a choice alert left up goes first (the check round: a refusal under a file picker froze the sheet that opened after it)
     const bg = $("textSheet"), sh = bg.firstElementChild, f = $("textField"), ok = $("textOk"), no = $("textNo"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert);
     const had = !!String(o.value || "").trim();
     $("textTitle").textContent = o.title; $("textLead").textContent = o.lead || ""; $("textLead").hidden = !o.lead; ok.textContent = had ? "Save" : "Add";
-    f.maxLength = o.max || 500; f.placeholder = o.placeholder || ""; f.value = String(o.value || ""); f.style.maxHeight = "";
+    f.maxLength = o.max || 500; f.placeholder = o.placeholder || ""; f.value = String(o.value || ""); f.style.maxHeight = ""; if (o.keep && keptText.has(o.keep)) { f.value = keptText.get(o.keep); keptText.delete(o.keep); } sheetKeep = o.keep ? { key: o.keep, el: f, orig: String(o.value || "") } : null;   // v316 (one window at a time): words kept from the window Fiala left come back here
     const typed = () => String(f.value || "").trim().slice(0, o.max || 500);   // a script's value is not cut by maxlength: the server's limit, kept here
     let armed = false; ok.disabled = true;
     const settle = setTimeout(() => { armed = true; ok.disabled = !had && !typed(); }, 350);
@@ -563,13 +773,13 @@ import { reportRange, buildReport } from "./report.js";
     };
     const refocus = () => { if (o.keys && o.back) { const b = o.back(); if (b) b.focus({ preventScroll: true }); } };   // a keyboard's place: back on its row
     const done = (back = true) => {
-      clearTimeout(settle); askOpen = null; S.asking = !!pv; if (document.activeElement === f) f.blur(); bg.hidden = true; ok.disabled = false; sh.style.paddingBottom = ""; f.style.maxHeight = "";
+      clearTimeout(settle); askOpen = null; sheetKeep = null; S.asking = !!pv; if (document.activeElement === f) f.blur(); bg.hidden = true; ok.disabled = false; sh.style.paddingBottom = ""; f.style.maxHeight = "";
       for (const el of behind) el.inert = false;
       ok.removeEventListener("click", onOk); no.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); bg.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey); f.removeEventListener("input", onInput);
       if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
       if (back) refocus();
     };
-    const onOk = (e) => { if (!armed || (!had && !typed())) return; askEat(e); const v = typed(); done(false); o.onSave(v); refocus(); };   // saved and drawn first, then the place: on the row as it is drawn now
+    const onOk = (e) => { if (!armed || (!had && !typed())) return; const why = o.locked && o.locked(); if (why) { $("textLead").textContent = why; $("textLead").hidden = false; ok.disabled = true; return; } askEat(e); const v = typed(); done(false); o.onSave(v); refocus(); };   // v316 (the check round): a lock that came meanwhile (a parent to agree) keeps the sheet and the words, and says why; Cancel, then the row, asks   // saved and drawn first, then the place: on the row as it is drawn now
     let downOnBg = false; const onDown = (e) => { downOnBg = e.target === bg; };
     const onNo = (e) => { askEat(e); done(); }, onBg = (e) => { if (armed && downOnBg && e.target === bg) { askEat(e); done(); } };   // a double press's second must not land on the row under the buttons
     const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); done(); } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onOk(); } };
@@ -581,7 +791,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   const unitRows = (cid, still) => { const u = (clients.get(cid) || {}).unit === "kg" ? "kg" : "lb"; return ["lb", "kg"].map((x, i) => ({ label: UNIT_LABEL + " " + x, checked: u === x, sep: i === 0, onPick: () => { if (still()) setLiftUnit(cid, x); } })); };   // the workout's "…": "Weights in lb" / "Weights in kg", a choice of one after a line (the approved picture A)
   const paintLimits = (t) => {                                       // the client's injuries and limits at the top of the client's workout, in the coach's own look only (never a template, never the client's look)
-    const asClient = S.clientMode || previewClient, h = !t || asClient || isTemplateClient(t.clientId) ? null : (clients.get(t.clientId) || {}).health, lim = h && typeof h === "object" && typeof h.limits === "string" ? h.limits.trim() : "";
+    const asClient = S.clientMode || previewClient, cl = t && clients.get(t.clientId), h = !t || asClient || isTemplateClient(t.clientId) || !cl || !healthShown(cl) ? null : cl.health, lim = h && typeof h === "object" && typeof h.limits === "string" ? h.limits.trim() : "";
     $("limitsNote").hidden = !lim; $("limitsText").textContent = lim; $("limitsNote").setAttribute("aria-label", lim ? "Injuries and limits: " + lim : "Injuries and limits");
   };
   const openGroups = new Map();                                     // "<client>/<group>" -> opened or folded by hand this session
@@ -721,7 +931,7 @@ import { reportRange, buildReport } from "./report.js";
     if (cur && !opts.some(([id]) => id === cur)) opts.push([cur, c.plan.name || "Package"]);      // a package deleted since: still named
     sel.replaceChildren(...opts.map(([v, label]) => { const o = document.createElement("option"); o.value = v; o.textContent = label; return o; })); sel.value = cur;
     const monthly = !!(c.plan && c.plan.kind === "monthly"); $("planUntilRow").hidden = !monthly;
-    if (monthly && document.activeElement !== $("planUntil")) $("planUntil").value = c.plan.until || "";
+    if (monthly && document.activeElement !== $("planUntil")) { $("planUntil").value = c.plan.until || ""; $("planUntil").dataset.shown = $("planUntil").value; }
   }
   let planEdit = null;                                               // { clientId, adjust }: the correction being tried on the card, until Save
   const planKeyOf = (p) => [p.id, p.startedOn || "", parseInt(p.adjust, 10) || 0, parseInt(p.carried, 10) || 0].join("|");   // v312: the plan a Change was opened on, as it was then: any change to it (another device's switch, even one put back, or its own Change) closes it (the final check: a switch there and back kept it open, and its Save counted the finished packages twice)
@@ -762,10 +972,14 @@ import { reportRange, buildReport } from "./report.js";
     const id = e.target.value; if ((c.plan && c.plan.id ? c.plan.id : "") === id) return;
     const pk = packagesList().find((x) => x.id === id), sw = planSwitch(c, pk, clientTrainings(c.id), today());   // 10 -> 20, or a mis-pick put right: the sessions already used carry over; what they were on before stays on record (model.js)
     if (sw.planHistory) { if (sw.planHistory.length) c.planHistory = sw.planHistory; else delete c.planHistory; } planEdit = null; c.plan = sw.plan;   // an open Change never outlives a switch (the final check: its Save wrote the old package's correction into the new one)
-    planTouched.add(c.id); scheduleSave("clients", c.id); renderClient();
+    planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); if (settingsOpen === "card") paintPlanDetails(c);   // v316 (the twenty-fourth check round): the card shows the plan as it is now (its Active until kept the old one beside Saved until the next sync)
   });
-  $("planUntil").addEventListener("change", (e) => { const c = clients.get(S.view.id); if (!c || !c.plan || c.plan.kind !== "monthly" || !/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) return; c.plan.until = e.target.value; planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); });
-  $("planMonth").addEventListener("click", () => { const c = clients.get(S.view.id); if (!c || !c.plan || c.plan.kind !== "monthly") return; c.plan.until = daysLater(c.plan.until && c.plan.until > today() ? c.plan.until : today(), 28); planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); });
+  const untilPut = (el) => { const c = clients.get(S.view.id); if (!c || !c.plan || c.plan.kind !== "monthly" || !/^\d{4}-\d{2}-\d{2}$/.test(el.value) || +el.value.slice(0, 4) < 2000 || el.value === c.plan.until || el.value === el.dataset.shown) return; c.plan.until = el.value; el.dataset.shown = el.value; planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); };   // (never a year before 2000: he left the box with the year half typed, 0020-12-31, and her plan read as over; nor the date the plan already has: a click in and out wrote the older date here over the iPad's; v316, the twenty-fourth check round: nor the date the box was painted with, when the plan's changed under it: +4 weeks undone by a tap in and out)
+  $("planUntil").addEventListener("change", (e) => { if (keysLast) return; untilPut(e.target); });   // v316 (the twenty-third check round): a date picked (the wheel, the calendar) lands at once; one typed digit by digit lands as he leaves the box or presses Return (a computer's box fires change at every digit: 0002-12-31, 0020-12-31 ... reached the server, and her plan read as over)
+  $("planUntil").addEventListener("blur", (e) => { untilPut(e.target); const el = e.target, c = clients.get(S.view.id); if (settingsOpen === "card" && c && document.activeElement !== el && el.value === el.dataset.shown) paintPlanDetails(c); });
+  $("planUntil").addEventListener("keydown", (e) => { if (e.key === "Enter") untilPut(e.target); });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && document.activeElement === $("planUntil")) untilPut($("planUntil")); });
+  $("planMonth").addEventListener("click", () => { const c = clients.get(S.view.id); if (!c || !c.plan || c.plan.kind !== "monthly") return; c.plan.until = daysLater(c.plan.until && c.plan.until > today() ? c.plan.until : today(), 28); planTouched.add(c.id); scheduleSave("clients", c.id); renderClient(); if (settingsOpen === "card") paintPlanDetails(c); });
   // the workout: "In person" counts toward the package; the client reads "Session 3 of 10"
   function paintSessionPill(t, asClient) {
     const pill = $("sessionPill"), c = clients.get(t.clientId);
@@ -810,7 +1024,7 @@ import { reportRange, buildReport } from "./report.js";
     $("exEmpty").hidden = !canAdd;
     const near = canAdd ? nearName(q) : null;
     if (near) { $("exEmpty").innerHTML = ""; const b = document.createElement("button"); b.type = "button"; b.className = "btn tint"; b.textContent = "Did you mean “" + near + "”?"; b.addEventListener("click", () => { $("exSearch").value = near; exShown = 80; renderExercises(); }); $("exEmpty").appendChild(b); }
-    else if (canAdd) { $("exEmpty").innerHTML = ""; const b = document.createElement("button"); b.type = "button"; b.className = "btn tint"; b.textContent = "Add “" + tidyName(q) + "” to the database"; b.addEventListener("click", async () => { b.disabled = true; const ok = await addCustomName(q); if (!ok) { b.disabled = false; $("status").textContent = "Couldn’t add · run supabase/exercises.sql, or try again online"; return; } $("exSearch").value = tidyName(q); renderExercises(); }); $("exEmpty").appendChild(b); }
+    else if (canAdd) { $("exEmpty").innerHTML = ""; const b = document.createElement("button"); b.type = "button"; b.className = "btn tint"; b.textContent = "Add “" + tidyName(q) + "” to the database"; b.addEventListener("click", async () => { b.disabled = true; const ok = await addCustomName(q); if (!ok) { b.disabled = false; $("status").textContent = "Couldn\u2019t add · run supabase/exercises.sql, or try again online"; return; } $("exSearch").value = tidyName(q); renderExercises(); }); $("exEmpty").appendChild(b); }
   }
   function exerciseRow(name, key) {
     const li = document.createElement("li"); li.dataset.key = key;
@@ -937,6 +1151,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   function showRecovery() {
     hideAllViews(); $("vRecovery").hidden = false; $("recoveryBtn").disabled = false;
+    S.signedIn = false; paintDraftBar(); saveBanner(false);
     if (S.sb) S.sb.auth.getUser().then(({ data }) => { $("recoveryUser").value = (data && data.user && data.user.email) || ""; }).catch(() => {}); $("back").hidden = true; $("brand").hidden = false; $("status").textContent = "";
   }
   function showProblem(text) {
@@ -949,13 +1164,14 @@ import { reportRange, buildReport } from "./report.js";
   }
 
   async function enterCloud(session) {
-    if (S.entering) return; S.entering = true;
+    if (winLost() || S.entering) return; S.entering = true;
     try { await enterCloudNow(session); } finally { S.entering = false; }
   }
   async function enterCloudNow(session) {
     let quiet = onScreenAs(session.user.email) && $("vRecovery").hidden && $("vLogin").hidden && $("vWaiting").hidden;                   // the device copy is already on screen for this account: live data swaps in without a blank "Loading…"
     settingsOpen = quiet ? settingsOpen : false;
-    S.signedIn = true; S.sessionEmail = session.user.email || "";
+    const was = S.sessionEmail; S.signedIn = true; S.sessionEmail = session.user.email || "";
+    if ((was && was !== S.sessionEmail) || (S.pendingOwner && S.pendingOwner !== S.sessionEmail)) S.backend = null;   // v316 (the twenty-sixth check round, R26-PRV-3): another account's session (a reset link left unfinished, a sign-in over a remembered account) reads and sends nothing of the last account's until its role is known: the coach's sync ran under hers and his waiting change was dropped as deleted elsewhere
     let trainer = await isTrainerAccount();
     const remembered = lsGet("fiala.trainings.role");
     if (trainer === null) {
@@ -966,16 +1182,21 @@ import { reportRange, buildReport } from "./report.js";
     if (quiet && S.clientMode !== (trainer !== true)) { quiet = false; settingsOpen = false; }   // painted as the other role: start the pages over
     if (S.pendingOwner && S.pendingOwner !== S.sessionEmail) {       // the queue belongs to whoever signed in last; another account starts clean
       resetPhotos();                                                 // the photos queued and kept by the last account go too
-      dirty.clear(); pendingProfile.clear(); profileTouched.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); folderTouched.clear(); deletedFolders.clear(); fromFile.clear();
+      { const d = S.templateDraft; if (d && d.dirty && d.snapshot && trainings.has(d.id)) trainings.set(d.id, JSON.parse(d.snapshot)); S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); }   // v316 (the twenty-fourth check round): the last account's unsaved template draft (kept through its session's end) never reaches another account: its template as saved
+      noteDraft.clear(); for (const st of [openBlocks, fullBlocks, peekBlocks, openExNotes]) st.clear(); setSel.clear(); cardNoteDraft.clear(); cardNoteBase.clear(); keptText.clear(); try { localStorage.removeItem(KEPT); } catch (_) {}   // and what it left half typed in a note box, and its card state (its page stays under the sign-in: the next account's Save sent its words as its own)
+      dirty.clear(); deleting.clear(); deletedHere.clear(); seenAt.clear(); seenDoc.clear(); pendingProfile.clear(); pendingChoices.clear(); askedZone = askedHealth = false; askedHeld = ""; heldAgree.clear(); settledAnswers.clear(); profileUnder.clear(); carriedFrom.clear(); withdrawnAt.clear(); typedHere.clear(); deliv.clear(); clearTimeout(askTimer); profileTouched.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); pendingNoteRows.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); folderTouched.clear(); deletedFolders.clear(); fromFile.clear(); madeHere.clear(); try { localStorage.removeItem(MADE); } catch {}
+      S.failed = false; S.failReason = "";
     }
+    if (keptFor && keptFor !== String(S.sessionEmail || "").toLowerCase()) { noteDraft.clear(); cardNoteDraft.clear(); cardNoteBase.clear(); keptText.clear(); keptFor = ""; }   // v316 (the twenty-sixth check round, R26-WAP-5): words taken for the account the device remembered (a start carrying on offline) never stay for another account signing in
     S.pendingOwner = S.sessionEmail; persistPending();
+    takeKept(S.sessionEmail);                                        // v316 (one window at a time): the words kept in the window Fiala left, once this account is the one signed in
     S.clientMode = trainer !== true;
     applyLook();
     S.backend = S.clientMode ? clientBackend : cloudBackend;
     if (!quiet) hideAllViews();
     if (S.clientMode) {
-      for (const id of [...clients.keys()]) if (isTemplateClient(id) || norm(clients.get(id).email) !== norm(S.sessionEmail)) clients.delete(id);   // the device copy may belong to someone else
-      const mineIds = new Set(clients.keys()); for (const id of [...trainings.keys()]) if (!mineIds.has(trainings.get(id).clientId)) trainings.delete(id);
+      seenAt.clear(); seenDoc.clear();                               // v316 (the twenty-third check round): nothing of a coach's stamps or copies read on a client's page (a client's saves never use them; kept, they reached her device copy and her queue, his notes about her with them)
+      onlyMine(); localBackend.save();                               // the device copy may belong to someone else; v316 (the twenty-fourth check round): it leaves the device copy at once, not at her first read
       if (!quiet) $("status").textContent = "Loading\u2026";
       await syncDown();                                       // a success flushes the queue itself
       setStatus();
@@ -1014,7 +1235,7 @@ import { reportRange, buildReport } from "./report.js";
     const { data, error } = await withRetry(() => S.sb.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPassword").value }));
     $("loginBtn").disabled = false;
     if (error) { $("loginMsg").textContent = friendly(error); return; }
-    $("loginMsg").textContent = "";
+    $("loginMsg").textContent = ""; $("loginPassword").value = "";   // v316 (the twenty-sixth check round, R26-PRV-1): the password leaves the page once used, so no Sign out leaves it in the box for the next person
     await enterCloud(data.session);
   });
   $("createBtn").addEventListener("click", showSignup);
@@ -1033,7 +1254,7 @@ import { reportRange, buildReport } from "./report.js";
     let res; try { res = await S.sb.auth.signUp({ email, password, options: { data: { name, phone }, emailRedirectTo: location.origin + location.pathname } }); } catch (err) { res = { data: {}, error: err }; }
     const { data, error } = res;
     $("suBtn").disabled = false;
-    const sent = () => { $("loginEmail").value = email; $("suForm").hidden = true; $("suDone").hidden = false; $("suDoneText").textContent = "We sent a confirmation link to " + email + ". Open it on this phone, then come back here and sign in with your new password. Not there after a minute? Check Spam."; };
+    const sent = () => { $("loginEmail").value = email; for (const id of ["suName", "suEmail", "suPhone", "suPassword", "suPassword2"]) $(id).value = ""; $("suForm").hidden = true; $("suDone").hidden = false; $("suDoneText").textContent = "We sent a confirmation link to " + email + ". Open it on this phone, then come back here and sign in with your new password. Not there after a minute? Check Spam."; };
     if (error && /security purposes|rate limit/i.test(error.message || "")) { sent(); return; }
     if (error) { msg.textContent = friendly(error); return; }
     if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) { $("loginEmail").value = email; msg.textContent = "This email already has an account. Sign in instead, or use Forgot password."; return; }
@@ -1063,9 +1284,69 @@ import { reportRange, buildReport } from "./report.js";
   $("histBtn").addEventListener("click", openHistoryPage);
   $("meDisc").addEventListener("click", () => { backScroll = window.scrollY; if (S.clientMode) showSettings(); else showClientCard(); window.scrollTo(0, 0); });   // the client's person disc in the bar: Settings, where Apple keeps the person
   $("meHealth").addEventListener("click", (e) => openSub("health", "settings", e));   // v299: the client's own Health details and Health & safety, from the client's Settings
+  $("meHealthSw").addEventListener("click", async () => {            // v316: Store health details: on asks (as the first time); off asks first, then deletes them
+    const c = clients.get(S.myClientId); if (!c || !S.clientMode) return;
+    if ($("meHealthSw").getAttribute("aria-checked") === "true") {     // shown on: off asks first, then deletes (what the person sees decides: a switch a sync left behind recorded the opposite, the check round)
+      if (["agreed", "paper", "legacy"].includes(healthState(c)) && (await askFirst({ title: "Stop storing health details?", text: "Your health details are deleted, and your coach won\u2019t see them.", yes: "Stop storing" }))) { const cc = clients.get(S.myClientId); if (cc && ["agreed", "paper", "legacy"].includes(healthState(cc))) setChoice("health", "decline"); }
+      paintChoices(); if (keysLast) $("meHealthSw").focus({ preventScroll: true }); return;
+    }
+    if (youngRec(c, DAYS()) || c.paused) { askChoice(youngRec(c, DAYS()) ? CHOICE_WORDS.young(true, firstOf(c)) : { title: "Access is paused", texts: ["Your coach has paused your access, so nothing new is stored. Ask your coach."], yes: "OK", one: true }); paintChoices(); return; }
+    await askHealth(true); paintChoices();
+  });
+  $("meZoneSw").addEventListener("click", () => { const c = clients.get(S.myClientId); if (!c || !S.clientMode) return; const on = $("meZoneSw").getAttribute("aria-checked") === "true"; if (!on && (youngRec(c, DAYS()) || c.paused)) { askChoice(youngRec(c, DAYS()) ? CHOICE_WORDS.young(true, firstOf(c)) : { title: "Access is paused", texts: ["Your coach has paused your access, so nothing new is shared. Ask your coach."], yes: "OK", one: true }); return; } if (on === (zoneState(c) === "allow")) setChoice("zone", on ? "deny" : "allow"); paintChoices(); });   // v316: Share time zone with coach; off deletes the one saved
   $("meSafety").addEventListener("click", (e) => openSub("safety", "settings", e));
   $("cardHealth").addEventListener("click", (e) => openSub("health", "card", e));     // the coach's, from the client's card
   $("cardSafety").addEventListener("click", (e) => openSub("safety", "card", e));
+  const takeAnswer = (id, data, drop) => {                          // v316 (the check round): a coach's consent rule answered { choices, minor, minorUntil }: laid on the card's copy, and, when the details went, they go from the copy last read too, so the next save's merge never takes the deletion for the coach's own change (it wiped details the client entered since)
+    const cc = clients.get(id); if (!cc || !data || typeof data !== "object" || !data.choices) return;
+    const mine = profileTouched.get(id) || new Set();               // this device's own Under 18, not saved yet, stands (the check round)
+    const lay = (r) => { r.choices = data.choices; if (!mine.has("minor")) { if (data.minor === true) r.minor = true; else delete r.minor; } if (!mine.has("minorUntil")) { if (Number.isInteger(data.minorUntil)) r.minorUntil = data.minorUntil; else delete r.minorUntil; } if (drop === "zone") delete r.zone; else if (drop) { const had = r.minorUntil; dropHealth(r, DAYS()); if (Number.isInteger(had) && !(Number.isInteger(r.minorUntil) && r.minorUntil >= had)) r.minorUntil = had; } return r; };   // a teen birthday typed here and not saved yet leaves its year (the check round)
+    lay(cc); const kk = key("clients", id), b = seenDoc.get(kk); if (b) { try { seenDoc.set(kk, JSON.stringify(lay(JSON.parse(b)))); } catch (_) {} }
+    localBackend.save();
+  };
+  const declinedWords = (c, who) => {                               // the paper form refused over a Don't Allow in the app: who said no, as far as this copy knows (the check round: a parent's Disagree read as the client's)
+    const h = (c && c.choices && c.choices.health) || {}, by = h.state === "declined" ? h.by : null;
+    const said = by === "parent" ? "A parent or guardian chose not to store " + who + "\u2019s health details in the app." : by === "client" ? who + " chose not to store health details in the app." : who + ", or a parent or guardian, chose not to store health details in the app.";
+    return said + (c && c.paused ? "" : by === "parent" ? " " + who + " can turn Store health details on in the app, and a parent or guardian agrees there too." : " Ask " + who + " to turn Store health details on in the app.");   // paused: the app asks nothing, so no advice
+  };
+  const offWords = (c, who) => { const h = (c && c.choices && c.choices.health) || {}; return (h.state === "declined" ? (h.by === "parent" ? "A parent or guardian chose not to store " + who + "\u2019s health details in the app meanwhile" : h.by === "coach" ? "The health details were already deleted" : who + " chose not to store health details in the app meanwhile") : "The form was already off on the server") + ", so nothing is stored."; };   // the switch turned off over what the server now holds (the card synced first)
+  const ruleRefused = (c, res, what, sender) => {                             // a refusal is said in an alert that stays (the check round: "Saved" from the sync that followed wrote over the status line)
+    const m = String((res.error && res.error.message) || ""), who = firstOf(c), as = sender || S.sessionEmail, gone = () => !!S.sb && (!S.signedIn || S.sessionEmail !== as);   // gone: signed out (or another account) while the alert waited for a sheet
+    if (isOffline(res.error)) { const say = () => (held() || paOpen || rowHolds()) ? setTimeout(say, 400) : gone() ? null : askChoice({ title: "Couldn\u2019t " + what, texts: ["No signal reached the server. If nothing has changed on " + who + "\u2019s card once you\u2019re online, try again."], yes: "OK", one: true }); say(); return; }   // v316 (the check rounds): said in the alert that stays, as a refusal is (the sync scheduled after it wrote over the status line within 0.3 s)
+    if (res.error.code === "PGRST202") { const say = () => (held() || paOpen || rowHolds()) ? setTimeout(say, 400) : gone() ? null : askChoice({ title: "Couldn\u2019t " + what, texts: ["Run client-consent.sql in Supabase first."], yes: "OK", one: true }); say(); return; }
+    const text = /agreed in the app, unknown/.test(m) ? who + " agreed in the app meanwhile, so nothing changed." : /agreed in the app/.test(m) ? (/turn on/.test(what) ? (needsParent(c, DAYS()) ? who + " agreed in the app meanwhile. A parent or guardian still has to agree, in " + who + "\u2019s app." : who + " agreed in the app meanwhile, so no paper form is needed.") : who + " agreed in the app meanwhile. To delete the details, use Delete health details.") : /declined in the app/.test(m) ? declinedWords(c, who) : /not on paper, unknown/.test(m) ? "Nothing is stored for " + who + " on the server now, so nothing changed." : /not on paper/.test(m) ? offWords(c, who) : /parent needed/.test(m) ? who + " is under 18: a parent or guardian signs the form too. Turn it on again once they have." : /too young/.test(m) ? who + " is under 13. Fiala Fitness is for ages 13 and up." : /not allowed/.test(m) ? who + " is no longer on the server (deleted on another device), so nothing changed." : "Nothing changed. Try again.";
+    const say = () => (held() || paOpen || rowHolds()) ? setTimeout(say, 400) : gone() ? null : askChoice({ title: "Couldn\u2019t " + what, texts: [text], yes: "OK", one: true }); say();   // never over another sheet or question (the check round: it closed an open editor): it waits for it to close
+  };
+  const ruleBusy = new Set();                                       // the clients whose consent rule is out: their card's switch and rows take no second tap meanwhile (another client's card is free)
+  $("cardPaper").addEventListener("click", async () => {             // v316: an in-person client signed a paper form (the owner's pick, 18 Nov 2026): the coach may then add their health details; off takes them away, so it asks first
+    const id = S.view.id, c = clients.get(id), as0 = S.sessionEmail; if (!c || S.clientMode || ruleBusy.has(id)) return; const st = healthState(c); if (st === "agreed") return;
+    const on = !(st === "paper" && !needsParent(c, DAYS())), sw = $("cardPaper");   // shown off for a teen's form signed alone: on records the parent's signature
+    if (on && youngRec(c, DAYS())) { tooYoungNote(id); return; }   // under 13: no form makes it right (the server refuses it too)
+    if (!on && healthShown(c) && !(await askFirst({ title: "Turn off the signed form?", text: firstOf(c) + "\u2019s health details are deleted.", yes: "Turn off" }))) { if (keysLast) sw.focus({ preventScroll: true }); return; }
+    { const now = clients.get(id); if (!now || healthState(now) !== st) { if (S.view.id === id && settingsOpen === "card") paintCard(); return; } }   // read again after the question: a sync may have brought the client's own Agree (the check round)
+    sw.setAttribute("aria-checked", String(on)); const had = document.activeElement === sw;   // the place goes back only to a switch that held it as the rule went out (the check round: a page that had it got the switch, and the next space recorded a form)
+    ruleBusy.add(id); { const kk = key("clients", id); if (timers.has(kk) || dirty.has(kk)) await flushOne("clients", id).catch(() => {}); }   // this card's own change still queued (Under 18 just switched off) reaches the server first (the check round: the rule read the old Under 18)
+    const res = await coachSetPaper(id, on, on && isMinor(clients.get(id), DAYS())).finally(() => { ruleBusy.delete(id); }), cc = clients.get(id), here = S.view.id === id && settingsOpen === "card";   // an answer that lands late touches only its own client's card
+    if (res && res.error) { if (here) sw.setAttribute("aria-checked", String(!on)); const late = !isOffline(res.error) && (on ? /agreed in the app/ : /not on paper/).test(res.error.message || ""); let srv = null, known = true; if (late) { ruleBusy.add(id); try { const ok = await syncDownNow().catch(() => false); if (!ok || dirty.has(key("clients", id))) { known = false; const r = await withTimeout(S.sb.from("ft_clients").select("data").eq("id", id).maybeSingle(), 8000).catch(() => null); if (r && r.data && r.data.data) srv = { ...r.data.data, id }; } } finally { ruleBusy.delete(id); } }   /* v316 (the check rounds): with neither the sync nor the row read, no cause is named; the switch takes no second tap until the reads end (a second rule and a second alert) */ if (isOffline(res.error)) scheduleSync(); ruleRefused((late && (srv || (known ? clients.get(id) : null))) || cc || c, late && !srv && !known ? { error: { ...res.error, message: on ? "agreed in the app, unknown" : "not on paper, unknown" } } : res, on ? "turn on the signed form" : "turn off the signed form", as0); if (!late && !isOffline(res.error)) syncDownNow(); if (had && keysLast && here && [sw, document.body, null].includes(document.activeElement)) sw.focus({ preventScroll: true }); return; }   // the rule writes it on the server: offline or refused, nothing changed here either
+    takeAnswer(id, res && res.data, !on);                             // the server's answer, as it now stands (the check round: the card no longer guesses)
+    if (S.view.name === "client" && S.view.id === id && settingsOpen === "card") paintCard(); syncDownNow(); if (had && keysLast && here && [sw, document.body, null].includes(document.activeElement)) sw.focus({ preventScroll: true });   // the place back only where it was (the check round: a late answer took it out of a field being typed in)
+  });
+  $("cardMinor").addEventListener("click", () => {                 // v316: the coach knows a client is under 18 (a parent books): the health agreement then asks a parent or guardian too (a birthday under 18 says the same)
+    const id = S.view.id, c = clients.get(id); if (!c || S.clientMode || minorBy(c, DAYS()) === "birthday") return; if (isMinor(c, DAYS())) { delete c.minor; delete c.minorUntil; } else c.minor = true;   // on by the date of birth it can't be switched off; off also clears the year a teen's Don't Allow kept (they turned 18)
+    if (!profileTouched.has(id)) profileTouched.set(id, new Set()); profileTouched.get(id).add("minor").add("minorUntil"); scheduleSave("clients", id); paintCard();
+  });
+  async function withdrawFor(kind) {                                 // v316 (the check round: the policies promise a withdrawal told by email or in person is carried out): the coach records it, with Don't Allow's effect
+    const id = S.view.id, c = clients.get(id), as0 = S.sessionEmail; if (!c || S.clientMode || ruleBusy.has(id)) return; const who = firstOf(c);
+    const q = kind === "health" ? { title: "Delete " + who + "\u2019s health details?", text: "Use this when " + who + ", or a parent or guardian, asks you to. They\u2019re deleted, and stored again only after a new agreement, in the app or on a paper form.", yes: "Delete" } : { title: "Stop sharing " + who + "\u2019s time zone?", text: "Use this when " + who + " asks you to. The saved time zone is deleted, and " + who + " can share it again in Settings" + (c.paused ? " once their access is active again." : "."), yes: "Stop sharing" };
+    const from = document.activeElement, ok = await askFirst(q), had = !!from && from !== document.body && document.activeElement === from, back = () => { if (!had || !keysLast || ![document.body, null, from].includes(document.activeElement)) return; const ok2 = (x) => x && !x.disabled && x.getClientRects().length, seg = $("unitSeg").querySelector("button.on"), el = ok2(from) && from.isConnected ? from : [kind === "health" ? $("cardZoneStop") : null, seg].find(ok2); if (el) el.focus({ preventScroll: true }); };   // the keyboard's place comes back after the question (a row that went: the card's next control)
+    if (!ok) { back(); return; }
+    ruleBusy.add(id); const res = await coachWithdraw(id, kind).finally(() => { ruleBusy.delete(id); }), cc = clients.get(id), here = () => S.view.name === "client" && S.view.id === id && settingsOpen === "card";   // an answer that lands late moves the keyboard's place only on its own client's card (the check round: a space then switched another client's paper form)
+    if (res && res.error) { ruleRefused(cc || c, res, kind === "zone" ? "stop sharing" : "delete the health details", as0); if (!isOffline(res.error)) syncDownNow(); else scheduleSync(); if (here()) back(); return; }   // the rule writes it on the server: offline, nothing changed
+    takeAnswer(id, res && res.data, kind === "zone" ? "zone" : true);
+    if (here()) paintCard(); syncDownNow(); if (here()) back();
+  }
+  $("cardHealthDel").addEventListener("click", () => withdrawFor("health"));
+  $("cardZoneStop").addEventListener("click", () => withdrawFor("zone"));
   $("meUnitSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-unit]"); if (b && S.clientMode && S.myClientId) setLiftUnit(S.myClientId, b.dataset.unit); });   // the client's own "Weights in" (v299: the client switches it, on a trip to Europe)
   $("limitsNote").addEventListener("click", (e) => { if (S.view.name !== "training" || S.clientMode || previewClient) return; backScroll = window.scrollY; if (!showSub("safety", false)) { backScroll = null; return; } askEat(e); window.scrollTo(0, 0); });   // the note on the client's workout opens the client's Health & safety; Back returns to the workout where it was
   $("forgotBtn").addEventListener("click", async () => {
@@ -1087,25 +1368,39 @@ import { reportRange, buildReport } from "./report.js";
     const { data: s } = await S.sb.auth.getSession();
     if (s && s.session) await enterCloud(s.session); else showLogin("Password saved. Sign in.");
   });
+  let signOutRun = null;                                             // v316 (the check rounds): one sign-out at a time (a second tap on a weak signal ended in a second "Couldn't sign out")
+  const signOutOnce = (fn) => signOutRun || (signOutRun = Promise.resolve().then(fn).finally(() => { signOutRun = null; }));
   const signOutClient = async () => {
-    await flushNow();
-    if (dirty.size) { $("status").textContent = "Some changes are not saved yet \u00b7 try again when online"; return; }
+    const theirs = !!(S.pendingOwner && S.sessionEmail && S.pendingOwner !== S.sessionEmail);
+    shownAgain(); $("status").textContent = "Signing out\u2026"; if (!theirs) { await flushNow(); await flushPhotos().catch(() => {}); await flushNow(); }   // v316 (the check rounds): a photo removal or a deleted client's photo folder still waiting goes first   // v316 (the check rounds): the save the photo pass itself scheduled (the record learns its new photo) goes too, before the check
+    if (!theirs && (dirty.size || photoWork())) { const say = () => (held() || paOpen || rowHolds()) ? setTimeout(say, 400) : (S.sb && !S.signedIn) ? null : askChoice({ title: "Couldn\u2019t sign out", texts: [(photoWork() && !dirty.size ? "A photo change hasn\u2019t reached the server yet." : "Some changes are not saved yet.") + (navigator.onLine ? " Try again later." : " Try again when you\u2019re online.")], yes: "OK", one: true }); setStatus(); say(); return; }   // v316 (the check rounds): in an alert that stays (a sync's "Saved" wrote over the bar)
     const finish = () => {
+      if (theirs) { S.backend = null; S.offline = false; S.offlineEntry = null; try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin(""); clearSignIn(); return; }
       for (const tm of timers.values()) clearTimeout(tm);
-      timers.clear(); chains.clear(); dirty.clear(); pendingProfile.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); S.failed = false;
+      timers.clear(); chains.clear(); dirty.clear(); deleting.clear(); deletedHere.clear(); seenAt.clear(); seenDoc.clear(); pendingProfile.clear(); pendingChoices.clear(); askedZone = askedHealth = false; askedHeld = ""; heldAgree.clear(); settledAnswers.clear(); profileUnder.clear(); carriedFrom.clear(); withdrawnAt.clear(); typedHere.clear(); deliv.clear(); clearTimeout(askTimer); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); S.failed = false;
       clients.clear(); trainings.clear(); localBackend.wipe();   // nothing of the account stays on the device, in localStorage or in the browser's database
-      try { localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
+      if (!winLost()) try { localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); localStorage.removeItem("fiala.pending.answers.v1"); localStorage.removeItem(MADE); localStorage.removeItem(KEPT); } catch {} madeHere.clear(); keptText.clear(); noteDraft.clear(); cardNoteDraft.clear(); cardNoteBase.clear(); for (const st of [openBlocks, fullBlocks, peekBlocks, openExNotes]) st.clear(); setSel.clear();
       S.offline = false; S.offlineEntry = null; S.pendingOwner = "";
       resetPhotos();                                                 // no one else's photos stay on this phone
-      S.view = { name: "clients" }; showLogin("");
+      S.view = { name: "clients" }; showLogin(""); clearSignIn();
     };
     const who = S.sessionEmail;
-    if (!S.signingOut) S.signingOut = (S.sb ? S.sb.auth.signOut({ scope: "local" }) : Promise.resolve({ error: null })).catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });   // this device only (15 Nov 2026, the audit's #7): the library's default signed every device out, and those kept every client's data on disk behind the sign-in page
+    if (!S.signingOut) S.signingOut = (S.sb && !winLost() ? S.sb.auth.signOut({ scope: "local" }) : Promise.resolve({ error: null })).catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });   // this device only (15 Nov 2026, the audit's #7): the library's default signed every device out, and those kept every client's data on disk behind the sign-in page
     const out = await withTimeout(S.signingOut, 8000);
-    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (S.signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && S.signedIn && S.sessionEmail === who) finish(); }); return; }
+    if (out && out.error && hasAuthToken()) { setStatus(); { const say = () => (held() || paOpen || rowHolds()) ? setTimeout(say, 400) : (!S.signedIn || S.sessionEmail !== who) ? null : askChoice({ title: "Couldn\u2019t sign out", texts: [navigator.onLine ? "The server didn\u2019t answer. Try again later." : "Sign out needs a connection. Try again when you\u2019re online."], yes: "OK", one: true }); say(); } (S.signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && S.signedIn && S.sessionEmail === who) finish(); }); return; }
     finish();
   };
-  $("signout3").addEventListener("click", signOutClient);
+  $("signout3").addEventListener("click", () => signOutOnce(signOutClient));
+  const storedWork = () => { try { const p = lsGet("fiala.pending.v1"), sx = lsGet("fiala.pending.answers.v1"); return !!((p && ((p.dirty || []).length || (p.choices || []).length || (p.profile || []).length)) || (sx && (sx.choices || []).length)); } catch (_) { return false; } };   // v316 (the check rounds): what any page of this device still has to send
+  const idleDevice = () => !dirty.size && !photoWork() && ![...pendingProfile.values()].some((q) => q && q.size) && ![...pendingChoices.values()].some((q) => q && q.size) && !storedWork();   // v316 (the check rounds): nothing of this account still has to reach the server (and no other page of this device has work stored: a frozen tab misses the other tab's writes)
+  const wipeDevice = () => {                                         // v316 (the check rounds): a session ended elsewhere (the sign-in deleted, a password changed) with nothing waiting: nothing of the account stays on the device, as after Sign out
+    for (const tm of timers.values()) clearTimeout(tm);
+    timers.clear(); chains.clear(); dirty.clear(); deleting.clear(); deletedHere.clear(); seenAt.clear(); seenDoc.clear(); pendingProfile.clear(); pendingChoices.clear(); askedZone = askedHealth = false; askedHeld = ""; heldAgree.clear(); settledAnswers.clear(); profileUnder.clear(); carriedFrom.clear(); withdrawnAt.clear(); typedHere.clear(); deliv.clear(); clearTimeout(askTimer); profileTouched.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); folderTouched.clear(); deletedFolders.clear(); fromFile.clear(); pendingWeightRows.clear(); pendingDoneRows.clear(); pendingEarlyRows.clear(); pendingFinish.clear(); pendingSkip.clear(); pendingMove.clear(); pendingMiss.clear(); pendingSwap.clear(); pendingOrder.clear(); pendingNoteRows.clear(); S.failed = false;
+    clients.clear(); trainings.clear(); localBackend.wipe();
+    if (!winLost()) try { if (!S.clientMode) localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.pending.v1"); localStorage.removeItem("fiala.pending.answers.v1"); localStorage.removeItem(MADE); localStorage.removeItem(KEPT); } catch {} madeHere.clear(); keptText.clear(); noteDraft.clear(); cardNoteDraft.clear(); cardNoteBase.clear(); for (const st of [openBlocks, fullBlocks, peekBlocks, openExNotes]) st.clear(); setSel.clear();
+    S.pendingOwner = ""; resetPhotos(); S.view = { name: "clients" }; S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); clearSignIn();   // v316 (the twenty-fourth check round): the draft goes with the wipe (a session ended elsewhere no longer drops it: a device that keeps the work keeps it)
+  };
+
   $("retryBtn").addEventListener("click", async () => {
     $("retryBtn").disabled = true;
     try {
@@ -1117,26 +1412,26 @@ import { reportRange, buildReport } from "./report.js";
     } finally { $("retryBtn").disabled = false; }
   });
   const signOutTrainer = async () => {
-    await flushNow();
-    if (dirty.size) { $("status").textContent = "Some changes are not saved yet \u00b7 try again when online"; return; }
+    shownAgain(); $("status").textContent = "Signing out\u2026"; await flushNow(); await flushPhotos().catch(() => {}); await flushNow();   // v316 (the check rounds): a photo removal or a deleted client's photo folder still waiting goes first   // v316 (the check rounds): the save the photo pass itself scheduled (the record learns its new photo) goes too, before the check
+    if (dirty.size || photoWork()) { const say = () => (held() || paOpen || rowHolds()) ? setTimeout(say, 400) : (S.sb && !S.signedIn) ? null : askChoice({ title: "Couldn\u2019t sign out", texts: [(photoWork() && !dirty.size ? "A photo change hasn\u2019t reached the server yet." : "Some changes are not saved yet.") + (navigator.onLine ? " Try again later." : " Try again when you\u2019re online.")], yes: "OK", one: true }); setStatus(); say(); return; }   // v316 (the check rounds): in an alert that stays (a sync's "Saved" wrote over the bar)
     const finish = () => {
       for (const tm of timers.values()) clearTimeout(tm);
-      timers.clear(); chains.clear(); dirty.clear(); pendingProfile.clear(); profileTouched.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); folderTouched.clear(); deletedFolders.clear(); fromFile.clear(); S.failed = false;
+      timers.clear(); chains.clear(); dirty.clear(); deleting.clear(); deletedHere.clear(); seenAt.clear(); seenDoc.clear(); pendingProfile.clear(); pendingChoices.clear(); askedZone = askedHealth = false; askedHeld = ""; heldAgree.clear(); settledAnswers.clear(); profileUnder.clear(); carriedFrom.clear(); withdrawnAt.clear(); typedHere.clear(); deliv.clear(); clearTimeout(askTimer); profileTouched.clear(); trainerTouched.clear(); trainerNamed.clear(); trainerNoted.clear(); planTouched.clear(); deletedNotes.clear(); deletedPackages.clear(); folderTouched.clear(); deletedFolders.clear(); fromFile.clear(); S.failed = false;
       clients.clear(); trainings.clear(); localBackend.wipe();   // nothing of the account stays on the device, in localStorage or in the browser's database
-      try { localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); } catch {}
+      if (!winLost()) try { localStorage.removeItem("fiala.trainings.migrated"); localStorage.removeItem("fiala.trainings.role"); localStorage.removeItem("fiala.pending.v1"); localStorage.removeItem("fiala.pending.answers.v1"); localStorage.removeItem(MADE); localStorage.removeItem(KEPT); } catch {} keptText.clear(); noteDraft.clear(); cardNoteDraft.clear(); cardNoteBase.clear(); for (const st of [openBlocks, fullBlocks, peekBlocks, openExNotes]) st.clear(); setSel.clear(); madeHere.clear();
       S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar();
       S.offline = false; S.offlineEntry = null; S.pendingOwner = "";
       resetPhotos();                                                 // no one else's photos stay on this phone
-      S.view = { name: "clients" }; showLogin("");
+      S.view = { name: "clients" }; showLogin(""); clearSignIn();
     };
     const who = S.sessionEmail;
-    if (!S.signingOut) S.signingOut = (S.sb ? S.sb.auth.signOut({ scope: "local" }) : Promise.resolve({ error: null })).catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });   // this device only (15 Nov 2026, the audit's #7): the library's default signed every device out, and those kept every client's data on disk behind the sign-in page
+    if (!S.signingOut) S.signingOut = (S.sb && !winLost() ? S.sb.auth.signOut({ scope: "local" }) : Promise.resolve({ error: null })).catch((e) => ({ error: e })).finally(() => { S.signingOut = null; });   // this device only (15 Nov 2026, the audit's #7): the library's default signed every device out, and those kept every client's data on disk behind the sign-in page
     const out = await withTimeout(S.signingOut, 8000);
-    if (out && out.error && hasAuthToken()) { $("status").textContent = "Sign out needs a connection \u00b7 try again later"; (S.signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && S.signedIn && S.sessionEmail === who) finish(); }); return; }
+    if (out && out.error && hasAuthToken()) { setStatus(); { const say = () => (held() || paOpen || rowHolds()) ? setTimeout(say, 400) : (!S.signedIn || S.sessionEmail !== who) ? null : askChoice({ title: "Couldn\u2019t sign out", texts: [navigator.onLine ? "The server didn\u2019t answer. Try again later." : "Sign out needs a connection. Try again when you\u2019re online."], yes: "OK", one: true }); say(); } (S.signingOut || Promise.resolve()).then(() => { if (!hasAuthToken() && S.signedIn && S.sessionEmail === who) finish(); }); return; }
     finish();
   };
-  $("signout").addEventListener("click", () => (S.clientMode ? signOutClient() : signOutTrainer()));
-  async function flushNow() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); await flushOne(kind, id).catch(() => {}); } }
+  $("signout").addEventListener("click", () => signOutOnce(S.clientMode ? signOutClient : signOutTrainer));
+  async function flushNow() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); await flushOne(kind, id).catch(() => {}); } await Promise.all([...chains.values()]); }   // v316 (the check rounds): and the saves already on their way, so a sign-out checks what is really still unsent
 
   // ---------- data ops ----------
   function addClient(name) {
@@ -1150,6 +1445,11 @@ import { reportRange, buildReport } from "./report.js";
   }
   function newRow(label) { return { id: uid(), label, name: "", sets: 4, reps: "", tempo: "", rest: "", weights: [], repsDone: [], setsDone: 0, note: "" }; }
   function nextLabel(t) { let max = 0; for (const r of t.rows) { const n = labelKey(r.label)[0]; if (Number.isFinite(n)) max = Math.max(max, n); } return String(max + 1); }
+  function cancelPick() {                                            // the pick note's Cancel (choosing a template for a client): nothing is chosen; v316 (the seventeenth check round): the empty workout From template was tapped on, when it is this page's own, is given up as Back would give it up (it stayed for half an hour and more, the client seeing "Nothing added yet"); one made elsewhere is left to the tidying
+    const f = fillFor && trainings.get(fillFor), k = f && key("trainings", f.id); pickFor = null; fillFor = null;
+    if (f && isEmptyWorkout(f) && madeHere.has(f.id) && ((dirty.has(k) && !seenAt.has(k)) || syncedNow(f.id))) deleteRec("trainings", f.id);
+    render();
+  }
   function addTraining(clientId, from, date, stay) {
     const t = {
       id: uid(), clientId, date: date || today(), createdAt: now(),
@@ -1159,22 +1459,22 @@ import { reportRange, buildReport } from "./report.js";
     if (from && from.fromTemplate) t.fromTemplate = from.fromTemplate;
     if (from && from.inPerson) t.inPerson = true;
     const pk = packageOf(clients.get(clientId)); if (pk && pk.inPerson && !isTemplateClient(clientId)) t.inPerson = true;   // the package's default
-    trainings.set(t.id, t); scheduleSave("trainings", t.id, 0);
+    trainings.set(t.id, t); madeHere.add(t.id); keepMade(t.id); scheduleSave("trainings", t.id, 0);
     if (!stay) { freshWorkout = t.id; go({ name: "training", id: t.id }); }                   // stay: one of a week added at once (useWeek), the page stays where it is
   }
   function newWorkoutHere() { if (S.view.name === "client" && isTemplateClient(S.view.id)) { newTemplateHere(); return; } setTab("workouts"); addTraining(S.view.id, null, today()); }   // the round + beside the bar, on any tab: a new workout for this client, today — and Back lands on Workouts, where it shows
   function deleteTraining(id) {
     const t = trainings.get(id); if (!t) return;
-    if (S.templateDraft && S.templateDraft.id === id) { S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); }
+    if (S.templateDraft && S.templateDraft.id === id) { S.templateDraft = null; S.pendingGo = null; paintDraftBar(); } forgetDraft(id);
     const toHistory = fromHistory(t);
-    trainings.delete(id); scheduleSave("trainings", id, 0);
+    deleteRec("trainings", id);
     if (toHistory) backToHistory(t); else go(isTemplateClient(t.clientId) ? templateHome(t) : { name: "client", id: t.clientId }, true);   // up to where Back goes (the client, or History it was opened from; a template: its folder, slide or phase page): its step goes
   }
   function deleteClient(id) {
     if (!clients.has(id)) return;                                      // a second tap on Delete finds nobody
     forgetPhoto(id);                                                   // her photo goes from the phone and the server too
-    for (const t of clientTrainings(id)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }
-    clients.delete(id); scheduleSave("clients", id, 0);
+    for (const t of clientTrainings(id)) { deleteRec("trainings", t.id); }
+    deleteRec("clients", id);
     leaveSettings(); go({ name: "clients" });                         // off her card first: the card would otherwise stay up with her details
   }
   // Weights from the most recent earlier training of this client with the same exercise.
@@ -1204,6 +1504,7 @@ import { reportRange, buildReport } from "./report.js";
   let wake = null, wakePending = false, wakeTimer = null;
   const wakeWanted = () => { if (S.view.name !== "training" || document.visibilityState !== "visible") return false; const t = trainings.get(S.view.id); return !!t && !isTemplateClient(t.clientId); };
   async function holdWake(renew = true) {
+    if (winLost()) return;
     if (typeof navigator === "undefined" || !("wakeLock" in navigator) || !wakeWanted()) return;
     if (renew) { clearTimeout(wakeTimer); wakeTimer = setTimeout(dropWake, WAKE_MINUTES * 60000); }
     else if (!wakeTimer) return;                                    // the budget ran out: only a touch starts it again
@@ -1234,10 +1535,11 @@ import { reportRange, buildReport } from "./report.js";
     navWillChange(back ? "back" : "");                               // the screen as it was: Safari's (and the edge swipe's) page to come back to
     if (S.view.name === "client" && isTemplateClient(S.view.id) && S.view.folder) lastSlide.set(S.view.folder, shownSlide(S.view));   // a folder of his left for a folder inside it (or anything): Back finds the slide it was on
     scrollMemo.set(viewKey(S.view), window.scrollY);                                              // the page being left: Back brings it back here
-    if (S.view.name === "training" && !(next.name === "training" && next.id === S.view.id)) for (const k of [...cardNoteDraft.keys()]) if (k.startsWith(S.view.id + "/")) cardNoteDraft.delete(k);   // a card note left half-written goes with the page
-    if (!S.clientMode && (!S.sb || S.syncedOnce) && S.view.name === "training" && !(next.name === "training" && next.id === S.view.id) && fillFor !== S.view.id) {   // leaving an empty workout behind discards it, like an empty note (not while it waits for a template, not before the first sync)
-      const t = trainings.get(S.view.id), fresh = !!t && t.id === tplFresh && !(t.rows || []).length && !String(t.title || "").trim(); if (fresh) tplFresh = null;
-      if (isEmptyWorkout(t) || fresh) { if (S.templateDraft && S.templateDraft.id === t.id) { S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); } trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }   // (and a template the round + made, left with no name and no exercise: back out of it, or Discard it, and it goes)
+    if (S.view.name === "training" && !(next.name === "training" && next.id === S.view.id)) for (const m of [cardNoteDraft, cardNoteBase]) for (const k of [...m.keys()]) if (k.startsWith(S.view.id + "/")) m.delete(k);   // a card note left half-written goes with the page
+    if (!S.clientMode && S.view.name === "training" && !(next.name === "training" && next.id === S.view.id) && fillFor !== S.view.id) {   // leaving an empty workout behind discards it, like an empty note (not while it waits for a template, not before the first sync); v316 (the sixteenth check round): this page's own as soon as it is left, before the first sync too while it never reached the server (offline at launch, it stayed there for good), and one made elsewhere only once it is old and this page's copy is fresh (one opened here while still being filled on the other device went under it)
+      const t = trainings.get(S.view.id), k = key("trainings", S.view.id), unsent = dirty.has(k) && !seenAt.has(k), fresh = !!t && t.id === tplFresh && !(t.rows || []).length && !String(t.title || "").trim() && (!S.sb || S.syncedOnce || unsent); if (fresh) tplFresh = null;
+      const own = !!t && madeHere.has(t.id) && (unsent || syncedNow(t.id)), stray = !!t && syncedNow(t.id) && !freshEmpty(t);
+      if ((isEmptyWorkout(t) && (own || stray)) || fresh) { if (S.templateDraft && S.templateDraft.id === t.id) { S.templateDraft = null; S.pendingGo = null; paintDraftBar(); } forgetDraft(t.id); deleteRec("trainings", t.id); }   // (and a template the round + made, left with no name and no exercise: back out of it, or Discard it, and it goes)
     }
     notesFresh = null;
     if (newsShown && !(next.name === "client" && next.id === newsShown)) { const c = clients.get(newsShown); newsShown = null; if (c) markWorkoutsSeen(c); }   // leaving the client: the New list he saw counts as looked at
@@ -1296,7 +1598,7 @@ import { reportRange, buildReport } from "./report.js";
   const homeFirst = (st) => { const d = st && typeof st.fiala === "number" ? st.fiala : 0; if (d > 0 && typeof history.go === "function") { try { history.go(-d); } catch (_) {} } };   // the home-screen app on an older version's step: straight back to the first one (above)
   if (iosHome) { try { homeFirst(history.state); } catch (_) {} }
   const canBack = () => !$("back").hidden;
-  const held = () => { const wb = $("whenBg"); return S.asking || !!(wb && !wb.hidden) || !!document.querySelector(".crop-view") || !!document.querySelector(".sheet-bg:not([hidden])"); };   // a question, a menu or bubble, a date picker or the photo framing is up: Back waits for it (the Back circle's tap only closes a menu, too)
+  const held = () => { const wb = $("whenBg"); return S.asking || restoreRead || !!(wb && !wb.hidden) || !!document.querySelector(".crop-view") || !!document.querySelector(".sheet-bg:not([hidden])"); };   // a question, a menu or bubble, a date picker or the photo framing is up: Back waits for it (the Back circle's tap only closes a menu, too); v316 (the twenty-first check round): and while the read after Restore's tap is out (Back left the Data page under it; a question or an alert that came due opened inside the page made inert, then over a page given back)
   const screenKey = () => viewKey(S.view) + "|" + (settingsOpen || "") + "|" + (settingsOpen === "exercise" && exCurrent ? exCurrent.key : settingsOpen === "lift" && liftCur ? liftCur.key : "");   // v311: which lift, so two lifts' pictures never mix
   const navSig = () => [...document.querySelectorAll("main > section")].filter((s) => !s.hidden).map((s) => s.id).join(",") + "|" + screenKey();
   const histPush = () => {                                          // one step to come back to; after a step back still under way, never before it (the browser would put it in the wrong place)
@@ -1435,7 +1737,7 @@ import { reportRange, buildReport } from "./report.js";
     box.dataset.body = bodyState();                                 // and the page's own classes on the body as it was taken (shown under a body of its own: v286)
     for (const s of secs) {
       const r = s.getBoundingClientRect(), c = s.cloneNode(true), from = s.querySelectorAll("input, textarea, select"), to = c.querySelectorAll("input, textarea, select");
-      from.forEach((el, i) => { if (to[i]) to[i].value = el.value; });   // what was typed shows, not just the empty fields
+      from.forEach((el, i) => { if (to[i] && el.type !== "file") to[i].value = el.value; });   // what was typed shows, not just the empty fields; never a file input's (v316, the twenty-second check round: a script may set one only to empty, so with a backup picked for Restore every step off the Clients page threw here until its question came)
       c.style.position = "absolute"; c.style.left = r.left + "px"; c.style.top = r.top + "px"; c.style.width = r.width + "px"; c.style.margin = "0";   // the copy's content exactly where the page's was (a section is flow-root, index.html, so its first child's margin stays inside it)
       box.appendChild(c);
     }
@@ -1555,7 +1857,7 @@ import { reportRange, buildReport } from "./report.js";
   document.addEventListener("pointercancel", (e) => { if (iosHome && e.pointerType === "touch") swipeCancel(); }, { capture: true, passive: true });   // iPhone: WebKit took the touch for its own scroll (it cancels the pointer then): never slide while it scrolls
   function startSwipe() {
     for (const old of document.querySelectorAll(".swipe-under")) old.remove();   // nothing left over from an earlier swipe
-    sw.on = true; sw.w = window.innerWidth; sw.main = document.querySelector("main");
+    sw.on = true; sw.w = window.innerWidth; sw.main = document.querySelector("main"); sw.key0 = screenKey();
     const layer = document.createElement("div"); layer.className = "swipe-under"; layer.setAttribute("aria-hidden", "true");
     const bk = backKey(); let shot = shotByKey.get(bk) || null;
     if (shot && shot.dataset.look !== lookBack(bk)) shot = null;    // taken in another look than the one Back lands in, or at another width: not the page Back will show (a workout shown as the client goes back to the client's page in the coach's own look: its copy, v286)
@@ -1641,6 +1943,7 @@ import { reportRange, buildReport } from "./report.js";
     for (const el of s.glassIn) if (el && el.animate) { el.style.visibility = ""; s.anims.push(el.animate([...out].reverse(), { duration: glass.ms, easing: glass.css, fill: "forwards" })); }
     await new Promise((r) => setTimeout(r, Math.max(ease.ms, s.glassOut.length || s.glassIn.length ? glass.ms : 0) + 20));
     if (sw !== s) return;                                           // let go of meanwhile (the safety release below)
+    if (s.key0 && screenKey() !== s.key0) { clear(); return; }
     // the swap, all in one go, nothing in between painted: the copy covers the screen, the page underneath becomes the real one at its own
     // scroll (with no slide or swipe style left on it, as the Back circle leaves it), then the copy goes
     const m = s.main; s.layer.style.zIndex = "3"; m.style.transition = "none"; m.style.transform = ""; m.classList.remove("swiping");
@@ -2143,12 +2446,12 @@ import { reportRange, buildReport } from "./report.js";
     m.n = nextN(place); t.template = m; tidySave(t);
   };
   async function newFolder(parent) {
-    const name = await askName("New folder"); if (!name) return;
+    const name = await askName("New folder", "", "", "name:folder:" + (parent || "")); if (!name) return;
     const tc = tplClient(), f = { id: uid(), name, parent: parent || null, kind: "folder", at: now() };
     tc.folders = [...(tc.folders || []), f]; folderTouched.set(f.id, TEMPLATES_ID); saveFolders(); render();
   }
   async function newSlide(fid) {
-    const name = await askName("New slide"); if (!name || !tplNode(fid)) return;
+    const name = await askName("New slide", "", "", "name:slide:" + fid); if (!name || !tplNode(fid)) return;
     const tc = tplClient(), sl = { id: uid(), name, parent: fid, kind: "slide", at: now() }, first = !tplKids(fid, "slide").length;
     tc.folders = [...(tc.folders || []), sl]; folderTouched.set(sl.id, TEMPLATES_ID);
     if (first) for (const t of tplIn(new Set([fid])).sort(byN)) placeTemplate(t, sl.id);   // the folder's first slide takes the templates that were in the folder itself, in their order
@@ -2158,7 +2461,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   async function renameNode(id) {
     const f = tplNode(id); if (!f) return;
-    const name = await askName(f.kind === "slide" ? "Rename slide" : "Rename folder", f.name, "Save"); if (!name || name === f.name || !tplNode(id)) return;
+    const name = await askName(f.kind === "slide" ? "Rename slide" : "Rename folder", f.name, "Save", "name:rename:" + id); if (!name || name === f.name || !tplNode(id)) return;
     const tc = tplClient(); tc.folders = (tc.folders || []).map((x) => (x && x.id === id ? { ...x, name } : x)); folderTouched.set(id, TEMPLATES_ID); saveFolders(); render();
   }
   async function deleteNode(id) {                                     // asked first; what was in it goes loose to My templates (his pick, 12 Nov), nothing is lost
@@ -2372,6 +2675,7 @@ import { reportRange, buildReport } from "./report.js";
     setTimeout(() => { if (es) $("esKeep").focus({ preventScroll: true, focusVisible: keysLast }); }, 0);
   }
   function closeFinishEarly() { const was = es; $("earlySheet").hidden = true; es = null; S.asking = !!pv; if (was) { for (const el of was.behind || []) el.inert = false; if (was.from && was.from.isConnected && was.from.focus) was.from.focus({ preventScroll: true, focusVisible: keysLast }); } }
+  const esCancel = () => { const was = es; closeFinishEarly(); if (was && trainings.get(was.t.id) !== was.t) { S.renderedTraining = null; render(); } };   // v316 (the check rounds): Cancel too draws the page again when its workout changed under the sheet (another tab's save): the cards held the old copy
   const esSettled = (e) => !!es && (performance.now() - es.at >= 350 || (!!e && e.detail === 0));   // the second tap of a double tap must not finish, skip, pick a reason or close (a keyboard's Enter or VoiceOver is at once)
   let askOpen = null;                                               // the sheet that is up, if any: a second ask closes it as "no" first
   let keysLast = false, tabLast = false, downOn = null, askEatUntil = 0;   // the last thing pressed was a key; the last key was Tab, a keyboard's move to the next control (Shift-Tab and Safari's Option-Tab too, never Cmd-Tab or Ctrl-Tab, which leave); where the last press landed, kept for the one focus it brings (none on what has the focus already: measured in Chrome, it brings no focus); a question answered by a press, until when its next click is eaten
@@ -2388,16 +2692,16 @@ import { reportRange, buildReport } from "./report.js";
   document.addEventListener("click", (e) => { if (e.isTrusted === true && e.detail >= 1 && performance.now() < askEatUntil) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);   // the second press of a double press on its button: the question gone, the page behind would take it (a list closed up under it opened the workout that came up); eaten for 350 ms, as a pop-up's first rows wait (the v298 safety check)
   function askFirst({ title, text, yes = "Delete", red = true, input = null }) {   // nothing is deleted or discarded by accident: a sheet asks, and only its red button does it; red: false for an act that loses nothing (Finish early, his ask, 12 Nov), its button then the sheets' purple
     return new Promise((resolve) => {                                // input: { value, placeholder, max }: a name typed in the sheet (New folder, New slide, Rename: his ask, 12 Nov, "let me name it"); it resolves with the name, or false
-      if (askOpen) askOpen(false);
-      const bg = $("askSheet"), y = $("askYes"), n = $("askNo"), f = $("askInput"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert);   // (what was inert already, as #ctxLift in the markup, stays so: only what the sheet held is given back)
+      if (askOpen) askOpen(false); if (paOpen) paOpen(null);   // a choice alert left up goes first (the check round: a refusal under a file picker froze the sheet that opened after it)
+      const bg = $("askSheet"), y = $("askYes"), n = $("askNo"), f = $("askInput"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert), from = document.activeElement;   // v316 (the check round): the keyboard's place, given back after keys when the caller leaves it nowhere   // (what was inert already, as #ctxLift in the markup, stays so: only what the sheet held is given back)
       $("askTitle").textContent = title; $("askText").textContent = text || ""; $("askText").hidden = !text; y.textContent = yes; y.classList.toggle("danger", red);
-      f.hidden = !input; if (input) { f.value = input.value || ""; f.placeholder = input.placeholder || ""; f.maxLength = input.max || 40; }
+      f.hidden = !input; if (input) { f.value = input.value || ""; f.placeholder = input.placeholder || ""; f.maxLength = input.max || 40; if (input.keep && keptText.has(input.keep)) { f.value = keptText.get(input.keep); keptText.delete(input.keep); } } sheetKeep = input && input.keep ? { key: input.keep, el: f, orig: String(input.value || "") } : null;
       const named = () => String(f.value || "").replace(/\s+/g, " ").trim();
       let armed = false; y.disabled = true;                                                  // the second tap of a double tap must not land on the red button
       const settle = setTimeout(() => { armed = true; y.disabled = !!input && !named(); }, 350);   // a name to type: its button waits for one
       const vv = window.visualViewport, sh = bg.firstElementChild, lift = () => { const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0; sh.style.paddingBottom = kb ? kb + 16 + "px" : ""; };   // the phone's keyboard up: what the sheet holds sits above it, and the sheet itself runs on down behind it, as an iPhone sheet does (measured on the simulator, iOS 27: the keyboard's bar of arrows floats over the page, which showed round it while the sheet stopped at the keys)
       const onInput = () => { if (armed) y.disabled = !named(); };
-      const done = (v) => { clearTimeout(settle); askOpen = null; S.asking = !!pv; bg.hidden = true; y.disabled = false; for (const el of behind) el.inert = false; y.removeEventListener("click", onYes); n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); document.removeEventListener("keydown", onKey); f.removeEventListener("input", onInput); if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); } sh.style.paddingBottom = ""; if (input && document.activeElement === f) f.blur(); resolve(input ? (v && named()) || false : v); };
+      const done = (v) => { clearTimeout(settle); askOpen = null; sheetKeep = null; S.asking = !!pv; bg.hidden = true; y.disabled = false; for (const el of behind) el.inert = false; y.removeEventListener("click", onYes); n.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); document.removeEventListener("keydown", onKey); f.removeEventListener("input", onInput); if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); } sh.style.paddingBottom = ""; if (input && document.activeElement === f) f.blur(); if (keysLast && from && from !== document.body && from.isConnected && typeof from.getClientRects === "function" && from.getClientRects().length && (!document.activeElement || document.activeElement === document.body || document.activeElement === n || document.activeElement === y)) from.focus({ preventScroll: true }); resolve(input ? (v && named()) || false : v); };
       const onYes = (e) => { if (armed && (!input || named())) { askEat(e); done(true); } }, onNo = (e) => { askEat(e); done(false); }, onBg = (e) => { if (armed && e.target === bg) { askEat(e); done(false); } }, onKey = (e) => { if (e.key === "Escape") done(false); else if (input && e.key === "Enter" && e.target === f) { e.preventDefault(); onYes(); } };
       askOpen = done; S.asking = true;
       y.addEventListener("click", onYes); n.addEventListener("click", onNo); bg.addEventListener("click", onBg); document.addEventListener("keydown", onKey);
@@ -2406,11 +2710,11 @@ import { reportRange, buildReport } from "./report.js";
       bg.hidden = false; if (input) f.focus({ preventScroll: true }); else n.focus({ preventScroll: true, focusVisible: keysLast });   // (the name field takes the focus in the tap that opened the sheet, so the phone gives the keyboard)
     });
   }
-  const askName = (title, value, yes) => askFirst({ title, yes: yes || "Add", red: false, input: { value: value || "", placeholder: "Name", max: 40 } });
+  const askName = (title, value, yes, keep) => askFirst({ title, yes: yes || "Add", red: false, input: { value: value || "", placeholder: "Name", max: 40, keep } });
   // a list in a sheet, in the same language as askFirst: rows are <li> with a button[data-id]; resolves with the tapped id, or null for Cancel / tap outside / Escape
   function sheetList({ title, rows, up }) {                            // up: a step back over the title ("\u2039 Fat Burn"), answering ".." (Move to's steps)
     return new Promise((resolve) => {
-      if (askOpen) askOpen(false);
+      if (askOpen) askOpen(false); if (paOpen) paOpen(null);   // a choice alert left up goes first (the check round: a refusal under a file picker froze the sheet that opened after it)
       const bg = $("pickSheet"), ul = $("pickList"), n = $("pickNo"), ub = $("pickUp"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert);
       $("pickTitle").textContent = title; ub.hidden = !up; ub.textContent = up ? "\u2039 " + up : "";
       ul.replaceChildren(...rows);
@@ -2426,7 +2730,7 @@ import { reportRange, buildReport } from "./report.js";
     });
   }
   function editAlts(tid, rid, keys) {                                      // the coach's alternatives for one exercise in a sheet (his pick, 13 Nov: Edit alternatives opens a small sheet): Apple's red minus on each (a tap shows Delete, as the edit card of Contacts asks), Add alternative to type one and pick it from the names, two at most; each change saved as it is made
-    if (askOpen) askOpen(false);
+    if (askOpen) askOpen(false); if (paOpen) paOpen(null);   // a choice alert left up goes first (the check round: a refusal under a file picker froze the sheet that opened after it)
     const bg = $("altSheet"), sh = bg.firstElementChild, ul = $("altRows"), ok = $("altDone"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert);
     const row = () => { const t = trainings.get(tid); return t ? (t.rows || []).find((x) => x.id === rid) || null : null; };
     if (!row()) return;
@@ -2510,14 +2814,14 @@ import { reportRange, buildReport } from "./report.js";
     paint(); bg.hidden = false; if (keys) (ul.querySelector("button") || ok).focus({ preventScroll: true }); else sh.focus({ preventScroll: true });   // from the keyboard or VoiceOver: on its first button; from a tap, on the sheet itself (a button focused after a tap wore the keyboard's ring)
   }
   function editNote(tid, rid, keys) {                                      // an exercise's instructions for the client in a sheet, as New folder's and Rename's name (his pick, 13 Nov, after "make it coherent with the way all app work with adding things": every other row of a "…" opened a sheet, this one a panel floating over the card): Add, or Save when there are some, over Cancel; nothing changes until Add or Save, and the box saved empty takes them off
-    if (askOpen) askOpen(false);
+    if (askOpen) askOpen(false); if (paOpen) paOpen(null);   // a choice alert left up goes first (the check round: a refusal under a file picker froze the sheet that opened after it)
     const bg = $("noteSheet"), sh = bg.firstElementChild, f = $("noteField"), ok = $("noteOk"), no = $("noteNo"), behind = [...document.body.children].filter((el) => el !== bg && !el.inert);
     const row = () => { const t = trainings.get(tid); return t ? (t.rows || []).find((x) => x.id === rid) || null : null; };   // read again each time: a template's Discard puts a new copy in its place
     const r0 = row(); if (!r0) return;
     const had = !!String(r0.note || "").trim(), name = String(r0.name || "").trim();
     $("noteTitle").textContent = had ? "Edit instructions" : "Add instructions"; ok.textContent = had ? "Save" : "Add";
     $("noteLead").textContent = "Your client sees these under " + (name || "this exercise") + ".";
-    f.value = String(r0.note || ""); f.style.maxHeight = "";
+    f.value = String(r0.note || ""); if (keptText.has("note:" + tid + "/" + rid)) { f.value = keptText.get("note:" + tid + "/" + rid); keptText.delete("note:" + tid + "/" + rid); } sheetKeep = { key: "note:" + tid + "/" + rid, el: f, orig: String(r0.note || "") }; f.style.maxHeight = "";
     const typed = () => String(f.value || "").trim();
     let armed = false; ok.disabled = true;                                                  // the second tap of a double tap must not land on Add
     const settle = setTimeout(() => { armed = true; ok.disabled = !had && !typed(); }, 350);   // nothing there yet: Add waits for words, as New folder's waits for a name (Save can take them all off)
@@ -2528,7 +2832,7 @@ import { reportRange, buildReport } from "./report.js";
       f.style.maxHeight = Math.max(96, Math.min(tall, Math.floor(window.innerHeight - top - 24 - rest))) + "px";   // the field no taller than what is left under the status bar's room: a small phone keeps Add and Cancel in sight, and the words scroll; never under three lines
     };
     const done = () => {
-      clearTimeout(settle); askOpen = null; S.asking = !!pv; if (document.activeElement === f) f.blur(); bg.hidden = true; ok.disabled = false; sh.style.paddingBottom = ""; f.style.maxHeight = "";
+      clearTimeout(settle); askOpen = null; sheetKeep = null; S.asking = !!pv; if (document.activeElement === f) f.blur(); bg.hidden = true; ok.disabled = false; sh.style.paddingBottom = ""; f.style.maxHeight = "";
       for (const el of behind) el.inert = false;
       ok.removeEventListener("click", onOk); no.removeEventListener("click", onNo); bg.removeEventListener("click", onBg); bg.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey); f.removeEventListener("input", onInput);
       if (vv) { vv.removeEventListener("resize", lift); vv.removeEventListener("scroll", lift); }
@@ -2557,9 +2861,10 @@ import { reportRange, buildReport } from "./report.js";
       li.appendChild(b); return li;
     }) });
   }
-  const dayList = (clientId, key) => clientTrainings(clientId).filter((t) => effDate(t) === key && !(t.skippedAt && !t.completedAt));   // a day's workouts: planned or finished, not the skipped ones
+  const emptyGone = (t) => isEmptyWorkout(t) && !!effDate(t) && effDate(t) < today();   // v316 (the eighteenth and nineteenth check rounds): an empty workout whose day has gone, shown nowhere in either view (nothing in it to miss: renderClient's list, missedOf, dayList, the day picker and the preview's walk; the coach's tidying still takes it)
+  const dayList = (clientId, key) => clientTrainings(clientId).filter((t) => effDate(t) === key && !(t.skippedAt && !t.completedAt) && !emptyGone(t));   // a day's workouts: planned or finished, not the skipped ones; v316 (the nineteenth check round): never an empty one whose day has gone (a busy day's list and the Also on pill named it "Workout")
   function missedOf(cid) {                                           // a client's missed workouts: still to do, their day gone, the newest first (the Missed card's order, as a stack of notifications puts the newest on top)
-    return clientTrainings(cid).filter((t) => canSwipeRow(t) && !!effDate(t) && effDate(t) < today()).sort((a, b) => effDate(b).localeCompare(effDate(a)) || byMade(b, a));
+    return clientTrainings(cid).filter((t) => canSwipeRow(t) && !!effDate(t) && effDate(t) < today() && !isEmptyWorkout(t)).sort((a, b) => effDate(b).localeCompare(effDate(a)) || byMade(b, a));
   }
   async function showDay(c, key, preview) {                                                  // a day with more than one workout: the day's rows, each its own workout; the coach can add another (preview: from the calendar, a row opens the workout's preview first)
     const d = new Date(key + "T12:00:00"), list = dayList(c.id, key).sort(byMade);
@@ -2576,9 +2881,10 @@ import { reportRange, buildReport } from "./report.js";
   function finishEarlyNow() {
     if (!es) return;
     const { t, g, selKey, reason } = es; closeFinishEarly();
+    if (trainings.get(t.id) !== t) { S.renderedTraining = null; render(); return; }   // v316 (the check rounds): the workout read again after the sheet: gone (a wipe, a deletion elsewhere) or replaced, nothing is written, and the page is drawn again from the copy there now (its cards held the old one: every later tap wrote nothing, a weight typed went nowhere)
     for (const r of g.rows) { r.setsDone = clamp(parseInt(r.setsDone, 10) || 0, 0, 20); r.done = true; markEarly(t, r, reason); const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
-    openBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id);
-    haptic(); S.renderedTraining = null; render(); scrollToCard(g.key);
+    const rows = t.rows || [], x = g.rows.find((r) => rows.includes(r)), k = x ? String(groupKey(x.label, rows.indexOf(x))) : "gone:" + g.rows[0].id; openBlocks.delete(t.id + "/" + k); setSel.delete(t.id + "/" + k); scheduleSave("trainings", t.id);   // v316 (the twenty-third check round): the card's number as the workout holds it at the pick (a save landing while the sheet was up renumbered it: another card's set was cleared, and the glide went to the wrong card)
+    haptic(); S.renderedTraining = null; render(); scrollToCard(k);
   }
   function openDatePicker(opts) {                                    // opts: { clientId, title, selected, min ("YYYY-MM-DD", or a function giving it: nothing earlier can be picked), onPick }
     const selected = opts.selected || today(), min = (typeof opts.min === "function" ? opts.min() : opts.min) || null, tm = today().slice(0, 7), sm = selected.slice(0, 7);
@@ -2615,7 +2921,7 @@ import { reportRange, buildReport } from "./report.js";
     const wait = dpRestAt - Date.now(); if (wait > 0) { clearTimeout(dpLater); dpLater = setTimeout(renderDatePicker, wait + 20); return; }   // nor cuts a slide or a settle short: it waits for the months to land (as the client page's calendar waits for its slide)
     if (dp.ok && !dp.ok()) { closeDatePicker(); return; }            // what the days were for is gone (a Reschedule whose workout was finished or skipped meanwhile)
     const g = $("dpGrid"), list = clientTrainings(dp.clientId), t0 = today(), min = dpMin();
-    const byDay = new Map(); for (const t of list) { if (t.skippedAt && !t.completedAt) continue; const k = effDate(t); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(t); }   // each workout's day worked out once, not once for every day of every month
+    const byDay = new Map(); for (const t of list) { if ((t.skippedAt && !t.completedAt) || (emptyGone(t) && t.id !== dp.moving)) continue; const k = effDate(t); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(t); }   // each workout's day worked out once, not once for every day of every month; v316 (the twentieth check round): an empty workout whose day has gone has no chip, except the one the days are opened for (Move to, Reschedule, From template's Use, Use all: its chip, outlined, is the only mark of its day)
     const fmt = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" });
     $("dpTitle").textContent = dp.title;
     const track = document.createElement("div"); track.className = "dp-track";
@@ -2858,8 +3164,8 @@ import { reportRange, buildReport } from "./report.js";
     const t = trainings.get(id); if (!t || !isTemplateClient(t.clientId)) return false;
     if (!(await askFirst({ title: "Delete \u201c" + tplName(t) + "\u201d?", text: "Workouts already made from it stay.", yes: "Delete" }))) return false;
     if (!trainings.has(id)) return false;                             // a sync took it away while the question was up
-    if (S.templateDraft && S.templateDraft.id === id) { S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); }
-    trainings.delete(id); scheduleSave("trainings", id, 0); render(); return true;
+    if (S.templateDraft && S.templateDraft.id === id) { S.templateDraft = null; S.pendingGo = null; paintDraftBar(); } forgetDraft(id);
+    deleteRec("trainings", id); render(); return true;
   }
   const folderRow = (x, sub) => {                                     // a folder's row: opens it; swiped, Move to (where it can go) and Delete (its own question: its folders and weeks go, its templates to My templates)
     const li = navRow(x.name, sub, () => go(tplPage(x.id))); li.dataset.fid = x.id;
@@ -2880,7 +3186,7 @@ import { reportRange, buildReport } from "./report.js";
     const wrap = $("tplList"); wrap.replaceChildren(); wrap.hidden = false;
     const prog = S.view.program || null, ph = S.view.phase || null;
     $("pickNote").hidden = !pickFor;
-    if (pickFor) { const pc = clients.get(pickFor); $("pickNote").innerHTML = "Choose a workout for <b></b> · <button class=\"btn quiet\" type=\"button\" id=\"pickCancel\">Cancel</button>"; $("pickNote").querySelector("b").textContent = pc ? pc.name : "the client"; $("pickCancel").addEventListener("click", () => { pickFor = null; fillFor = null; render(); }); }
+    if (pickFor) { const pc = clients.get(pickFor); $("pickNote").innerHTML = "Choose a workout for <b></b> · <button class=\"btn quiet\" type=\"button\" id=\"pickCancel\">Cancel</button>"; $("pickNote").querySelector("b").textContent = pc ? pc.name : "the client"; $("pickCancel").addEventListener("click", cancelPick); }
     $("newTraining").hidden = true;                          // a new template comes from the round glass + at the bar's foot now, where he is (his ask, 12 Nov)
     const byProg = new Map();
     for (const t of all) { if (tplHome(t)) continue; const m = templateMeta(t); if (!byProg.has(m.program)) byProg.set(m.program, []); byProg.get(m.program).push(t); }   // (a template in a folder of his counts there, not under its program)
@@ -2946,6 +3252,7 @@ import { reportRange, buildReport } from "./report.js";
   }
   const templateHome = (t) => { const h = tplHome(t); if (h) return h.kind === "slide" ? { name: "client", id: TEMPLATES_ID, folder: h.parent, slide: h.id } : { name: "client", id: TEMPLATES_ID, folder: h.id }; const m = templateMeta(t); return m.program === MY_TEMPLATES ? { name: "client", id: TEMPLATES_ID } : { name: "client", id: TEMPLATES_ID, program: m.program, phase: m.phase, stage: m.stage }; };   // a template in a folder or slide of his: back to that folder, on that slide
   function render() {
+    try { sweepKept(); } catch (_) {}                                 // v316 (the twenty-sixth check round, R26-WAP-2): every sync ends here
     Promise.resolve().then(() => typingWatch());                    // after the redraw: a field it took away with the keyboard on it leaves no typing look behind (WebKit sends no blur for a field taken out)
     if (S.recovering) { showRecovery(); return; }
     if (pendingPage && S.signedIn && !(S.clientMode && !S.myClientId)) {   // a refresh on a settings page lands back on it at the first paint: no glimpse of the Clients page on the way
@@ -2958,7 +3265,7 @@ import { reportRange, buildReport } from "./report.js";
     }
     if ((SUB_PAGE[settingsOpen] || settingsOpen === "workouts" || settingsOpen === "bests" || settingsOpen === "lift") && !healthId()) { settingsOpen = false; fromSettings = false; wheelOpen = null; liftCur = null; hideAllViews(); }   // v299: the client of a Health page gone (deleted, or the client's record no longer sent): off it, to where the normal drawing puts the page
     if (settingsOpen === "settings" || settingsOpen === "card") paintHeroes();   // a photo that went up meanwhile shows on the page that is open
-    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $("navDone").hidden = settingsOpen !== "exercise"; $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : settingsOpen === "card" ? "vClientCard" : settingsOpen === "history" ? "vHistory" : settingsOpen === "workouts" ? "vWorkouts" : settingsOpen === "bests" ? "vBests" : settingsOpen === "lift" ? "vLift" : settingsOpen === "catalog" ? "vCatalog" : settingsOpen === "data" ? "vData" : SUB_PAGE[settingsOpen] || "vPassword").hidden = false; if (SUB_PAGE[settingsOpen]) paintSub(settingsOpen); if (settingsOpen === "settings") paintUnitSegs(); if (settingsOpen === "packages") renderPackages(); if (settingsOpen === "card") paintCard(); if (settingsOpen === "history") paintHistory(); if (settingsOpen === "workouts") paintWorkouts(); if (settingsOpen === "bests") paintBests(); if (settingsOpen === "lift") paintLift(); if (exStale && S.syncedOnce) { exStale = false; if (settingsOpen === "exercises") renderExercises(); else if (settingsOpen === "exercise" && exCurrent && !exDirty()) showExercise(exCurrent.name, exCurrent.key); } $("back").hidden = false; $("brand").hidden = true; } return; }
+    if (settingsOpen) { if (S.signedIn) { hideAllViews(); $("navDone").hidden = settingsOpen !== "exercise"; $(settingsOpen === "exercises" ? "vExercises" : settingsOpen === "exercise" ? "vExercise" : settingsOpen === "packages" ? "vPackages" : settingsOpen === "number" ? "vNumber" : settingsOpen === "settings" ? "vSettings" : settingsOpen === "card" ? "vClientCard" : settingsOpen === "history" ? "vHistory" : settingsOpen === "workouts" ? "vWorkouts" : settingsOpen === "bests" ? "vBests" : settingsOpen === "lift" ? "vLift" : settingsOpen === "catalog" ? "vCatalog" : settingsOpen === "data" ? "vData" : SUB_PAGE[settingsOpen] || "vPassword").hidden = false; if (SUB_PAGE[settingsOpen]) paintSub(settingsOpen); if (settingsOpen === "settings") { paintUnitSegs(); paintChoices(); } if (settingsOpen === "packages") renderPackages(); if (settingsOpen === "card") paintCard(); if (settingsOpen === "history") paintHistory(); if (settingsOpen === "workouts") paintWorkouts(); if (settingsOpen === "bests") paintBests(); if (settingsOpen === "lift") paintLift(); if (exStale && S.syncedOnce) { exStale = false; if (settingsOpen === "exercises") renderExercises(); else if (settingsOpen === "exercise" && exCurrent && !exDirty()) showExercise(exCurrent.name, exCurrent.key); } $("back").hidden = false; $("brand").hidden = true; } return; }
     if (S.sb && !S.signedIn) { showLogin($("loginMsg").textContent); return; }
     if (S.clientMode && !S.myClientId) { showWaiting(); return; }
     if (celebrating) { hideAllViews(); $("vCelebrate").hidden = false; $("back").hidden = true; $("brand").hidden = false; return; }   // "Nice work" stays up until it hands over to the client page, whatever refreshes meanwhile
@@ -3120,9 +3427,9 @@ import { reportRange, buildReport } from "./report.js";
     if (S.view.name === "client") renderClient();
   });
   $("dpCancel").addEventListener("click", (e) => { if (dpSettled(e)) closeDatePicker(); });
-  $("esKeep").addEventListener("click", (e) => { if (!esSettled(e)) return; askEat(e); closeFinishEarly(); });
+  $("esKeep").addEventListener("click", (e) => { if (!esSettled(e)) return; askEat(e); esCancel(); });
   $("esGo").addEventListener("click", (e) => { if (!esSettled(e)) return; askEat(e); finishEarlyNow(); });
-  $("earlySheet").addEventListener("click", (e) => { if (e.target === $("earlySheet") && esSettled(e)) { askEat(e); closeFinishEarly(); } });
+  $("earlySheet").addEventListener("click", (e) => { if (e.target === $("earlySheet") && esSettled(e)) { askEat(e); esCancel(); } });
   $("esReasons").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b || !esSettled(e)) return;
     const on = !b.classList.contains("on");                          // tap again to clear
@@ -3199,7 +3506,7 @@ import { reportRange, buildReport } from "./report.js";
     g.addEventListener("click", (e) => { if (swallow && e.detail !== 0) { swallow = false; e.stopPropagation(); e.preventDefault(); } else if (!dpSettled(e) && ptype !== "mouse") g.classList.add("dragged"); }, true);   // a keyboard's Enter (detail 0) is never a slide's click; a tap the days take no notice of yet (their first 350 ms) lets go of its day's grey, as a catch does
     if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("resize", () => { if (dp) dpShow(dp.month, false); });   // turned: the month stays the one shown
   }
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && dp) closeDatePicker(); if (e.key === "Escape" && es) closeFinishEarly(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && dp) closeDatePicker(); if (e.key === "Escape" && es) esCancel(); });
   $("calToday").addEventListener("click", () => { calMonth = today().slice(0, 7); calAnchor = calMonth; if (S.view.name === "client") renderClient(); });
   {
     const view_ = $("calView"), track = $("calTrack");
@@ -3711,7 +4018,7 @@ import { reportRange, buildReport } from "./report.js";
       const { e, first, last, gain } = top, A = first.top, B = last.top, m = (x) => (gain.by === "weight" ? (x.w == null ? 0 : x.u === "lb" ? x.w * 0.45359237 : x.w) : x.rp || 0);   // the bars measure what the sentence says grew (the v311 review: reps against a weight read backwards)
       const mx = Math.max(m(A), m(B), 1e-9), wid = (x) => Math.max(12, (m(x) / mx) * 100).toFixed(1) + "%";
       $("pgStrong").dataset.key = e.key; $("pgStrong").dataset.name = e.name;
-      const sent = (S.clientMode ? "You’re " : name + " is ") + top.words + (!top.firstTime ? " than on " : S.clientMode ? " than on your first time, " : " than the first time, ") + shortDay(first.date) + ".";   // "than on Oct 20" when the first time kept no reps   // the client's words as in the picture they approved; the coach's with the client's first name, never a he or a she
+      const sent = (S.clientMode ? "You\u2019re " : name + " is ") + top.words + (!top.firstTime ? " than on " : S.clientMode ? " than on your first time, " : " than the first time, ") + shortDay(first.date) + ".";   // "than on Oct 20" when the first time kept no reps   // the client's words as in the picture they approved; the coach's with the client's first name, never a he or a she
       $("pgStrong").innerHTML = pgHead("trend", esc(e.name), "", true, true) + '<span class="pg-sent">' + esc(sent) + '</span><span class="pg-hr"></span>' +
         '<span class="pg-cmp">' + pgNum(esc(fmtTop(B, e, cu)), "") + '<span class="pg-bar now" style="--w:' + wid(B) + '"><span>' + esc(dayWord(last.date, t0)) + "</span></span></span>" +
         '<span class="pg-cmp">' + pgNum(esc(fmtTop(A, e, cu)), "") + '<span class="pg-bar then" style="--w:' + wid(A) + '"><span>' + esc(shortDay(first.date)) + "</span></span></span>";
@@ -3811,6 +4118,8 @@ import { reportRange, buildReport } from "./report.js";
   // ---- what a client did on their own that the coach has not seen: finished workouts (cleared when the profile opens) and notes (each cleared when tapped).
   // "Seen" lives on the client's record (seenDoneAt, seenNotes), so every device of the coach agrees.
   const noteId = (t, r) => "row/" + t.id + "/" + r.id;
+  const noteMark = (t, r) => noteId(t, r) + "@" + String(r.clientNoteAt || "");   // v316 (the twenty-fifth check round, R25-MRG-5): the note as read: its exercise and its time, so an edited or new note there is news again
+  const markSeen = (c, ids) => { const cur = new Map(); for (const t of clientTrainings(c.id)) for (const r of t.rows || []) if (r.clientNote && r.clientNoteBy === "client") cur.set(noteId(t, r), noteMark(t, r)); const now = new Set(cur.values()); const seen = [...new Set((c.seenNotes || []).map((x) => (String(x).includes("@") ? x : cur.get(x))).filter((x) => x && now.has(x)))]; let changed = seen.length !== (c.seenNotes || []).length || seen.some((x, i) => x !== c.seenNotes[i]); for (const id of ids) { const m = cur.get(id); if (m && !seen.includes(m)) { seen.push(m); changed = true; } } return changed ? seen : null; };
   function clientNews(c) {
     if (!c || isTemplateClient(c.id)) return { done: 0, notes: [], workouts: [] };
     const since = Date.parse(c.seenDoneAt || "") || 0, seen = new Set(Array.isArray(c.seenNotes) ? c.seenNotes : []);
@@ -3819,7 +4128,7 @@ import { reportRange, buildReport } from "./report.js";
     for (const t of clientTrainings(c.id)) {
       const fresh = seenDone ? !seenDone.has(t.id) : (Date.parse(t.completedAt) || 0) > since;   // a finish uploaded days after the fact (the phone's own time now travels with it) is still news
       if (t.completedBy === "client" && t.completedAt && fresh) { done++; workouts.push(t); }
-      for (const r of t.rows || []) if (r.clientNote && r.clientNoteBy === "client" && !seen.has(noteId(t, r))) notes.push({ id: noteId(t, r), t, r, at: r.clientNoteAt || "" });
+      for (const r of t.rows || []) if (r.clientNote && r.clientNoteBy === "client" && !seen.has(noteMark(t, r)) && !seen.has(noteId(t, r))) notes.push({ id: noteId(t, r), t, r, at: r.clientNoteAt || "" });
     }
     notes.sort((a, b) => (b.at > a.at ? 1 : b.at < a.at ? -1 : 0));   // newest first
     workouts.sort((a, b) => (b.completedAt > a.completedAt ? 1 : b.completedAt < a.completedAt ? -1 : 0));
@@ -3848,9 +4157,7 @@ import { reportRange, buildReport } from "./report.js";
     c.seenFinished = seen; c.seenDoneAt = now(); scheduleSave("clients", c.id);
   }
   function markNoteSeen(c, id) {
-    const all = new Set(); for (const t of clientTrainings(c.id)) for (const r of t.rows || []) if (r.clientNote && r.clientNoteBy === "client") all.add(noteId(t, r));
-    const seen = (c.seenNotes || []).filter((x) => all.has(x));           // forget notes that are gone
-    if (!seen.includes(id)) seen.push(id);
+    const seen = markSeen(c, [id]) || c.seenNotes || [];           // forget notes that are gone, or changed since
     c.seenNotes = seen; scheduleSave("clients", c.id);
   }
   function openClientNote(c, x) {                                          // the tap on a new note: it counts as seen, and the workout opens on that card with the note unfolded
@@ -3876,10 +4183,8 @@ import { reportRange, buildReport } from "./report.js";
     if (S.tab === "workouts") newsShown = c.id;
   }
   function markNotesSeen(c, ids) {                                         // the Notes tab was on screen: what it showed counts as read
-    const all = new Set(); for (const t of clientTrainings(c.id)) for (const r of t.rows || []) if (r.clientNote && r.clientNoteBy === "client") all.add(noteId(t, r));
-    const seen = (c.seenNotes || []).filter((x) => all.has(x)); let changed = false;
-    for (const id of ids) if (!seen.includes(id)) { seen.push(id); changed = true; }
-    if (changed) { c.seenNotes = seen; scheduleSave("clients", c.id); }
+    const seen = markSeen(c, ids);
+    if (seen) { c.seenNotes = seen; scheduleSave("clients", c.id); }
   }
   const byMade = (x, y) => String(x.createdAt || "").localeCompare(String(y.createdAt || ""));   // same-day workouts: in the order they were made, the morning one first
   const dayChips = (ws, moving) => {                                          // moving: the workout the day picker moves, its chip outlined in purple (his pick, 12 Nov). Under a day, in the week, the month and the day picker alike: each workout's name in a chip, as Apple Calendar's month view writes its events (his ask, 11 Nov: "bigger Apple like shape", "words in there", Apple grey while it waits, green once finished, "Workout" when it has no name; red once missed, his pick the same day); three at most, else two and "+N", as Calendar keeps its last slot for the count
@@ -3952,17 +4257,24 @@ import { reportRange, buildReport } from "./report.js";
     }
     return li;
   }
-  let lineTimer = 0;
-  function paintNameLine(c) {                                         // v315: the grey line under a client's name, in the coach's view only (clientLine in model.js: "34 years old · Tokyo · Tue 3:00 AM")
+  let lineTimer = 0, nameLineNow = null;
+  const NAME_ICONS = {                                                // v316 (the owner's picks after the pictures, 18 Nov 2026: no dots, no icon for the age, "I like the clock icon no mater what since we have am and pm"): our own filled glyphs, drawn for this line (the icons workflow: Apple's small inline symbols measured in Reminders and Calendar)
+    place: '<svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="M3.73 9.29A5.2 5.2 0 1 1 12.27 9.29L8.62 14.54A0.75 0.75 0 0 1 7.38 14.54ZM5.95 6.32A2.05 2.05 0 1 0 10.05 6.32A2.05 2.05 0 1 0 5.95 6.32Z"/></svg>',
+    time: '<svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="M1.3 8A6.7 6.7 0 1 1 14.7 8A6.7 6.7 0 1 1 1.3 8ZM7.13 3.9L7.13 8A0.87 0.87 0 0 0 8 8.88L11.1 8.88A0.87 0.87 0 0 0 11.1 7.13L9.23 7.13A0.35 0.35 0 0 1 8.88 6.78L8.88 3.9A0.87 0.87 0 0 0 7.13 3.9Z"/></svg>',
+  };
+  function paintNameLine(c) {                                         // v315: the grey line under a client's name (clientLine in model.js: "34 years old [pin] Tokyo [clock] Tue 3:00 AM"); v316: in the client's own app too, their own line (ownLine: "34 years old [pin] Tokyo", the phone's own city, nothing sent)
     clearTimeout(lineTimer); lineTimer = 0;
-    const el = $("cSub"), on = !!c && !S.clientMode && !isTemplateClient(c.id), { parts, live } = on ? clientLine(c, Date.now(), hereZone(), today()) : { parts: [], live: false };
-    el.hidden = !parts.length; el.textContent = parts.map((p) => p.replace(/ /g, "\u00a0").replace(/-/g, "\u2011")).join("\u00a0\u00b7 "); if (parts.length) el.setAttribute("aria-label", parts.join(", ")); else el.removeAttribute("aria-label");   // VoiceOver hears commas, not dots; a part never splits and no line starts with a dot: the line wraps only after one (the check round: at a larger Text Size it left "PM" alone under "Mon 8:00"; the final check: "Port-au-" then "Prince", so a part's hyphens are no-break hyphens too, a glyph Inter has)
-    if (live) lineTimer = setTimeout(() => { const now = S.view.name === "client" && clients.get(S.view.id); if (now && now.id === c.id) paintNameLine(now); }, 60000 - (Date.now() % 60000) + 100);   // the client's clock moves on: again at the next minute, while this page is up
+    const el = $("cSub"), on = !!c && !isTemplateClient(c.id), mine = S.clientMode, line = !on ? { parts: [], kinds: [], live: false } : mine ? ownLine(c, Date.now(), hereZone(), today()) : clientLine(c, Date.now(), hereZone(), today());
+    const { parts, kinds } = line; nameLineNow = { parts, kinds, mine };
+    el.hidden = !parts.length;
+    el.replaceChildren(...parts.map((p, i) => { const g = document.createElement("span"); g.className = "g"; const icon = NAME_ICONS[kinds[i]]; if (icon) g.insertAdjacentHTML("beforeend", icon); g.append(p); return g; }));   // each part one group that never splits (the line wraps only between them); the icon says what the words are
+    if (parts.length) el.setAttribute("aria-label", parts.join(", ")); else el.removeAttribute("aria-label");   // VoiceOver hears commas
+    if (line.live) lineTimer = setTimeout(() => { const now = S.view.name === "client" && clients.get(S.view.id); if (now && now.id === c.id) paintNameLine(now); }, 60000 - (Date.now() % 60000) + 100);   // the client's clock moves on: again at the next minute, while this page is up
   }
   function renderClient() {
     const c = clients.get(S.view.id);
     const isTpl = isTemplateClient(c.id);
-    paintNameLine(c);
+    paintNameLine(c); maybeAsk();   // v316: the client's own page drawn: the one-time questions, when nothing else is up
     $("vClient").classList.toggle("tpl", isTpl); $("vClient").dataset.tab = S.tab;
     $("newTraining").textContent = isTpl ? "+ Template" : "+ Workout";
     if (!isTpl) { $("tplList").hidden = true; $("pickNote").hidden = true; $("newTraining").hidden = false; }   // a program page hid it; a client's page always has it
@@ -3972,7 +4284,7 @@ import { reportRange, buildReport } from "./report.js";
     $("meDisc").classList.toggle("needs", !S.clientMode && !c.email);   // no sign-in email yet: the red dot on the card disc
     if (!S.clientMode) renderNotif(c); else $("notifWrap").hidden = true;
     $("pausedCard").hidden = !(effPaused(c) && S.clientMode);
-    $("pausedText").textContent = phoneDigits(c.trainerPhone) ? "Your workouts are on hold for now. Message Michal when you’re ready to pick up again." : "Your workouts are on hold for now. Michal will switch them back on when you’re ready to pick up again.";
+    $("pausedText").textContent = phoneDigits(c.trainerPhone) ? "Your workouts are on hold for now. Message Michal when you\u2019re ready to pick up again." : "Your workouts are on hold for now. Michal will switch them back on when you\u2019re ready to pick up again.";
     $("pausedCard").firstElementChild.textContent = !c.paused && effPaused(c) ? "Plan ended" : "Access paused";
     if (!c.paused && effPaused(c)) $("pausedText").textContent = "Your plan ended " + fmtDay(c.plan.until) + ". Message Michal to pick it up again.";
     document.body.classList.toggle("paused", !!(effPaused(c) && S.clientMode));
@@ -3984,8 +4296,8 @@ import { reportRange, buildReport } from "./report.js";
     renderNotes(c, notesFresh ? notesFresh.ids : unseen);
     const badge = $("notesBadge"); badge.hidden = S.clientMode || !unseen.size || S.tab === "notes"; badge.textContent = String(unseen.size);
     if (!S.clientMode) loadReportFonts();                                       // the report's fonts, fetched before Monthly report is pressed (its sheet fills its months as it opens, v307)
-    if (!S.clientMode && (!S.sb || S.syncedOnce)) for (const t of clientTrainings(c.id)) if (isEmptyWorkout(t)) { trainings.delete(t.id); scheduleSave("trainings", t.id, 0); }   // empty workouts left behind (an accidental tap on a day) go away, once the server's copy has been seen
-    const list = clientTrainings(c.id);
+    if (!S.clientMode && syncedNow()) for (const t of clientTrainings(c.id)) if (isEmptyWorkout(t) && syncedNow(t.id) && !freshEmpty(t)) { deleteRec("trainings", t.id); }   // empty workouts left behind (an accidental tap on a day) go away, once the server's copy has been seen; v316 (the check rounds): one made in the last 30 minutes is left for later (made on the coach's other device or in another tab, it may still be being filled: tidied, the new workout and its template were lost); the sixteenth round: 2 hours for one made elsewhere, and only from a copy synced a minute or so ago (freshEmpty, syncedNow)
+    const list = clientTrainings(c.id).filter((t) => !emptyGone(t));   // v316 (the eighteenth check round): an empty workout whose day has gone is shown nowhere (nothing in it to miss): not on the Missed card, not in Up next or Skip all, no chip on its day (it stayed there for good, and Skip all filed it in History and Attendance); the coach's tidying above still takes it
 
     const base = new Date(); base.setHours(12, 0, 0, 0);
     if (!(cd && cd.lifted)) $("week").style.minHeight = "";            // the strip at its own height, unless a workout is held over it (weekOff: the week paged to, kept across a redraw, this week again once the page is left)
@@ -3995,7 +4307,7 @@ import { reportRange, buildReport } from "./report.js";
     // filed before the week and the month are drawn, so the redraw that files it never leaves its red chip on the month after the Missed card has let it go
     const stale = (() => { const d = new Date(base); d.setDate(base.getDate() - 7); return iso(d); })();
     if (!S.sb || (S.syncedOnce && S.syncedOn === today())) for (const t of list) {   // only once this device has seen the server's copy today: a copy days old (an iPad woken offline) never files what another device moved since
-      if (t.completedAt || t.skippedAt || t.missed !== undefined || !effDate(t) || effDate(t) >= stale || Date.parse(t.createdAt || "") > Date.now() - 7 * 864e5) continue;   // missed: true = filed before, false = a person brought it back (Undo on its page) or decided before Do it today stopped deciding
+      if (isEmptyWorkout(t) || t.completedAt || t.skippedAt || t.missed !== undefined || !effDate(t) || effDate(t) >= stale || Date.parse(t.createdAt || "") > Date.now() - 7 * 864e5) continue;   // missed: true = filed before, false = a person brought it back (Undo on its page) or decided before Do it today stopped deciding; v316 (the seventeenth check round): never an empty workout (nothing in it to miss: filed, it stayed in History and in Attendance for good, as no tidying takes a skipped workout)
       t.skippedAt = now(); t.missed = true; if (S.clientMode) pendingMiss.add(t.id); scheduleSave("trainings", t.id);
     }
     const weekEl = $("week");
@@ -4175,7 +4487,7 @@ import { reportRange, buildReport } from "./report.js";
   $("celeBack").addEventListener("click", () => { clearTimeout(celeTimer); celebrating = false; const t = trainings.get(S.view.id); go({ name: "client", id: t ? t.clientId : S.myClientId }); });
 
   function renderTraining(t) {
-    if (document.activeElement !== $("tTitle")) { $("tTitle").value = t.title || ""; requestAnimationFrame(() => { const el = $("tTitle"); el.style.height = "auto"; el.style.height = Math.max(32, el.scrollHeight) + "px"; }); }
+    { const tb = $("tTitle"); if (document.activeElement !== tb || (tb.value === tb.dataset.drawn && tb.value !== (t.title || ""))) { const was = tb.value, a = tb.selectionStart, b = tb.selectionEnd, keep = document.activeElement === tb && !!was && !(a === b && b === was.length); tb.value = t.title || ""; tb.dataset.drawn = tb.value; if (keep && a === 0 && b === was.length) tb.select(); else if (keep && tb.value.slice(0, b) === was.slice(0, b)) tb.setSelectionRange(a, b); requestAnimationFrame(() => { tb.style.height = "auto"; tb.style.height = Math.max(32, tb.scrollHeight) + "px"; }); } }   // v316 (the twenty-fourth check round): a box focused but not typed in takes a new name from another page or a sync (it kept the old one under the cursor, and the next letter wrote it back over the rename)
     const asClient = S.clientMode || previewClient; paintSessionPill(t, asClient);
     $("tDate").textContent = (asClient ? fmtDayLong : fmtDay)(t.date || today());
     if (exOrdering === t.id && !roOpen(t)) exOrdering = null;          // finished or skipped (a sync's, or his): Reorder is over, and an Undo does not bring it back by itself (the v314 review)
@@ -4242,11 +4554,11 @@ import { reportRange, buildReport } from "./report.js";
       const total = Math.max(...g.rows.map(setsOf));
       if (!asClient && g.rows.length > 1) { const started = g.rows.filter((r) => doneCount(r) > 0); if (started.length && started.length < g.rows.length && !started.every((r) => doneCount(r) >= setsOf(r))) { const lead = Math.min(...started.map((r) => doneCount(r))); for (const r of g.rows) if (doneCount(r) === 0 && !(r.repsDone || []).some((v) => String(v || "").trim()) && !(r.weights || []).some((v) => String(v || "").trim())) { r.setsDone = Math.max(0, Math.min(lead, setsOf(r) - 1)); scheduleSave("trainings", t.id); } } }   // an exercise added to a card mid-way joins at the card's set, not at set 1
       const doneSets = Math.min(...g.rows.map((r) => { const n = Math.min(doneCount(r), setsOf(r)); return n >= setsOf(r) ? total : n; }));   // doneCount: a row finished before the counter existed counts as all done   // a shorter row that is finished does not hold the others back
-      const selKey = t.id + "/" + g.key;
+      const keyNow = () => { const rows = t.rows || [], x = g.rows.find((r) => rows.includes(r)); return x ? String(groupKey(x.label, rows.indexOf(x))) : "gone:" + g.rows[0].id; }, selKey = () => t.id + "/" + keyNow();   // v316 (the twenty-third check round): the card's number as the workout holds it at the tap, not as it was drawn (a save's merge can renumber the cards under the finger: a set tapped and a half-written note landed on another exercise)
       let tracker = null;
       {
         let sel = null;
-        if (!isTpl) { sel = setSel.has(selKey) ? setSel.get(selKey) : doneSets; sel = clamp(sel, 0, total - 1); g.sel = sel; }
+        if (!isTpl) { sel = setSel.has(selKey()) ? setSel.get(selKey()) : doneSets; sel = clamp(sel, 0, total - 1); g.sel = sel; }
         const tr = document.createElement("div"); tr.className = "tracker"; tr.setAttribute("aria-label", "Sets");
         const chips = document.createElement("div"); chips.className = "tr-chips"; tr.appendChild(chips);   // one track: the set you are on says "Set 2 of 12", the ones ahead are numbers, the ones done are fern discs with their number
         for (let i = 0; i < total; i++) {
@@ -4258,7 +4570,7 @@ import { reportRange, buildReport } from "./report.js";
             if (cur) b.classList.add("cur");
             b.textContent = cur ? "Set " + (i + 1) + " of " + total : String(i + 1);
             b.setAttribute("aria-label", "Set " + (i + 1) + " of " + total + (done ? ", done" : cur ? ", current" : ""));
-            b.addEventListener("click", () => { setSel.set(selKey, i); S.renderedTraining = null; render(); });
+            b.addEventListener("click", () => { setSel.set(selKey(), i); S.renderedTraining = null; render(); });
           }
           chips.appendChild(b);
         }
@@ -4275,7 +4587,7 @@ import { reportRange, buildReport } from "./report.js";
         if (isTpl && asClient) { const pos = document.createElement("span"); pos.className = "tr-pos"; pos.textContent = total + (total === 1 ? " set" : " sets"); tr.appendChild(pos); }   // a template in the client's look: the numbers, and how many
         if (!asClient) {                                     // the trainer changes the number of sets right here, for every exercise in the card
           const setCount = async (n, keys) => {
-            const back = () => { if (!keys) return; const b = [...$("rows").children].find((x) => x.dataset && x.dataset.key === g.key), folded = !!b && b.classList.contains("done") && !b.classList.contains("open"), c = b && b.querySelector(folded ? ".card-chev" : ".tr-count"); if (c) c.focus({ preventScroll: true }); };   // a pick from the keyboard: its place back on the count (drawn anew), as the menus give it back to their button; a card the pick finished folds and hides its count, so on its chevron (a review's catch)
+            const back = () => { if (!keys) return; const b = $("rows").contains(block) ? block : [...$("rows").children].find((x) => x.dataset && x.dataset.key === keyNow()), folded = !!b && b.classList.contains("done") && !b.classList.contains("open"), c = b && b.querySelector(folded ? ".card-chev" : ".tr-count"); if (c) c.focus({ preventScroll: true }); };   // a pick from the keyboard: its place back on the count (drawn anew), as the menus give it back to their button; a card the pick finished folds and hides its count, so on its chevron (a review's catch)
             n = clamp(n, 1, 20); if (n === total) return;
             const gone = (r) => [r.weights, r.repsDone].some((a) => (a || []).slice(n).some((v) => String(v || "").trim())) || (parseInt(r.setsDone, 10) || 0) > n;   // anything logged on a set that goes: a pick from the list can drop several at once
             if (n < total && g.rows.some(gone)) {
@@ -4289,7 +4601,7 @@ import { reportRange, buildReport } from "./report.js";
               const to = cardSetsTo(setsOf(r), most, n);
               if (setsTo(T, r, to) && !isTpl) { if (!trainerTouched.has(t.id)) trainerTouched.set(t.id, new Set()); trainerTouched.get(t.id).add(r.id); }   // a set added to a finished exercise reopens it; "finished early" stays finished (setsTo)
             }
-            setSel.delete(selKey); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); back();
+            setSel.delete(selKey()); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); back();
           };
           const count = document.createElement("button"); count.type = "button"; count.className = "tr-count";   // his pick A (14 Nov, after pictures): how many sets at the end of the set bar, in place of the − / + that sat on a line of their own ("only change how I add sets nothing else"); a tap opens Calendar's Repeat menu with 1 to 20
           count.textContent = String(total);   // the number alone, in a disc as tall as the bar (his ask, 14 Nov: "circled button .. probably white"), on a workout and a template alike
@@ -4315,17 +4627,17 @@ import { reportRange, buildReport } from "./report.js";
         undo.addEventListener("click", async (e) => {         // this set and anything after it go back to not done; v307 (the audit's #12, his pick, 15 Nov 2026: "Ask first, naming sets"): it asks first and names every set that changes, as Drop sets does (with sets 1 to 3 done, "Mark set 2 as not done" un-did 2 and 3 and cleared their reps without a word)
           const keys = byKeys(e), upto = Math.max(sel + 1, ...g.rows.filter((r) => sel < setsOf(r)).map((r) => Math.min(doneCount(r), setsOf(r)))), n = upto - sel;   // the sets done from this one on, in any exercise of the card
           const which = n === 1 ? "set " + (sel + 1) : n === 2 ? "sets " + (sel + 1) + " and " + upto : "sets " + (sel + 1) + " to " + upto, reps = g.rows.some((r) => sel < setsOf(r) && (r.repsDone || []).slice(sel).some((v) => String(v || "").trim()));
-          const back = (cls) => { if (!keys) return; const b = [...$("rows").children].find((x) => x.dataset && x.dataset.key === g.key), f = b && b.querySelector(cls); if (f) f.focus({ preventScroll: true }); };   // a keyboard's place: back on the card, drawn anew or not
+          const back = (cls) => { if (!keys) return; const b = $("rows").contains(block) ? block : [...$("rows").children].find((x) => x.dataset && x.dataset.key === keyNow()), f = b && b.querySelector(cls); if (f) f.focus({ preventScroll: true }); };   // a keyboard's place: back on the card, drawn anew or not (v316, the twenty-third check round: this card while it is still on the page, an answer that redraws nothing included; else the card drawn anew with its number now)
           if (!(await askFirst({ title: "Mark " + which + " as not done?", text: reps ? (n === 1 ? "Its reps are cleared." : "Their reps are cleared.") : "", yes: "Mark not done" }))) { back(".undo-set"); return; }
           const T = trainings.get(t.id); if (!T) return;   // a sync can replace the record while the question is up: the change goes into the one there now
           const rows = T === t ? g.rows : g.rows.map((r) => (T.rows || []).find((x) => x.id === r.id)).filter(Boolean);
           for (const r of rows) { if (sel < setsOf(r)) { r.setsDone = Math.min(doneCount(r), sel); r.done = false; markEarly(T, r, ""); for (let j = sel; j < (r.repsDone || []).length; j++) r.repsDone[j] = ""; } /* the reps go too: a set marked not done is not a lift; doneCount: a row finished before the counter existed keeps the sets before this one, as the question says */ const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
-          fullBlocks.delete(selKey); setSel.set(selKey, sel); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); back(".complete");
+          fullBlocks.delete(selKey()); setSel.set(selKey(), sel); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); back(".complete");
         });
         complete.addEventListener("click", () => {
           if (performance.now() - completeAt < 350) return; completeAt = performance.now();   // the second tap of a double tap lands on the next card's button: it must not log a second set
           haptic();
-          if (!current) { setSel.delete(selKey); setTimeout(() => { S.renderedTraining = null; render(); }, 0); return; }   // just go back to the current set
+          if (!current) { setSel.delete(selKey()); setTimeout(() => { S.renderedTraining = null; render(); }, 0); return; }   // just go back to the current set
           const prevDone = doneSets;
           for (const r of g.rows) {
             if (sel >= setsOf(r)) continue;                                               // this exercise has fewer sets than the card
@@ -4339,13 +4651,13 @@ import { reportRange, buildReport } from "./report.js";
             if ((r.setsDone || 0) >= setsOf(r)) r.done = true;
             const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id);
           }
-          if (g.rows.every((r) => r.done)) { openBlocks.delete(selKey); fullBlocks.delete(selKey); }
-          setSel.delete(selKey); scheduleSave("trainings", t.id);
-          setTimeout(() => { S.renderedTraining = null; render(); scrollToCard(g.key); }, 0);   // after the tap has flipped the switch (the iPhone tick), then redraw and glide
+          if (g.rows.every((r) => r.done)) { openBlocks.delete(selKey()); fullBlocks.delete(selKey()); }
+          setSel.delete(selKey()); scheduleSave("trainings", t.id);
+          setTimeout(() => { S.renderedTraining = null; render(); scrollToCard(keyNow()); }, 0);   // after the tap has flipped the switch (the iPhone tick), then redraw and glide
         });
         const skipping = doneSets === 0;                            // nothing completed on this card yet: finishing it is skipping it, and the word says so
         const early = document.createElement("button"); early.type = "button"; early.className = "finish-early"; early.textContent = skipping ? "Skip " + groupWord(g) : "Finish early";
-        early.addEventListener("click", () => openFinishEarly(t, g, selKey, skipping));
+        early.addEventListener("click", () => openFinishEarly(t, g, selKey(), skipping));
         waitFoot = (curName, onStart) => {                          // still to come, opened for a look: the one line that says why there is no button, and the one way round it — this one now
           const wait = document.createElement("div"); wait.className = "foot-wait"; wait.textContent = "Finish " + curName + " first";
           foot.prepend(wait); early.hidden = true;
@@ -4354,9 +4666,9 @@ import { reportRange, buildReport } from "./report.js";
         resume = document.createElement("button"); resume.type = "button"; resume.className = "resume"; resume.hidden = true; resume.textContent = "Resume this " + groupWord(g);
         resume.addEventListener("click", () => {              // the remaining sets open again; what was logged stays, the reason goes
           for (const r of g.rows) { r.done = clamp(parseInt(r.setsDone, 10) || 0, 0, 20) >= setsOf(r); markEarly(t, r, ""); const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); }
-          openBlocks.delete(selKey); fullBlocks.delete(selKey); setSel.delete(selKey); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); scrollToCard(g.key);
+          openBlocks.delete(selKey()); fullBlocks.delete(selKey()); setSel.delete(selKey()); scheduleSave("trainings", t.id); S.renderedTraining = null; render(); scrollToCard(keyNow());
         });
-        const first = g.rows.find((r) => r.clientNote) || g.rows[0], noteKey = selKey;   // the card's note: on whichever of its exercises holds one (v314: a Reorder inside the superset moves the exercises, never the note: its id, its seen state and the exercise it names stay), else written on the first
+        const first = g.rows.find((r) => r.clientNote) || g.rows[0], noteKey = () => { const rows = t.rows || [], k = String(groupKey(first.label, Math.max(0, rows.indexOf(first)))), mates = rows.filter((x, j) => !!x && String(groupKey(x.label, j)) === k).sort((p, q) => cmpLabel(p.label, q.label)), h = mates.find((x) => x.clientNote) || mates[0]; return t.id + "/" + (h === first ? k : "gone:" + first.id); };   // the card's note: on whichever of its exercises holds one (v314: a Reorder inside the superset moves the exercises, never the note: its id, its seen state and the exercise it names stay), else written on the first; v316 (the twenty-third check round): its key is the card the note's own exercise is on now, as relabeled moves its state, and none when that exercise no longer takes its card's note
         const addNote = document.createElement("button"); addNote.type = "button"; addNote.className = "add-note";
         const noteIcon = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-6"/><path d="M18.4 2.6a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>';   // Apple's square-and-pencil, the Notes glyph
         early.insertAdjacentHTML("afterbegin", skipping ? '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 3.5l6.5 4.5-6.5 4.5z"/><path d="M12.5 3.5v9"/></svg>' : '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 14V2.5"/><path d="M3.5 3h8l-2 2.5 2 2.5h-8"/></svg>');   // skip: Apple's forward-to-end glyph; finish early: the flag
@@ -4374,35 +4686,36 @@ import { reportRange, buildReport } from "./report.js";
         cap.append(capText, edit, del);
         const txt = document.createElement("div"); txt.className = "text";
         shown.append(cap, txt);
-        const writeNote = (text) => {                                          // the client's or the coach's note on this exercise, this session
-          if (text) { first.clientNote = text; first.clientNoteBy = S.clientMode ? "client" : "coach"; first.clientNoteAt = new Date().toISOString(); }   // who wrote it, and when (the server stamps a client's the same way)
-          else { delete first.clientNote; delete first.clientNoteBy; delete first.clientNoteAt; }
-          if (S.clientMode) { if (!pendingNoteRows.has(t.id)) pendingNoteRows.set(t.id, new Set()); pendingNoteRows.get(t.id).add(first.id); }
-          else { if (!trainerNoted.has(t.id)) trainerNoted.set(t.id, new Set()); trainerNoted.get(t.id).add(first.id); }   // the coach's note on this row stands on a conflict — the note only, never the weights with it
+        const writeNote = (text, row = first) => {                             // the client's or the coach's note on this exercise, this session
+          if (text) { row.clientNote = text; row.clientNoteBy = S.clientMode ? "client" : "coach"; row.clientNoteAt = new Date().toISOString(); }   // who wrote it, and when (the server stamps a client's the same way)
+          else { delete row.clientNote; delete row.clientNoteBy; delete row.clientNoteAt; }
+          if (S.clientMode) { if (!pendingNoteRows.has(t.id)) pendingNoteRows.set(t.id, new Set()); pendingNoteRows.get(t.id).add(row.id); }
+          else { if (!trainerNoted.has(t.id)) trainerNoted.set(t.id, new Set()); trainerNoted.get(t.id).add(row.id); }   // the coach's note on this row stands on a conflict — the note only, never the weights with it
           scheduleSave("trainings", t.id);
         };
-        const whose = () => {                                                  // the caption says who wrote it
-          const by = first.clientNoteBy || "client", c = clients.get(t.clientId), name = String((c && c.name) || "").trim().split(/\s+/)[0];
+        const whose = (row = first) => {                                       // the caption says who wrote it
+          const by = row.clientNoteBy || "client", c = clients.get(t.clientId), name = String((c && c.name) || "").trim().split(/\s+/)[0];
           if (by === "coach") return "Coach note";
           return S.clientMode ? "Your note" : (name ? name + "\u2019s note" : "Client note");
         };
         const paintNote = () => {
-          const has = !!first.clientNote, open = has && openExNotes.has(noteKey);
+          const has = !!first.clientNote, open = has && openExNotes.has(noteKey());
           addNote.innerHTML = '<span class="ico">' + noteIcon + (has ? '<i class="badge"></i>' : "") + "</span><span>" + (!has ? "Add note" : open ? "Hide note" : "See note") + "</span>";   // a red dot: there is a note here
           addNote.classList.toggle("has", has);
           shown.hidden = !open; txt.textContent = first.clientNote || ""; capText.textContent = whose();
         };
-        const openComposer = () => { ta.value = String(first.clientNote || ""); noteBox.hidden = false; ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; ta.focus(); };
-        addNote.addEventListener("click", () => { if (!first.clientNote) { if (noteBox.hidden) openComposer(); else dropN.click(); return; } if (openExNotes.has(noteKey)) openExNotes.delete(noteKey); else openExNotes.add(noteKey); paintNote(); });
-        edit.addEventListener("click", openComposer);
-        del.addEventListener("click", async () => { if (!(await askFirst({ title: "Delete this note?", text: S.clientMode ? "" : "It goes from this exercise and from the notes list." }))) return; writeNote(""); openExNotes.delete(noteKey); paintNote(); });
-        ta.addEventListener("input", () => { if (ta.value.trim()) cardNoteDraft.set(noteKey, ta.value); else cardNoteDraft.delete(noteKey); ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; });
-        dropN.addEventListener("click", async () => { const typed = ta.value.trim(); if (typed && typed !== String(first.clientNote || "").trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; cardNoteDraft.delete(noteKey); noteBox.hidden = true; ta.value = ""; });
-        saveN.addEventListener("click", async () => { const text = ta.value.trim(); if (!text && first.clientNote && !(await askFirst({ title: "Delete this note?", text: S.clientMode ? "" : "It goes from this exercise and from the notes list." }))) return; cardNoteDraft.delete(noteKey); noteBox.hidden = true; writeNote(text); openExNotes.delete(noteKey); paintNote(); });   // saved and folded away: the dot says it is there; an emptied box is a delete and asks like one
+        const openComposer = () => { ta.value = String(first.clientNote || ""); cardNoteBase.set(noteKey(), ta.value); noteBox.hidden = false; ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; ta.focus(); };
+        addNote.addEventListener("click", () => { if (!first.clientNote) { if (noteBox.hidden) openComposer(); else dropN.click(); return; } if (openExNotes.has(noteKey())) openExNotes.delete(noteKey()); else openExNotes.add(noteKey()); paintNote(); });
+        edit.addEventListener("click", () => { if (!noteBox.hidden && ta.value.trim()) { ta.focus(); return; } openComposer(); });
+        const delNote = async () => { const now = String(first.clientNote || "").trim(), seen = String(txt.textContent || "").trim(); if (!(await askFirst(now && now !== seen ? { title: "Delete the note written meanwhile?", text: whose() + ": \u201c" + now + "\u201d" } : { title: "Delete this note?", text: S.clientMode ? "" : "It goes from this exercise and from the notes list." }))) { if (now !== seen) paintNote(); return; } { const cur = String(first.clientNote || "").trim(); if (cur !== now) { if (!cur) { paintNote(); return; } return delNote(); } } writeNote(""); if (cardNoteBase.has(noteKey())) cardNoteBase.set(noteKey(), ""); openExNotes.delete(noteKey()); paintNote(); }; del.addEventListener("click", delNote);   // v316 (the twenty-sixth check round, R26-CRD-5): her newer words merged by his own save while the question was up are asked about, never deleted unseen   // v316 (the twenty-fifth check round): a note that came in under the finger (his own save merged it while a box had the focus, the card not drawn again) is quoted, and Delete removes what it quotes
+        ta.addEventListener("input", () => { if (ta.value.trim()) cardNoteDraft.set(noteKey(), ta.value); else cardNoteDraft.delete(noteKey()); ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; });
+        dropN.addEventListener("click", async () => { const typed = ta.value.trim(); if (typed && typed !== String(first.clientNote || "").trim() && !(await askFirst({ title: "Discard what you wrote?", yes: "Discard" }))) return; cardNoteDraft.delete(noteKey()); cardNoteBase.delete(noteKey()); noteBox.hidden = true; ta.value = ""; });
+        const saveNote = async () => { const rows = t.rows || [], i0 = rows.indexOf(first), k0 = i0 < 0 ? null : String(groupKey(first.label, i0)), h = k0 == null ? null : rows.filter((x, j) => !!x && String(groupKey(x.label, j)) === k0).sort((p, q) => cmpLabel(p.label, q.label)).find((x) => x.clientNote), on = h && h !== first ? h : first; const text = ta.value.trim(), was = on === first ? cardNoteBase.get(noteKey()) : "", now = String(on.clientNote || "").trim(); if (!text && was === "") { cardNoteDraft.delete(noteKey()); cardNoteBase.delete(noteKey()); noteBox.hidden = true; ta.value = ""; if (now) openExNotes.add(noteKey()); paintNote(); return; } let asked = false; if (was != null && now && now !== String(was).trim() && now !== text) { asked = true; if (!(await askFirst({ title: text ? "Replace the note written meanwhile?" : "Delete the note written meanwhile?", text: whose(on) + ": \u201c" + now + "\u201d", yes: text ? "Replace" : "Delete" }))) { if (on === first) { cardNoteBase.set(noteKey(), now); openExNotes.add(noteKey()); paintNote(); } else { const ck = t.id + "/" + k0; cardNoteDraft.delete(noteKey()); cardNoteBase.delete(noteKey()); if (ta.value.trim()) cardNoteDraft.set(ck, ta.value); cardNoteBase.set(ck, now); openExNotes.add(ck); S.renderedTraining = null; render(); } return; } } else if (was != null && String(was).trim() && !now && text) { if (!(await askFirst({ title: "Save a note deleted meanwhile?", text: "This note was deleted after you opened it.", yes: "Save", red: false }))) { cardNoteBase.set(noteKey(), ""); paintNote(); return; } } if (!asked && !text && on.clientNote && !(await askFirst({ title: "Delete this note?", text: S.clientMode ? "" : "It goes from this exercise and from the notes list." }))) return; if (String(on.clientNote || "").trim() !== now) return saveNote(); cardNoteDraft.delete(noteKey()); cardNoteBase.delete(noteKey()); noteBox.hidden = true; writeNote(text, on); openExNotes.delete(noteKey()); if (on !== first) { S.renderedTraining = null; render(); return; } paintNote(); }; saveN.addEventListener("click", saveNote);   // v316 (the twenty-sixth check round, R26-CRD-5): a note changed under its question is asked about again, never replaced unseen   // saved and folded away: the dot says it is there; an emptied box is a delete and asks like one
         paintNote();
-        if (cardNoteDraft.has(noteKey)) { ta.value = cardNoteDraft.get(noteKey); noteBox.hidden = false; requestAnimationFrame(() => { ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; }); }   // a note half written when the cards were rebuilt: back where it was
+        if (!cardNoteDraft.has(noteKey())) cardNoteBase.delete(noteKey());
+        if (cardNoteDraft.has(noteKey())) { ta.value = cardNoteDraft.get(noteKey()); noteBox.hidden = false; requestAnimationFrame(() => { ta.style.height = "auto"; ta.style.height = Math.max(44, ta.scrollHeight) + "px"; }); }   // a note half written when the cards were rebuilt: back where it was
         openFull = document.createElement("button"); openFull.type = "button"; openFull.className = "resume resume-full"; openFull.hidden = true; openFull.textContent = "Resume this " + groupWord(g);   // from the summary to the working card
-        openFull.addEventListener("click", () => { if (resume && !resume.hidden) { resume.click(); return; } fullBlocks.add(selKey); S.renderedTraining = null; render(); });   // rebuilt from the data: the summary and the working card never hold two different numbers   // finished early: resume for real; otherwise just the working card
+        openFull.addEventListener("click", () => { if (resume && !resume.hidden) { resume.click(); return; } fullBlocks.add(selKey()); S.renderedTraining = null; render(); });   // rebuilt from the data: the summary and the working card never hold two different numbers   // finished early: resume for real; otherwise just the working card
         const actsRow = document.createElement("div"); actsRow.className = "foot-row"; actsRow.append(early, addNote);
         const moreRow = document.createElement("div"); moreRow.className = "foot-row center"; moreRow.append(undo, resume, openFull);
         sumRow = document.createElement("div"); sumRow.className = "foot-row sum-row"; sumRow.hidden = true;   // the opened finished card: note disc · Resume · (the chevron disc in the corner) on one line
@@ -4432,15 +4745,15 @@ import { reportRange, buildReport } from "./report.js";
         for (const v of card.querySelectorAll(".name-pop")) { if (off) { v.removeAttribute("aria-haspopup"); v.tabIndex = -1; } else { v.setAttribute("aria-haspopup", "menu"); v.removeAttribute("tabindex"); } if (dead) v.setAttribute("aria-disabled", "true"); else v.removeAttribute("aria-disabled"); }
       };
       const paintSummary = () => {                                      // a finished card opened: the sets in rows, unless opened all the way
-        const summary = block.classList.contains("done") && block.classList.contains("open") && (locked || !fullBlocks.has(selKey)); block.classList.toggle("summary", summary); if (openFull) openFull.hidden = !summary || locked; if (placeFootRows) placeFootRows(summary);   // a finished workout (the client's): no "Resume this exercise" (its note disc stays), and a card resumed before the finish opens as its sets
+        const summary = block.classList.contains("done") && block.classList.contains("open") && (locked || !fullBlocks.has(selKey())); block.classList.toggle("summary", summary); if (openFull) openFull.hidden = !summary || locked; if (placeFootRows) placeFootRows(summary);   // a finished workout (the client's): no "Resume this exercise" (its note disc stays), and a card resumed before the finish opens as its sets
         const regrow = () => { for (const n of block.querySelectorAll("textarea.name")) { n.style.height = "auto"; n.style.height = Math.max(44, n.scrollHeight) + "px"; } };   // the name field re-wraps when the card changes shape: show the whole name
         if (block.isConnected) regrow(); else setTimeout(regrow, 0);    // in the page already: at once, so the page does not change height a moment after it was drawn (the glide would chase it)
         popLive();
       };
-      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey)) block.classList.add("open"); if (!all) { openBlocks.delete(selKey); fullBlocks.delete(selKey); } btn.textContent = all ? "\u2713 Done" : "Done"; paintSum(all); paintFold(); paintSummary(); };
-      const toggleOpen = () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey); else { openBlocks.delete(selKey); fullBlocks.delete(selKey); } paintFold(); paintSummary(); };
+      const paint = () => { const all = g.rows.every((r) => r.done); block.classList.toggle("done", all); if (all && openBlocks.has(selKey())) block.classList.add("open"); if (!all) { openBlocks.delete(selKey()); fullBlocks.delete(selKey()); } btn.textContent = all ? "\u2713 Done" : "Done"; paintSum(all); paintFold(); paintSummary(); };
+      const toggleOpen = () => { block.classList.toggle("open"); if (block.classList.contains("open")) openBlocks.add(selKey()); else { openBlocks.delete(selKey()); fullBlocks.delete(selKey()); } paintFold(); paintSummary(); };
       fold.addEventListener("click", toggleOpen); chev.addEventListener("click", toggleOpen);
-      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.composedPath().some((n) => n.tagName === "BUTTON" && !(n.classList && n.classList.contains("name-pop")))) { block.classList.add("open"); openBlocks.add(selKey); paintFold(); paintSummary(); } });
+      card.addEventListener("click", (e) => { if (block.classList.contains("done") && !block.classList.contains("open") && !e.composedPath().some((n) => n.tagName === "BUTTON" && !(n.classList && n.classList.contains("name-pop")))) { block.classList.add("open"); openBlocks.add(selKey()); paintFold(); paintSummary(); } });
       btn.addEventListener("click", () => {
         const next = !g.rows.every((r) => r.done);
         const track = S.clientMode ? pendingWeightRows : trainerTouched;   // the client's Done goes with the row's log and its number, so a late older request cannot undo it
@@ -4450,22 +4763,22 @@ import { reportRange, buildReport } from "./report.js";
       });
       paint(); foot.append(btn, fold); card.append(sum, foot, chev);
       if (currentKey != null && g.key !== currentKey && !g.rows.every((r) => r.done)) {   // client: still to come
-        const peeking = peekBlocks.has(selKey);
+        const peeking = peekBlocks.has(selKey());
         const chev = document.createElement("button"); chev.type = "button"; chev.className = "card-chev"; chev.setAttribute("aria-label", peeking ? "Fold" : "Open");
         chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (peeking ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4") + '"/></svg>';
         if (peeking) { const cap = block.querySelector(".group-cap"); (cap || card).appendChild(chev); } else card.appendChild(chev);   // opened for a look: the fold chevron moves up onto the "Exercise N" heading, and the card keeps its whole width
-        const unpeek = () => { peekBlocks.delete(selKey); S.renderedTraining = null; render(); };
+        const unpeek = () => { peekBlocks.delete(selKey()); S.renderedTraining = null; render(); };
         if (peeking && waitFoot && !locked) {                                     // "Finish Exercise 1 first" when one unfinished card comes before this one, by the name on its card; "the previous exercises" when more do
           const gi = groups.indexOf(g), before = groups.filter((x, xi) => xi < gi && !x.rows.every((r) => r.done));
           const one = before.length === 1 ? before[0] : null;
           const canStart = /^\d+$/.test(String(g.key)) && unfinished[0] && unfinished[0].key !== "w";   // an exercise can go ahead of the exercises; the warmup stays a warmup, so with it unfinished there is nothing to offer
           waitFoot(!one ? "the previous exercises" : one.key === "w" ? "the warmup" : /^\d+$/.test(String(one.key)) ? "Exercise " + one.key : "the previous " + groupWord(one),
-            canStart ? () => { const moved = startExerciseNow(t, g.key); if (!moved) return; peekBlocks.delete(t.id + "/" + moved.key); S.renderedTraining = null; render(); scrollToCard(moved.key); } : null);   // the machine is taken: this exercise now, ahead of the ones not yet done; they slide down behind it and keep what was logged
+            canStart ? () => { const moved = startExerciseNow(t, keyNow()); if (!moved) return; peekBlocks.delete(t.id + "/" + moved.key); S.renderedTraining = null; render(); scrollToCard(moved.key); } : null);   // the machine is taken: this exercise now, ahead of the ones not yet done; they slide down behind it and keep what was logged
         }
         if (peeking) { block.classList.add("peek"); chev.addEventListener("click", unpeek); for (const top of card.querySelectorAll(".row .top")) top.addEventListener("click", (e) => { if (e.target.closest(".ex-icons")) return; unpeek(); }); }
-        else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey); S.renderedTraining = null; render(); }); }
+        else { block.classList.add("ahead"); card.addEventListener("click", () => { peekBlocks.add(selKey()); S.renderedTraining = null; render(); }); }
         popLive();
-      } else peekBlocks.delete(selKey);
+      } else peekBlocks.delete(selKey());
       block.appendChild(card); rowsEl.appendChild(block);
     });
     const back = Math.min(keepScroll, Math.max(0, sc.scrollHeight - sc.clientHeight)); if (Math.abs(sc.scrollTop - back) > 1) sc.scrollTop = back;   // a box measured mid-rebuild made the browser clamp the scroll to a page with no cards yet: put it back where he was
@@ -4478,27 +4791,7 @@ import { reportRange, buildReport } from "./report.js";
   // 1c to third place; the others shift to fill.
   let lastEditedId = null;
   function normalizeLabels(t) {
-    const groups = new Map();
-    t.rows.forEach((r, i) => { const k = groupKey(r.label, i); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
-    let changed = false;
-    for (const [k, members] of groups) {
-      if (!/^(\d+|w)$/.test(k)) continue;
-      const base = k === "w" ? "W" : k;
-      if (members.length === 1) {
-        if (members[0].label !== base) { members[0].label = base; changed = true; }
-        continue;
-      }
-      const letter = (r) => ((String(r.label || "").trim().match(/^(?:\d+|w)\s*([a-z]*)/i) || [])[1] || "").toLowerCase();
-      const edited = members.find((r) => r.id === lastEditedId) || null;
-      const ordered = members.filter((r) => r !== edited)
-        .sort((a, b) => { const la = letter(a) || "~", lb = letter(b) || "~"; return la < lb ? -1 : la > lb ? 1 : 0; });
-      if (edited) {
-        const L = letter(edited);
-        const at = L ? Math.max(0, Math.min(L.charCodeAt(0) - 97, ordered.length)) : ordered.length;
-        ordered.splice(at, 0, edited);
-      }
-      ordered.forEach((r, j) => { const want = base + String.fromCharCode(97 + Math.min(j, 25)); if (r.label !== want) { r.label = want; changed = true; } });
-    }
+    const changed = tidyLabels(t.rows, lastEditedId);                 // (model.js; v316, the twenty-second check round: the same tidying a template's merge reads its exercises by)
     lastEditedId = null;
     return changed;
   }
@@ -4524,7 +4817,7 @@ import { reportRange, buildReport } from "./report.js";
     if (changed) {
       t.rows.sort((a, b) => cmpLabel(a.label, b.label));
       remapCardKeys(t.id, map);
-      if (S.clientMode) pendingOrder.add(t.id);
+      if (S.clientMode) pendingOrder.add(t.id); else if (!isTemplateClient(t.clientId)) touchState(t.id, "order");   // v316 (the twenty-third check round): the coach's own Start this exercise claims the whole order, as his Reorder does (merged one exercise at a time with the iPad's order, it made a superset nobody made)
       scheduleSave("trainings", t.id);
     }
     return { key: String(at + 1), changed };
@@ -4533,10 +4826,11 @@ import { reportRange, buildReport } from "./report.js";
   // each keeping its letters as typed (4a 4b become 3a 3b); the superset it left closes up its letters (2a 2c become 2a 2b) and one left
   // alone loses its letter (2b becomes 2); a warm-up stays W; a label of the coach's own words stays as typed. The per-card state (cards
   // opened, the set looked at) follows each exercise to its number, and the deleted one's goes with it.
-  function renumber(t, gone) {
+  function renumber(t, gone, cards = true) {
     const gk = String(groupKey(gone && gone.label, -1)), rows = [...(t.rows || [])].sort((a, b) => cmpLabel(a.label, b.label)), groups = [];
     rows.forEach((r, i) => { const k = String(groupKey(r.label, i)); if (!groups.length || groups[groups.length - 1].key !== k) groups.push({ key: k, rows: [] }); groups[groups.length - 1].rows.push(r); });
-    if (!groups.some((g) => g.key === gk)) dropCardKeys(t.id, gk);   // its whole card went: nothing of it carries over to the one that takes its number
+    if (cards && !groups.some((g) => g.key === gk)) dropCardKeys(t.id, gk);   // its whole card went: nothing of it carries over to the one that takes its number
+    if (cards && gone && gone.clientNote && [...rows.filter((r, i) => String(groupKey(r.label, i)) === gk), gone].sort((a, b) => cmpLabel(a.label, b.label)).find((x) => x.clientNote) === gone) for (const m of [openExNotes, cardNoteDraft, cardNoteBase]) m.delete(t.id + "/" + gk);   // v316 (the twenty-fourth check round): the exercise its card's note is on went: the note unfolded or half edited goes with it, never to the exercise left on the card (Save note wrote it there)
     const map = new Map(); let n = 0, changed = false;
     for (const g of groups) {
       const num = /^\d+$/.test(g.key); if (!num && g.key !== "w") continue;
@@ -4546,24 +4840,32 @@ import { reportRange, buildReport } from "./report.js";
         if (r.label !== want) { r.label = want; changed = true; }
       });
     }
-    if (changed) { t.rows.sort((a, b) => cmpLabel(a.label, b.label)); remapCardKeys(t.id, map); }
+    if (changed) { t.rows.sort((a, b) => cmpLabel(a.label, b.label)); if (cards) remapCardKeys(t.id, map); }   // v316 (the twenty-first check round): cards false: a copy whose numbers the card state here does not follow (a restore's file copy: the state follows each exercise by id, relabeled)
     return changed;
   }
   function dropCardKeys(tid, key) {
     const k = tid + "/" + key;
     for (const s of [openBlocks, fullBlocks, peekBlocks, openExNotes]) s.delete(k);
-    for (const m of [setSel, cardNoteDraft]) m.delete(k);
+    for (const m of [setSel, cardNoteDraft, cardNoteBase]) m.delete(k);
   }
-  function remapCardKeys(tid, map) {
-    const re = (k) => { const p = tid + "/"; if (!k.startsWith(p)) return k; const g = k.slice(p.length); return map.has(g) ? p + map.get(g) : k; };
-    for (const s of [openBlocks, fullBlocks, peekBlocks, openExNotes]) { const next = [...s].map(re); s.clear(); for (const k of next) s.add(k); }
-    for (const m of [setSel, cardNoteDraft]) { const next = [...m].map(([k, v]) => [re(k), v]); m.clear(); for (const [k, v] of next) m.set(k, v); }
+  function forgetCards(tid) {                                       // v316 (the twenty-third check round): a workout's whole card state goes (one deleted here and brought back by a restore, or new to this page from a sync: the old numbers' state is no exercise's now)
+    const p = tid + "/";
+    for (const s of [openBlocks, fullBlocks, peekBlocks, openExNotes]) for (const k of [...s]) if (k.startsWith(p)) s.delete(k);
+    for (const m of [setSel, cardNoteDraft, cardNoteBase]) for (const k of [...m.keys()]) if (k.startsWith(p)) m.delete(k);
   }
-  function relabeled(id, cur, rec) {                                // a sync brought this workout with its exercises renumbered (she started one ahead): the per-card state here follows each exercise to its new number too
-    const keyOf = (rows, rid) => { const i = (rows || []).findIndex((x) => x.id === rid); return i < 0 ? null : String(groupKey(rows[i].label, i)); };
+  function remapCardKeys(tid, map, notes = map) {                     // (notes: where each card's note state goes; a key mapped to null goes)
+    const at = (m) => (k) => { const p = tid + "/"; if (!k.startsWith(p)) return k; const g = k.slice(p.length); return !m.has(g) ? k : m.get(g) == null ? null : p + m.get(g); };
+    for (const s of [openBlocks, fullBlocks, peekBlocks, openExNotes]) { const re = at(s === openExNotes ? notes : map), next = [...s].map(re).filter((k) => k != null); s.clear(); for (const k of next) s.add(k); }
+    for (const m of [setSel, cardNoteDraft, cardNoteBase]) { const re = at(m === setSel ? map : notes), next = [...m].map(([k, v]) => [re(k), v]).filter(([k]) => k != null); m.clear(); for (const [k, v] of next) m.set(k, v); }
+  }
+  function relabeled(id, cur, rec, drop = false) {                                // a sync brought this workout with its exercises renumbered (she started one ahead): the per-card state here follows each exercise to its new number too
+    const list = (rows) => (Array.isArray(rows) ? rows : []), keyOf = (rows, rid) => { const i = list(rows).findIndex((x) => !!x && x.id === rid); return i < 0 ? null : String(groupKey(rows[i].label, i)); };   // v316 (the twenty-second check round): a damaged copy's odd shapes (rows not a list, an empty slot) never stop a restore or a sync (a restore threw here, and every workout after it was left as it was, with no word)
     const map = new Map();
-    for (const x of rec.rows || []) { const a = keyOf(cur.rows, x.id), b = keyOf(rec.rows, x.id); if (a != null && b != null && a !== b && !map.has(a)) map.set(a, b); }
-    if (map.size) remapCardKeys(id, map);
+    for (const x of list(cur.rows).filter((y) => !!y && y.id != null).sort((p, q) => cmpLabel(p.label, q.label))) { const a = keyOf(cur.rows, x.id), b = keyOf(rec.rows, x.id); if (a != null && b != null && !map.has(a)) map.set(a, b); }   // each card here goes where its first exercise goes, itself included (the twenty-second check round: a superset split by a restore or a sync sent its open card and its set to its second exercise's card)
+    if (drop) { const kept = new Set(list(rec.rows).map((x) => keyOf(cur.rows, x && x.id)).filter((a) => a != null)); list(cur.rows).forEach((x, i) => { const a = String(groupKey(x && x.label, i)); if (!kept.has(a)) dropCardKeys(id, a); }); }   // v316 (the twenty-first check round): a restore: a card none of whose exercises the restored copy has goes, with its state (its number may be another exercise's now); the twenty-second: a sync too (an exercise deleted on another device left its open card, its set and a half-typed note to the one that took its number)
+    const noteOn = (rows, key) => { const g = list(rows).map((x, i) => [x, i]).filter(([x, i]) => !!x && x.id != null && String(groupKey(x.label, i)) === key).map(([x]) => x).sort((p, q) => cmpLabel(p.label, q.label)); const h = g.find((x) => x.clientNote) || g[0]; return h ? h.id : null; };   // the exercise a card's note is on: the one holding a note, else its first (as the card writes it)
+    const notes = new Map(); for (const a of map.keys()) { const rid = noteOn(cur.rows, a), b = rid == null ? null : keyOf(rec.rows, rid); notes.set(a, b != null && noteOn(rec.rows, b) === rid ? b : null); }   // v316 (the twenty-third check round): a card's note state (unfolded, half written) follows the exercise its note is on, and goes when that exercise no longer takes its card's note (it followed the card's first exercise: a restore or a sync that regrouped a superset put a half-typed note on another exercise, and Save note wrote it there)
+    if (map.size) remapCardKeys(id, map, notes);
   }
 
   // ---------- Reorder: a workout's exercises put in order (v314) ----------
@@ -5083,7 +5385,7 @@ import { reportRange, buildReport } from "./report.js";
     const li = inMenu ? find(id) : back && back.closest ? back.closest("li[data-tid]") : null, list = li && lists.includes(li.parentElement) ? li.parentElement : null;   // a keyboard's or VoiceOver's place: a row's button or its "…", where the menu's close puts it, and not always this row's (a right-click or a hold moves no focus); a pointer's is the page
     const at = li ? li.dataset.tid : "", slot = list ? rowsOf(list).indexOf(li) : -1, more = inMenu ? list === lists[0] : !!(back && back.classList && back.classList.contains("miss-more"));
     const ok = !!(await askFirst({ title: "Delete this workout?", text: "It goes for good, with everything logged on it.", yes: "Delete" })) && canSwipeRow(trainings.get(id));   // read again: a sync may have taken it away, or brought in the client's finish or skip, while the question was up
-    if (ok) { trainings.delete(id); scheduleSave("trainings", id, 0); render(); }
+    if (ok) { deleteRec("trainings", id); render(); }
     const lost = !document.activeElement || document.activeElement === document.body || $("askSheet").contains(document.activeElement);
     if (list && lost) {                                                // that place, left on the closed question's button: its own row wherever it is drawn now; gone (this one deleted, or a sync took it), the row now in its slot, as a list closes up; none left, off the closed sheet
       const rows = rowsOf(list), to = find(at) || rows[Math.min(slot, rows.length - 1)] || null, b = to && ((more && to.querySelector(":scope > .miss-more")) || to.querySelector(":scope > button"));
@@ -5324,6 +5626,7 @@ import { reportRange, buildReport } from "./report.js";
   let paintedSig = "";              // what the cards on screen were built from: a redraw with the same picture is skipped
   let paintedObj = null;            // (15 Nov 2026, the audit's #3) the very record the cards were built from: a sync that replaced it (an Undo, a rename) draws them again even with the same picture, or the next set typed would go into the old copy
   const paintSigOf = (t) => JSON.stringify([t.rows, t.completedAt, t.skippedAt, t.date, t.inPerson, t.missed, (clients.get(t.clientId) || {}).unit, S.clientMode || previewClient, [...openBlocks], [...fullBlocks], [...peekBlocks], [...setSel], [...openExNotes], [...openNotes], S.histVer]);
+  const cardNoteBase = new Map();   // v316 (the twenty-fourth check round, the owner's pick "Ask first", 25 Nov 2026): selKey -> the note its box was opened on (none for Add note): Save note asks before it replaces one written meanwhile
   const cardNoteDraft = new Map();  // selKey -> a card note being written: it survives a rebuild of the cards (a sync, a set logged elsewhere)
   let completeAt = 0;               // when Complete set last fired: the second tap of a double tap must not log a second set
   const PREVIEW_KEY = "fiala.preview";
@@ -5459,7 +5762,7 @@ import { reportRange, buildReport } from "./report.js";
     q(".name").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } });
     q(".reps").value = r.reps || ""; q(".tempo").value = r.tempo || ""; q(".rest").value = r.rest || "";
 
-    const save = () => scheduleSave("trainings", t.id);
+    const save = () => { if (trainings.has(t.id)) scheduleSave("trainings", t.id); };
     if (asClient) { for (const s of [".label", ".name", ".reps", ".tempo", ".rest"]) q(s).readOnly = true; for (const s of [".reps", ".tempo", ".rest"]) { const el = q(s); if (!el.value) el.value = el.placeholder; } }   // the trainer's grey defaults read as filled in for the client
     const bind = (sel, field, transform) => { if (asClient) return; q(sel).addEventListener("input", (e) => { r[field] = transform ? transform(e.target.value) : e.target.value; save(); }); };
     if (!asClient) q(".label").addEventListener("input", (e) => { r.label = e.target.value; lastEditedId = r.id; save(); });
@@ -5558,7 +5861,7 @@ import { reportRange, buildReport } from "./report.js";
     };
     const moreBtn = q(".more-btn");                                  // the coach's "…" disc: the card's other actions, in a menu under it
     const letGo = () => { const a = document.activeElement; if (a && a !== document.body && /^(INPUT|TEXTAREA)$/.test(a.tagName) && a.blur) { a.blur(); document.body.classList.remove("typing"); } };   // a pick from the menu: a field still typed in is let go first (its redraw may draw this exercise again), and the typing look with it (a field its own redraw took off the page never tells the page it let go)
-    const cardRowsNow = () => { const T = trainings.get(t.id) || t, rows = T.rows || [], x = rows.find((y) => y.id === r.id); if (!x) return null; const k = String(groupKey(x.label, rows.indexOf(x))); return { T, x, rows: rows.filter((y, i) => String(groupKey(y.label, i)) === k) }; };   // v313: this exercise's card as it is now (a template's rows carry no card; a sync or a renumber may have changed it since the draw)
+    const cardRowsNow = () => { const T = trainings.get(t.id); if (!T) return null; const rows = T.rows || [], x = rows.find((y) => y.id === r.id); if (!x) return null; const k = String(groupKey(x.label, rows.indexOf(x))); return { T, x, rows: rows.filter((y, i) => String(groupKey(y.label, i)) === k) }; };   // v313: this exercise's card as it is now (a template's rows carry no card; a sync or a renumber may have changed it since the draw)
     const pickOwnSets = async (k, e, def) => {                      // v313: this exercise alone takes k sets (Default: the superset's own number, its most now); fewer with something logged on a set that goes asks first, as the sets button does
       const keys = byKeys(e), back = () => { if (!keys) return; const row = $("rows").querySelector('.row[data-id="' + r.id + '"]'), blk = row && row.closest(".block"), folded = !!blk && blk.classList.contains("done") && !blk.classList.contains("open"), f = folded ? blk.querySelector(".card-chev") : row && row.querySelector(".more-btn"); if (f) f.focus({ preventScroll: true }); };   // a pick from the keyboard: the place back on this exercise's "…", drawn anew; a pick that finished the card folds it and hides the "…", so on its chevron, as the sets button's (the v313 review)
       let c = cardRowsNow(); if (!c) return; if (def) k = Math.max(...c.rows.map(setsOf)); const was = setsOf(c.x); if (k === was) return;
@@ -5673,7 +5976,7 @@ import { reportRange, buildReport } from "./report.js";
       w.value = weightIn(r.weights[sel], r.unit || unit, unit); w.placeholder = asW(weightIn(carry.w, r.unit || unit, unit)) || lw || ""; w.setAttribute("aria-label", "Weight in " + unit);   // nothing to suggest: the chip just says "lb"   // v301: every number in the client's unit, and VoiceOver says which
       rp.value = r.repsDone[sel] || ""; rp.placeholder = carry.rp || lr || planNumber(r.reps);   // the set before, last time, else the plan's number (8–10 shows 10): what shows grey is what Complete set writes
       w.inputMode = (wText || nonNum(r.weights[sel] || carry.w || "")) ? "text" : "decimal";
-      const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
+      const mark = () => { if (!trainings.has(t.id)) return; const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); save(); };
       let wWas = null, wShown = "", rpWas = null, wFollow = [], rpFollow = []; w.addEventListener("focus", () => { wWas = String(r.weights[sel] || ""); wShown = w.value; wFollow = followFrom(r.weights, sel, wWas); }); rp.addEventListener("focus", () => { rpWas = String(r.repsDone[sel] || ""); rpFollow = followFrom(r.repsDone, sel, rpWas); });   // what the box held when editing began, and which later sets copied it: the whole correction reaches them, keystroke by keystroke
       const greyKept = () => asW(carry.w) || asW(last && last.weights[sel] ? String(weightStored(String(last.weights[sel]), last.unit, r.unit || unit)) : "");   // what Complete set writes for the grey number left as it is
       w.addEventListener("input", (e) => { const v = e.target.value; r.weights = correctFrom(r.weights, sel, sameWeightText(v, wShown) ? wWas : !String(wWas || "").trim() && w.placeholder && sameWeightText(v, w.placeholder) ? greyKept() : weightStored(v, unit, r.unit || unit), wWas, wFollow); if (!r.unit) r.unit = unit; mark(); paintLifts(); });   // v301: typed in the client's unit, kept in this exercise's (60 kg into a pound one is 132.3); the number shown, or the grey number, typed back is what was there or what Complete set would write   // NEW BEST lights up as it is typed; later sets that copied this number follow the correction
@@ -5712,7 +6015,7 @@ import { reportRange, buildReport } from "./report.js";
     {                                                                  // the finished card, opened: every set in a cell — number, weight × reps (editable in place for a typo), a check
       const unitS = (clients.get(t.clientId) || {}).unit || "lb", tmS = measurePlan(r.reps), sumEl = document.createElement("div"); sumEl.className = "row-sum";
       const runitWord = tmS ? tmS.unit : /(\/|each|per)\s*(side|leg|arm)/i.test(String(r.reps || "")) ? "reps / side" : "reps";   // "× 5 reps", "× 8 reps / side", "× 45 sec"
-      const mark = () => { const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); scheduleSave("trainings", t.id); };
+      const mark = () => { if (!trainings.has(t.id)) return; const track = S.clientMode ? pendingWeightRows : trainerTouched; if (!track.has(t.id)) track.set(t.id, new Set()); track.get(t.id).add(r.id); scheduleSave("trainings", t.id); };
       const fit = (inp) => { inp.style.width = Math.ceil(textWidth(inp.value || inp.placeholder || "", !inp.value) + 7) + "px"; };   // as wide as its text, measured in the real font ("BW" is wide letters, not two digits)
       const refresh = () => { for (const line of sumEl.children) { const i = +line.dataset.i, wi = line.querySelector(".sum-w"), ri = line.querySelector(".sum-r"); if (!wi) continue; if (document.activeElement !== wi) { wi.value = weightIn((r.weights || [])[i], r.unit || unitS, unitS); fit(wi); } if (document.activeElement !== ri) { ri.value = String((r.repsDone || [])[i] || ""); fit(ri); } line.querySelector(".sum-unit").textContent = wi.value.trim() ? weightWord(wi.value, unitS) : ""; line.querySelector(".runit").textContent = ri.value.trim() ? runitWord : ""; } };   // an empty box shows its grey word alone
       for (let i = 0; i < setsOf(r); i++) {
@@ -5753,11 +6056,11 @@ import { reportRange, buildReport } from "./report.js";
   }
   $("photoInput").addEventListener("change", async () => {
     const inp = $("photoInput"), f = inp.files && inp.files[0], id = photoTarget; photoTarget = null; inp.value = "";
-    if (!f || !id || !clients.get(id)) return;
+    if (!f || !id || !clients.get(id) || (S.sb && !S.signedIn)) return;   // (v316, the check rounds: a pick that lands once the sign-in page is up opens nothing over it)
     let blob = null;
     try { blob = await cropPhoto(f); }                                // Move and Scale: pinch to zoom, drag to frame the face, then Choose
     catch (_) { $("status").textContent = "Couldn\u2019t read that photo \u00b7 try another"; return; }
-    if (!blob || !clients.get(id)) return;                            // Cancel: nothing changes
+    if (!blob || !clients.get(id) || (S.sb && !S.signedIn)) return;   // Cancel: nothing changes (signed out meanwhile: nothing either)
     await setPhoto(id, blob);
     paintHeroes(); paintMeDisc(); render();
   });
@@ -5850,7 +6153,7 @@ import { reportRange, buildReport } from "./report.js";
     const b = e.target.closest("button"); if (!b) return;
     const c = clients.get(S.view.id); if (!c || isTemplateClient(c.id)) return;
     const paused = b.dataset.access === "paused"; if (!!c.paused === paused) return;
-    c.paused = paused; if (!paused) c.sort = activeList().length; scheduleSave("clients", c.id); renderClient();
+    c.paused = paused; if (!paused) c.sort = activeList().length; scheduleSave("clients", c.id); renderClient(); if (settingsOpen === "card") paintCard();   // v316: the card's health line reads paused (the check round)
   });
   $("chatSeg").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-chat]"); const c = clients.get(S.view.id); if (!b || !c) return;
@@ -5859,6 +6162,7 @@ import { reportRange, buildReport } from "./report.js";
   });
   $("tabbar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b || b.dataset.tab === S.tab) return; setTab(b.dataset.tab); render(); window.scrollTo(0, 0); });
   const typingIn = (el) => !!el && /^(INPUT|TEXTAREA)$/.test(el.tagName) && !el.readOnly && !/^(date|month|checkbox|radio|file|range)$/.test(el.type || "");   // a keyboard is coming: a select or a date wheel is not typing, nor a read-only box (the client's look: the title, an exercise's name and number take a tap with no keyboard; it hid the bar for good, the v287 review)
+  const keysIn = (el) => typingIn(el) || ((deskOn || keysLast) && !!el && el.tagName === "INPUT" && !el.readOnly && /^(date|month)$/.test(el.type || ""));   // v316 (the twenty-second check round): typing, or a date box typed digit by digit (a computer's, or one reached by keys): the restore's question and its alerts wait for it too (it came up mid-date, and his Return took its Cancel); an iPhone's date wheel is no typing
   document.addEventListener("focusin", (e) => { if (typingIn(e.target) && !deskOn) document.body.classList.add("typing"); });   // a phone's keyboard comes up over the bottom (the bar at the foot gives way: index.html); a computer's is on the desk, so its bar stays (the + under the pointer for the next exercise)
   // the bar at the foot and the keyboard (v287, his ask, 13 Nov: "the glass bar ... always there no matter what .. after I add exercise it
   // appears again reliably it never moves from its spot"): it comes back only once no field has the keyboard and the keyboard itself has gone
@@ -6201,7 +6505,7 @@ import { reportRange, buildReport } from "./report.js";
   // Only the workout moves: the header and Start workout stay, as Apple keeps a pager's bars and the month view its title.
   const PV_SIDE = 8, PV_CONE = 1.732;                                // a slide: 8 points sideways within 30 degrees of level (iOS 27 lets a list scroll only past that: no touch is both)
   const pvOrder = (a, b) => effDate(a).localeCompare(effDate(b)) || byMade(a, b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
-  const pvWalk = (cid) => clientTrainings(cid).filter((t) => canSwipeRow(t) || !!effDate(t)).sort(pvOrder);   // every workout of the client by its day, then as made: History's too (his ask, 11 Nov: "let the slider go even to the history"), the missed, today's, the ones to come
+  const pvWalk = (cid) => clientTrainings(cid).filter((t) => (canSwipeRow(t) || !!effDate(t)) && !emptyGone(t)).sort(pvOrder);   // every workout of the client by its day, then as made: History's too (his ask, 11 Nov: "let the slider go even to the history"), the missed, today's, the ones to come; v316 (the nineteenth check round): never an empty one whose day has gone (› landed on "Nothing added yet" with Skip, which filed it in History for good)
   function pvNear(id) {                                              // the workouts either side of this one in the walk (it may have left it, finished or skipped meanwhile: where it would sort)
     const t = trainings.get(id); if (!t) return { prev: null, next: null };
     if (pvTpl(t)) { const w = tplWalk().map((x) => x.id), i = w.indexOf(id); return i < 0 ? { prev: null, next: null } : { prev: i > 0 ? w[i - 1] : null, next: i < w.length - 1 ? w[i + 1] : null }; }   // a template: only its slide's (or folder's) others, in their order
@@ -6332,7 +6636,7 @@ import { reportRange, buildReport } from "./report.js";
     const was = st(trainings.get(id));
     if (!(await askFirst({ title: "Delete this workout?", text: "It goes for good, with everything logged on it.", yes: "Delete" }))) return;
     if (!pv || pv.id !== id || !trainings.has(id) || st(trainings.get(id)) !== was) return;
-    pvOn(id); trainings.delete(id); scheduleSave("trainings", id, 0); S.renderedTraining = null; render();   // (the page behind redraws now; the preview paints where its slide lands)
+    pvOn(id); deleteRec("trainings", id); S.renderedTraining = null; render();   // (the page behind redraws now; the preview paints where its slide lands)
   }
   async function pvCopy(id) {                                        // the coach's Copy workout: which client gets it (this one first), then the day, then the copy opens, as the workout page's Copy workout does
     const t = trainings.get(id); if (!coachMore(t)) return;
@@ -6483,7 +6787,7 @@ import { reportRange, buildReport } from "./report.js";
     const t = trainings.get(S.view.id); if (!t) return;
     const ul = $("usePick"); if (!ul.hidden) { ul.hidden = true; return; }
     const people = peopleList(); if (lastUse.client) { const i = people.findIndex((c) => c.id === lastUse.client); if (i > 0) people.unshift(people.splice(i, 1)[0]); }
-    ul.replaceChildren(...people.map((c) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = c.name || "Unnamed"; b.lastChild.textContent = c.id === lastUse.client ? "last used" : ""; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>'); b.addEventListener("click", () => openDatePicker({ clientId: c.id, title: "Add to " + (c.name || "client"), onPick: (date) => { if (browserShots()) $("usePick").hidden = true; leaveClean(() => { if (clients.has(c.id)) applyTemplate(trainings.get(t.id) || t, c.id, date); }); } })); li.appendChild(b); return li; }));
+    ul.replaceChildren(...people.map((c) => { const li = document.createElement("li"); const b = document.createElement("button"); b.type = "button"; b.innerHTML = "<span></span><span class=\"sub\"></span>"; b.firstChild.textContent = c.name || "Unnamed"; b.lastChild.textContent = c.id === lastUse.client ? "last used" : ""; b.lastChild.insertAdjacentHTML("beforeend", '<span class="chev">\u203a</span>'); b.addEventListener("click", () => openDatePicker({ clientId: c.id, title: "Add to " + (c.name || "client"), ok: () => clients.has(c.id) && trainings.has(t.id), onPick: (date) => { if (browserShots()) $("usePick").hidden = true; leaveClean(() => { const cur = trainings.get(t.id); if (cur && clients.has(c.id)) applyTemplate(cur, c.id, date); }); } })); li.appendChild(b); return li; }));
     if (!people.length) { const li = document.createElement("li"); li.className = "empty"; li.style.padding = "12px 16px"; li.textContent = "Add a client first."; ul.appendChild(li); }
     ul.hidden = false;
   });
@@ -6519,7 +6823,7 @@ import { reportRange, buildReport } from "./report.js";
   const repFoot = (on, c) => on ? "On: for you only. Your private notes about " + firstOf(c) + " are in it." : "Off: safe to send to " + firstOf(c) + ". Your private notes stay in the app.";
   function openReport(e) {
     const id = S.view.id, c = clients.get(id); if (S.clientMode || S.view.name !== "client" || !c || isTemplateClient(id)) return;
-    if (askOpen) askOpen(false);
+    if (askOpen) askOpen(false); if (paOpen) paOpen(null);   // a choice alert left up goes first (the check round: a refusal under a file picker froze the sheet that opened after it)
     loadReportFonts();                                               // (fetched as the page was drawn: Share builds the file at once, inside its tap, as a share sheet needs)
     const bg = $("repSheet"), sel = $("repMonth"), sw = $("repNotes"), ok = $("repShare"), no = $("repNo"), keys = byKeys(e), from = document.activeElement, behind = [...document.body.children].filter((el) => el !== bg && !el.inert);
     const months = repMonths(new Date(today() + "T12:00:00"));
@@ -6544,63 +6848,109 @@ import { reportRange, buildReport } from "./report.js";
     bg.hidden = false; no.focus({ preventScroll: true, focusVisible: keysLast });
   }
   $("reportBtn").addEventListener("click", openReport);
+  const backupData = () => ({ app: "fiala-trainings", format: 1, exported: now(), clients: Object.fromEntries(clients), trainings: Object.fromEntries([...trainings].filter(([, t]) => t && (clients.has(t.clientId) || isTemplateClient(t.clientId))).map(([id, t]) => [id, S.templateDraft && S.templateDraft.dirty && S.templateDraft.snapshot && S.templateDraft.id === id ? JSON.parse(S.templateDraft.server && S.templateDraft.server.of === S.templateDraft.snapshot ? S.templateDraft.server.doc : S.templateDraft.snapshot) : t])) });   // format: bumped when a later app writes something an older one must not read; v316 (the eighteenth check round): a workout whose client is gone stays out (one planned on the coach's other device with no signal reached the server after Delete client, and every backup made since was refused whole); the nineteenth: a template open as a draft goes as saved, as the device copy keeps it (copyOf: a second tab's Back up wrote the other tab's half-typed draft); the twentieth: as the server has it saved, when a sync passed over the draft since that save (S.templateDraft.server: a move or an exercise the iPad saved meanwhile was missing; a save here since makes a new snapshot, and the older copy no longer counts)
   $("backup").addEventListener("click", () => {
     if (S.clientMode) return;                                                               // the coach's data only (the buttons are hidden for a client; the handler must not rely on that)
-    const data = { app: "fiala-trainings", format: 1, exported: now(), clients: Object.fromEntries(clients), trainings: Object.fromEntries(trainings) };   // format: bumped when a later app writes something an older one must not read
+    const data = backupData();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "fiala-trainings-" + today() + ".json";
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   });
   $("restore").addEventListener("click", () => $("restoreFile").click());
   const canon = (v) => JSON.stringify(v, (_, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x));   // the same record in another key order is the same record
+  const rowsOf = (a) => (Array.isArray(a) ? a.filter((x) => x && typeof x === "object") : []);   // a record's rows, nothing but rows (a damaged copy's odd shapes never stop a restore)
+  const keepServerOwned = (c, here) => {                             // v315/v316: a restore never puts the file's time zone or the client's own choices over the ones here, nor health details the client has not agreed to (the server's guard keeps the same: client-consent.sql); a client not here comes with no answers at all (the server's guard strips them from a record written anew: both questions are asked again)
+    if (!here) { delete c.zone; delete c.choices; delete c.photo; dropHealth(c, DAYS()); return; }   // a teen's birthday leaves the year they turn 18, as the server's guard keeps it (the check round)
+    for (const f of ["zone", "choices"]) { if (here[f] === undefined) delete c[f]; else c[f] = JSON.parse(JSON.stringify(here[f])); }
+    for (const f of ["minor", "minorUntil"]) { if (here[f] === undefined) delete c[f]; else c[f] = here[f]; }   // a known under-18 note is never dropped by an older file (the check round: a teen's parent was no longer asked); v316 (the nineteenth check round): the coach's Under 18 as here, both ways (switched off since the backup, or its year cleared, it came back on: an adult who had agreed alone was locked and asked for a parent)
+    for (const k of HEALTH_KEYS) { if (here[k] !== undefined) c[k] = JSON.parse(JSON.stringify(here[k])); else delete c[k]; } if (here.photo === undefined) delete c.photo; else c.photo = here.photo; if (here.unit === undefined) delete c.unit; else c.unit = here.unit;   // v316 (the owner's pick, 19 Nov 2026): a restore never brings back what a client deleted in the app since the backup: a client here keeps the health details, Health & safety and photo as here (details saved before v316 exactly as they are until the client answers; a client not here comes with no photo: the files went with them); v316 (the check rounds): and Weights in as here, the client's own choice since the backup (a restore put pounds back on a client who had switched to kilograms)
+  };
+  const WORKOUT_STATE = ["completedAt", "completedBy", "completedZone", "skippedAt", "skipReason", "missed", "date"];   // v316 (the nineteenth check round): what a finish, a skip and their Undo write on a workout (setFinished, setSkipped)
+  const keepClientLogs = (t, here, marks) => {                              // v316 (the owner's pick, 19 Nov 2026): on a client workout here, each exercise's note stays as here, and a weight or reps empty here stays empty (a note deleted, a weight or reps cleared in the app since the backup never come back); v316 (the check rounds): sets marked not done stay not done (the file had them done, and a restore ticked them again with their reps empty), and a row's number never goes down (a set request that timed out on the client's phone must never be taken later over the restored row); `marks`: a restore's own write held against the copy it just read (ui.keepGone), where the rows the coach changed since the tap keep his sets or his note
+    if (!here || isTemplateClient(t.clientId)) return;
+    const st = (marks && marks.state) || new Set(); if ((t.completedAt && !here.completedAt && !st.has("completedAt")) || (t.skippedAt && !here.skippedAt && !st.has("skippedAt"))) { for (const f of WORKOUT_STATE) if (!st.has(f)) { if (here[f] === undefined) delete t[f]; else t[f] = JSON.parse(JSON.stringify(here[f])); } } else if (t.skipReason !== undefined && !st.has("skipReason")) { if (here.skipReason === undefined) delete t.skipReason; else t.skipReason = here.skipReason; }   // v316 (the nineteenth check round): a finish or a skip the file has and the app no longer has (an Undo: the client's within 24 hours, or the coach's) stays taken back, the workout's state as here (finished, skipped or still to do, its day, the reason, the finish's time zone); a reason for skipping as here, removed or changed (Sick and Injury are health information, the policy: a reason taken back came back with the restore, naming no one); `marks.state`: what the coach changed since the tap stands; the twentieth: a finish or a skip of his own since the tap is never one taken back (his In person finish took Jane's skip from the server: finished and skipped at once, the session missing from her pack; his skip took the day of the drag the restore was undoing)
+    const byId = new Map(rowsOf(here.rows).map((h) => [h.id, h])), noted = (marks && marks.noted) || new Set(), touched = (marks && marks.touched) || new Set();
+    for (const r of rowsOf(t.rows)) { const h = byId.get(r.id); if (!h) continue; if (!noted.has(r.id)) for (const f of ["clientNote", "clientNoteBy", "clientNoteAt"]) { if (h[f] === undefined) delete r[f]; else r[f] = h[f]; } if (!touched.has(r.id)) { for (const f of ["weights", "repsDone"]) if (Array.isArray(r[f])) r[f] = r[f].map((v, i) => (String((Array.isArray(h[f]) ? h[f] : [])[i] ?? "").trim() === "" ? "" : v)); if (doneCount(h) < doneCount(r)) for (const f of ["setsDone", "done", "earlyReason"]) { if (h[f] === undefined) delete r[f]; else r[f] = h[f]; } else if (r.done && !h.done && Math.min(doneCount(r), setsOf(r)) < setsOf(r)) r.done = false; if (r.earlyReason !== undefined) { if (h.earlyReason === undefined) delete r.earlyReason; else r.earlyReason = h.earlyReason; } } if (h.logSeq != null) r.logSeq = Math.max(parseInt(h.logSeq, 10) || 0, parseInt(r.logSeq, 10) || 0); }   // v316 (the seventeenth check round): an exercise the file has cut short, resumed here, stays open with the file's own sets (Resume keeps the sets done: the file's done and its Discomfort came back), and a reason for finishing early is as here, removed or changed (a reason taken back came back)
+  };
+  const KEPT_WORDS = "Health details, Health & safety, photos, Weights in and Under 18 stay as they are in the app now. In a client’s workout in both the backup and the app, a finish or skip taken back stays taken back, and a reason for skipping taken back or changed to another stays that way. On its exercises in both, notes stay as they are now, and weights and reps cleared, sets marked not done, exercises resumed and reasons for finishing early taken back or changed to another stay that way.";   // v316 (the check rounds): what a restore always keeps as the app has it now (the owner's pick, 19 Nov 2026: what a client deleted in the app never comes back), said in the sheet and in Nothing to restore; the nineteenth: Under 18, a finish or skip taken back and a reason for skipping, and the rule on workouts only (a template's planned weights cleared came back, as the words did not say), a reason "changed to another" (one given since, where the file had none, goes with the copy replaced)
+  const fileHolds = (f, h) => f !== undefined && f !== null && f !== "" && (typeof f === "object" && !Array.isArray(f) ? Object.keys(f).some((e) => fileHolds(f[e], h && typeof h === "object" ? h[e] : undefined)) : canon(f) !== canon(h));   // the file holds a value the copy here no longer has, or has otherwise (a detail only here is no loss)
+  const ruleKeeps = (kind, f, h) => {                                // v316 (the check rounds): the restore rule keeps something of the file out of this record (a client's own details, photo or Weights in; a workout's note, a set empty here, a set marked not done here)
+    if (!f || !h) return false; if (kind === "clients") return !isTemplateClient(f.id) && [...HEALTH_KEYS, "photo", "unit", "minor", "minorUntil"].some((k) => fileHolds(f[k], h[k]));
+    if (isTemplateClient(f.clientId)) return false; if ((!!f.completedAt && !h.completedAt) || (!!f.skippedAt && !h.skippedAt) || fileHolds(f.skipReason, h.skipReason)) return true; const byId = new Map(rowsOf(h.rows).map((x) => [x.id, x])), blank = (v) => String(v ?? "").trim() === "";
+    return rowsOf(f.rows).some((r) => { const x = byId.get(r.id); return !!x && (fileHolds(r.clientNote, x.clientNote) || ["weights", "repsDone"].some((g) => Array.isArray(r[g]) && r[g].some((v, i) => !blank(v) && blank((Array.isArray(x[g]) ? x[g] : [])[i]))) || doneCount(x) < doneCount(r) || (!!r.done && !x.done && Math.min(doneCount(r), setsOf(r)) < setsOf(r)) || fileHolds(r.earlyReason, x.earlyReason)); });   // (and, the seventeenth round, an exercise resumed here, a reason for finishing early taken back or changed)
+  };
   function planRestore(d) {                                          // the file checked whole, then held against what is here: what the sheet says is exactly what applyRestore does
-    const { cs, ts } = validateBackup(d, (id) => clients.has(id));
-    for (const c of cs) { const here = clients.get(c.id); if (isTemplateClient(c.id) && !Array.isArray(c.folders) && here && Array.isArray(here.folders)) c.folders = JSON.parse(JSON.stringify(here.folders)); if (isTemplateClient(c.id) && !Array.isArray(c.rootOrder) && here && Array.isArray(here.rootOrder)) c.rootOrder = [...here.rootOrder]; if (here) { if (here.zone === undefined) delete c.zone; else c.zone = JSON.parse(JSON.stringify(here.zone)); } }   // a backup from before his template folders (12 Nov) knows nothing of them: they stay as they are here, never wiped by a restore; v315: the time zone a client's phone reported is the one here, never the file's (the check round: a restore wrote a backup's old report over the phone's newer one, and listed every client whose phone had reported since as replaced)
-    for (const t of ts) repairTimed(t);                                // compared, and later written, in the shape the app keeps: a backup from before the Time box carries a hold's seconds as a weight
-    const changed = (map, kind, r) => { const here = map.get(r.id); return !here || dirty.has(key(kind, r.id)) || !seenAt.has(key(kind, r.id)) || canon(here) !== canon(r); };   // already here, the same, and known to the server: nothing to do, nothing to send
-    const cs2 = cs.filter((c) => changed(clients, "clients", c)), ts2 = ts.filter((t) => changed(trainings, "trainings", t));
+    const { cs, ts } = validateBackup(d, (id) => clients.has(id)), orig = new Map(), ruled = new Map(), units = new Map();   // v316 (the check rounds): orig, the file's own copy of each record, which applyRestore holds against what is here as Restore is tapped (a second pass over a copy already held against what was here could only blank: a set logged under the question came back empty, an Under 18 switched off meanwhile came back on)
+    for (const c of cs) { const here = clients.get(c.id); if (isTemplateClient(c.id) && !Array.isArray(c.folders) && here && Array.isArray(here.folders)) c.folders = JSON.parse(JSON.stringify(here.folders)); if (isTemplateClient(c.id) && !Array.isArray(c.rootOrder) && here && Array.isArray(here.rootOrder)) c.rootOrder = [...here.rootOrder]; if (isTemplateClient(c.id) && c.builtinsAdopted === undefined && here && here.builtinsAdopted !== undefined) c.builtinsAdopted = here.builtinsAdopted; orig.set(key("clients", c.id), JSON.parse(JSON.stringify(c))); if (!isTemplateClient(c.id)) keepServerOwned(c, here); }   // a backup from before his template folders (12 Nov) knows nothing of them: they stay as they are here, never wiped by a restore (v316, the nineteenth check round: nor of the built-in programs made folders, `builtinsAdopted`: a file from before it said the packages list went in, nothing changing); v315: the time zone a client's phone reported is the one here, never the file's (the check round: a restore wrote a backup's old report over the phone's newer one, and listed every client whose phone had reported since as replaced)
+    for (const t of ts) { repairTimed(t); const fc = !isTemplateClient(t.clientId) && orig.get(key("clients", t.clientId)), fu = fc && fc.unit === "kg" ? "kg" : "lb", hc = clients.get(t.clientId); if (fc && hc) units.set(t, [fu, hc.unit === "kg" ? "kg" : "lb"]); if (fc && hc && (hc.unit === "kg" ? "kg" : "lb") !== fu) stampUnit(t, fu); { const o = JSON.parse(JSON.stringify(t)); if (fc) stampUnit(o, fu); orig.set(key("trainings", t.id), o); } const k = JSON.parse(JSON.stringify(t)); keepClientLogs(k, trainings.get(t.id)); ruled.set(t, k); }   // v316 (the seventeenth check round): a weight with no unit of its own was logged in the unit of the file's copy of the client: the copy written says so, as Weights in stays as here (a backup's 135 lb read, and logged on, as 135 kg after the client's switch), and the copy compared only when the units differ (an equal copy is no change)   // compared, and later written, in the shape the app keeps: a backup from before the Time box carries a hold's seconds as a weight; v316 (the check rounds): the rule is held against a copy, the file's own copy going on to applyRestore
+    const stamped = (x, u) => { const y = JSON.parse(JSON.stringify(x)); stampUnit({ rows: rowsOf(y && y.rows).filter((w) => Array.isArray(w.weights)) }, u); return y; };   // v316 (the eighteenth check round): each side read in its own client's unit (a workout a restore had written, stamped, counted as replaced at the next pick of the same file)
+    const changed = (map, kind, r) => { const here = map.get(r.id), u = units.get(r); return !here || dirty.has(key(kind, r.id)) || !seenAt.has(key(kind, r.id)) || !(u ? sameRec(stamped(here, u[1]), stamped(ruled.get(r) || r, u[0])) : sameRec(here, ruled.get(r) || r)); };   // already here, the same, and known to the server: nothing to do, nothing to send; v316 (the seventeenth check round): the same as a sync reads it (sameRec: a workout only opened, its empty sets drawn, counted as replaced)
+    const cs2 = cs.filter((c) => changed(clients, "clients", c)), ts2 = ts.filter((t) => changed(trainings, "trainings", t) && !isEmptyWorkout(t));   // v316 (the seventeenth check round): an empty workout in the file stays out (the app tidies such a workout away: brought back, the sheet promised it and the next visit took it again); the eighteenth: here or not (a backup from while it was still empty replaced the finished workout, and the tidying then took it away)
+    const fileOf = (kind, r) => orig.get(key(kind, r.id)) || r, keeps = (kind, map, r) => ruleKeeps(kind, fileOf(kind, r), map.get(r.id));
+    const held = cs.filter((c) => !changed(clients, "clients", c) && keeps("clients", clients, c)).length + ts.filter((t) => !changed(trainings, "trainings", t) && keeps("trainings", trainings, t)).length, keptIn = cs2.some((c) => keeps("clients", clients, c)) || ts2.some((t) => keeps("trainings", trainings, t));   // v316 (the check rounds): a record the rule alone made equal is told, not "already here" (a backup holding an allergy or a weight the app no longer has said "Everything in that backup is already here"), and the sheet says what stays when the rule keeps something out
     const nC = cs2.filter((c) => !isTemplateClient(c.id)).length, nT = ts2.filter((t) => !isTemplateClient(t.clientId)).length, nTpl = ts2.length - nT, packs = cs2.some((c) => isTemplateClient(c.id));
     const parts = []; if (nC) parts.push(nC + (nC === 1 ? " client" : " clients")); if (nT) parts.push(nT + (nT === 1 ? " workout" : " workouts")); if (nTpl) parts.push(nTpl + (nTpl === 1 ? " template" : " templates")); if (packs) { const tc = cs2.find((c) => isTemplateClient(c.id)), th = clients.get(tc.id) || {}, fo = canon(tc.folders || []) !== canon(th.folders || []), ro = canon(tc.rootOrder || null) !== canon(th.rootOrder || null); parts.push("the packages list" + (fo && ro ? ", the template folders and the order of the programs" : fo ? " and the template folders" : ro ? " and the order of the programs" : "")); }
     const rC = cs2.filter((c) => clients.has(c.id) && !isTemplateClient(c.id)).length, rT = ts2.filter((t) => trainings.has(t.id)).length, rP = cs2.some((c) => clients.has(c.id) && isTemplateClient(c.id)) ? 1 : 0;
     const total = cs2.length + ts2.length, replaces = rC + rT + rP;
     const what = parts.length > 1 ? parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1] : parts[0] || "";
     const who = replaces === total ? (total === 1 ? "It replaces" : "They replace") : replaces === 1 ? "1 of them replaces" : replaces + " of them replace";
-    const incl = rT && rC ? ", logged sets, notes and plans included" : rT ? ", logged sets and all" : rC ? (rC === 1 ? ", notes and plan included" : ", notes and plans included") : "";   // what a replaced copy loses, by kind
-    const text = total ? what + " from the file " + (total === 1 && !what.includes(" and ") ? "goes" : "go") + " into the app." + (replaces ? " " + who + " a copy already here" + incl + "." : "") + " Everything else stays as it is." : "";
-    return { cs: cs2, ts: ts2, text };
+    const rW = ts2.filter((t) => trainings.has(t.id) && !isTemplateClient(t.clientId)).length, incl = rW && rC ? ", logged sets, notes and plans included" : rW ? ", logged sets and all" : rC ? (rC === 1 ? ", notes and plan included" : ", notes and plans included") : "";   // what a replaced copy loses, by kind; v316 (the nineteenth check round): a template holds no logged sets (a template replaced alone said "logged sets and all")
+    const back = cs2.filter((c) => !isTemplateClient(c.id) && !clients.has(c.id)).map((c) => String(c.name || "").trim() || "a client with no name"), backWords = back.length > 1 ? back.slice(0, -1).join(", ") + " and " + back[back.length - 1] : back[0] || "";   // v316 (the check rounds): a client not in the app now comes back, named, so one deleted on request is seen before Restore (the owner's list: delete them again)
+    const wBack = new Map(); for (const t of ts2) if (!trainings.has(t.id) && !isTemplateClient(t.clientId) && clients.has(t.clientId)) wBack.set(t.clientId, (wBack.get(t.clientId) || 0) + 1);   // v316 (the seventeenth check round): whose workouts come back, named (one deleted since the backup comes back as the file has it, with anything the client deleted in it: the owner's list, tell them)
+    const wList = [...wBack].map(([cid, n]) => (String((clients.get(cid) || {}).name || "").trim() || "a client with no name") + " (" + n + (n === 1 ? " workout" : " workouts") + ")"), wWords = wList.length > 1 ? wList.slice(0, -1).join(", ") + " and " + wList[wList.length - 1] : wList[0] || "";
+    const xBack = new Map(); for (const t of ts2) { const h = trainings.get(t.id); if (!h || isTemplateClient(t.clientId) || !clients.has(t.clientId)) continue; const have = new Set(rowsOf(h.rows).map((x) => x.id)), n = rowsOf(fileOf("trainings", t).rows).filter((r) => !have.has(r.id) && ((String(r.clientNote || "").trim() && r.clientNoteBy !== "coach") || doneCount(r) > 0 || (Array.isArray(r.repsDone) && r.repsDone.some((v) => String(v ?? "").trim())) || !!r.earlyReason)).length; if (n) xBack.set(t.clientId, (xBack.get(t.clientId) || 0) + n); }   // v316 (the eighteenth check round): an exercise deleted here since the backup comes back as the file has it, with anything of the client's on it (her note, her sets): whose, named, so the coach can tell them (the policy)
+    const xList = [...xBack].map(([cid, n]) => (String((clients.get(cid) || {}).name || "").trim() || "a client with no name") + " (" + n + (n === 1 ? " exercise" : " exercises") + ")"), xWords = xList.length > 1 ? xList.slice(0, -1).join(", ") + " and " + xList[xList.length - 1] : xList[0] || "";
+    const text = total ? what.charAt(0).toUpperCase() + what.slice(1) + " from the file " + (total === 1 && !what.includes(" and ") ? "goes" : "go") + " into the app." + (replaces ? " " + who + " a copy already here" + incl + "." : "") + (back.length ? " Back in the app: " + backWords + ", without health details, Health & safety or " + (back.length === 1 ? "photo" : "photos") + " (the app asks again)." : "") + (wWords ? " Workouts back in the app: " + wWords + "." : "") + (xWords ? " Exercises back in the app: " + xWords + "." : "") + (keptIn ? " " + KEPT_WORDS : "") + " Everything else stays as it is." : "";   // v316 (the check rounds): a client brought back comes with none of those (keepServerOwned; the server's guard strips them too), and is asked both questions again
+    return { cs: cs2, ts: ts2, text, held, orig, wasHere: new Set(cs2.filter((c) => clients.has(c.id)).map((c) => c.id)), rowsHere: new Map(ts2.filter((t) => trainings.has(t.id)).map((t) => [t.id, new Set(rowsOf(trainings.get(t.id).rows).map((x) => x.id))])) };   // v316 (the nineteenth check round): wasHere, the clients it replaces that were in the app as the question came up; the twentieth: rowsHere, the workouts it replaces that were in the app then, each with its exercises
   }
-  function applyRestore({ cs, ts }) {                               // the file's copy, as it is: a record already here is replaced whole (the save carries a marker so nothing of the server's is merged in); one this device never had joins the usual way, keeping what a client logged on the server meanwhile
-    const put = (map, kind, r) => {
-      const had = map.has(r.id);
-      if (kind === "clients" && had) { const z = map.get(r.id).zone; if (z === undefined) delete r.zone; else r.zone = JSON.parse(JSON.stringify(z)); } if (!had) { seenAt.delete(key(kind, r.id)); seenDoc.delete(key(kind, r.id)); }   // v315 (the final check): the time zone the client's phone reported is the one here as Restore is tapped, which goes with this device's stamp (a sync while the question was up brings a newer report and moves the stamp: planRestore's copy was older); a record not here, a client or a workout, keeps no stamp and no copy read (a deletion sent and answered drops both already): its first write reads the server first and writes the record again if the server no longer has it, never taking it for a deletion made on another device (cloudBackend.set), and a client's takeZone keeps the phone's report (the third round: after Delete client with the answers lost, a restore brought the client back without its workouts); with no copy read either, a merge never measures the file's copy against a deleted one (the fourth round: a 3-set exercise came back holding 5 logged sets; a record whose deletion is queued is now written whole, below, and this guards any other way in)
-      if (kind === "trainings" && S.templateDraft && S.templateDraft.id === r.id) { S.templateDraft = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); }   // the template open as a draft: its save must be a real save
-      map.set(r.id, r); const k = key(kind, r.id);
-      if (had || dirty.has(k)) { fromFile.set(k, (dirty.get(k) || 0) + 1); dropMarks(kind, r.id); }            // the version the next save gets: that write carries the file's copy; v315 (the sixth round): the coach's marks go with the copy the file replaces, as a landed save's do (left, they kept the file's row, day or field over what the client did on the restored copy once the marker had gone); v315 (the fourth round): so does a record whose deletion here is still queued (the server may still hold the deleted copy), so a restore brings the file's copy back whole with or without signal, as one sent and answered does (it came back mixed with the deleted copy: its day, its skip, an exercise swapped since); the time zone stays the server's (takeZone)
+  function applyRestore({ cs, ts, orig, wasHere, rowsHere }) {                               // the file's copy, as it is: a record already here is replaced whole (the save carries a marker so nothing of the server's is merged in); one this device never had joins the usual way, keeping what a client logged on the server meanwhile
+    const put = (map, kind, r0) => {
+      const o = orig && orig.get(key(kind, r0.id)), r = o ? JSON.parse(JSON.stringify(o)) : r0, had = map.has(r.id);   // v316 (the check rounds): the file's own copy, held against what is here now (planRestore's copy was held against what was here as the question came up)
+      if (kind === "clients" && !isTemplateClient(r.id)) keepServerOwned(r, map.get(r.id)); if (kind === "trainings") { keepClientLogs(r, map.get(r.id)); const was = rowsHere && rowsHere.get(r.id), h = map.get(r.id); if (was && h && Array.isArray(r.rows)) { const have = new Set(rowsOf(h.rows).map((x) => x.id)); for (const x of r.rows.filter((y) => y && was.has(y.id) && !have.has(y.id))) { r.rows = r.rows.filter((y) => y !== x); renumber(r, x, false); } } if (h) relabeled(r.id, h, r, true); else forgetCards(r.id); } if (!had) { seenAt.delete(key(kind, r.id)); seenDoc.delete(key(kind, r.id)); }   // v315 (the final check): the time zone the client's phone reported is the one here as Restore is tapped, which goes with this device's stamp (a sync while the question was up brings a newer report and moves the stamp: planRestore's copy was older); a record not here, a client or a workout, keeps no stamp and no copy read (a deletion sent and answered drops both already): its first write reads the server first and writes the record again if the server no longer has it, never taking it for a deletion made on another device (cloudBackend.set), and a client's takeZone keeps the phone's report (the third round: after Delete client with the answers lost, a restore brought the client back without its workouts); with no copy read either, a merge never measures the file's copy against a deleted one (the fourth round: a 3-set exercise came back holding 5 logged sets; a record whose deletion is queued is now written whole, below, and this guards any other way in); v316 (the twenty-first check round): the card state here (an open card, the set picked) follows each exercise into the restored numbers by id, and a card the restored copy has none of goes (renumber moved it a second time: the iPad's Delete exercise under the question put Calf raise's set on Leg curl)
+      if (kind === "trainings") { if (S.templateDraft && S.templateDraft.id === r.id) { S.templateDraft = null; paintDraftBar(); } forgetDraft(r.id); }   // the template open as a draft: its save must be a real save; v316 (the twenty-second check round): and a draft of it kept on the device, whichever window typed it (it came back over the restored template at the next launch)
+      map.set(r.id, r); const k = key(kind, r.id); deleting.delete(k); deletedHere.delete(k);
+      if (had || dirty.has(k)) { fromFile.set(k, (dirty.get(k) || 0) + 1); const own = kind === "clients" && !isTemplateClient(r.id) ? [...(profileTouched.get(r.id) || [])].filter((f) => [...HEALTH_KEYS, "unit", "photo", "minor", "minorUntil"].includes(String(f).split(".")[0])) : [], notes = kind === "trainings" ? [...(trainerNoted.get(r.id) || [])] : []; dropMarks(kind, r.id); if (own.length) profileTouched.set(r.id, new Set(own)); if (notes.length) trainerNoted.set(r.id, new Set(notes)); }            // v316 (the seventeenth check round): except his marks on what a restore keeps as here (a client's details, Health & safety, photo and Weights in; an exercise's note; the eighteenth: his Under 18 switch, which takeZone otherwise takes from the server's copy): a change of his not sent yet stays his when the restore's own write meets the server's copy (his limit typed on one bar of signal went back to the server's)   // the version the next save gets: that write carries the file's copy; v315 (the sixth round): the coach's marks go with the copy the file replaces, as a landed save's do (left, they kept the file's row, day or field over what the client did on the restored copy once the marker had gone); v315 (the fourth round): so does a record whose deletion here is still queued (the server may still hold the deleted copy), so a restore brings the file's copy back whole with or without signal, as one sent and answered does (it came back mixed with the deleted copy: its day, its skip, an exercise swapped since); the time zone stays the server's (takeZone)
       scheduleSave(kind, r.id, 0);
     };
-    for (const c of cs) put(clients, "clients", c);                 // the Templates record included, version number and all: a file from an older set makes the next launch repair and complete the built-in templates
-    for (const t of ts) put(trainings, "trainings", t);
+    for (const c of cs) { if (wasHere && wasHere.has(c.id) && !clients.has(c.id)) continue; put(clients, "clients", c); }   // the Templates record included, version number and all: a file from an older set makes the next launch repair and complete the built-in templates; v316 (the nineteenth check round): a client deleted on the coach's other device while the question was up stays deleted (the newest action stands: she came back with the question naming no one)
+    for (const t of ts) { if (!isTemplateClient(t.clientId) && !clients.has(t.clientId)) continue; if (rowsHere && (rowsHere.get(t.id) || new Set()).size && !trainings.has(t.id)) continue; put(trainings, "trainings", t); }   // v316 (the nineteenth check round): and a workout whose client is not in the app now stays out (her deletion seen under the question, or by the sync after the tap: written, it was hers on the server after her deletion, shown nowhere and in no backup); the twentieth: so does a workout, or an exercise of one, deleted on the coach's other device while the question was up (rowsHere: they came back, her deleted note with them, the question naming nothing; the exercises after one close up, as Delete exercise's), except a workout that was empty here (the tidying may have taken it)
     localBackend.save();                                             // the file's copy is on the device before the marker can matter: a relaunch before the flush must not carry the old record verbatim
   }
-  $("restoreFile").addEventListener("change", async (e) => {
+  const restoreReady = async (d) => {                               // v316 (the seventeenth check round): a restore needs the server (a coach's device whose cloud library did not load restores nothing), and a Delete client still waiting to reach it, of a client the file holds, goes first (the sheet said he came back without details or photo, and the write took them from the server's copy, answers and all); a device with no cloud account restores from its own copy
+    if (S.backend === localBackend) return true; if (!S.sb || !S.signedIn) return false;
+    const inFile = (k) => k.startsWith("clients/") && !!d && !!d.clients && typeof d.clients === "object" && Object.prototype.hasOwnProperty.call(d.clients, k.slice(8));
+    for (const k of [...deleting]) if (inFile(k)) await flushOne("clients", k.slice(8)).catch(() => {});
+    return ![...deleting].some((k) => inFile(k) && dirty.has(k));
+  };
+  const freshSync = async () => { if (S.syncing) await S.syncing.catch(() => false); for (let i = 0; S.seeding && i < 100; i++) await new Promise((r) => setTimeout(r, 100)); return syncDown().catch(() => false); };   // v316 (the twentieth check round): a read of the server's begun now, never the answer of a sync already out (its reads can be from before a Delete made on the coach's other device: the restore took it, wrote her workout after her deletion and showed her again); after the built-in templates' seeding, which a sync's end can start and which refuses every read while it runs (up to 10 s)
+  const restorePicked = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f || S.clientMode) { e.target.value = ""; return; }
-    let plan = null;
-    try { plan = planRestore(JSON.parse(await f.text())); }         // the whole file first; nothing is touched if any part is wrong
-    catch (err) { $("status").textContent = err && err.message === "newer backup" ? "That backup is from a newer version of the app" : "That file is not a Fiala backup"; }
+    let plan = null, stale = false, gone = false; const as = S.sessionEmail, gen = loginShown, left = () => S.clientMode || gen !== loginShown || (!!S.sb && (!S.signedIn || S.sessionEmail !== as));   // v316 (the check rounds): signed out (or another account) while the sync ran: no question
+    try { const d = JSON.parse(await f.text()); validateBackup(d, (id) => clients.has(id)); stale = !!(S.sb && S.signedIn) && !(await freshSync()); if (stale && !left()) { readFailedAt = performance.now(); if (["Saved", "", "Everything in that backup is already here"].includes($("status").textContent)) setStatus(); } if (!stale && !(await restoreReady(d))) stale = true; while (!(gone = left()) && (held() || paOpen || rowHolds() || keysIn(document.activeElement))) await new Promise((r) => setTimeout(r, 400)); if (gone) throw new Error("gone"); if (stale) throw new Error("stale"); plan = planRestore(d); }   // v316 (the check rounds): the server's copy first, so a client deleted on the coach's other device is named as Back in the app         // the whole file first; nothing is touched if any part is wrong
+    catch (err) { if (!(err && err.message === "gone")) { const text = err && err.message === "stale" && !S.sb && S.backend !== localBackend ? "Restore needs the server. Close the app, then open it again when you\u2019re online." : err && err.message === "stale" ? (navigator.onLine ? "The server didn\u2019t answer. Try again later." : "Restore needs a connection. Try again when you\u2019re online.") : err && err.message === "newer backup" ? "That backup is from a newer version of the app." : "That file is not a Fiala backup."; const say = () => (held() || paOpen || rowHolds() || keysIn(document.activeElement)) ? setTimeout(say, 400) : left() ? null : askChoice({ title: "Couldn\u2019t restore", texts: [text], yes: "OK", one: true }); say(); } }   // v316 (the check rounds): a restore plans against the server's copy, or not at all (offline, a workout whose client was deleted elsewhere came back alone)
     e.target.value = "";
     if (!plan) return;
-    if (!plan.cs.length && !plan.ts.length) { $("status").textContent = "Everything in that backup is already here"; return; }
+    if (!plan.cs.length && !plan.ts.length) { if (plan.held) askChoice({ title: "Nothing to restore", texts: [KEPT_WORDS + " Everything else in that backup is already here."], yes: "OK", one: true }); else $("status").textContent = "Everything in that backup is already here"; return; }   // v316 (the check rounds): what differs is only what a restore always keeps as it is now: said in an alert that stays, as the status words were no longer true
     if (!(await askFirst({ title: "Restore this backup?", text: plan.text, yes: "Restore" }))) return;
+    if (S.sb && S.signedIn) { const bar = $("status"), head = bar.closest ? bar.closest("header") : null, was = document.activeElement, behind = [...document.body.children].filter((x) => x !== head && !x.inert).concat(head ? [...head.querySelectorAll(".bar > *")].filter((x) => x !== bar && !x.inert) : []); for (const x of behind) x.inert = true; restoreRead = true; bar.className = ""; bar.textContent = "Saving\u2026"; let ok = false; try { ok = await freshSync(); } finally { restoreRead = false; for (const x of behind) x.inert = false; if (bar.textContent === "Saving\u2026") setStatus(); if (was && was !== document.body && was.isConnected && typeof was.getClientRects === "function" && was.getClientRects().length && typeof was.focus === "function" && (!document.activeElement || document.activeElement === document.body)) was.focus({ preventScroll: true }); } if (left()) return; if (!ok) { readFailedAt = performance.now(); if (bar.textContent === "Saved") bar.textContent = "Couldn\u2019t sync"; const text = navigator.onLine ? "The server didn\u2019t answer. Try again later." : "Restore needs a connection. Try again when you\u2019re online.", say = () => (held() || paOpen || rowHolds() || keysIn(document.activeElement)) ? setTimeout(say, 400) : left() ? null : askChoice({ title: "Couldn\u2019t restore", texts: [text], yes: "OK", one: true }); say(); return; } }   // v316 (the nineteenth check round): the server's copy once more after the tap, so a client deleted on another device while the question was up stays deleted even when this page synced nothing meanwhile (applyRestore); signed out meanwhile: nothing; the twentieth: a read begun after the tap (freshSync), and with none, no restore and the words said before the question (the sync's answer was thrown away: a client deleted meanwhile came back); the page out of reach meanwhile, Saving… in the bar (a set logged in those seconds was replaced by the file's copy, here and on the server); the twenty-first: the bar itself stays in reach of VoiceOver (its Saving… was silent: the whole page, header and all, was inert), its words stay a failed sync's own, focus goes back where a keyboard left it, and Back, a question, an alert or a new release's reload wait for the read (restoreRead, restoring); the twenty-second: a read that failed with no words of its own leaves "Couldn't sync" in the bar, not Saved beside Couldn't restore, and a date box typed into by keys holds the alert as typing does (keysIn)
     applyRestore(plan); adoptBuiltins("all"); render();   // (built-in templates the file brings back, into their weeks)
-  });
+  };
+  $("restoreFile").addEventListener("change", async (e) => { restoring++; try { await restorePicked(e); } finally { restoring--; } });   // v316 (the twenty-first check round): counted from the pick to the end (watchReleases waits)
 
   // ---------- boot ----------
-  Object.assign(ui, { $, setStatus, render: renderUnlessSwiping, relabeled, photosSynced: () => flushPhotos(), showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadCustomSubs, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar, seedTemplates });   // what the sync layer may call on the screens
+  const keepGone = (kind, r, srv) => {                               // v316 (the check rounds): a restore's own write, held against the copy it just read from the server (sync.js): what the client deleted or changed in the app after this device last read the record never comes back (the client's own details, Health & safety, photo and Weights in; a workout's notes, and a weight or reps empty there), except what the coach changed here since the tap (his marks)
+    if (!srv) return; if (kind === "trainings") return keepClientLogs(r, srv, { touched: trainerTouched.get(r.id), noted: trainerNoted.get(r.id), state: trainerState.get(r.id) });
+    if (kind !== "clients" || isTemplateClient(r.id)) return; const mine = profileTouched.get(r.id) || new Set(), o = (x) => (x && typeof x === "object" && !Array.isArray(x) ? x : {});
+    for (const f of [...HEALTH_KEYS, "unit", "photo"]) { if (f === "health" || mine.has(f)) continue; if (srv[f] === undefined) delete r[f]; else r[f] = JSON.parse(JSON.stringify(srv[f])); }
+    const th = { ...o(r.health) }, sh = o(srv.health); for (const e of new Set([...Object.keys(sh), ...Object.keys(th)])) { if (mine.has("health." + e)) continue; if (sh[e] === undefined) delete th[e]; else th[e] = JSON.parse(JSON.stringify(sh[e])); } if (Object.keys(th).length || srv.health !== undefined) r.health = th; else delete r.health;
+  };
+  const draftGone = (id) => { if (S.view.name === "training" && S.view.id === id) { if (askOpen) askOpen(false); if (popClose) popClose(); let home = { name: "client", id: TEMPLATES_ID }; try { const d = S.templateDraft; if (d && d.snapshot) home = templateHome(JSON.parse(d.snapshot)); } catch (_) {} navWillChange("back"); S.view = home; lsSet("fiala.trainings.view", S.view); } };   // v316 (the twenty-third check round): a template deleted on another device while its page is up here: the page goes to where its Back goes (the template's folder), and a question over it closes (it landed on the Clients list, a Discard question left up over it)
+  Object.assign(ui, { keepGone, planMerged: (id) => { if (S.view.name !== "client" || S.view.id !== id || !clients.has(id)) return; if (settingsOpen === "card") paintPlanDetails(clients.get(id)); else if (!settingsOpen) renderUnlessSwiping(); }, $, setStatus, render: renderUnlessSwiping, relabeled, forgetCards, draftGone, editedRow: () => lastEditedId, photosSynced: () => flushPhotos(), showProblem, showWaiting, loadCustomVideos, loadCustomNames, loadCustomSubs, loadHidden, offlineFromMirror, resumeOnline, paintDraftBar, seedTemplates });   // what the sync layer may call on the screens
   function watchReleases(mine) {               // a page iOS keeps alive for days still gets the next release: on coming back to the app, never mid-tap, mid-sheet or mid-typing
     const sw = navigator.serviceWorker; if (!mine || !sw || !sw.addEventListener) return;
     let newest = 0;
     let resumedAt = 0;
-    const busy = () => S.asking || /^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || "") || !!(S.templateDraft && S.templateDraft.dirty && S.view.name === "training" && S.view.id === S.templateDraft.id) || (settingsOpen === "exercise" && exDirty()) || !!(S.view.name === "client" && noteDraft.get(S.view.id)) || [...cardNoteDraft.keys()].some((k) => k.startsWith(String(S.renderedTraining) + "/")) || !!(document.querySelector(".sheet-bg:not([hidden])"));   // a sheet, typing, or something unsaved on the page on screen: no reload now
+    const busy = () => S.asking || restoring > 0 || /^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || "") || !!(S.templateDraft && S.templateDraft.dirty && S.view.name === "training" && S.view.id === S.templateDraft.id) || (settingsOpen === "exercise" && exDirty()) || !!(S.view.name === "client" && noteDraft.get(S.view.id)) || [...cardNoteDraft.keys()].some((k) => k.startsWith(String(S.renderedTraining) + "/")) || !!(document.querySelector(".sheet-bg:not([hidden])"));   // a sheet, typing, or something unsaved on the page on screen: no reload now; v316 (the twenty-first check round): nor while a backup is being restored (a reload during the read after the tap dropped the restore he had confirmed)
     const settle = () => { if (newest > mine && !busy()) { calFold(); location.reload(); } };   // a client's month folds first: the reload opens on the week, and the place the browser keeps for it must be the week's (the list where it was)
     const ask = () => { if (sw.controller) sw.controller.postMessage({ type: "check" }); };
     sw.addEventListener("message", (e) => { if (e.data && e.data.type === "release") { newest = Math.max(newest, Number(e.data.current) || 0); if (performance.now() - resumedAt < 800 && document.visibilityState === "visible") settle(); } });   // an answer right after coming back lands before the first tap; a later one waits for the next quiet moment
@@ -6621,18 +6971,22 @@ import { reportRange, buildReport } from "./report.js";
     const page = lsGet("fiala.trainings.page"); if (page && page.open) pendingPage = page;   // read before any screen change clears it
     const savedTab = lsGet("fiala.trainings.tab"); if (["profile", "workouts", "notes"].includes(savedTab)) S.tab = savedTab;
     localBackend.load(); await localBackend.loadDb();   // instant start from the device copy (v306: in the browser's database, with far more room than localStorage's 2.6 million characters; where there is none, localStorage as before)
-    try { const dr = lsGet("fiala.trainings.draft"); if (dr && dr.id && dr.doc && trainings.has(dr.id)) { S.templateDraft = { id: dr.id, snapshot: JSON.stringify(trainings.get(dr.id)), dirty: true, saving: false }; trainings.set(dr.id, dr.doc); } } catch (_) {}   // a template left with unsaved changes: back as it was, still unsaved
+    try { const dr = lsGet("fiala.trainings.draft"); if (dr && dr.id && dr.doc && trainings.has(dr.id)) { S.templateDraft = { id: dr.id, snapshot: JSON.stringify(trainings.get(dr.id)), dirty: true, saving: false, at: dr.at || null, taken: true }; trainings.set(dr.id, dr.doc); } } catch (_) {}   // a template left with unsaved changes: back as it was, still unsaved; v316 (the twenty-second check round): with the stamp it was typed under (draftBase), and taken: a draft this page has not typed in follows the page that did (sync.js onStorage: a second window kept it after the first saved, and its Save wrote the older typing back)
     restorePending();                          // and whatever was still waiting to reach the server
+    draftBase();                               // v316 (the twenty-first check round): after the queue's own copies (a save still to send keeps the copy it read)
+    seedBases();                               // v316 (the twenty-second check round): then every other record as the device copy holds it: the copy its first save measures the server's against
+    loadMade();                                // v316 (the seventeenth check round): the workouts this device made in the last 2 hours count as this page's own (keepMade)
     try { previewClient = firstPreview(sessionStorage.getItem(PREVIEW_KEY), S.view); } catch (_) {}   // the workout page it opens on, in the view he set
     holdWake(true);                            // opened straight onto a workout: keep the screen on from the first moment
     if (window.supabase && window.supabase.createClient) {
       S.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" } });
-      try { const known = lsGet("fiala.trainings.role"); if (known && known.email && (clients.size || trainings.size)) paintRemembered(known, false); } catch (_) {}   // the last account's pages at once, from the device copy: no empty Clients page, no "Loading…" on the way
+      try { const known = lsGet("fiala.trainings.role"); if (known && known.email && (clients.size || trainings.size) && !/type=recovery/.test(location.hash)) paintRemembered(known, false); } catch (_) {}   // the last account's pages at once, from the device copy: no empty Clients page, no "Loading…" on the way
       $("status").textContent = "Loading\u2026";
       const fromRecoveryLink = /type=recovery/.test(location.hash);
       S.sb.auth.onAuthStateChange((event) => {
+        if (winLost()) return;   // v316 (one window at a time): Fiala is in another window, which answers for the session (a sign-out there must not wipe again from here)
         if (event === "PASSWORD_RECOVERY") { S.recovering = true; showRecovery(); }
-        if (event === "SIGNED_OUT" && S.signedIn) { resetPhotos(); S.backend = null; S.offline = false; S.offlineEntry = null; S.templateDraft = null; S.pendingGo = null; lsSet("fiala.trainings.draft", null); paintDraftBar(); try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); }   // whose unsent edits these are stays known (15 Nov 2026, the audit's #7): another account signing in on this page never takes them on
+        if (event === "SIGNED_OUT" && S.signedIn) { if (idleDevice()) wipeDevice(); else dropPhotoCopies(); S.backend = null; S.offline = false; S.offlineEntry = null; S.pendingGo = null; try { localStorage.removeItem("fiala.trainings.role"); } catch {} showLogin("Signed out. Sign in again to keep syncing."); paintDraftBar(); }   // whose unsent edits these are stays known (15 Nov 2026, the audit's #7): another account signing in on this page never takes them on
       });
       // no signal: the library retries the token refresh for up to 30 s before answering. Don't make anyone wait for that:
       // after 4 s show what the device knows, and switch to live data if the session comes through later.
@@ -6664,11 +7018,11 @@ import { reportRange, buildReport } from "./report.js";
   // ---------- exports: the page calls boot(); the test run (tests/) reaches the internals ----------
   export function internals() {
     return {
-      fns: { boot, wheelCol, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, editAlts, editNote, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, fmtSetFor, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c, opts) => buildReport(kind, fonts, c, clientTrainings(c.id), opts), repMonths, repFoot, openReport, saveAgain, bannerOff: () => bannerOff, reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, weekOffNow: () => weekOff, setWeekOff: (v) => { weekOff = v; }, weekWheelNow: () => weekWheel, weekPageNow: () => weekPage, wkMonth, calFold, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates, setProfile, setLiftUnit, showSub, openSub, paintHealth, paintSafety, healthSummary, safetySummary, healthId, toggleWheel, closeWheel, wheelState: () => wheelOpen, editText, editSafety, unitRows, paintLimits, fmtBirthday, phoneIn, fmtPhone, unitLabel: () => UNIT_LABEL, settingsPage: () => ({ open: settingsOpen, from: fromSettings }), subPlace: () => subY, renderOverview, paintProgressCards, showWorkouts, openWorkouts, paintWorkouts, pgChart, dayRange, monthRange, totalRange, workoutsRange: () => pgRange, paintProgressMore, showBests, openBests, paintBests, showLift, openLift, paintLift, liftChart, fmtTop, fmtSets, strongerWords, liftKey, pgTap, liftPage: () => liftCur, packWords, exOrderOn, startOrder, doneOrder, canOrder, roCards, roRows, roDelete, roKeys, roKeyItems, roOrdering: () => exOrdering, roState: () => (ro ? { kind: ro.kind, rid: ro.rid, lifted: ro.lifted, landing: ro.landing, i: ro.i, to: ro.to } : null) },
-      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, seenAt, seenDoc, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, pendingProfile, profileTouched, planTouched, deletedNotes, deletedPackages, fromFile },
+      fns: { markNoteSeen, markNotesSeen, keepTyping, takeKept, keptMaps: () => ({ keptText, cardNoteDraft, cardNoteBase, noteDraft }), boot, backupData, draftFor, saveDraft, discardDraft, draftBase, relabeled, watchReleases, heldNow: () => held(), restoreFlags: () => ({ restoreRead, restoring }), restoreReady, loadMade, onStorage, cancelPick, wheelCol, clientNews, markWorkoutsSeen, addTraining, newWorkoutHere, dayList, dayNames, byMade, showExercise, saveExercise, leaveSettings, msgTarget, paintBarMsg, go, showClientCard, showSettings, glass: () => GLASS.slice(), startExerciseNow, followEl, exerciseMenu, menuIcons: () => MI, rowMenu, ctxPlace, ctxItemOf, monthLetGo, exerciseCtx, showWhen, liftPlace, calDragState: () => ({ on: !!cd, lifted: !!(cd && cd.lifted), tid: cd ? cd.tid : null, key: cd ? cd.key : null, edge: cd ? cd.edge : 0, weekOff, x: cd ? cd.x : null, y: cd ? cd.y : null }), calState: () => ({ open: calOpen, month: calMonth }), moreOn, moreItems, askDelete, renumber, templatePath, cardSets: () => ({ openBlocks, setSel }), finishTap, copyWorkout, paintFinish, askFirst, barFor, addExercise, followRow, dockGoes, setPreview: (on) => { previewClient = !!on; }, holdState: () => (lp ? { open: lp.open, down: lp.down, lifted: !!lp.box, over: lp.over ? lp.over.textContent : null } : null), navState: () => ({ key: nav.curKey, depth: nav.depth, waits: nav.waits.length, shots: shotByKey.size, state: stateDepth() }), forceSwipe: (on) => { swipeOn = !!on; }, dropShots: () => shotByKey.clear(), shotKeys: () => [...shotByKey.keys()], swipeState: () => (sw ? { on: sw.on, busy: !!sw.busy, held: !!sw.held, shot: !!sw.shot, glassOut: (sw.glassOut || []).map((e) => e && e.id), glassIn: (sw.glassIn || []).map((e) => e && e.id) } : null), goBackNow, backKey, openHistoryPage, openFromHistory, deleteTraining, springEase, canReschedule, applyReschedule, showMenu, editAlts, editNote, openDatePicker, rowDecide, rowArmed, rowReschedule, rowSkip, canSwipeRow, moveWorkout, doToday, missItems, missedOf, skipAllMissed, openPreview, closePreview, previewState: () => (pv ? { id: pv.id } : null), groupsOf, groupSummary, groupCaption, sheetList, pvDecide, previewDrag: () => (pvDrag ? { on: pvDrag.on, off: pvDrag.off, top: pvDrag.top } : null), previewWalk: (cid) => pvWalk(cid).map((t) => t.id), previewNear: pvNear, previewItems: (id) => pvItems(trainings.get(id)).map((it) => (it.danger ? "!" : "") + it.label), previewItemsRaw: (id) => pvItems(trainings.get(id)), previewSlide: () => (pg ? { dir: pg.dir, to: pg.to, x: pg.x, settling: pg.settling } : null), previewGo: pvGo, monthWheel, missState: () => ({ open: missOpen, for: missFor }), missReset: () => { missOpen = false; missFor = null; }, skipSheet: () => (sk ? { id: sk.t.id, reason: sk.reason } : null), closeSkip, openSkip, undoLeft, paintUndo, fingerX, workoutRow, rowSwipe: () => (rs ? { open: rs.open, busy: rs.busy, x: rs.x, w: rs.w, tid: rs.li.dataset ? rs.li.dataset.tid : "" } : null), closeDatePicker, datePicker: () => dp, initials, photoFor, setPhoto, loadPhoto, crop, flushPhotos, resetPhotos, forgetPhoto, loadPhotoQueue, photoQueue, packageOf, renameExercise, deleteExercise, addCustomName, loadHidden, loadCustomSubs, saveSub, deleteSub, subtitleFor, refreshNames, allNames: () => ALL_NAMES.slice(), knownName, videoForName, exerciseMatches, properName, overviewCounts, loggedExercises, fmtSetFor, syncDownNow, fetchAll, mergeDown, cloudBackend, clientBackend, localBackend, flushOne, scheduleSave, markDirty, persistPending, restorePending, freshRow, isEmptyWorkout, effDate, clientTrainings, lastWeights, setsOf, groupKey, noteEntries, packNotes, mergeNotes: (a, b) => mergeNotes(a, b, deletedNotes), planRestore, applyRestore, validateBackup: (d) => validateBackup(d, (id) => clients.has(id)), buildReport: (kind, fonts, c, opts) => buildReport(kind, fonts, c, clientTrainings(c.id), opts), repMonths, repFoot, openReport, saveAgain, bannerOff: () => bannerOff, reportRange, parseTtf, pdfDoc, today, localIso, uid, key, setFinished, setSkipped, touchState, isTemplateClient, addTraining, render, setStatus, tplNodes, tplNode, tplKids, tplTree, tplIn, tplSlide, nextN, placeTemplate, newFolder, newSlide, renameNode, deleteNode, tplPage, tplPageOn, tplMoreItems, pageMoreItems, newTemplateHere, templateHome, templateMeta, saveAsTemplate, viewKey, setPickFor: (v) => { pickFor = v; }, setFillFor: (v) => { fillFor = v; }, choosing: () => ({ pickFor, fillFor, pickHome: nav.pickHome }), fromTemplate, canFill, useWeek, weekName, useWeekFor, openAs, setOpenAs, firstPreview, previewOn: () => previewClient, weekOffNow: () => weekOff, setWeekOff: (v) => { weekOff = v; }, weekWheelNow: () => weekWheel, weekPageNow: () => weekPage, wkMonth, calFold, moveTemplate, moveFolder, folderPlaces, deleteTemplateRow, tplSwipe, tplOrderOn, moveFolderTo, doneTplOrder, tplAddItems, tplRootList, moveRootTo, adoptBuiltins, seedTemplates, setProfile, setLiftUnit, showSub, openSub, paintHealth, paintSafety, healthSummary, safetySummary, healthId, toggleWheel, closeWheel, wheelState: () => wheelOpen, editText, editSafety, unitRows, paintLimits, fmtBirthday, phoneIn, fmtPhone, unitLabel: () => UNIT_LABEL, settingsPage: () => ({ open: settingsOpen, from: fromSettings }), subPlace: () => subY, renderOverview, paintProgressCards, showWorkouts, openWorkouts, paintWorkouts, pgChart, dayRange, monthRange, totalRange, workoutsRange: () => pgRange, paintProgressMore, showBests, openBests, paintBests, showLift, openLift, paintLift, liftChart, fmtTop, fmtSets, strongerWords, liftKey, pgTap, liftPage: () => liftCur, packWords, nameLine: () => nameLineNow, setChoice, askZone, askHealth, paintChoices, cardHealthNote, healthLockLine, maybeAsk, declinedWords, idleDevice, showLogin, deleteRec, ruleRefused, signOut: () => signOutOnce(S.clientMode ? signOutClient : signOutTrainer), exOrderOn, startOrder, doneOrder, canOrder, roCards, roRows, roDelete, roKeys, roKeyItems, roOrdering: () => exOrdering, roState: () => (ro ? { kind: ro.kind, rid: ro.rid, lifted: ro.lifted, landing: ro.landing, i: ro.i, to: ro.to } : null) },
+      maps: { hiddenKeys, customNames, customVideos, customSubs, clients, trainings, dirty, deleting, deletedHere, heldBack, madeHere, seenAt, seenDoc, heldAgree, settledAnswers, confirmedAt, timers, chains, trainerState, trainerTouched, trainerNamed, trainerNoted, folderTouched, deletedFolders, pendingWeightRows, pendingDoneRows, pendingEarlyRows, pendingFinish, pendingSkip, pendingMove, pendingMiss, pendingSwap, pendingOrder, pendingNoteRows, pendingProfile, profileUnder, carriedFrom, withdrawnAt, typedHere, deliv, pendingChoices, profileTouched, planTouched, deletedNotes, deletedPackages, fromFile },
       get: () => ({ ...S }),
       set: (o) => { Object.assign(S, o); },
-      reset: () => { resetState(); seenDoc.clear(); moveOut.clear(); localStorage.clear(); clearTimeout(celeTimer); celebrating = false; },   // (v315: and no Nice work screen left up from a finish in an earlier test)
+      reset: () => { resetState(); seenDoc.clear(); moveOut.clear(); takenFrom.clear(); gaveUpAt.clear(); madeHere.clear(); aheadSeen.clear(); localStorage.clear(); clearTimeout(celeTimer); celebrating = false; },   // (v315: and no Nice work screen left up from a finish in an earlier test)
       wake: () => ({ held: !!wake, timer: !!wakeTimer }),
     };
   }
