@@ -174,7 +174,7 @@ test("(#14) Skip never stamps a workout the client finished meanwhile", () => {
 
 test("(#7, #13, #14) source guards: sign-out is this device's alone and keeps whose edits are queued; Finish early has askFirst's guards; the preview's Delete re-reads after its question", () => {
   const src = fs.readFileSync(new URL("../app/main.js", import.meta.url), "utf8");
-  assert.strictEqual(src.split('auth.signOut({ scope: "local" })').length - 1, 2, "both sign-outs"); assert.ok(!src.includes("auth.signOut()"));
+  assert.strictEqual(src.split('auth.signOut({ scope: "local" })').length - 1, 3, "both sign-outs, and dropHere: a sign-in this page did not make (R27-PRV-1, R27-PRV-2, the launch's late session; verify-window)"); assert.ok(!src.includes("auth.signOut()"));
   const at = src.indexOf('if (event === "SIGNED_OUT"'), handler = src.slice(at, src.indexOf("\n", at));
   assert.ok(handler.length > 40 && !handler.includes('S.pendingOwner = ""'), "a sign-out from elsewhere keeps the queue's owner");
   assert.ok(/es = \{ t, g, selKey, reason: "", at: performance\.now\(\)/.test(src) && src.includes('$("esGo").addEventListener("click", (e) => { if (!esSettled(e)) return; askEat(e); finishEarlyNow(); });'), "Finish early: armed after 350 ms, the second press eaten");

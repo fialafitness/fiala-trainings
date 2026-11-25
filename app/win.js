@@ -65,6 +65,7 @@ function onMsg(e) {
   const m = e && e.data; if (!m || typeof m !== "object" || m.v !== 1 || m.from === TAB) return;
   if (m.t === "bye" || m.t === "yield") byeAt = E.now();                // the window in use is going (a reload, a close) or moving: no window takes Fiala for a moment
   if (m.to) { if (m.to !== TAB) return; heard.add(m.t + "/" + m.n); for (const w of [...waiters]) if (w.want === m.t && w.n === m.n) { waiters.delete(w); w.done(true); } return; }
+  if (m.t === "who" && moving && !running()) { post({ t: "here", to: m.from, n: m.n }); return; }   // R27-WIN-3 (round 27): a window moving here (Use here) answers for Fiala as it comes: no third window opens Fiala meanwhile (it took the words kept for the moving window, and lost Fiala to it without a hand-over when the move ended)
   if (!holding || !running()) return;                                  // only the window running Fiala answers
   if (m.t === "who") post({ t: "here", to: m.from, n: m.n });
   else if (m.t === "yield") handOver(m);
@@ -113,7 +114,8 @@ async function recheck() {                                               // back
   } finally { rechecking = false; }
 }
 async function handOver(m) {                                             // Use here in another window: keep, save, let go
-  if (handing || lost) return; handing = true;
+  if (lost) return; if (handing) { post({ t: "yielding", to: m.from, n: m.n }); return; }   // R27-WIN-3 (round 27, verify-window): a second Use here during this hand-over waits for the lock in turn (unanswered, it took Fiala at once from this window, whose last stores then never landed)
+  handing = true;
   post({ t: "yielding", to: m.from, n: m.n });
   try { const q = await E.locks.query(), held = ((q && q.held) || []).filter((l) => l && l.name === LOCK); if (!lost && me && held.length && !held.some((l) => l.clientId === me)) loseNow(); } catch (_) {}   // v316 (the twenty-sixth check round, R26-WIN-1): the lock's own registry first: a "yield" that waited behind a long task (Chrome runs it before the record's update) finds the lock taken meanwhile, and stores nothing (its old queue replaced the new window's)
   if (lost) { handing = false; return; }
@@ -157,11 +159,12 @@ async function coverCheck(first = false) {                               // the 
 async function moveHere() {                                               // Use here: the window in use keeps, saves and lets go; asleep, it is taken at once
   if (moving || running()) return; moving = true; showMoving(true);
   try {
-    const n = rid();
+    const n = rid(), was = rec(), inUse = was && was.tab;                // the window in use as Use here is pressed (the owner record names it)
     if (await ask("yield", ASK, n)) {
       const ctl = E.Abort ? new E.Abort() : null, t = ctl ? E.setT(() => ctl.abort(), WAIT) : 0;
       const ok = ctl ? (await take({ signal: ctl.signal })) === true : false; if (t) E.clearT(t);
       if (ok) { await wait("yielded", n, AFTER); begin(); return; }       // its last writes have landed once it says so
+      { const r = rec(); if (r && r.tab && r.tab !== TAB && r.tab !== inUse && r.vis !== "gone") { moving = false; showMoving(false); cover(); return; } }   // R27-WIN-3 (round 27, verify-window): no lock in 6 s (the window in use asleep in its hand-over), and a third window took Fiala meanwhile (Use here pressed there: the newest press wins): it keeps it, with the words it took (taken from it, they were lost)
     }
     if (holding || (await take({ steal: true })) === true) { begin(); return; }
   } catch (_) {}
@@ -175,9 +178,12 @@ function useHere() {                                                      // the
 
 // The page (index.html #oneWin): the approved picture A.
 function cover() { try { coverNow(); } catch (_) {} }                  // the page's own parts never stop the decisions (a part missing: the page shows less)
+function fitRoot(d) {                                                    // (v321, R26-WIN-3) the phone's Text Size, as main.js's fitText follows it (the same arithmetic: the hidden probe's system font over 17, kept between 1 and 1.5): a window that never ran main.js has only this, and its page stayed at the standard size
+  try { const p = d.getElementById && d.getElementById("typeProbe"), cs = E.win && E.win.getComputedStyle; if (!p || !cs) return; const f = Math.min(1.5, Math.max(1, (parseFloat(cs.call(E.win, p).fontSize) || 17) / 17)), want = f > 1.001 ? (16 * f).toFixed(2) + "px" : ""; if (d.documentElement.style.fontSize !== want) d.documentElement.style.fontSize = want; } catch (_) {}
+}
 function coverNow() {
   if (!E || !E.doc) return; covered = true;
-  const d = E.doc, el = d.getElementById && d.getElementById("oneWin"); startPoll(); if (!el) return;
+  const d = E.doc, el = d.getElementById && d.getElementById("oneWin"); startPoll(); if (!el) return; fitRoot(d);
   if (d.body && d.body.classList) d.body.classList.add("ow-on");
   if (el.hidden) { el.hidden = false; for (const c of (d.body && d.body.children) || []) if (c !== el && c.tagName !== "HEADER") c.inert = true; }
   if (!moving) showMoving(false);
@@ -213,7 +219,7 @@ function oneWindowNow(start, env) {
   if (b) b.addEventListener("click", useHere);
   d.addEventListener("visibilitychange", () => {
     if (started && !lost) { if (!ours()) { loseNow(); return; } writeRec(); if (vis() === "visible") { recheck().catch(() => {}); try { if (winHooks.shown) winHooks.shown(); } catch (_) {} } else { try { if (winHooks.hidden) winHooks.hidden(); } catch (_) {} } }
-    else if (covered && vis() === "visible") coverCheck().catch(() => {});
+    else if (covered && vis() === "visible") { fitRoot(E.doc); coverCheck().catch(() => {}); }
   });
   w.addEventListener("pageshow", (e) => { if (!(e && e.persisted)) return; if (started && !lost) recheck().catch(() => {}); else if (covered) coverCheck().catch(() => {}); });
   w.addEventListener("focus", () => { if (covered) coverCheck().catch(() => {}); });

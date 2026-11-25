@@ -439,10 +439,12 @@ out.r25.resetHere = await r25(async (o) => {
   const sb = gym(); fresh();
   o.launched = await launch(sb, COACH);
   await typeTemplateName(); o.typed = { ...tpl(), at: whereNow() };
+  sb.setFail({ table: "ft_clients", op: "update", times: 1e6, message: "duplicate key value violates unique constraint", code: "23505" }); maps.clients.get(OC).email = JANE; fns.scheduleSave("clients", OC, 0);   // (v321, R26-TW-9) a save of his refused for good first (Omar's new email is on another client): its banner up
+  o.failed = { failed: await until(() => app.get().failed), banner: (await settle(), !byId.get("saveBanner").hidden) }; sb.setFail(null);
   sb.as(JANE); const from = sb.log.length; sb.tell("PASSWORD_RECOVERY"); await advance(50);   // the library holds her link's session now, and tells this page
-  o.newPassword = look();
+  o.newPassword = { ...look(), banner: !byId.get("saveBanner").hidden };
   winFire("focus"); await advance(500); await settle();
-  o.afterFocus = { ...look(), reads: sb.log.slice(from).filter((e) => e.table && e.op === "select").length, records: maps.clients.size + maps.trainings.size, ...tpl() };
+  o.afterFocus = { ...look(), banner: !byId.get("saveBanner").hidden, reads: sb.log.slice(from).filter((e) => e.table && e.op === "select").length, records: maps.clients.size + maps.trainings.size, ...tpl() };
 });
 
 // R25-TW-10: the coach half types a private note in Jane's Notes tab; a change of his waits; his session ends elsewhere; Jane (or the coach again) signs in

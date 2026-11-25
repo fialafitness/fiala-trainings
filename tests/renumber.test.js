@@ -46,6 +46,6 @@ test("the per-card state follows each exercise to its number (a card opened, the
   } finally { openBlocks.clear(); setSel.clear(); }
 });
 
-test("Delete exercise renumbers, then saves and redraws (a template's change still waits for Save template)", () => {
-  assert.ok(src.includes("t.rows = t.rows.filter((x) => x.id !== r.id); renumber(t, r); save(); S.renderedTraining = null; render();"));
+test("Delete exercise renumbers, claims the order of a client's workout (v321, the twenty-sixth check round, R26-MRG-3: as Reorder's trash), then saves and redraws (a template's change still waits for Save template)", () => {
+  assert.ok(src.includes("t.rows = t.rows.filter((x) => x.id !== r.id); renumber(t, r); if (!tpl) touchState(t.id, \"orderDel\"); save(); S.renderedTraining = null; render();"));
 });

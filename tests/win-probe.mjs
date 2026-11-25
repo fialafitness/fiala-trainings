@@ -6,6 +6,9 @@
 // lists the holders with their client ids, as they are now; a message reaches every other window of the same name, later, never the sender; a
 // window asleep gets its messages and its timers only when it wakes; a window closed lets its locks go. A window opened with lag (Chrome, measured
 // in the twenty-sixth check round) reads its own copy of the device's storage, which hears another window's writes later, as a task of its own.
+// (v321, the twenty-seventh round) A window opened with grantLag gets its lock grants as tasks of its own, that many ms later (the lock manager is
+// another process: a message can arrive first); one opened with typePx has the hidden Text Size probe (#typeProbe) in the system font at that size;
+// every window notes the times of its 2 s checks (ticks). The scenarios after 16 write keys of their own (tests/win-lock-r27.test.js reads them).
 const out = {};
 let T = 0; const timers = [];                                   // the one clock: every window's timers on it
 const at = (ms, fn, win) => { const t = { at: T + Math.max(0, ms), fn, win, id: timers.length + 1, live: true }; timers.push(t); return t; };
@@ -33,6 +36,7 @@ const locks = (() => {                                            // one lock ma
     request(name, opts, cb) {
       if (typeof opts === "function") { cb = opts; opts = {}; }
       if (win.refuse) throw Object.assign(new Error("refused"), { name: "SecurityError" });
+      if (win.grantLag) { const cb0 = cb; cb = (lock) => new Promise((ok, no) => at(win.grantLag, () => { try { ok(cb0(lock)); } catch (e) { no(e); } }, win)); }   // (v321) the grant reaches the page as a task of its own
       return new Promise((resolve, reject) => {
         const req = { name, opts, cb, resolve, reject, win };
         if (opts.steal) { const h = held.get(name); if (h) { held.delete(name); at(0, () => h.reject(abort("Lock was stolen by another request")), h.win); } grant(req); return; }   // the holder hears of the steal when it runs next
@@ -58,30 +62,35 @@ const spread = (from, k, v) => { for (const w of laggers) if (w !== from && !w.c
 const ls = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => { store.set(k, String(v)); spread(null, k, String(v)); }, removeItem: (k) => { store.delete(k); spread(null, k, null); } };
 const lsOf = (win) => ({ getItem: (k) => (win.seen.has(k) ? win.seen.get(k) : null), setItem: (k, v) => { v = String(v); win.seen.set(k, v); store.set(k, v); spread(win, k, v); }, removeItem: (k) => { win.seen.delete(k); store.delete(k); spread(win, k, null); } });
 let n = 0;
-async function openWin(name, { visible = true, url = "https://app.example/", locksOff = false, refuse = false, lag = false } = {}) {   // a window: its page, its copy of win.js, its own listeners
-  const win = { name, client: "client-" + name, asleep: false, closed: false, refuse, started: 0, went: [], listeners: new Map() };
+async function openWin(name, { visible = true, url = "https://app.example/", locksOff = false, refuse = false, lag = false, grantLag = 0, typePx, start } = {}) {   // a window: its page, its copy of win.js, its own listeners
+  const win = { name, client: "client-" + name, asleep: false, closed: false, refuse, grantLag, typePx, started: 0, went: [], ticks: [], listeners: new Map() };
   if (lag) { win.seen = new Map(store); laggers.add(win); } win.ls = lag ? lsOf(win) : ls;
   const on = (t, f) => { if (!win.listeners.has(t)) win.listeners.set(t, []); win.listeners.get(t).push(f); };
   win.fire = (t, e = {}) => { for (const f of win.listeners.get(t) || []) f(e); };
   const el = (props = {}) => ({ hidden: false, disabled: false, textContent: "", inert: false, tagName: "DIV", listeners: {}, addEventListener(t, f) { this.listeners[t] = f; }, ...props });
-  const els = { oneWin: el({ hidden: true }), owUse: el(), owMoving: el() };
+  const els = { oneWin: el({ hidden: true }), owUse: el(), owMoving: el() }; if (typePx !== undefined) els.typeProbe = el({ tagName: "SPAN" });
   const header = el({ tagName: "HEADER" }), main = el({ tagName: "MAIN" }), cls = new Set();
   const doc = { visibilityState: visible ? "visible" : "hidden", addEventListener: on, getElementById: (id) => els[id] || null, body: { classList: { add: (c) => cls.add(c), remove: (c) => cls.delete(c), contains: (c) => cls.has(c) }, children: [header, main, els.oneWin] } };
+  if (typePx !== undefined) doc.documentElement = { style: { fontSize: "" } };   // the root's own size, as main.js's fitText and win.js's fitRoot set it
   const loc = { href: url, get hash() { return new URL(this.href).hash; } };
   const hist = { state: null, replaceState: (s, t, u) => { loc.href = new URL(u, loc.href).href; } };
-  Object.assign(win, { els, doc, loc, main });
+  Object.assign(win, { els, doc, loc, main, header });
   const mod = await import("../app/win.js?w=" + name + "-" + ++n);
   win.mod = mod;
-  mod.winHooks.handOver = async () => { win.handed = (win.handed || 0) + 1; };
-  mod.winHooks.lose = () => { win.lostHook = (win.lostHook || 0) + 1; };
-  mod.winHooks.hidden = () => { win.hiddenHook = (win.hiddenHook || 0) + 1; };
-  mod.winHooks.shown = () => { win.shownHook = (win.shownHook || 0) + 1; };
-  mod.oneWindow(() => { win.started++; }, {
+  if (!start) {   // (v321: a page run by its own loader, start, has none: main.js fills them as it loads)
+    mod.winHooks.handOver = async () => { win.handed = (win.handed || 0) + 1; };
+    mod.winHooks.lose = () => { win.lostHook = (win.lostHook || 0) + 1; };
+    mod.winHooks.hidden = () => { win.hiddenHook = (win.hiddenHook || 0) + 1; };
+    mod.winHooks.shown = () => { win.shownHook = (win.shownHook || 0) + 1; };
+  }
+  const env = {
     locks: locksOff ? null : locks.forClient(win), Channel: channelFor(win), ls: win.ls, doc, win: { addEventListener: on }, loc, hist,
     now: () => T, clock: () => 1795600000000 + T, setT: (f, ms) => at(ms, f, win), clearT: (t) => { if (t) t.live = false; },
-    setI: (f, ms) => { const tick = { live: true }; const go = () => { if (!tick.live) return; tick.t = at(ms, () => { if (!tick.live) return; f(); go(); }, win); }; go(); return tick; }, clearI: (tick) => { if (tick) { tick.live = false; if (tick.t) tick.t.live = false; } },
+    setI: (f, ms) => { const tick = { live: true }; const go = () => { if (!tick.live) return; tick.t = at(ms, () => { if (!tick.live) return; win.ticks.push(T); f(); go(); }, win); }; go(); return tick; }, clearI: (tick) => { if (tick) { tick.live = false; if (tick.t) tick.t.live = false; } },
     Abort: AbortController, go: (u) => { win.went.push(u || "reload"); },
-  });
+  };
+  if (typePx !== undefined) env.win.getComputedStyle = (e) => ({ fontSize: e === els.typeProbe && win.typePx != null ? win.typePx + "px" : "" });   // the system font's size at the phone's Text Size
+  if (start) start(mod, env, win); else mod.oneWindow(() => { win.started++; }, env);   // (v321) start: the page's own loader instead (index.html's module script)
   return win;
 }
 const show = (win, vis) => { win.doc.visibilityState = vis ? "visible" : "hidden"; win.fire("visibilitychange"); };
@@ -201,4 +210,137 @@ const reset = () => { store.clear(); laggers.clear(); for (const c of [...chans]
 { reset(); const a = await openWin("a16"); await advance(10); show(a, false); a.asleep = true;
   const b = await openWin("b16"); b.doc.getElementById = () => { throw new Error("no such part"); }; await advance(1500);
   out.broken.bAsleepHolder = b.started; a.asleep = false; close(a); close(b); await advance(10); }
+// ---- v321 (the twenty-seventh round): the scenarios below write keys of their own; tests/win-lock-r27.test.js reads them ----
+const page = (w) => ({ owOn: w.doc.body.classList.contains("ow-on"), mainInert: w.main.inert, headerInert: w.header.inert, coverHidden: w.els.oneWin.hidden });
+const tick = async (w) => { const n0 = w.ticks.length; for (let i = 0; i < 2100 && w.ticks.length === n0; i++) await advance(1); };   // to just after the window's next 2 s check
+// 17. (R26-TW-5) The window Fiala moves to shows its page again and takes taps (no body.ow-on, nothing inert, #oneWin hidden); the window that let go
+// is covered (the page over everything, the rest inert, its header kept); and so is a newcomer's page once the window in use is closed
+{ reset(); const a = await openWin("a17"); await advance(10); show(a, false);
+  const b = await openWin("b17"); await advance(1000); const bBefore = page(b);
+  b.els.owUse.listeners.click(); await advance(50);
+  out.movedShown = { bBefore, b: page(b), a: page(a), bState: st(b), aState: st(a) };
+  close(a); close(b); await advance(10); }
+{ reset(); const a = await openWin("a17c"); await advance(10); show(a, false);
+  const b = await openWin("b17c"); await advance(1000); close(a); await advance(5000);
+  out.movedShown.afterClose = { b: page(b), bState: st(b) };
+  close(b); await advance(10); }
+// 18. (R26-TW-6) The window in use asleep (a phone tab in the background) is taken; woken by being shown (the person switches back to it) before
+// anything of it runs, it must not write its record back over the window that took Fiala (that one would stop at its next write, and both would
+// show the page). While asleep it has heard nothing of the steal: the stand-in delivers it when the window runs again, as a frozen tab hears it.
+{ reset(); const a = await openWin("a18"); await advance(10); show(a, false); a.asleep = true;
+  const b = await openWin("b18"); await advance(1000); const bTook = st(b);
+  const ws = a.mod.winState(), asleep = { holding: ws.holding, lost: ws.lost, lostHook: a.lostHook || 0 };   // read as it is, without winLost() (that reads the record)
+  a.asleep = false; show(a, true); await advance(50);
+  out.wokenShown = { bTook, asleep, recB: rec().tab === b.mod.winTab(), bLost: b.mod.winLost(), b: st(b), a: st(a) };
+  close(a); close(b); await advance(10); }
+// 19. (R26-TW-8) A window that lost Fiala to Use here carries on by itself (a reload) once the window it moved to falls asleep out of sight (a phone tab
+// in the background), never in the pause after the move
+{ reset(); const a = await openWin("a19"); await advance(10); show(a, false);
+  const b = await openWin("b19"); await advance(1000); b.els.owUse.listeners.click(); await advance(100);
+  show(b, false); b.asleep = true; show(a, true); await advance(2000); const early = st(a).went.slice(); await advance(4000);
+  out.lostCarriesOn = { early, went: st(a).went.slice(), aLost: st(a).lost };
+  b.asleep = false; close(a); close(b); await advance(10); }
+// 20. The same when the window in use goes without its goodbye while on screen (its page crashed: no pagehide, its record still says on screen, its
+// lock gone with it): the lock's registry says it is free, and the lost window carries on by itself
+{ reset(); const a = await openWin("a20"); await advance(10); show(a, false);
+  const b = await openWin("b20"); await advance(1000); b.els.owUse.listeners.click(); await advance(100);
+  const recVis = rec().vis; b.closed = true; locks.closeWin(b); for (const c of [...chans]) if (c.win === b) c.close();   // crashed: nothing of it runs any more
+  show(a, true); await advance(6000);
+  out.crashCarriesOn = { recVis, went: st(a).went.slice() };
+  close(a); await advance(10); }
+// 21. (R26-TW-8) Use here while the window in use answers but never lets go (it fell asleep in the middle of its hand-over): taken at 6 s, not before
+{ reset(); const a = await openWin("a21"); await advance(10); show(a, false);
+  a.mod.winHooks.handOver = () => { a.handed = (a.handed || 0) + 1; a.asleep = true; return new Promise(() => {}); };
+  const b = await openWin("b21"); await advance(1000);
+  b.els.owUse.listeners.click(); await advance(5500); const before = st(b); await advance(1000);
+  out.waitLimit = { handed: a.handed || 0, before: { started: before.startedCalls, moving: before.moving }, after: st(b) };
+  a.asleep = false; await advance(10); out.waitLimit.a = st(a);
+  close(a); close(b); await advance(10); }
+// 22. The same, but its hand-over hangs while it stays awake (its saves never answer): it lets go after 4 s, and Fiala opens in the other window then
+{ reset(); const a = await openWin("a22"); await advance(10); show(a, false);
+  a.mod.winHooks.handOver = () => { a.handed = (a.handed || 0) + 1; return new Promise(() => {}); };
+  const b = await openWin("b22"); await advance(1000);
+  b.els.owUse.listeners.click(); await advance(3500); const before = st(b); await advance(1000);
+  out.handLimit = { handed: a.handed || 0, before: { started: before.startedCalls, moving: before.moving }, after: st(b), a: st(a) };
+  close(a); close(b); await advance(10); }
+// 23. Three windows: Use here in one while the window in use falls asleep in its hand-over: the third, checking meanwhile (its focus), holds back in the
+// pause after the "yield" as after a goodbye (no Fiala there in the first 2.5 s of a move); at 6 s the window where Use here was pressed takes it. (A
+// third window checking between 2.5 and 6 s can still take Fiala first and lose it at 6 s: later, as the code is; not pinned here.)
+{ reset(); const a = await openWin("a23"); await advance(10); show(a, false);
+  a.mod.winHooks.handOver = () => { a.handed = (a.handed || 0) + 1; a.asleep = true; return new Promise(() => {}); };
+  const b = await openWin("b23"); await advance(1000); const c = await openWin("c23"); await advance(1000);
+  b.els.owUse.listeners.click(); await advance(900); c.fire("focus"); await advance(1100);
+  out.yieldPause = { c: { started: st(c).startedCalls, cover: st(c).cover }, b: { started: st(b).startedCalls, moving: st(b).moving } };
+  await advance(4500); out.yieldPause.later = { b: st(b).startedCalls, c: st(c).startedCalls };
+  a.asleep = false; await advance(10); out.yieldPause.end = [a, b, c].filter((w) => { const s = st(w); return s.started && !s.lost; }).map((w) => w.name);
+  close(a); close(b); close(c); await advance(10); }
+// 24. Use here where the lock's grant reaches the page after the window in use's "yielded" (the lock manager is another process: the grant is a task of
+// its own): the answer heard before its waiter still counts, so Fiala opens at once, not a second later
+{ reset(); const a = await openWin("a24"); await advance(10); show(a, false);
+  const b = await openWin("b24", { grantLag: 5 }); await advance(1000);
+  b.els.owUse.listeners.click(); await advance(100);
+  out.heardFirst = { b: st(b), a: st(a) };
+  close(a); close(b); await advance(10); }
+// 25. A move that fails (the lock refused, as for a page that is not fully active): the button comes back and "Moving here…" goes, so Use here can be
+// pressed again
+{ reset(); const a = await openWin("a25"); await advance(10); a.asleep = true;   // busy on screen: its record says visible, and it answers nothing
+  const b = await openWin("b25"); await advance(1500); b.refuse = true;
+  b.els.owUse.listeners.click(); await advance(1); const moving = st(b); await advance(1000);
+  out.moveFailed = { moving: { text: moving.moving, disabled: moving.useDisabled }, after: st(b) };
+  close(a); close(b); await advance(10); }
+// 26. The window in use asleep is taken, then closed before it runs again (its pagehide comes first): it never writes "gone" over the record of the
+// window that took Fiala (that one would stop at its next write)
+{ reset(); const a = await openWin("a26"); await advance(10); show(a, false); a.asleep = true;
+  const b = await openWin("b26"); await advance(1000);
+  a.asleep = false; close(a); await advance(10);
+  out.closedAsleep = { recB: rec().tab === b.mod.winTab(), recVis: rec().vis, bLost: b.mod.winLost(), b: st(b) };
+  close(b); await advance(10); }
+// 27. A check and Use here at once (a click into the window on the Mac, on its Use here), the lock free (the window in use closed a moment before) and
+// its grant on the way: the check opens Fiala, and Use here, finding the lock held already, never takes it again from this very page (that took it
+// away from itself, the page lost Fiala and started again)
+{ reset(); const a = await openWin("a27"); await advance(10); show(a, false);
+  const b = await openWin("b27", { grantLag: 5 }); await advance(1000);
+  await tick(b); await advance(20); close(a); await advance(2600);   // past the pause after its goodbye, and between two of b's 2 s checks
+  b.fire("focus"); b.els.owUse.listeners.click(); await advance(3000);
+  out.checkAndUse = { b: st(b) };
+  close(b); await advance(10); }
+// 28. The window in use falls asleep out of sight (a background tab frozen) while another shows the page: the other, focused (a click into it on the
+// Mac), checks at once and opens Fiala within a second, not at its next 2 s check
+{ reset(); const a = await openWin("a28"); await advance(10); show(a, false);
+  const b = await openWin("b28"); await advance(1000);
+  await tick(b); await advance(20);   // just after one of its 2 s checks
+  a.asleep = true; b.fire("focus"); await advance(900);
+  out.focusCheck = { b: st(b) };
+  a.asleep = false; close(a); close(b); await advance(10); }
+// 29. (R26-WIN-3) The page in a window that never ran main.js follows the phone's Text Size as the app does (main.js's fitText: the hidden probe's
+// system font over 17, kept between 1 and 1.5, on a 16 px root): as it shows, and each time it comes back on screen (the Text Size changed meanwhile),
+// at once, before its check hears an answer (the first picture it shows is the right size; in the pause after a goodbye that check stops early)
+{ reset(); const a = await openWin("a29"); await advance(10); show(a, false);
+  const b = await openWin("b29", { typePx: 25.5 }); await advance(1000);
+  const root = () => b.doc.documentElement.style.fontSize, seen = { atCover: root(), page: st(b).cover }, later = [];
+  for (const [k, px] of [["larger", 20], ["standard", 17], ["capped", 40], ["smaller", 12], ["unread", null], ["back", 25.5]]) { show(b, false); b.typePx = px; show(b, true); seen[k] = root(); await advance(5); if (root() !== seen[k]) later.push(k + " " + root()); }
+  out.textSize = seen; seen.later = later;
+  close(a); close(b); await advance(10); }
+// 30. (R26-WIN-4) index.html's own loader, its module script run as written (main.js a stand-in that loads in the time given): a window that loses
+// Fiala before its app has loaded never starts it behind the page (main.js's boot: the session's sign-in, the kept words taken); the window it moved
+// to starts as usual
+{ const fs = await import("node:fs"), html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const at0 = html.lastIndexOf('<script type="module">'), mod = at0 < 0 ? "" : html.slice(at0, html.indexOf("</script>", at0));
+  const imp = /import \{([^}]*)\} from "\.\/app\/win\.js";/.exec(mod), names = imp ? imp[1].split(",").map((x) => x.trim()).filter(Boolean) : [];
+  let call = null; const i0 = mod.search(/\boneWindow\(/);
+  if (i0 >= 0) { let d = 0, q = null, j = i0 + "oneWindow".length; for (; j < mod.length; j++) { const ch = mod[j]; if (q) { if (ch === "\\") j++; else if (ch === q) q = null; } else if (ch === '"' || ch === "'" || ch === "`") q = ch; else if (ch === "(") d++; else if (ch === ")" && --d === 0) break; } call = mod.slice(i0, j + 1); }   // the call, to its own closing bracket
+  const body = call && call.replace(/import\("\.\/app\/main\.js\?v=\d+"\)/, "__main()");
+  const ok = !!(imp && names.includes("oneWindow") && body && body !== call);
+  out.loader = { found: ok };
+  if (ok) {
+    const run = new Function(...names, "__main", body + ";");
+    const loader = (ms) => (m, env, win) => run(...names.map((k) => (k === "oneWindow" ? (f) => m.oneWindow(f, env) : m[k])), () => { win.started++; return new Promise((r) => at(ms, () => r({ boot: () => { win.booted = (win.booted || 0) + 1; } }), win)); });
+    reset(); const a = await openWin("a30", { start: loader(0) }); await advance(10); show(a, false);       // Fiala opens in A, its main.js at once
+    const b = await openWin("b30", { start: loader(1500) }); await advance(1000);                      // B shows the page; its main.js takes 1.5 s (a slow phone or network)
+    b.els.owUse.listeners.click(); await advance(100); const bTook = st(b);                             // Use here in B: Fiala moves there, its app still loading
+    show(b, false); show(a, true); a.els.owUse.listeners.click(); await advance(10);                    // Use here back in A at once: A starts again, asking to move as it opens
+    const a2 = await openWin("a30r", { url: new URL(st(a).went[0] || "/", "https://app.example/").href, start: loader(0) }); await advance(3000);
+    Object.assign(out.loader, { aBooted: a.booted || 0, aWent: st(a).went, bTook: { started: bTook.started, lost: bTook.lost, imports: bTook.startedCalls }, bBooted: b.booted || 0, b: st(b), a2: st(a2), a2Booted: a2.booted || 0 });
+    close(a); close(a2); close(b); await advance(10);
+  } }
 console.log(JSON.stringify(out));

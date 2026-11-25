@@ -28,6 +28,13 @@
 // - the twenty-sixth check round (out.r26): the other side's change to the note, merged by his own save while the note box's question is up
 //   (Delete's "Delete this note?", an emptied box's "Delete this note?", "Replace the note written meanwhile?", "Save a note deleted
 //   meanwhile?"): his answer asks again, quoting the note as it is now, and a note deleted under the question is drawn gone with nothing more asked.
+// - v321 (out.r27, read by cards-r27.test.js): round 26's card note findings (R26-CRD-1, -2, -3, -4, -6, -7) and the card note part of R26-TW-9:
+//   the person's own Delete on a superset's second exercise, her Delete there by a sync, the hand-over, two cards joined under his finger, See/Hide
+//   note and Edit after a change under his finger, his own number change, and the caption's Delete and an emptied box over a note deleted under it.
+// - v321, the twenty-seventh check round, the cards lens (out.r27.v: the verifier's cases; out.r27.rev: the reviewer's; read by cards-r27.test.js):
+//   R27-CRD-1 to -6: Use here with a note come on the card's other exercise; her Delete, then her new note, under his finger; a number typed, the
+//   caret still in its box, and a save's merge (with "Ask first"); Save note over two notes of one card, a join and a regroup; Add note after a
+//   note came; Save note on an exercise deleted under his finger.
 // The two note stores of main.js that the tests cannot reach (openExNotes, cardNoteDraft) are found by what the page's own handlers do with
 // them: the Set a tap on See note adds the card's key to, and the Map the typing writes the note into. Prints, as JSON, what each case drew
 // and kept. Made-up people only.
@@ -1084,6 +1091,527 @@ out.r24 = {};
     o.asked = await answerAll(["yes", reply === "replace" ? "yes" : "no"]); o.mid = { card: cardWith(W, "lp"), here: here(W) };
     o.after = await later(sb, W, "lp");
   });
+
+  // ---------- v321 (out.r27, read by cards-r27.test.js): round 26's card note findings, fixed in v321 ----------
+  // f1 (R26-CRD-1): the note on a superset's second exercise (2b Leg curl), Edit and words, a tap elsewhere, then the person's own Delete on the
+  // note above the box: Save note, Discard, or more words and the cards drawn again, in the coach's own look, his Client view and on her phone.
+  // known (R26-CRD-2): her Delete of that note drawn by a sync keeps his box and asks "Save a note deleted meanwhile?"; her Delete with Leg curl
+  // moved into another card carries no box there. h (R26-CRD-3): Use here in another window (the hand-over, then a new window's start) keeps an
+  // open box's words when his own save merged a note change under his finger, typed on or not, with the question up, her Delete on 2b, his own
+  // Delete; an Edit box with nothing typed keeps nothing; and nothing is kept for another account. join (R26-CRD-4): two cards with notes joined
+  // on his iPad, merged under his finger while he edits Leg curl's note. hide, edit (R26-CRD-6): See/Hide note and Edit after her change came in
+  // under his finger. own (R26-CRD-7): his own number change with a note box open (the picker; a number typed, then left or picked over).
+  // tw9 (R26-TW-9): the caption's Delete on a note deleted under his finger, and an emptied box over a note deleted under his finger.
+  out.r27 = {};
+  {
+    const boxed = (W) => blocks().filter((x) => { const nb = part(x, ".exnote"); return !!nb && !nb.hidden; }).map((b) => namesOf(W, b) + ": " + part(part(b, ".exnote"), "textarea").value);   // every note box open on the page: its card's exercises and its words
+    const redraw = async () => { leave(); app.set({ renderedTraining: null }); fns.render(); await advance(50); };   // the cards drawn again (a set tapped on another card, a sync with a change)
+    const start = async (view, rows) => { const sb = makeSupabase(), W = wid(); sb.seed("ft_clients", C, MIA); seed(sb, W, rows); if (view === "phone") phoneOn(sb); else coachOn(sb); await sync(); if (view === "client view") fns.setPreview(true); await openW(W); return { sb, W }; };
+    const MINE2B = () => [R("sq", "1", "Back squat", DONE), R("lp", "2a", "Leg press"), R("lc", "2b", "Leg curl", { clientNote: "Left knee hurts", clientNoteBy: "client", clientNoteAt: "2026-11-24T14:00:00.000Z" }), R("cr", "3", "Calf raise")];   // on her phone: her own note on 2b
+    const JN = () => [R("sq", "1", "Back squat", DONE), R("lp", "2", "Leg press", NOTE), R("lc", "3", "Leg curl", CALF), R("cr", "4", "Calf raise")];   // two cards, each with a note of hers
+    const SS4 = () => [R("sq", "1", "Back squat", DONE), R("lp", "2a", "Leg press"), R("lc", "2b", "Leg curl", NOTE), R("cr", "4", "Calf raise")];
+    const labelOf = (rid) => { const row = rowOf(rid); return row ? row.querySelector(".label") : null; };
+    const pickNumber = async (rid, n, focus = true) => { const lab = labelOf(rid); if (!lab) return "no number box"; if (focus) { fire(lab, "focus"); lab.focus(); await advance(20); } const np = lab.parent && lab.parent.querySelector(".numpick"), all = np ? findAll(np, "button") : [], b = all.find((x) => x.textContent === String(n)); if (!b) return "no " + n + " in the picker (" + all.map((x) => x.textContent).join(",") + ")"; fire(b, "click", { detail: 1 }); await advance(50); return true; };   // the number box's picker, that number tapped (the box keeps the focus)
+    const typeNumber = async (rid, n) => { const lab = labelOf(rid); if (!lab) return "no number box"; fire(lab, "focus"); lab.focus(); await advance(20); lab.value = String(n); fire(lab, "input"); await advance(20); return lab.value; };   // a number typed over the one in the box, the caret left in it
+    const { winHooks } = await import("../app/win.js");
+    const handOver = async () => { const p = winHooks.handOver(); await advance(3500); await p; await advance(100); };   // Use here in another window: this one keeps what is typed, closes every question as Cancel, saves what waits
+    const keptNow = () => { try { return JSON.parse(localStorage.getItem("fiala.kept")); } catch (_) { return "unreadable"; } };
+    const newWindow = async (owner) => {                                  // the window Fiala goes to: the device copy as left, no card state of its own, then the kept words taken (takeKept) and the cards drawn
+      fns.keptMaps().cardNoteDraft.clear(); fns.keptMaps().cardNoteBase.clear(); if (fns.keptMaps().typedSince) fns.keptMaps().typedSince.clear(); if (EXN) EXN.clear();   /* (rev28: a new page has typed in no box) */ fns.cardSets().openBlocks.clear(); fns.cardSets().setSel.clear();
+      askSheet.hidden = true; document.activeElement = null; app.set({ asking: false }); { const r = JSON.parse(localStorage.getItem("fiala.kept") || "null"); if (r) { r.tab = "window-A"; localStorage.setItem("fiala.kept", JSON.stringify(r)); } } fns.takeKept(owner); app.set({ renderedTraining: null }); fns.render(); await advance(50);   // (the record names the window Fiala left: a page never takes back its own, R26-WAP-6)
+    };
+    const boxRid = (W) => { const b = blocks().find((x) => { const nb = part(x, ".exnote"); return !!nb && !nb.hidden; }); return b ? rowIds(b)[0] : null; };   // an exercise of the card whose note box is open
+    const asks = (qs) => (qs || []).map((q) => q.title + (q.text ? " | " + q.text : ""));
+    const answerQ = async (reply) => { await advance(0); await advance(400); const q = sheetNow(); if (q.open) { fire(byId.get(reply === "yes" ? "askYes" : "askNo"), "click", { detail: 1 }); await advance(400); } return q; };   // (v321) the question up now, read once its buttons can be pressed, then answered ("yes": its own button; else Cancel); { open: false } when none came
+
+    // ---------- R26-CRD-1: the person's own Delete above the box, on a superset's second exercise ----------
+    out.r27.f1 = {};
+    for (const view of ["coach", "client view", "phone"]) for (const then of ["save", "discard", "type-save"]) out.r27.f1[view + " " + then] = await run(async (o) => {   // See note, Edit, words added, a tap elsewhere; Delete on the note above the box, answered; then Save note (Save), Discard (Discard), or words typed on, the cards drawn again and Save note; then the cards drawn again
+      const { sb, W } = await start(view, view === "phone" ? MINE2B() : SS);
+      await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3"); leave();
+      o.del = await delSays("lc", "yes"); o.afterDel = { card: cardWith(W, "lc"), here: here(W) };
+      if (then === "type-save") { o.typed2 = await typeNote(W, "lc", " and more"); await redraw(); o.redrawn = boxed(W); o.asked = await saveSays("lc", ["yes", "yes"]); }
+      else if (then === "save") o.asked = await saveSays("lc", ["yes", "yes"]);
+      else { await noteButton("lc", "Discard"); o.asked = [await answer(true)]; }
+      o.afterAct = boxed(W); await redraw(); o.afterRedraw = boxed(W); o.notes = notesOf(W);
+      await settle(); o.here = here(W); o.server = server(sb, W); o.sent = sentNotes(sb);
+      fns.setPreview(false);
+    });
+
+    // ---------- R26-CRD-2: her Delete of the note on 2b, by a sync; with Leg curl moved into another card ----------
+    out.r27.knownSync = await run(async (o) => {   // See note on Leg curl (2b), Edit, his words, a tap elsewhere; her Delete reaches the server and a sync draws the card; Save note, Cancel; Save note again
+      const { sb, W } = await live(SS);
+      await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3"); leave();
+      dropNote(sb, W, "lc"); await sync(); o.box = boxed(W); o.notes = notesOf(W); o.here = here(W);
+      o.asked = await saveSays("lc", ["no"]); o.mid = { box: boxed(W), here: here(W), server: server(sb, W) };
+      o.again = await saveSays("lc", ["yes"]); o.after = await later(sb, W, "lc"); o.box2 = boxed(W);
+    });
+    out.r27.regroupDeleted = await run(async (o) => {   // the same edit; her Delete and the iPad's move of Leg curl into Calf raise's card (2 Leg press, 3a Calf raise, 3b Leg curl) come by one sync
+      const { sb, W } = await live(SS);
+      await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3"); leave();
+      { const s = sb.tables.ft_trainings.get(W), r = s.data.rows.find((x) => x.id === "lc"); delete r.clientNote; delete r.clientNoteBy; delete r.clientNoteAt; for (const [id, l] of [["lp", "2"], ["cr", "3a"], ["lc", "3b"]]) s.data.rows.find((x) => x.id === id).label = l; bump(s); }
+      await sync(); o.box = boxed(W); o.notes = notesOf(W); o.here = here(W);
+    });
+
+    for (const then of ["redraw", "hand-over"]) out.r27["regroup finger " + then] = await run(async (o) => {   // a weight typed into Leg curl; See note on Leg curl (2b), Edit, his words, his finger in the box; her Delete and the iPad's move of Leg curl into Calf raise's card (2 Leg press, 3a Calf raise, 3b Leg curl) come in with his weight's save; words typed on; then the cards drawn again, or Use here in another window
+      const { sb, W } = await live(SS);
+      o.w = await typeWeight("lc", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3");
+      { const s = sb.tables.ft_trainings.get(W), r = s.data.rows.find((x) => x.id === "lc"); delete r.clientNote; delete r.clientNoteBy; delete r.clientNoteAt; for (const [id, l] of [["lp", "2"], ["cr", "3a"], ["lc", "3b"]]) s.data.rows.find((x) => x.id === id).label = l; bump(s); }
+      await settle(); o.finger = inBox(); o.landed = here(W);
+      o.typed2 = await typeNote(W, "lc", " and more");
+      if (then === "redraw") await redraw(); else { await handOver(); o.kept = keptNow(); await newWindow("coach@x.com"); }
+      o.box = boxed(W); o.notes = notesOf(W);
+      const rid = boxRid(W); o.asked = rid ? asks(await saveSays(rid, ["yes", "yes"])) : null; await settle(); o.here = here(W); o.server = server(sb, W);
+    });
+    for (const then of ["redraw", "hand-over"]) out.r27["lead moved " + then] = await run(async (o) => {   // a weight typed into Leg press; Add note on the superset 2a Leg press, 2b Leg curl (its box writes on Leg press) and his words, his finger in the box; the iPad moves Leg press into Calf raise's card (2 Leg curl, 3a Calf raise, 3b Leg press), merged by his weight's save; words typed on; then the cards drawn again, or Use here in another window
+      const { sb, W } = await live(SS0());
+      o.w = await typeWeight("lp", "100"); await addNote("lp"); o.typed = await typeNote(W, "lp", "Knees out");
+      { const s = sb.tables.ft_trainings.get(W); for (const [id, l] of [["lc", "2"], ["cr", "3a"], ["lp", "3b"]]) s.data.rows.find((x) => x.id === id).label = l; bump(s); }
+      await settle(); o.finger = inBox(); o.landed = here(W);
+      o.typed2 = await typeNote(W, "lp", " today");
+      if (then === "redraw") await redraw(); else { await handOver(); o.kept = keptNow(); await newWindow("coach@x.com"); }
+      o.box = boxed(W); o.notes = notesOf(W);
+      const rid = boxRid(W); o.asked = rid ? asks(await saveSays(rid, ["yes", "yes"])) : null; await settle(); o.here = here(W); o.server = server(sb, W);
+    });
+
+    // ---------- R26-CRD-3: the hand-over keeps an open box's words ----------
+    out.r27.h = {};
+    for (const [name, how, view] of [["arrive", "plain", "coach"], ["arrive typed on", "more", "coach"], ["question up", "q", "coach"], ["client view", "plain", "client view"]]) out.r27.h[name] = await run(async (o) => {   // a weight typed into Leg press; Add note on the superset 2a Leg press, 2b Leg curl and his words, his finger in the box; her note on Leg curl comes in with his weight's save; (words typed on; or Save note, its question left up); Use here in another window; there Save note, Cancel; then Save note, Replace
+      const { sb, W } = await start(view, SS0());
+      o.w = await typeWeight("lp", "100"); await addNote("lp"); o.typed = await typeNote(W, "lp", "Knees out");
+      putNote(sb, W, "lc", NOTE); await settle(); o.finger = inBox(); o.landed = { card: cardWith(W, "lp"), here: here(W) };
+      if (how === "more") o.typed2 = await typeNote(W, "lp", " today");
+      if (how === "q") o.q = await tapAsks("lp", ".exnote", "Save note");
+      o.boxA = boxed(W); await handOver(); o.kept = keptNow(); await newWindow("coach@x.com"); o.boxB = boxed(W);
+      const rid = boxRid(W); if (rid) { o.askedB = asks(await saveSays(rid, ["no"])); o.midB = { box: boxed(W), here: here(W) }; o.againB = asks(await saveSays(rid, ["yes"])); await settle(); o.afterB = { box: boxed(W), here: here(W), server: server(sb, W) }; }
+      fns.setPreview(false);
+    });
+    out.r27.h["deleted 2b"] = await run(async (o) => {   // a weight typed into Leg curl; See note on Leg curl (2b), Edit, his words, his finger in the box; her Delete comes in with his weight's save; Use here; there Save note, Cancel; then Save note, Save
+      const { sb, W } = await live(SS);
+      o.w = await typeWeight("lc", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3");
+      dropNote(sb, W, "lc"); await settle(); o.finger = inBox();
+      o.boxA = boxed(W); await handOver(); o.kept = keptNow(); await newWindow("coach@x.com"); o.boxB = boxed(W);
+      const rid = boxRid(W); if (rid) { o.askedB = asks(await saveSays(rid, ["no"])); o.againB = asks(await saveSays(rid, ["yes"])); await settle(); o.afterB = { box: boxed(W), here: here(W), server: server(sb, W) }; }
+    });
+    out.r27.h["own del"] = await run(async (o) => {   // See note on Leg curl (2b), Edit, his words, a tap elsewhere; his own Delete on the note, answered; words typed on, a tap elsewhere; Use here; there Save note
+      const { sb, W } = await live(SS);
+      await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3"); leave();
+      o.del = await delSays("lc", "yes"); o.typed2 = await typeNote(W, "lc", " and more"); leave();
+      o.boxA = boxed(W); await handOver(); o.kept = keptNow(); await newWindow("coach@x.com"); o.boxB = boxed(W);
+      const rid = boxRid(W); if (rid) { o.askedB = asks(await saveSays(rid, ["yes"])); await settle(); o.afterB = { box: boxed(W), here: here(W), server: server(sb, W) }; }
+    });
+    out.r27.h["untouched edit"] = await run(async (o) => {   // a weight typed into Leg curl; See note on Leg curl, Edit, nothing typed, his finger in the box; her Delete comes in with his weight's save; Use here: nothing typed, nothing kept
+      const { sb, W } = await live(SS);
+      o.w = await typeWeight("lc", "100"); await seeNote(W, "lc"); await editNote("lc"); o.finger0 = inBox();
+      dropNote(sb, W, "lc"); await settle();
+      o.boxA = boxed(W); await handOver(); o.kept = keptNow(); await newWindow("coach@x.com"); o.boxB = boxed(W);
+    });
+    out.r27.h.owner = await run(async (o) => {   // Add note on Leg press and the coach's words; his session ends and Mia signs in on this page (the account switch clears the stores); the window goes out of sight before the cards are drawn again
+      const { W } = await live(LP());
+      await addNote("lp"); o.typed = await typeNote(W, "lp", "Coach draft: she skips the last rep"); leave();
+      const km = fns.keptMaps(); km.cardNoteDraft.clear(); km.cardNoteBase.clear(); try { localStorage.removeItem("fiala.kept"); } catch (_) {}
+      app.set({ sessionEmail: "mia@x.com", clientMode: true }); fns.keepTyping(); o.kept = keptNow();
+      app.set({ sessionEmail: "coach@x.com", clientMode: false }); try { localStorage.removeItem("fiala.kept"); } catch (_) {}
+    });
+
+    // ---------- R26-CRD-4: two cards with notes joined on the iPad, under his finger ----------
+    out.r27.join = {};
+    for (const [name, reply, view] of [["no", "no", "coach"], ["yes", "yes", "coach"], ["client view", "yes", "client view"]]) out.r27.join[name] = await run(async (o) => {   // a weight typed into Leg curl (3); See note on Leg curl, Edit, his words, his finger in the box; the iPad makes Leg press and Leg curl one superset (2a, 2b), merged by his weight's save; Save note (a question answered)
+      const { sb, W } = await start(view, JN());
+      o.w = await typeWeight("lc", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", stretch first");
+      { const s = sb.tables.ft_trainings.get(W); for (const [id, l] of [["lp", "2a"], ["lc", "2b"], ["cr", "3"]]) s.data.rows.find((r) => r.id === id).label = l; bump(s); }
+      await settle(); o.finger = inBox(); o.landed = { card: cardWith(W, "lc"), here: here(W) };
+      o.asked = asks(await saveSays("lc", [reply])); await settle(); o.here = here(W); o.server = server(sb, W); o.box = boxed(W);
+      fns.setPreview(false);
+    });
+
+    out.r27.join["hand-over"] = await run(async (o) => {   // the same join under his finger, words typed on; then Use here in another window, and Save note where a box is
+      const { sb, W } = await live(JN());
+      o.w = await typeWeight("lc", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", stretch first");
+      { const s = sb.tables.ft_trainings.get(W); for (const [id, l] of [["lp", "2a"], ["lc", "2b"], ["cr", "3"]]) s.data.rows.find((r) => r.id === id).label = l; bump(s); }
+      await settle(); o.finger = inBox(); o.typed2 = await typeNote(W, "lc", " today");
+      await handOver(); o.kept = keptNow(); await newWindow("coach@x.com"); o.box = boxed(W);
+      const rid = boxRid(W); o.asked = rid ? asks(await saveSays(rid, ["yes", "yes"])) : null; await settle(); o.here = here(W); o.server = server(sb, W);
+    });
+
+    // ---------- R26-CRD-6: See/Hide note and Edit after her change came in under his finger ----------
+    for (const view of ["coach", "client view"]) {
+      out.r27["edit " + view] = await run(async (o) => {   // her note on Leg press unfolded; a weight typed into Leg press; she changes her note; his weight's save merges it under his finger; a tap elsewhere; Edit on the note
+        const { sb, W } = await start(view, LPN());
+        await seeNote(W, "lp"); o.w = await typeWeight("lp", "100");
+        putNote(sb, W, "lp", HERS2); await settle(); leave();
+        o.landed = cardWith(W, "lp"); o.here = here(W);
+        o.edited = await editNote("lp"); o.after = cardWith(W, "lp"); o.notes = notesOf(W);
+        fns.setPreview(false);
+      });
+      for (const boxOpen of [false, true]) out.r27["hide " + (boxOpen ? "box " : "nobox ") + view] = await run(async (o) => {   // her note on Leg press unfolded (and Edit with his words, a tap elsewhere); a weight typed into Leg press; she deletes her note; his weight's save merges that under his finger; a tap elsewhere; Hide note (a question answered Discard)
+        const { sb, W } = await start(view, LPN());
+        await seeNote(W, "lp");
+        if (boxOpen) { await editNote("lp"); o.typed = await typeNote(W, "lp", ", sore after set 3"); leave(); }
+        o.w = await typeWeight("lp", "100");
+        dropNote(sb, W, "lp"); await settle(); leave();
+        o.landed = cardWith(W, "lp"); o.here = here(W);
+        const b = blockOf("lp"), nb = part(b, ".exnote"), dn = nb && part(nb, "button", "Discard"); if (dn) dn.click = () => fire(dn, "click", { detail: 1 });   // the box's Discard, as a page's click() on it does
+        const an = part(b, ".add-note"); o.buttonSays = an ? String(an.innerHTML).replace(/<[^>]*>/g, "") : null;
+        fire(an, "click", { detail: 1 }); await advance(400); o.q = sheetNow(); if (o.q.open) { fire(byId.get("askYes"), "click", { detail: 1 }); await advance(400); }
+        o.after = cardWith(W, "lp"); o.boxes = boxed(W); o.notes = notesOf(W);
+        fns.setPreview(false);
+      });
+    }
+
+    for (const [name, rows, change, act] of [["see gone", LPN(), "gone", "see"], ["edit gone", LPN(), "gone", "edit"], ["add came", LP(), "came", "add"]]) out.r27[name] = await run(async (o) => {   // her note on Leg press folded (See note; for "edit gone" unfolded; for "add came" none yet); a weight typed into Leg press; she deletes her note (or writes one); his weight's save merges it under his finger; a tap elsewhere; then See note, Edit, or Add note tapped
+      const { sb, W } = await live(rows);
+      if (act === "edit") await seeNote(W, "lp");
+      o.w = await typeWeight("lp", "100");
+      if (change === "gone") dropNote(sb, W, "lp"); else putNote(sb, W, "lp", HERS); await settle(); leave();
+      o.landed = cardWith(W, "lp"); o.here = here(W);
+      if (act === "edit") o.tapped = await editNote("lp"); else o.tapped = await tap(part(blockOf("lp"), ".add-note"));
+      await advance(400); o.q = sheetNow(); o.after = cardWith(W, "lp"); o.boxes = boxed(W); o.notes = notesOf(W);
+    });
+
+    // ---------- R26-CRD-7: his own number change with a note box open ----------
+    out.r27.own = {};
+    const ownCase = (name, rows, act) => run(async (o) => {   // See note on Leg curl, Edit, his words, a tap elsewhere; then his number change; a tap elsewhere; Save note where the box is (every question answered with its own button)
+      const { sb, W } = await live(rows);
+      await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3"); leave();
+      await act(o, W); leave(); await settle();
+      o.cards = look(W).map((c) => c.names + (c.composer != null ? " [box: " + c.composer + "]" : "")); o.box = boxed(W); o.notes = notesOf(W);
+      const rid = boxRid(W); o.asked = rid ? asks(await saveSays(rid, ["yes", "yes"])) : null; await settle(); o.here = here(W); o.server = server(sb, W); o.after = boxed(W);
+    });
+    out.r27.own.split = await ownCase("split", SS4(), async (o) => { o.picked = await pickNumber("lc", 3); });   // Leg curl given 3 from the picker: out of the superset, a card of its own
+    out.r27.own.typed = await ownCase("typed", SS4(), async (o) => { o.typedNo = await typeNumber("lc", "3"); });   // 3 typed over 2b in Leg curl's number box, then a tap elsewhere
+    out.r27.own["typed then picked"] = await ownCase("typed then picked", SS4(), async (o) => { o.typedNo = await typeNumber("lc", "3"); o.picked = await pickNumber("lc", 5, false); });   // 3 typed over 2b, then 5 tapped in the picker still open
+    out.r27.own["typed then picked, no blur"] = await ownCase("typed then picked, no blur", SS4(), async (o) => { o.typedNo = await typeNumber("lc", "3"); o.picked = await pickNumber("lc", 5, false); document.activeElement = document.body; });   // the same where the box the cards' redraw removed is told nothing (Safari's focus goes to the page with no blur; Chrome blurs it)
+    out.r27.own.other = await ownCase("other", SS4(), async (o) => { o.picked = await pickNumber("lp", 3); });   // Leg press given 3: Leg curl stays on card 2 with the box
+    out.r27.own.join = await run(async (o) => {   // See note on Leg curl (3), Edit, his words, a tap elsewhere; Leg curl given 2 from the picker (Leg press, holding her note, is 2); then Calf raise given 3
+      const { sb, W } = await live(JN());
+      await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", stretch first"); leave();
+      o.picked = await pickNumber("lc", 2); o.asked = await answerQ("yes"); leave(); await settle(); o.box1 = boxed(W); o.notes1 = notesOf(W);   // (v321, the owner's pick "Ask first": the pick asks "Discard what you wrote?" first; Discard)
+      o.picked2 = await pickNumber("cr", 3); o.asked2 = await answerQ("yes"); leave(); await settle(); o.box2 = boxed(W); o.here = here(W); o.server = server(sb, W);
+    });
+
+    // ---------- v321, the owner's pick "Ask first" (R26-CRD-7's join): his number change that would join the card of a note box holding his
+    // half-written words into a card whose note is another exercise's asks "Discard what you wrote?" first; Cancel changes nothing, Discard joins ----------
+    out.r27.ask = {};
+    const COACHN = { clientNote: "Keep the knees out", clientNoteBy: "coach", clientNoteAt: "2026-11-23T09:00:00.000Z" };
+    const askCase = (rows, open, act) => run(async (o) => {   // a note box opened (open) and words typed or not, a tap elsewhere; then his number change (act), every question read and answered; a tap elsewhere and what stays
+      const { sb, W } = await live(rows); o.W = W;
+      await open(o, W); leave();
+      await act(o, W, sb); leave(); await settle();
+      o.cards = look(W).map((c) => c.names + (c.composer != null ? " [box: " + c.composer + "]" : "")); o.box = boxed(W); o.notes = notesOf(W); o.here = here(W); o.server = server(sb, W); o.q = sheetNow();
+      o.labels = ["lp", "lc", "cr"].map((id) => { const l = labelOf(id); return l ? id + ":" + l.value : id + ":-"; });
+    });
+    const editLc = async (o, W) => { await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", stretch first"); };   // Mia's note on Leg curl ("Calves tight"), Edit, his words
+    const editLp = async (o, W) => { await seeNote(W, "lp"); await editNote("lp"); o.typed = await typeNote(W, "lp", ", seat lower"); };   // Mia's note on Leg press ("Knee ok today"), Edit, his words
+    for (const reply of ["no", "yes"]) {
+      out.r27.ask["pick " + reply] = await askCase(JN(), editLc, async (o) => { o.picked = await pickNumber("lc", 2); o.asked = await answerQ(reply); });   // Leg curl given 2 from the picker (Leg press, Mia's note, is 2)
+      out.r27.ask["typed " + reply] = await askCase(JN(), editLc, async (o) => { o.typedNo = await typeNumber("lc", "2"); fire(document.body, "keydown", { key: "Tab" }); leave(); o.asked = await answerQ(reply); o.focus = document.activeElement === labelOf("lc") ? "Leg curl's number box" : document.activeElement && document.activeElement.tagName; });   // 2 typed over 3 in Leg curl's number box, then Tab: the keyboard leaves the box (after Cancel its place is the number box again)
+      out.r27.ask["typed then picked " + reply] = await askCase(JN(), editLc, async (o) => { o.typedNo = await typeNumber("lc", "4"); o.picked = await pickNumber("lc", 2, false); o.asked = await answerQ(reply); });   // 4 typed (Calf raise: no question), then 2 tapped in the picker still open
+      out.r27.ask["reverse " + reply] = await askCase(JN(), editLp, async (o) => { o.picked = await pickNumber("lp", 3); o.asked = await answerQ(reply); });   // the box on Leg press's note; Leg press given 3 (Leg curl, Mia's note: Leg curl stays first, 3a)
+    }
+    for (const reply of ["no", "yes"]) out.r27.ask["typed 3a into the box " + reply] = await askCase(JN(), editLc, async (o) => { o.typedNo = await typeNumber("lp", "3a"); leave(); o.asked = await answerQ(reply); });   // the box on Leg curl's note; 3a typed in Leg press's number box (Leg press, Mia's note, goes first in Leg curl's card), then a tap elsewhere
+    out.r27.ask["add note, no other note"] = await askCase([R("sq", "1", "Back squat", DONE), R("lp", "2", "Leg press"), R("lc", "3", "Leg curl"), R("cr", "4", "Calf raise")], async (o, W) => { await addNote("lc"); o.typed = await typeNote(W, "lc", "Seat one notch lower"); }, async (o) => { o.picked = await pickNumber("lc", 2); o.asked = await answerQ("yes"); });   // Add note on Leg curl and words, no note anywhere; Leg curl given 2 beside Leg press: nothing asked (no other note), joined
+    out.r27.ask["into the box"] = await askCase(JN(), editLc, async (o) => { o.picked = await pickNumber("lp", 3); o.asked = await answerQ("yes"); });   // Leg press (no box) given 3, beside Leg curl and its box: nothing asked, the box stays with Leg curl
+    out.r27.ask["nothing typed"] = await askCase(JN(), async (o, W) => { await seeNote(W, "lc"); await editNote("lc"); }, async (o) => { o.picked = await pickNumber("lc", 2); o.asked = await answerQ("yes"); });   // Edit opened on Leg curl's note, nothing typed: nothing asked, joined
+    out.r27.ask["no other note"] = await askCase(JN(), editLc, async (o) => { o.picked = await pickNumber("lc", 4); o.asked = await answerQ("yes"); });   // Leg curl given 4, beside Calf raise holding no note: nothing asked, the box goes with Leg curl
+    out.r27.ask["coach note"] = await askCase([R("sq", "1", "Back squat", DONE), R("lp", "2", "Leg press", COACHN), R("lc", "3", "Leg curl", CALF), R("cr", "4", "Calf raise")], editLc, async (o) => { o.picked = await pickNumber("lc", 2); o.asked = await answerQ("no"); });   // Leg press holds the coach's own note: the line says "a note"
+    for (const reply of ["yes", "no"]) out.r27.ask["gone " + reply] = await askCase(JN(), editLc, async (o, W, sb) => {   // the question up, Legs deleted on the coach's iPad and a sync passes; then Discard (or Cancel)
+      o.picked = await pickNumber("lc", 2); await advance(400); o.up = sheetNow();
+      sb.tables.ft_trainings.delete(W); await sync(); o.gone = { here: maps.trainings.has(W), view: app.get().view.name };
+      o.asked = await answerQ(reply);
+    });
+
+
+    // ---------- R26-TW-9: the caption's Delete, and an emptied box, over a note deleted under his finger ----------
+    for (const view of ["coach", "client view"]) {
+      for (const reply of ["yes", "no"]) out.r27["delGone " + reply + " " + view] = await run(async (o) => {   // her note on Leg press unfolded; a weight typed into Leg press; she deletes her note; his weight's save merges that under his finger (the card still shows her note); a tap elsewhere; Delete on the note, answered
+        const { sb, W } = await start(view, LPN());
+        await seeNote(W, "lp"); o.w = await typeWeight("lp", "100");
+        dropNote(sb, W, "lp"); await settle(); leave();
+        o.landed = { card: cardWith(W, "lp"), here: here(W), server: server(sb, W) };
+        o.q = await delSays("lp", reply); o.mid = { card: cardWith(W, "lp"), here: here(W), q: sheetNow() };
+        o.after = await later(sb, W, "lp");
+        fns.setPreview(false);
+      });
+      out.r27["emptiedGone " + view] = await run(async (o) => {   // a weight typed into Leg press; her note unfolded, Edit, every word in the box deleted (the caret stays in it); she deletes her note; his weight's save merges that under his finger; Save note
+        const { sb, W } = await start(view, LPN());
+        o.w = await typeWeight("lp", "100"); await seeNote(W, "lp"); await editNote("lp"); o.emptied = await emptyBox("lp");
+        dropNote(sb, W, "lp"); await settle();
+        o.landed = { card: cardWith(W, "lp"), here: here(W), finger: inBox() };
+        o.asked = await saveSays("lp", ["yes", "yes"]); o.mid = { card: cardWith(W, "lp"), here: here(W) };
+        o.after = await later(sb, W, "lp");
+        fns.setPreview(false);
+      });
+    }
+
+    // ---------- v321, the twenty-seventh check round (tests lens, out.r27.tw): a box once saved, at Use here; an exercise gone under his finger; his number typed, then picked, then left ----------
+    out.r27.tw = {};
+    out.r27.tw.savedHand = await run(async (o) => {   // Add note on Leg press, his words, Save note (saved, the box folds away); Use here in another window: nothing kept, no box there
+      const { sb, W } = await live(SS0());
+      await addNote("lp"); o.typed = await typeNote(W, "lp", "Knees out"); leave();
+      o.asked = asks(await saveSays("lp", ["yes"])); await settle(); o.here = here(W); o.boxA = boxed(W);
+      await handOver(); o.kept = keptNow() && keptNow().cards; await newWindow("coach@x.com"); o.boxB = boxed(W);
+    });
+    out.r27.tw.exerciseGone = await run(async (o) => {   // a weight typed into Leg press; See note on Leg curl (2b), Edit, his words, his finger in the box; the iPad deletes Leg curl itself, merged with his weight's save under his finger; words typed on; the cards drawn again
+      const { sb, W } = await live(SS);
+      o.w = await typeWeight("lp", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3");
+      { const s = sb.tables.ft_trainings.get(W); s.data.rows = s.data.rows.filter((x) => x.id !== "lc"); s.data.rows.find((x) => x.id === "lp").label = "2"; bump(s); }
+      await settle(); o.finger = inBox(); o.landed = here(W);
+      o.typed2 = await typeNote(W, "lc", " and more");
+      await redraw(); o.box = boxed(W); o.notes = notesOf(W); o.here = here(W);
+      const rid = boxRid(W); o.asked = rid ? asks(await saveSays(rid, ["yes", "yes"])) : null; await settle(); o.after = here(W); o.server = server(sb, W);
+      o.draftsLeft = notesOf(W).drafts; await handOver(); o.keptAfter = keptNow() && keptNow().cards; await newWindow("coach@x.com"); o.boxB = boxed(W);
+    });
+    out.r27.tw.exerciseGoneHand = await run(async (o) => {   // the same, and Use here in another window while his finger is still in the box (no drawing since): nothing of his Leg curl words opens on Leg press there
+      const { sb, W } = await live(SS);
+      o.w = await typeWeight("lp", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3");
+      { const s = sb.tables.ft_trainings.get(W); s.data.rows = s.data.rows.filter((x) => x.id !== "lc"); s.data.rows.find((x) => x.id === "lp").label = "2"; bump(s); }
+      await settle(); o.finger = inBox(); o.landed = here(W);
+      o.typed2 = await typeNote(W, "lc", " and more");
+      await handOver(); o.kept = keptNow() && keptNow().cards; await newWindow("coach@x.com"); o.boxB = boxed(W);
+    });
+    out.r27.tw.goneLeft = await run(async (o) => {   // (R27-TW-12) a weight typed into Leg press; Add note on the superset 2a Leg press, 2b Leg curl and his words, his finger in the box; her note on Leg curl comes in with his weight's save; words typed on (they go under "gone:"); a tap elsewhere, the cards drawn again; Use here in another window
+      const { sb, W } = await start("coach", SS0());
+      o.w = await typeWeight("lp", "100"); await addNote("lp"); o.typed = await typeNote(W, "lp", "Knees out");
+      putNote(sb, W, "lc", NOTE); await settle(); o.finger = inBox(); o.typed2 = await typeNote(W, "lp", " today");
+      o.box1 = boxed(W); await redraw(); o.box2 = boxed(W); o.drafts = notesOf(W).drafts; o.here = here(W);
+      await handOver(); o.kept = keptNow() && keptNow().cards; await newWindow("coach@x.com"); o.boxB = boxed(W); o.draftsB = notesOf(W).drafts;
+    });
+    out.r27.tw.typedPickedLeft = await run(async (o) => {   // See note on Leg curl (2b), Edit, his words, a tap elsewhere; 3 typed in its number box, then 4 (Calf raise's card) tapped in the picker; a tap elsewhere; Save note where the box is
+      const { sb, W } = await live(SS4());
+      await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3"); leave();
+      o.typedNo = await typeNumber("lc", "3"); o.picked = await pickNumber("lc", 4, false); leave(); await settle();
+      o.cards = look(W).map((c) => c.names + (c.composer != null ? " [box: " + c.composer + "]" : "")); o.box = boxed(W);
+      const rid = boxRid(W); o.asked = rid ? asks(await saveSays(rid, ["yes", "yes"])) : null; await settle(); o.here = here(W); o.server = server(sb, W);
+    });
+    // ---------- v321, the twenty-seventh check round (cards lens, the verifier's cases, out.r27.v): R27-CRD-1 to -6 under the owner's pick "Ask first" ----------
+    out.r27.v = {};
+    {
+      const AN = { clientNote: "Left knee hurts on the way down", clientNoteBy: "client", clientNoteAt: "2026-11-24T15:00:00.000Z" };   // her new note
+      const cardsNow = (W) => look(W).map((c) => c.names + " (" + c.button + ")" + (c.note != null ? " [shown: " + c.note + "]" : "") + (c.composer != null ? " [box: " + c.composer + "]" : ""));
+      const saveBox = async (W, replies) => { const rid = boxRid(W); if (!rid) return { box: false }; return { box: true, asked: asks(await saveSays(rid, replies)) }; };   // Save note where a box is open, every question answered in turn
+      const onServer = (sb, W, f) => { const s = sb.tables.ft_trainings.get(W); f(s.data); bump(s); };   // the other side's write on the server
+      const herSet = (sb, W, rid) => onServer(sb, W, (d) => { const r = d.rows.find((x) => x.id === rid); r.weights = ["40"]; r.repsDone = ["10"]; r.setsDone = 1; r.unit = "lb"; });   // her first set on that exercise
+      const noNote = (d, rid) => { const r = d.rows.find((x) => x.id === rid); delete r.clientNote; delete r.clientNoteBy; delete r.clientNoteAt; };
+      const labels = (d, pairs) => { for (const [id, l] of pairs) d.rows.find((x) => x.id === id).label = l; };
+      // R27-CRD-1: her new note on Leg press (2a) merged by his weight's save under his finger in the weight box; a tap elsewhere (nothing drawn); See note on Leg curl (2b), Edit, his words; then Use here, or Save note in this window
+      for (const then of ["hand", "same"]) out.r27.v["c1 " + then] = await run(async (o) => {
+        const { sb, W } = await start("coach", SS);
+        o.w = await typeWeight("lc", "100"); putNote(sb, W, "lp", AN); await settle(); leave(); await advance(50);
+        await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3");
+        if (then === "hand") { await handOver(); await newWindow("coach@x.com"); }
+        o.box = boxed(W); o.save = await saveBox(W, ["yes", "yes"]); await settle(); o.here = here(W); o.server = server(sb, W);
+      });
+      // R27-CRD-2: his box on Leg curl's note; her Delete of it merged under his finger; words typed on; her new note on Leg press merged under his finger; words typed on; the cards drawn again / Save note / Discard, and drawn again
+      for (const then of ["redraw", "save", "discard"]) out.r27.v["c2 " + then] = await run(async (o) => {
+        const { sb, W } = await start("coach", SS);
+        o.w = await typeWeight("lc", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3"); dropNote(sb, W, "lc"); await settle();
+        o.typed2 = await typeNote(W, "lc", " and more"); o.w2 = await typeWeight("cr", "80"); await typeNote(W, "lc", "");
+        putNote(sb, W, "lp", AN); await settle(); o.typed3 = await typeNote(W, "lc", " (left)");
+        if (then === "redraw") { await redraw(); o.box = boxed(W); }
+        else if (then === "save") { o.save = await saveBox(W, ["yes", "yes"]); await settle(); await redraw(); o.box = boxed(W); }
+        else { await noteButton("lc", "Discard"); o.q = await answer(true); await redraw(); o.box = boxed(W); }
+        await settle(); o.here = here(W); o.server = server(sb, W);
+      });
+      // R27-CRD-3: his edit of her Leg curl note open (a tap elsewhere); 4 typed in Leg curl's number box, the caret left in it; his number's save merges her Start this exercise on Calf raise, or the iPad's Delete of Back squat; a tap elsewhere; Save note
+      for (const [name, change] of [["calf", (d) => labels(d, [["cr", "2"], ["lp", "3a"], ["lc", "3b"]])], ["sq", (d) => { d.rows = d.rows.filter((r) => r.id !== "sq"); labels(d, [["lp", "1a"], ["lc", "1b"], ["cr", "2"]]); }]]) out.r27.v["c3 " + name] = await run(async (o) => {
+        const { sb, W } = await live(SS);
+        await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3"); leave();
+        o.typedNo = await typeNumber("lc", "4"); onServer(sb, W, change); await settle(); o.focus = document.activeElement && document.activeElement.className;
+        leave(); await settle(); o.box = boxed(W);
+        o.save = await saveBox(W, ["yes", "yes"]); await settle(); o.here = here(W); o.server = server(sb, W);
+      });
+      // R27-CRD-3 and "Ask first": JN; his edit of Leg curl's note (Calves tight); a number typed in Leg curl's box, the caret left in it, and a save's merge under the caret; a tap elsewhere, the question answered. 2 typed (Leg press's card, her note) with her set on Calf raise merged: the question still comes. 4 typed (Calf raise's card, no note) with her Start this exercise on Calf raise merged (Calf raise to 2, and Leg curl with it): nothing to ask, and the box goes with Leg curl
+      for (const [name, typed, change, replies] of [["her set", "2", (sb, W) => herSet(sb, W, "cr"), ["no", "yes"]], ["beside her start", "4", (sb, W) => onServer(sb, W, (d) => labels(d, [["cr", "2"], ["lp", "3"], ["lc", "4"]])), ["no"]]]) for (const reply of replies) out.r27.v["ask " + name + " " + reply] = await run(async (o) => {
+        const { sb, W } = await live(JN());
+        await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", stretch first"); leave();
+        o.typedNo = await typeNumber("lc", typed); change(sb, W); await settle();
+        leave(); o.asked = await answerQ(reply); await settle();
+        o.box = boxed(W); { const lab = labelOf("lc"); o.lcBox = lab ? lab.value : null; } o.here = here(W);
+        const rid = boxRid(W); o.save = rid ? asks(await saveSays(rid, ["yes", "yes"])) : null; await settle(); o.after = here(W);
+      });
+      // R27-CRD-4: two notes of hers on the superset (2a Leg press, the card's; 2b Leg curl "Knee ok today"); his edit of Leg press's; her Delete of it merged under his finger, or his own Delete; Save note
+      const TWO = () => [R("sq", "1", "Back squat", DONE), R("lp", "2a", "Leg press", AN), R("lc", "2b", "Leg curl", NOTE), R("cr", "3", "Calf raise")];
+      for (const how of ["her", "own"]) out.r27.v["c4 " + how] = await run(async (o) => {
+        const { sb, W } = await start("coach", TWO());
+        if (how === "her") { o.w = await typeWeight("lp", "100"); await seeNote(W, "lp"); await editNote("lp"); o.typed = await typeNote(W, "lp", " (stop at 90)"); dropNote(sb, W, "lp"); await settle(); }
+        else { await seeNote(W, "lp"); await editNote("lp"); o.typed = await typeNote(W, "lp", " (stop at 90)"); leave(); o.del = await delSays("lp", "yes"); await settle(); }
+        o.save = await saveBox(W, ["yes", "yes"]); await settle(); o.here = here(W); o.server = server(sb, W); await redraw(); o.redrawn = boxed(W);
+      });
+      // R27-CRD-4, the join: JN; his edit of Leg curl's; the iPad joins Leg press and Leg curl (2a, 2b), her Delete of Leg curl's note with it, merged under his finger; Save note
+      out.r27.v["c4 join"] = await run(async (o) => {
+        const { sb, W } = await live(JN());
+        o.w = await typeWeight("lc", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", stretch first");
+        onServer(sb, W, (d) => { noNote(d, "lc"); labels(d, [["lp", "2a"], ["lc", "2b"], ["cr", "3"]]); });
+        await settle(); o.save = await saveBox(W, ["yes", "yes"]); await settle(); o.here = here(W);
+      });
+      // R27-CRD-4, a regroup: his edit of her Leg curl note; her Delete and the iPad's move of Leg curl into Calf raise's card (2 Leg press, 3a Calf raise, 3b Leg curl), merged under his finger; Save note, Cancel; and with his own Delete first (never "meanwhile")
+      for (const how of ["her", "own"]) out.r27.v["c4 regroup " + how] = await run(async (o) => {
+        const { sb, W } = await live(SS);
+        await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3"); leave();
+        if (how === "own") { o.del = await delSays("lc", "yes"); await settle(); }
+        o.w = await typeWeight("lp", "100"); await typeNote(W, "lc", "");
+        onServer(sb, W, (d) => { noNote(d, "lc"); labels(d, [["lp", "2"], ["cr", "3a"], ["lc", "3b"]]); });
+        await settle(); o.save = await saveBox(W, ["no", "no"]); await settle(); o.here = here(W);
+      });
+      // R27-CRD-5: the superset with no note; her note on Leg curl merged by his weight's save under his finger; a tap elsewhere; Add note
+      out.r27.v.c5 = await run(async (o) => {
+        const { sb, W } = await start("coach", SS0());
+        o.w = await typeWeight("lp", "100"); putNote(sb, W, "lc", AN); await settle(); leave(); await advance(50);
+        await addNote("lp"); o.cards = cardsNow(W); o.box = boxed(W);
+      });
+      // R27-CRD-6: his edit of her Leg curl note with words; the iPad's Delete exercise of Leg curl (Leg press 2) merged under his finger; Save note
+      out.r27.v.c6 = await run(async (o) => {
+        const { sb, W } = await live(SS);
+        o.w = await typeWeight("lp", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3");
+        onServer(sb, W, (d) => { d.rows = d.rows.filter((x) => x.id !== "lc"); labels(d, [["lp", "2"]]); });
+        await settle(); o.save = await saveBox(W, ["yes", "yes"]); await advance(50); o.cards = cardsNow(W); o.box = boxed(W); o.here = here(W);
+      });
+    }
+
+    // ---------- v321, the twenty-seventh check round (cards lens, the reviewer's cases, out.r27.rev): R27-CRD-1 to -5 ----------
+    out.r27.rev = {};
+    {
+      const AN = { clientNote: "Left knee hurts on the way down", clientNoteBy: "client", clientNoteAt: "2026-11-24T15:00:00.000Z" };   // her new note
+      const TWO = () => [R("sq", "1", "Back squat", DONE), R("lp", "2a", "Leg press", AN), R("lc", "2b", "Leg curl", NOTE), R("cr", "3", "Calf raise")];   // two notes on one superset card
+      const cardsNow = (W) => look(W).map((c) => c.names + (c.composer != null ? " [box: " + c.composer + "]" : "") + (c.note != null ? " [shown: " + c.note + "]" : "") + " (" + c.button + ")");
+      const regroup = (sb, W, pairs) => { const s = sb.tables.ft_trainings.get(W), r = s.data.rows.find((x) => x.id === "lc"); delete r.clientNote; delete r.clientNoteBy; delete r.clientNoteAt; for (const [id, l] of pairs) s.data.rows.find((x) => x.id === id).label = l; bump(s); };   // her Delete of Leg curl's note, with the iPad's new numbers, on the server
+      // residue: his own Delete of the note on 2b with his box open, then her new note on 2a (her phone writes a card with no note on its first) merged by his weight's save under his finger, words typed on
+      for (const then of ["redraw", "save", "discard"]) out.r27.rev["residue " + then] = await run(async (o) => {
+        const { sb, W } = await start("coach", SS);
+        await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3"); leave();
+        o.del = await delSays("lc", "yes"); o.w = await typeWeight("cr", "100");
+        putNote(sb, W, "lp", AN); await settle();
+        o.typed2 = await typeNote(W, "lc", " and more"); leave();
+        if (then === "redraw") { await redraw(); o.redrawn = boxed(W); o.asked = asks(await saveSays("lp", ["no", "no"])); }
+        else if (then === "save") { o.asked = asks(await saveSays("lc", ["yes", "yes"])); await settle(); o.mid = { box: boxed(W) }; await redraw(); o.redrawn = boxed(W); }
+        else { await noteButton("lc", "Discard"); o.asked = [await answer(true)]; o.mid = { box: boxed(W) }; await redraw(); o.redrawn = boxed(W); }
+        await settle(); o.here = here(W); o.server = server(sb, W);
+      });
+      // twoNotes: her note on 2b (Leg curl) is the card's; Edit with his words; her NEW note on 2a (Leg press) merged under his finger; then Save note here, or Use here and Save note there (and with Cancel first)
+      for (const then of ["same save", "hand-over"]) out.r27.rev["twoNotes " + then] = await run(async (o) => {
+        const { sb, W } = await start("coach", SS);
+        o.w = await typeWeight("lc", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3");
+        putNote(sb, W, "lp", AN); await settle(); o.finger = inBox(); o.landed = { here: here(W) };
+        o.typed2 = await typeNote(W, "lc", " and more");
+        if (then === "hand-over") { await handOver(); o.kept = keptNow(); await newWindow("coach@x.com"); }
+        o.box = boxed(W);
+        const rid = boxRid(W); o.asked = rid ? asks(await saveSays(rid, ["yes", "yes"])) : null; await settle(); o.here = here(W); o.server = server(sb, W);
+      });
+      out.r27.rev["twoNotes cancel hand-over"] = await run(async (o) => {
+        const { sb, W } = await start("coach", SS);
+        o.w = await typeWeight("lc", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3");
+        putNote(sb, W, "lp", AN); await settle();
+        await handOver(); o.kept = keptNow(); await newWindow("coach@x.com");
+        o.box = boxed(W);
+        const rid = boxRid(W); o.asked = rid ? asks(await saveSays(rid, ["no"])) : null;
+        const rid2 = boxRid(W); o.asked2 = rid2 ? asks(await saveSays(rid2, ["yes", "yes"])) : null; await settle(); o.here = here(W); o.server = server(sb, W);
+      });
+      // typedMerge: his number typed (4) over 2b in Leg curl's box, the caret in it; the iPad's Delete of Back squat (1a Leg press, 1b Leg curl, 2 Calf raise), or her Start this exercise on Calf raise, merged by the number's save under his finger; then a tap elsewhere
+      for (const [name, srv] of [["sq deleted", [["lp", "1a"], ["lc", "1b"], ["cr", "2"]]], ["calf starts", [["cr", "2"], ["lp", "3a"], ["lc", "3b"]]]]) out.r27.rev["typedMerge " + name] = await run(async (o) => {
+        const { sb, W } = await live(SS);
+        await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3"); leave();
+        o.typedNo = await typeNumber("lc", "4");
+        { const s = sb.tables.ft_trainings.get(W); if (name === "sq deleted") s.data.rows = s.data.rows.filter((r) => r.id !== "sq"); for (const [id, l] of srv) s.data.rows.find((r) => r.id === id).label = l; bump(s); }
+        await settle(); o.landed = { focus: document.activeElement && document.activeElement.className };
+        leave(); await settle(); o.box = boxed(W);
+        const rid = boxRid(W); o.asked = rid ? asks(await saveSays(rid, ["yes", "yes"])) : null; await settle(); o.here = here(W); o.server = server(sb, W);
+      });
+      // herTwice: her Delete of the note on 2b merged under his finger (his box keeps it, R26-CRD-2), then her new note on 2a merged under his finger too, words typed on after each; the cards drawn again, or Save note at once
+      for (const then of ["redraw", "save"]) out.r27.rev["herTwice " + then] = await run(async (o) => {
+        const { sb, W } = await start("coach", SS);
+        o.w = await typeWeight("lc", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3");
+        dropNote(sb, W, "lc"); await settle();
+        o.typed2 = await typeNote(W, "lc", " and more"); o.w2 = await typeWeight("cr", "80"); await typeNote(W, "lc", "");
+        putNote(sb, W, "lp", AN); await settle();
+        o.typed3 = await typeNote(W, "lc", " (left)");
+        if (then === "redraw") { await redraw(); o.box = boxed(W); const rid = boxRid(W); o.asked = rid ? asks(await saveSays(rid, ["no"])) : null; }
+        else { o.asked = asks(await saveSays("lc", ["yes", "yes"])); await settle(); o.box = boxed(W); await redraw(); o.redrawn = boxed(W); }
+        await settle(); o.here = here(W); o.server = server(sb, W);
+      });
+      // addOther: Add note tapped on the superset (2a Leg press, 2b Leg curl, no note) just after her note on Leg curl came in under his finger (a weight typed into Leg press)
+      out.r27.rev.addOther = await run(async (o) => {
+        const { sb, W } = await start("coach", SS0());
+        o.w = await typeWeight("lp", "100"); putNote(sb, W, "lc", AN); await settle(); leave();
+        o.landed = { cards: cardsNow(W) };
+        await addNote("lp"); o.after = { cards: cardsNow(W), box: boxed(W) };
+      });
+      // regroupSave: a weight typed into Leg curl; See note on Leg curl (2b), Edit, his words, his finger in the box; her Delete and the iPad's move of Leg curl into Calf raise's card (2 Leg press, 3a Calf raise, 3b Leg curl) merged by his weight's save; Save note at once (no drawing between)
+      for (const reply of ["no", "yes"]) out.r27.rev["regroupSave " + reply] = await run(async (o) => {
+        const { sb, W } = await live(SS);
+        o.w = await typeWeight("lc", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3");
+        regroup(sb, W, [["lp", "2"], ["cr", "3a"], ["lc", "3b"]]); await settle();
+        o.asked = asks(await saveSays("lc", [reply, reply])); await settle(); o.here = here(W); o.server = server(sb, W);
+      });
+      // joinDel: R26-CRD-4's join (Leg press and Leg curl joined on the iPad) with her Delete of Leg curl's note in the same change: Save note
+      for (const reply of ["no", "yes"]) out.r27.rev["joinDel " + reply] = await run(async (o) => {
+        const { sb, W } = await live(JN());
+        o.w = await typeWeight("lc", "100"); await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", stretch first");
+        regroup(sb, W, [["lp", "2a"], ["lc", "2b"], ["cr", "3"]]); await settle();
+        o.asked = asks(await saveSays("lc", [reply, reply])); await settle(); o.here = here(W); o.server = server(sb, W);
+      });
+      // twoCard: two notes on one superset card; his edit of the card's note (Leg press's); her Delete of it under his finger (Save note answered Save or Cancel), or his own Delete (answered Save)
+      for (const [how, reply] of [["her delete", "no"], ["her delete", "yes"], ["own delete", "yes"]]) out.r27.rev["twoCard " + how + " " + reply] = await run(async (o) => {
+        const { sb, W } = await start("coach", TWO());
+        if (how === "her delete") { o.w = await typeWeight("lp", "100"); await seeNote(W, "lp"); await editNote("lp"); o.typed = await typeNote(W, "lp", " (stop at 90)"); dropNote(sb, W, "lp"); await settle(); }
+        else { await seeNote(W, "lp"); await editNote("lp"); o.typed = await typeNote(W, "lp", " (stop at 90)"); leave(); o.del = await delSays("lp", "yes"); }
+        o.asked = asks(await saveSays("lp", [reply, reply])); await settle(); o.here = here(W); o.server = server(sb, W); o.after = boxed(W);
+        await redraw(); o.redrawn = boxed(W);
+      });
+      // regroupDrawn: as regroupSave with the box drawn back once first (his words typed, a tap elsewhere, a set tapped on Calf raise), then his finger back in the box
+      out.r27.rev.regroupDrawn = await run(async (o) => {
+        const { sb, W } = await live(SS);
+        await seeNote(W, "lc"); await editNote("lc"); o.typed = await typeNote(W, "lc", ", sore after set 3"); leave();
+        await chip("cr", 2); o.drawn = boxed(W);
+        o.w = await typeWeight("lc", "100"); await typeNote(W, "lc", "");
+        regroup(sb, W, [["lp", "2"], ["cr", "3a"], ["lc", "3b"]]); await settle(); o.finger = inBox();
+        o.asked = asks(await saveSays("lc", ["no", "no"])); await settle(); o.here = here(W); o.server = server(sb, W);
+      });
+    }
+    // ---------- v321, the twenty-eighth check round (the data lens): a merge under his caret in a number box, with a card note box open ----------
+    // R28-DAT-5: Mia's note on Leg curl ("Calves tight") edited, words added, a tap elsewhere; 2 typed in Leg curl's number box (Leg press's card,
+    //   her note "Knee ok today"), the caret left there; her Start this exercise on Calf raise lands and his number's save merges it (Leg curl goes
+    //   with Leg press to 3: 3a Leg press, 3b Leg curl, the box under Leg press's note); a tap elsewhere; Save note. It asked "Replace the note
+    //   written meanwhile?" quoting her Leg press note, and Replace wrote his Leg curl words over it.
+    // R28-DAT-6: the iPad's Delete of Back squat merged under his caret instead (Leg press 1, Leg curl with it, Calf raise 3); "Discard what you
+    //   wrote?" answered Cancel put Leg curl back on 3, which the merge had given Calf raise: 3a Calf raise, 3b Leg curl, a superset nobody made, on
+    //   the server and her phone. The same after her set brought back the exercise he deleted (revive); a warm-up's Cancel keeps it a warm-up.
+    out.r28 = {};
+    {
+      const onSrv = (sb, W, f) => { const s = sb.tables.ft_trainings.get(W); f(s.data); bump(s); };   // the other side's write lands on the server
+      const setLabels = (d, pairs) => { for (const [id, l] of pairs) d.rows.find((x) => x.id === id).label = l; };
+      const boxRid = () => { const b = blocks().find((x) => { const nb = part(x, ".exnote"); return !!nb && !nb.hidden; }); return b ? rowIds(b)[0] : null; };
+      const shared = (rows) => { const by = new Map(); for (const r of rows || []) { const m = /^\s*(\d+|w)/i.exec(String(r && r.label != null ? r.label : "")); if (!m) continue; const k = m[1].toLowerCase(); by.set(k, [...(by.get(k) || []), r.name]); } return [...by].filter(([, v]) => v.length > 1).map(([k, v]) => k + ": " + v.join(" + ")); };   // the numbers two exercises share (a superset)
+      const rowsOn = (sb, W) => ((sb.tables.ft_trainings.get(W) || {}).data || {}).rows || [];
+      const typedCase = (rows, { rid = "lc", to = "2", open, before, other, reply = "no" }) => run(async (o) => {   // a note box opened (open), a tap elsewhere; a number typed, the caret left in its box; the other side's write lands (other) and his number's save merges it under the caret; a tap elsewhere and the question (if any) answered; the cards drawn again; Save note on the box left open
+        const { sb, W } = await live(rows);
+        if (before) await before(o, sb, W);
+        await open(o, W); leave();
+        o.typedNo = await typeNumber(rid, to);
+        if (other) other(sb, W); if (o.offline) { sb.setFail(null); app.set({ offline: false }); fns.flushOne("trainings", W); } await settle(); o.under = here(W);
+        leave(); o.asked = await answerQ(reply); await settle();
+        { const lab = labelOf(rid); o.numberBox = lab ? lab.value : null; }
+        await redraw(); await settle(); o.here = here(W); o.server = server(sb, W); o.sharedHere = shared((maps.trainings.get(W) || {}).rows); o.sharedServer = shared(rowsOn(sb, W));
+        const b = boxRid(); o.save = b ? asks(await saveSays(b, ["yes", "yes"])) : "no box"; await settle(); o.after = here(W); o.serverAfter = server(sb, W);
+      });
+      const JN = () => [R("sq", "1", "Back squat", DONE), R("lp", "2", "Leg press", NOTE), R("lc", "3", "Leg curl", CALF), R("cr", "4", "Calf raise")];   // two cards, each with a note of hers
+      const editOn = (rid, words) => async (o, W) => { await seeNote(W, rid); await editNote(rid); o.typed = await typeNote(W, rid, words); };
+      const herStart = (sb, W) => onSrv(sb, W, (d) => setLabels(d, [["cr", "2"], ["lp", "3"], ["lc", "4"]]));   // her Start this exercise on Calf raise (Back squat finished stays 1)
+      const iPadDel = (sb, W) => onSrv(sb, W, (d) => { d.rows = d.rows.filter((x) => x.id !== "sq"); setLabels(d, [["lp", "1"], ["lc", "2"], ["cr", "3"]]); });   // the iPad's Delete exercise of Back squat
+      for (const reply of ["no", "yes"]) out.r28["dat5 " + reply] = await typedCase(JN(), { open: editOn("lc", ", stretch first"), other: herStart, reply });
+      for (const reply of ["no", "yes"]) out.r28["dat6 " + reply] = await typedCase(JN(), { open: editOn("lc", ", stretch first"), other: iPadDel, reply });
+      // revive: her set on Leg press (the Mac not synced since); his Delete exercise of Leg press with no signal (Leg curl 2, Calf raise 3); then his edit of her Leg curl note and 1 typed in Leg curl's number box (Back squat's card, her note); the signal back: his waiting save merges and brings Leg press back on 2
+      for (const reply of ["no", "yes"]) out.r28["dat6 revive " + reply] = await typedCase([R("sq", "1", "Back squat", { ...DONE, ...NOTE }), R("lp", "2", "Leg press"), R("lc", "3", "Leg curl", CALF), R("cr", "4", "Calf raise")], {
+        to: "1", open: editOn("lc", ", stretch first"), reply,
+        before: async (o, sb, W) => { onSrv(sb, W, (d) => { Object.assign(d.rows.find((x) => x.id === "lp"), { weights: ["40"], repsDone: ["10"], setsDone: 1, unit: "lb", logSeq: 1 }); }); sb.setFail({ times: 1e6, message: "Failed to fetch" }); o.del = await delEx("lp"); o.offline = true; },
+      });
+      // a warm-up: Add note on Bike (W) and words, a tap elsewhere; 1 typed in its number box (Back squat's card, her note); the iPad makes Calf raise a warm-up too (Wa Bike, Wb Calf raise) and his number's save merges it; Cancel: Bike stays a warm-up (beside Calf raise), never a numbered card of its own
+      out.r28["dat6 warm-up no"] = await typedCase([R("bk", "W", "Bike"), R("sq", "1", "Back squat", { ...DONE, ...NOTE }), R("lc", "2", "Leg curl"), R("cr", "3", "Calf raise")], {
+        rid: "bk", to: "1", open: async (o, W) => { await addNote("bk"); o.typed = await typeNote(W, "bk", "Seat one notch higher"); }, reply: "no",
+        other: (sb, W) => onSrv(sb, W, (d) => { d.rows.find((x) => x.id === "bk").label = "Wa"; d.rows.find((x) => x.id === "cr").label = "Wb"; }),   // (the iPad's picker W on Calf raise, its page's tidy: Wa Bike, Wb Calf raise)
+      });
+    }
+  }
 
   // ---------- R24-CRD-6 (last: main.js's own boot): the coach's session ends elsewhere with his work still to send, and someone signs in on that page ----------
   out.r24.switch = {};

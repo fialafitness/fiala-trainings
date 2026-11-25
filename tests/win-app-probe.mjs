@@ -59,8 +59,10 @@ await W.winHooks.handOver();
 const kept = JSON.parse(localStorage.getItem("fiala.kept") || "null");
 out.kept = kept && { owner: kept.owner, tab: kept.tab === W.winTab(), text: kept.text, cards: kept.cards, bases: kept.bases, notes: kept.notes };
 out.sheetClosed = $("textSheet").hidden === true;
-// a new start of the page (the window Fiala moved to): the maps empty, then the words taken back once
+// a new start of the page (the window Fiala moved to): the maps empty, then the words taken back once (v321, R26-WAP-6: that window is another page,
+// with a tab of its own: a page never takes back its own kept words, which are on its page already)
 for (const m of [k.keptText, k.noteDraft, k.cardNoteDraft, k.cardNoteBase]) m.clear();
+{ const r = JSON.parse(localStorage.getItem("fiala.kept") || "null"); if (r) { r.tab = "window-A"; localStorage.setItem("fiala.kept", JSON.stringify(r)); } }
 fns.takeKept(COACH);
 out.taken = { notes: [...k.noteDraft], cards: [...k.cardNoteDraft], bases: [...k.cardNoteBase], text: [...k.keptText], left: localStorage.getItem("fiala.kept") };
 fns.editText({ keep: "safety:" + C + "/limits", title: "Injuries and limits", value: "Left knee", onSave: () => {} });

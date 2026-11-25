@@ -347,8 +347,9 @@ test("the coach's page is open with his template's new name typed (the Unsaved c
   const o = ofR25("resetHere");
   assert.deepStrictEqual([o.launched, o.typed], [true, { draft: "unsaved", stored: TYPED, bar: true, marked: true, copyTyped: false, at: { as: "the coach", view: "Upper A", drawn: "Upper A", login: false } }], "(the setup: his typing in Upper A, the bar up): " + JSON.stringify(o));
   const page = ({ as, ...rest }) => rest;
-  assert.deepStrictEqual(page(o.newPassword), { signedIn: false, shown: ["vRecovery"], bar: false }, "New password came up with the coach's Unsaved changes bar, or with his page still signed in behind it: " + JSON.stringify(o.newPassword));
-  assert.deepStrictEqual(page(o.afterFocus), { signedIn: false, shown: ["vRecovery"], bar: false, reads: 0, records: 6, draft: "unsaved", stored: TYPED, marked: false, copyTyped: false }, "behind New password a sync ran as the coach under her link's session: " + JSON.stringify(o.afterFocus));
+  assert.deepStrictEqual(o.failed, { failed: true, banner: true }, "(the setup, v321: R26-TW-9) a save of his refused for good, its banner up: " + JSON.stringify(o.failed));
+  assert.deepStrictEqual(page(o.newPassword), { signedIn: false, shown: ["vRecovery"], bar: false, banner: false }, "New password came up with the coach's Unsaved changes bar or his Couldn't save banner, or with his page still signed in behind it: " + JSON.stringify(o.newPassword));
+  assert.deepStrictEqual(page(o.afterFocus), { signedIn: false, shown: ["vRecovery"], bar: false, banner: false, reads: 0, records: 6, draft: "unsaved", stored: TYPED, marked: false, copyTyped: false }, "behind New password a sync ran as the coach under her link's session, or his banner came back: " + JSON.stringify(o.afterFocus));
 });
 
 test("the coach half types a private note about Jane in her Notes tab (\"" + PRIVATE + "\"), his change of her phone waits, and his session ends elsewhere; Jane signs in on that page: her page's notes box holds none of his words (the box is the coach's only, hidden from her by the page's style, but its words were in her page); the coach signing in again finds them still there (the twenty-fifth check round, R25-TW-10: no test caught the account switch keeping his note)", () => {

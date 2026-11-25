@@ -9,13 +9,14 @@ const app = await load(); const { fns, maps } = app;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const COACH = "coach@x.com", JANE = "jane@x.com", C = "c1", W = "w1";
 const sb = makeSupabase(); sb.tables.trainers = new Map();
-sb.seed("ft_clients", C, { id: C, name: "Jane Testperson", unit: "lb", email: JANE });
+const AGREED = { health: { state: "agreed", at: "2026-11-18T17:00:00.000Z", by: "client" } };   // (v321: her health details shared, so the coach's words about them may be kept: the start's redraw, R26-WAP-4, drops words about details not shown, R26-WAP-2)
+sb.seed("ft_clients", C, { id: C, name: "Jane Testperson", unit: "lb", email: JANE, choices: AGREED });
 sb.seed("ft_trainings", W, { id: W, clientId: C, title: "Legs", date: "2026-11-27", createdAt: "2026-11-10T16:00:00.000Z", completedAt: null, skippedAt: null, rows: [{ id: "sq", label: "1", name: "Back squat", sets: 4, reps: "8", weights: [], repsDone: [], setsDone: 0, done: false, note: "", alts: [], unit: "lb" }] }, { client_id: C });
-sb.rpcs.client_my_data = async () => ({ clients: [{ id: C, data: { id: C, name: "Jane Testperson", unit: "lb", email: JANE } }], trainings: [{ id: W, data: JSON.parse(JSON.stringify(sb.tables.ft_trainings.get(W).data)), updated_at: sb.tables.ft_trainings.get(W).updated_at }] });
+sb.rpcs.client_my_data = async () => ({ clients: [{ id: C, data: { id: C, name: "Jane Testperson", unit: "lb", email: JANE, choices: AGREED } }], trainings: [{ id: W, data: JSON.parse(JSON.stringify(sb.tables.ft_trainings.get(W).data)), updated_at: sb.tables.ft_trainings.get(W).updated_at }] });
 sb.auth.onAuthStateChange = () => ({ data: { subscription: { unsubscribe() {} } } });
 let release = null; sb.auth.getSession = () => new Promise((r) => { release = () => r({ data: { session: { user: { email: JANE } } }, error: null }); });
 localStorage.setItem("fiala.trainings.role", JSON.stringify({ email: COACH, role: "trainer" }));
-localStorage.setItem("fiala.trainings.v1", JSON.stringify({ clients: [{ id: C, name: "Jane Testperson", unit: "lb", email: JANE }], trainings: [JSON.parse(JSON.stringify(sb.tables.ft_trainings.get(W).data))], savedAt: Date.now() }));
+localStorage.setItem("fiala.trainings.v1", JSON.stringify({ clients: [{ id: C, name: "Jane Testperson", unit: "lb", email: JANE, choices: AGREED }], trainings: [JSON.parse(JSON.stringify(sb.tables.ft_trainings.get(W).data))], savedAt: Date.now() }));
 localStorage.setItem("fiala.kept", JSON.stringify({ owner: COACH, tab: "x", at: 1, text: { "safety:c1/limits": "typed by the coach" }, cards: [[W + "/1", "his card note"]], bases: [], notes: [[C, "Private: knee surgery in March"]] }));
 globalThis.supabase = { createClient: () => sb };
 await fns.boot();                                                          // the session slow: after 4 s the app carries on offline as the coach

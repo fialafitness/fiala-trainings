@@ -60,7 +60,7 @@ async function cacheGet(cid, v) { try { if (!hasCaches()) return null; const r =
 async function cachePut(cid, v, blob, ep = epoch) {
   try {
     if (!hasCaches() || ep !== epoch) return; const c = await caches.open(CACHE), folder = new URL("./__photos/" + cid + "/", location.href).href;
-    if (ep !== epoch) return;                                                       // signed out while the cache opened: nothing goes in
+    if (ep !== epoch || winLost()) return;                                          // signed out while the cache opened: nothing goes in; v321 (the twenty-sixth check round, R26-WAP-8): nor from a window that lost Fiala (the cache is every window's: it took the window in use's new photo out)
     for (const req of await c.keys()) if (req.url.startsWith(folder) && req.url !== cacheKey(cid, v)) await c.delete(req);   // the version it replaces goes
     if (ep !== epoch) return;
     await c.put(cacheKey(cid, v), new Response(blob, { headers: { "content-type": "image/jpeg" } }));
@@ -254,6 +254,7 @@ export async function resetPhotos() {     // signed out: nothing of this account
 async function prunePhotos() {           // v316 (the check rounds: the policies promise deletion from the coach's devices): once this session has the server's whole copy, a photo kept on this device for a client no longer here (deleted here or on another device), or a version the record no longer points at (removed or replaced), goes from the device too
   if (!S.syncedOnce || !hasCaches()) return; const ep = epoch, c = await caches.open(CACHE); if (ep !== epoch) return;
   for (const req of await c.keys()) {
+    if (winLost()) return;                                             // v321 (the twenty-sixth check round, R26-WAP-8): a pass running as Fiala moved to another window prunes nothing (the cache is every window's)
     const m = /\/__photos\/([^/]+)\/([^/]+)\.jpg$/.exec(req.url); if (!m) continue; const [, cid, v] = m, rec = clients.get(cid), q = queue.get(cid);
     if ((rec && rec.photo === v) || (q && q.v === v)) continue;
     await c.delete(req); const u = urls.get(cid + "/" + v); urls.delete(cid + "/" + v); if (typeof u === "string" && u.startsWith("blob:") && typeof URL !== "undefined" && URL.revokeObjectURL) URL.revokeObjectURL(u);
@@ -285,9 +286,10 @@ async function mark(cid, v) {             // the record learns the new version (
   return true;
 }
 async function sendAll() {
+  if (S.pendingOwner && S.sessionEmail && S.pendingOwner !== S.sessionEmail) return false;   // v321 (the twenty-sixth check round, R26-PRV-5): the work waiting on the device is another account's (the next account's role check is out, or Couldn't reach the server): no pass until the account switch decides (it drops them; Sign out there keeps them for their own account); the browser's online event dropped the last account's waiting photo before anyone decided
   if (qOwner && S.sessionEmail && qOwner !== S.sessionEmail) { queue.clear(); trash = []; purge = []; qOwner = ""; saveQueue(); return true; }   // another account's leftovers are not sent as this one
   if (!S.sb || !S.sb.storage || !S.signedIn) return false;
-  const ep = epoch, lost = () => ep !== epoch || !S.signedIn;   // v316 (the check rounds): signed out during a request (a refresh refused mid-pass): nothing it answered counts
+  const ep = epoch, lost = () => ep !== epoch || !S.signedIn || winLost();   // v316 (the check rounds): signed out during a request (a refresh refused mid-pass): nothing it answered counts; v321 (the twenty-sixth check round, R26-WAP-8): nor once Fiala has moved to another window (its mark put her first pick back over the one made there)
   const store = S.sb.storage.from(BUCKET);
   if (!S.clientMode) for (const cid of [...purge]) {                   // deleted clients: everything in the folder, whatever this phone knew of it
     let res; try { res = await withTimeout(store.list(cid, { limit: 1000 }), 15000); } catch (err) { res = { error: err }; }
