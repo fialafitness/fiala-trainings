@@ -66,6 +66,40 @@ test("the PDF's Best is the heavier of two sets the same within 0.06 kg, so it n
   const { text } = checkPdf(fns.buildReport("2026-10", null, c).bytes);
   const cells = [...text.matchAll(/\(([^)]*lb[^)]*)\)/g)].map((m) => m[1]); assert.deepStrictEqual(cells.slice(0, 3), ["134.9 lb × 5", "135 lb × 5", "135 lb × 5"], "START, END, BEST: BEST is 135 lb, as END");
 });
+// v322 (the outside audit of 20 Nov 2026, its #9): the Progress table's lines as the PDF holds them: EXERCISE, SESSIONS, START, END, BEST (the built-in font writes the dash of an exercise done once as "?")
+const progRows = (text) => { const cells = [...text.matchAll(/\(((?:[^()\\]|\\.)*)\)/g)].map((m) => m[1]), from = cells.indexOf("BEST") + 1, to = cells.indexOf("Sessions", from), out = []; for (let i = from; i + 4 < to; i += 5) out.push(cells.slice(i, i + 5)); return out; };
+const onDay = (t, d, rows) => Object.assign(t, { date: d, completedAt: new Date(d + "T18:00:00").toISOString(), skippedAt: null, rows });   // fixed days in October 2026: the order holds on any day the tests run
+const set1 = (id, name, reps, w, done) => ({ id, name, reps, setsDone: 1, weights: [w], repsDone: [done], unit: "lb" });
+test("(v322, the outside audit's #9) an exercise planned in metres, then in seconds, has a line for each in the monthly report: a 40 m carry is never printed as 40 sec, nor compared with a hold", () => {
+  const c = seed(), a = maps.trainings.get("a"), b = maps.trainings.get("b");
+  onDay(a, "2026-10-06", [set1("r1", "Farmer carry", "40 m", "45", "40"), set1("r2", "Back squat", "5", "140", "5")]);
+  onDay(b, "2026-10-14", [set1("r3", "Farmer carry", "30 sec", "45", "30"), set1("r4", "Back squat", "5", "145", "5")]);
+  const { text } = checkPdf(fns.buildReport("2026-10", null, c).bytes);
+  assert.deepStrictEqual(progRows(text), [["Back squat", "2", "140 lb × 5", "145 lb × 5", "145 lb × 5"], ["Farmer carry", "1", "45 lb × 40 m", "?", "45 lb × 40 m"], ["Farmer carry", "1", "45 lb × 30 sec", "?", "45 lb × 30 sec"]],
+    "the carry in metres and the carry in seconds each on a line of their own, the older first; an exercise of one kind as before");
+  assert.ok(!text.includes("40 sec") && !text.includes("30 m"), "no result under the other plan's unit, anywhere in the report (it printed 45 lb × 40 sec as the start and the best)");
+});
+test("(v322, the outside audit's #9) reps before a hold, and a hold before reps: each keeps its own words in the monthly report (10 reps was printed as 10 sec, a 45-second hold as 45 reps)", () => {
+  const c = seed(), a = maps.trainings.get("a"), b = maps.trainings.get("b");
+  onDay(a, "2026-10-06", [set1("r1", "Plank", "10", "", "10")]); onDay(b, "2026-10-14", [set1("r3", "Plank", "45 sec", "", "45")]);
+  const first = checkPdf(fns.buildReport("2026-10", null, c).bytes).text;
+  assert.deepStrictEqual(progRows(first), [["Plank", "1", "10 reps", "?", "10 reps"], ["Plank", "1", "45 sec", "?", "45 sec"]], "reps, then the hold");
+  assert.ok(!first.includes("10 sec") && !first.includes("45 reps"), "neither under the other's unit");
+  onDay(a, "2026-10-06", [set1("r1", "Plank", "45 sec", "", "45")]); onDay(b, "2026-10-14", [set1("r3", "Plank", "10", "", "10")]);
+  const second = checkPdf(fns.buildReport("2026-10", null, c).bytes).text;
+  assert.deepStrictEqual(progRows(second), [["Plank", "1", "45 sec", "?", "45 sec"], ["Plank", "1", "10 reps", "?", "10 reps"]], "the hold, then reps");
+  assert.ok(!second.includes("45 reps") && !second.includes("10 sec"), "neither under the other's unit");
+});
+test("(v322) holds planned in minutes and in seconds still share one line of the monthly report, in seconds, and an exercise's lines stay together, placed by all its sessions that month", () => {
+  const c = seed(), a = maps.trainings.get("a"), b = maps.trainings.get("b");
+  onDay(a, "2026-10-06", [set1("r1", "Plank", "1 min", "", "1")]); onDay(b, "2026-10-14", [set1("r3", "Plank", "90 sec", "", "90")]);
+  assert.deepStrictEqual(progRows(checkPdf(fns.buildReport("2026-10", null, c).bytes).text), [["Plank", "2", "60 sec", "90 sec", "90 sec"]], "one line: a minute is 60 seconds, and 90 seconds is the end and the best");
+  onDay(a, "2026-10-06", [set1("r1", "Farmer carry", "40 m", "45", "40"), set1("r2", "Back squat", "5", "140", "5")]);
+  onDay(b, "2026-10-14", [set1("r3", "Farmer carry", "40 m", "45", "50"), set1("r4", "Back squat", "5", "145", "5")]);
+  maps.trainings.set("x", onDay({ id: "x", clientId: "c1", title: "Carry", createdAt: "2026-10-01T10:00:00.000Z" }, "2026-10-20", [set1("r5", "Farmer carry", "30 sec", "45", "30")]));
+  assert.deepStrictEqual(progRows(checkPdf(fns.buildReport("2026-10", null, c).bytes).text).map((r) => r.slice(0, 3)), [["Farmer carry", "2", "45 lb × 40 m"], ["Farmer carry", "1", "45 lb × 30 sec"], ["Back squat", "2", "140 lb × 5"]],
+    "the carry's three sessions put both its lines first, together, the one with more sessions on top; the squat's two after them");
+});
 test("(v307, the audit's #6) his private notes are left out of the report unless he asks for them: no Notes section at all by default; with { notes: true } they are there, under their heading", () => {
   const c = seed();
   const off = checkPdf(fns.buildReport("month", null, c).bytes).text, fromSheet = checkPdf(fns.buildReport("month", null, c, { notes: false }).bytes).text;

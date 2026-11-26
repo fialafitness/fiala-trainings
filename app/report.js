@@ -38,11 +38,12 @@ export function buildReport(kind, fonts, c, allTrainings, opts) {               
   const wOf = (st) => weightIn(String(st.w), st.u || unit, unit) + " " + unit;   // v301: every weight in the client's unit at one decimal, as the screens show it (135 lb reads 61.2 kg)
   const fmtSet = (st, tm) => tm ? (st.w != null ? wOf(st) + " × " : "") + (st.rp != null ? st.rp + " " + tm.unit : "–")   // "30 sec", "50 lb × 30 sec"
     : (st.w != null ? wOf(st) + (st.rp != null ? " × " + st.rp : "") : (st.rp != null ? st.rp + (st.rp === 1 ? " rep" : " reps") : "–"));
-  const prog = new Map();
+  const prog = new Map(), kindOf = (tm) => (!tm ? "reps" : tm.unit === "m" ? "m" : "time");   // a result is reps, a hold or a carry, as the Progress tab sorts them (model.js liftsOf)
   for (const x of sessions) if (x.completedAt) for (const row of x.rows || []) {
     let top = topSet(row); const name = String(row.name || "").trim(); if (!top || !name) continue;
-    const k = name.toLowerCase(); let tm = measurePlan(row.reps); top.u = row.unit || unit; if (tm && tm.unit === "min") { top = toTimeUnit(top, "min", "sec"); tm = { ...tm, unit: "sec" }; }   // one unit per column: the client's weight unit, holds in seconds
-    if (!prog.has(k)) prog.set(k, { name, first: top, last: top, best: top, n: 0, tm });
+    let tm = measurePlan(row.reps); top.u = row.unit || unit; if (tm && tm.unit === "min") { top = toTimeUnit(top, "min", "sec"); tm = { ...tm, unit: "sec" }; }   // one unit per column: the client's weight unit, holds in seconds
+    const nk = name.toLowerCase(), k = nk + "\n" + kindOf(tm);   // v322 (the outside audit of 20 Nov 2026, its #9): a line for each kind of result an exercise has that month. One line, labelled by its newest plan, printed a carry of 40 m planned in seconds since as "40 sec", and 10 reps before a 45-second hold as "10 sec"; a start in metres was compared with an end in seconds
+    if (!prog.has(k)) prog.set(k, { name, nk, first: top, last: top, best: top, n: 0, tm });
     const e = prog.get(k); e.n++; e.last = top; e.name = name; e.tm = tm; if (better(top, e.best, !!tm) || (same(top, e.best) && kgOf(top) > kgOf(e.best))) e.best = top;   // the same weight in two units: the heavier is the best, as the app's Best
   }
   doc.section("Progress");
@@ -51,7 +52,8 @@ export function buildReport(kind, fonts, c, allTrainings, opts) {               
     const col = { name: M, n: M + 186, start: M + 235, end: M + 326, best: M + 417 };   // v301: the set cells 87 wide, for one decimal ("20.4 kg × 120 sec" bold), the name 180
     doc.row([{ x: col.name, text: "EXERCISE" }, { x: col.n, text: "SESSIONS" }, { x: col.start, text: "START" }, { x: col.end, text: "END" }, { x: col.best, text: "BEST" }].map((h) => ({ ...h, size: 8, color: grey })), { size: 8, gap: 2 });
     doc.rule();
-    for (const e of [...prog.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name))) {
+    const progLines = [...prog.values()], doneOf = (e) => progLines.reduce((n, o) => n + (o.nk === e.nk ? o.n : 0), 0);   // v322: an exercise's lines stay together, placed by all its sessions that month (one kind: the order as before)
+    for (const e of progLines.sort((a, b) => doneOf(b) - doneOf(a) || a.nk.localeCompare(b.nk) || b.n - a.n)) {
       const up = e.n > 1 && !same(e.first, e.last) && better(e.last, e.first, !!e.tm);
       doc.row([{ x: col.name, text: e.name, bold: true, maxW: 180 }, { x: col.n, text: String(e.n), color: soft }, { x: col.start, text: fmtSet(e.first, e.tm), color: soft, maxW: 87 }, { x: col.end, text: e.n > 1 ? fmtSet(e.last, e.tm) : "–", color: up ? fern : soft, bold: up, maxW: 87 }, { x: col.best, text: fmtSet(e.best, e.tm), color: soft, maxW: 87 }], { size: 10, gap: 7 });
     }
