@@ -173,6 +173,14 @@ if (MODE === "swipe") {
   await swipe("refused");
   out.refused.moves = moves.slice();
   for (const t of maps.timers.values()) clearTimeout(t);
+  // (v318) a tap on the switch's own glass, in a notch between the halves' round ends: the half under the finger
+  app.set({ view: { name: "training", id: "w2" }, renderedTraining: null }); fns.setPreview(false); fns.render(); await wait(10);
+  seg.closest = () => null; seg.getBoundingClientRect = () => ({ left: 137, right: 265, top: 0, bottom: 44, width: 128, height: 44 });
+  seg.querySelector = (s) => ({ dataset: { view: /client/.test(s) ? "client" : "coach" } });
+  seg.fire("click", { target: seg, clientX: 196 }); await wait(10); const left = body.classList.contains("client");
+  seg.fire("click", { target: seg, clientX: 206 }); await wait(10); const right = body.classList.contains("client");
+  seg.fire("click", { target: { closest: () => ({ dataset: { view: "coach" } }) }, clientX: 250 }); await wait(10);
+  out.notch = { left, right, onButton: !body.classList.contains("client") };
 }
 console.log(JSON.stringify(out));
 process.exit(0);

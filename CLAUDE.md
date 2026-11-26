@@ -60,7 +60,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 
 ### The release number
 
-- N is the number in `main.js?v=N` in `index.html`'s module script (`oneWindow(() => import("./app/main.js?v=N").then((m) => m.boot()))`, 317 at the time of writing).
+- N is the number in `main.js?v=N` in `index.html`'s module script (`oneWindow(() => import("./app/main.js?v=N").then((m) => m.boot()))`, 318 at the time of writing).
 - Any change to `index.html` or an `app/*.js` file raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -176,9 +176,9 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
     Placement:
     - It is centred without a transform: the swipe back's fade of the bar's buttons sets one. It is in `GLASS` and `barFor`, so it goes and comes with the bar's other buttons.
     - Its box is the bar's (`header .bar { position: relative; }`), the same place the header would give (both begin at the clock strip's edge), kept so the switch never depends on the header's 75% width.
-    - Narrower than 384 points (an SE, a mini, Display Zoom), it follows the back circle in the row instead (halves 52 at 13; the status beside Messages at 11, gone under 360): centred, it came within 12 of the Messages circle, and ran under it at 320.
+    - Narrower than 384 points (an SE, a mini, Display Zoom), it follows the back circle in the row instead (halves 52 at 13; the status beside Messages at 11, gone at 370 and less, the switch then kept to the back circle; v318): centred, it came within 12 of the Messages circle, and ran under it at 320.
     - The swipe back fades Saved with the buttons between a bar with the switch and one without (`stFlip`), and a slide along the switch starts none (`NO_SWIPE`).
-    - With it up, the status ("Saved") sits after the back circle, never under it (`.view-seg:not([hidden]) ~ #status`), in points (13, as the switch: a larger Text Size cut it in rem), on two lines for a longer message (Offline · will sync, Couldn't save), trimmed past that.
+    - With it up, the status ("Saved") sits after the back circle, never under it (`.view-seg:not([hidden]) ~ #status`), in points (13, as the switch: a larger Text Size cut it in rem), on two lines for a longer message (Offline · will sync, Couldn't save), trimmed past that; at 11 from 384 to 401 (the 390- and 393-point iPhones: at 13 a word lost a letter in Safari; v318). A tap on the glass in the notch the halves' round ends leave at the top or foot of the join takes the half it is in (v318).
     - The bar at the foot keeps the coach's + alone, the client page's round + (`#addExBtn`, no pill), at the trailing edge as on the Templates pages (`#dock.ws`).
 - A workout the coach opens comes up in the view set in the coach's Settings, "Open workouts in: Coach | Client" (v284, `openAs`, kept per device in `fiala.openAs`): `go()` sets `previewClient` when a workout page opens, except for a brand-new one (`freshWorkout`, set by `addTraining` and `fillFromTemplate`, and a return from choosing a template for it) and for templates; the same workout drawn again keeps what the coach switched to. A workout page opened anew takes this tab's own view from `sessionStorage` (`fiala.preview`, "1" or "0"), else the setting (`firstPreview`, in `boot`). The swipe back shows a page's picture only in the look Back lands in (`lookBack`, keep it in step with `go()`): a workout shown as the client goes back over its client's page in the coach's look.
 - Copy workout (a workout's `…`, the preview's `…`) asks the client, then the day in that client's calendar ("Copy to <name>", `copyDay`); the copy goes on that day and opens.
@@ -283,7 +283,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v317 it ends "1400 passed, 0 failed" after about 5 minutes (most of it the probes' real timers).
+- At v318 it ends "1401 passed, 0 failed" after about 5 minutes (most of it the probes' real timers).
 - Run it under other time zones too (`TZ=Asia/Tokyo node tests/run.js`): no test may depend on the computer's own zone (v315: one did, and failed only in Tokyo). Before a release, nine zones, one for each kind of trouble date code meets: America/Los_Angeles (home: the coach's Mac and the server's day), Asia/Tokyo (a day ahead of Los Angeles most evenings, no daylight saving), Europe/Paris (daylight saving on other dates than the US's), Pacific/Honolulu (behind Los Angeles: still yesterday), Pacific/Kiritimati (+14, the earliest clock), Pacific/Pago_Pago (-11, the latest), Asia/Kolkata (+5:30, a half hour), Asia/Kathmandu (+5:45, three quarters) and Australia/Sydney (southern daylight saving, the opposite season). Two at a time, each takes about 5 minutes.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 

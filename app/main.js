@@ -6045,7 +6045,7 @@ import { winLost, winHooks, winTab } from "./win.js";   // v316: one window at a
   }
 
   // ---------- events ----------
-  $("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (!b) return; previewClient = b.dataset.view === "client"; rememberPreview(); S.renderedTraining = null; render(); });
+  $("viewSeg").addEventListener("click", (e) => { const sg = $("viewSeg"); let b = e.target.closest("button[data-view]"); if (!b && e.target === sg) { const r = sg.getBoundingClientRect(); b = sg.querySelector('button[data-view="' + (e.clientX < r.left + r.width / 2 ? "coach" : "client") + '"]'); } if (!b) return; previewClient = b.dataset.view === "client"; rememberPreview(); S.renderedTraining = null; render(); });   // v318 (the v317 second pass): a tap on the glass where the halves' round ends leave a notch, at the top or the foot of the join, takes the half it is in (it did nothing)
   $("clientForm").addEventListener("submit", (e) => { e.preventDefault(); const n = $("clientName").value.trim(); if (!n) return; $("clientName").value = ""; addClient(n); });
   $("cNameField").addEventListener("input", (e) => { const c = clients.get(S.view.id); if (!c) return; c.name = e.target.value; $("cName").textContent = c.name; paintHeroes(); paintMeDisc(); $("cardName").textContent = c.name || "Client"; scheduleSave("clients", c.id); });
   // the photo at the top of a client's page: the coach on any client, the client on her own (on her Profile tab). Last change wins.

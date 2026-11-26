@@ -144,7 +144,8 @@ test("(v317) Coach | Client in the top bar, centred: his pick B of 25 Nov 2026 (
   assert.strictEqual((html.match(/--bar-lens: rgba\(0,0,0,0\.72\);/g) || []).length, 2, "dark: darker than the glass too (Apple's #090909 on #202020), in both dark blocks");
   assert.ok(html.includes("  .view-seg:not([hidden]) ~ #status { flex: 0 1 auto; margin-right: auto; max-width: calc(min(340px, 50vw) - 148px); text-align: left; font-size: 13px; line-height: 15px; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }"), "Saved after the back circle, the bar's 12 short of the switch, never under it; in points (never cut by a larger Text Size), and two lines for Offline · will sync or Couldn't save (the v317 check round)");
   assert.ok(html.includes('  @media (max-width: 383px) { .bar > .view-seg { position: relative; left: auto; right: auto; margin: 0; flex: none; } .bar > .view-seg button { width: 52px; font-size: 13px; } .bar > .view-seg::before { width: 44px; } .bar > .view-seg[data-on="client"]::before { transform: translateX(52px); } .view-seg:not([hidden]) ~ #status { flex: 1 1 auto; max-width: none; margin-right: 0; text-align: right; font-size: 11px; line-height: 13px; } }'), "narrower than 384: the switch follows the back circle, smaller, the status beside Messages (centred, it ran under the Messages circle at 320)");
-  assert.ok(html.includes("  @media (max-width: 359px) { .view-seg:not([hidden]) ~ #status { display: none; } }"), "320 wide: no words beside it");
+  assert.ok(html.includes("  @media (min-width: 384px) and (max-width: 401px) { .view-seg:not([hidden]) ~ #status { font-size: 11px; line-height: 13px; } }"), "(v318) the 390- and 393-point iPhones: the narrow row's 11 beside the centred switch (at 13, Saving… and Couldn't lost a letter)");
+  assert.ok(html.includes("  @media (max-width: 370px) { .view-seg:not([hidden]) ~ #status { display: none; } .bar > .view-seg { margin-right: auto; } }"), "(v318) 370 wide and less: no words beside it, and the switch keeps to the back circle");
 });
 
 test("(v317) the switch shows on the coach's own workouts in either view, its lens on the side chosen; never on a template, in the client's app or over another page; the swipe back's bar agrees and fades it with the other buttons", () => {
@@ -169,6 +170,10 @@ test("the bar's place: the round + at the trailing edge, 21 in, kept to the page
   assert.ok(html.includes("body.wsdock:not(.client) #vTraining { padding-bottom: 100px; }"), "the last thing on the page clears the +, in his own look only: his Client view has nothing at its foot (the v317 check round: 100 points of nothing)");
   assert.ok(html.includes("body.draft #dock { bottom: calc(79px + env(safe-area-inset-bottom, 0px)); }"), "14 above the Unsaved changes bar");
   assert.match(html, /\.dock-add \{ flex: none;/, "the + never gives way");
+});
+
+test("(v318) a tap on the switch's glass where the halves' round ends leave a notch (top or foot of the join) takes the half it is in; a tap on a half as before", () => {
+  assert.deepStrictEqual(swipe.notch, { left: false, right: true, onButton: true }, "left of the middle: Coach; right of it: Client; a half itself still decides by its own data-view");
 });
 
 test("typing on a phone: the bar gives the keyboard the bottom, from the + on; it is back once the field is let go", () => {
