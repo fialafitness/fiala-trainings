@@ -9,7 +9,7 @@
 //     words on white by about 13 in light;
 //   - the chosen tab's capsule darkens the glass under it, 4 points in, with no rim; the bar is 21 points from the screen's foot.
 // The glass is two layers behind the tabs and the + (::before the frost, ::after the tone and the lit edge), so the buttons' markup and
-// every count of the bar's children stay as they were. Checked in the simulator's WebKit against Fitness's own bar and in headless Chrome.
+// every count of the bar's children stay as they were. v320: the layers sit at z-index 0 with the tabs and the + sign at 1 above them. Checked in the simulator's WebKit against Fitness's own bar and in headless Chrome.
 // This file pins the numbers by working the layers out as a browser does (the measured rules: a layer's opacity blends its filtered
 // backdrop with the sharp one, a later layer's backdrop takes in the earlier one's result, brightness cuts at white).
 import fs from "node:fs";
@@ -46,10 +46,22 @@ test("the bar and the round + have no fill, filter or opacity of their own: the 
   }
   assert.ok(!/background/.test(bar), "the bar has no fill");
   assert.ok(/background: none;/.test(plus), "the +'s own grey button face is gone: it would be all the glass sees (found on the simulator: the + read 53 over black, the bar 32)");
-  assert.ok(css.includes('\n  #tabbar::before, #tabbar::after, .dock-add::before, .dock-add::after { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; }'), "both layers fill the glass, under the tabs and the +, and take no taps");
+  assert.ok(css.includes('\n  #tabbar::before, #tabbar::after, .dock-add::before, .dock-add::after { content: ""; position: absolute; inset: 0; z-index: 0; border-radius: inherit; pointer-events: none; }'), "both layers fill the glass and take no taps");
   assert.ok(css.includes("\n  #tabbar::before, .dock-add::before { -webkit-backdrop-filter: var(--tab-frost); backdrop-filter: var(--tab-frost); opacity: var(--tab-frost-on); }"), "the frost first");
   assert.ok(css.includes("\n  #tabbar::after, .dock-add::after { -webkit-backdrop-filter: var(--tab-tone-bf); backdrop-filter: var(--tab-tone-bf); background: var(--tab-tone); opacity: var(--tab-tone-on); box-shadow: var(--tab-edge); }"), "the tone and the lit edge over it");
   for (const old of ["--tab-fill", "--tab-shadow", "--tab-on:", "--tab-on-shadow", "blur(2.5px)"]) assert.ok(!css.includes(old), "the old glass is gone: " + old);
+});
+
+test("the + sign and the tabs sit above the glass by their own z-index; the layers are never under the bar by a negative one (v320)", () => {
+  // His screenshot, 25 Nov 2026 ("when I pull all the way down the plus disappear"): with the layers at z-index -1 an iPhone drew the +'s own
+  // sign in a separate front layer and dropped it while the page was pulled down past its top; the glass disc stayed, empty. The same on the
+  // simulator (the sign's 140 bright pixels were 0 in every picture taken during the pull, 140 again at rest; with this rule 140 throughout).
+  // The tabs, each with its own place in the stack, were never lost.
+  const layers = /\n {2}#tabbar::before, #tabbar::after, \.dock-add::before, \.dock-add::after \{[^}]*\}/.exec(css)[0];
+  assert.ok(/z-index: 0;/.test(layers) && !/z-index: -/.test(layers), "the layers at 0");
+  assert.ok(css.includes("\n  .dock-add svg { position: relative; z-index: 1; width: 26px; height: 26px; }"), "the + sign above them");
+  assert.ok(css.includes("\n  #tabbar button { position: relative; z-index: 1; }"), "the tabs above them (the tone layer comes after them in the page, so at 0 it would cover them)");
+  assert.ok(/isolation: isolate;/.test(rule("#tabbar")) && /isolation: isolate;/.test(rule(".dock-add")), "and all of it stays inside the bar and the +");
 });
 
 test("the two round + are one button, and their markup is as it was", () => {

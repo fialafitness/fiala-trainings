@@ -1014,15 +1014,15 @@
   #dock { position: fixed; left: 0; right: 0; bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 13px)); z-index: 45; display: flex; justify-content: center; align-items: center; gap: 14px; padding: 0 16px; pointer-events: none; }   /* where Apple's sits: into the home-indicator zone, 21 points from the screen's foot on an iPhone (v319, his ask of 25 Nov 2026: "make it sit as low as apples one .. but keep my height"; Fitness's bar measured on his iPhone: 62 tall, its foot 21 up; ours keeps its 60); the bar and the coach's + share the row, 14 apart, as Notes' search pill and compose circle */
   #dock > * { pointer-events: auto; }
   #tabbar { position: relative; isolation: isolate; min-width: 0; display: flex; gap: 4px; padding: 4px; border-radius: 50px; box-shadow: var(--tab-ring); }   /* its glass is the two layers below; the bar itself carries no fill, filter or opacity (in Chrome those would stop the layers seeing the page), only its ring outside; the chosen tab's capsule sits 4 in from the glass, as Apple's */
-  #tabbar::before, #tabbar::after, .dock-add::before, .dock-add::after { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; }   /* Apple's tab bar glass (v319, see --tab-frost): two layers under the tabs and the +, the frost first, the tone and the lit edge over it */
+  #tabbar::before, #tabbar::after, .dock-add::before, .dock-add::after { content: ""; position: absolute; inset: 0; z-index: 0; border-radius: inherit; pointer-events: none; }   /* Apple's tab bar glass (v319, see --tab-frost): two layers under the tabs and the +, the frost first, the tone and the lit edge over it. Never under the bar by a negative z-index (v320): an iPhone then draws the +'s own sign in a separate front layer, and dropped it while the page was pulled down past its top (his screenshot, 25 Nov 2026: the glass disc with no +; the same on the simulator). The tabs and the sign sit above the layers by their own z-index instead */
   #tabbar::before, .dock-add::before { -webkit-backdrop-filter: var(--tab-frost); backdrop-filter: var(--tab-frost); opacity: var(--tab-frost-on); }   /* the frost, not at full strength: an iPhone blends a filtered backdrop with the sharp one by the layer's opacity (measured), which keeps what is under the glass readable */
   #tabbar::after, .dock-add::after { -webkit-backdrop-filter: var(--tab-tone-bf); backdrop-filter: var(--tab-tone-bf); background: var(--tab-tone); opacity: var(--tab-tone-on); box-shadow: var(--tab-edge); }   /* the tone: it sees the frost under it (a later layer's backdrop takes in the earlier one's result, measured) */
   .dock-add { flex: none; width: 60px; height: 60px; border-radius: 50%; border: 0; padding: 0; margin: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: var(--text-primary); background: none; position: relative; isolation: isolate; box-shadow: var(--tab-ring); transition: transform 300ms ease, opacity 300ms ease; }   /* the same glass as the bar (its two layers, above), as tall as the bar: + Workout, as Notes' compose circle; and the + that adds an exercise: the two are one button (his word, 25 Nov 2026: "I want them to be the same"). No fill of its own: a button's own grey face would be all the glass sees */
-  .dock-add svg { width: 26px; height: 26px; }
+  .dock-add svg { position: relative; z-index: 1; width: 26px; height: 26px; }   /* above the glass layers (v320) */
   .dock-add:active { transform: scale(0.96); }
   .dock-add[hidden] { display: none; }
   #tabbar[hidden] { display: none; }
-  #tabbar button { position: relative; }
+  #tabbar button { position: relative; z-index: 1; }   /* above the glass layers (v320) */
   .tab-badge { position: absolute; top: 5px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 0.6875rem; font-weight: 700; font-style: normal; display: inline-flex; align-items: center; justify-content: center; }   /* unread notes: the count on the tab, as on Mail's */
   .tab-badge[hidden] { display: none; }
   #tabbar button { appearance: none; border: 0; background: none; min-width: 124px; height: 52px; padding: 0 18px; border-radius: 50px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: inherit; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0; color: var(--text); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: -webkit-backdrop-filter 160ms ease, backdrop-filter 160ms ease, color 160ms ease; }
@@ -2374,7 +2374,7 @@
 
 <script type="module">
   import { oneWindow } from "./app/win.js";
-  oneWindow(() => import("./app/main.js?v=319").then((m) => m.boot()));   // one window at a time (v316): Fiala starts once this window holds it; another window in use shows #oneWin
+  oneWindow(() => import("./app/main.js?v=320").then((m) => m.boot()));   // one window at a time (v316): Fiala starts once this window holds it; another window in use shows #oneWin
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
