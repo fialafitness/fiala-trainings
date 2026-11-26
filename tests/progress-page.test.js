@@ -187,3 +187,14 @@ test("6M names its first month when the 26 weeks begin on the 1st; the This week
   assert.strictEqual(fns.dayRange("2026-12-28", "2027-01-03"), "Dec 28 \u2013 Jan 3", "the New Year week fits beside This week");
   assert.strictEqual(fns.dayRange("2026-12-28", "2027-01-03", true), "Dec 28, 2026 \u2013 Jan 3, 2027");
 });
+
+test("(v326, the outside audit's #11) the W | M | 6M | Y control keeps Health's look (a 28-point track, parts 24 tall) and takes a finger over 44 points, Apple's minimum: each part's tap area reaches 10 points above and under it, with nothing drawn there", async () => {
+  const fs = await import("node:fs"); const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const track = /\n  \.pg-seg \{([^}]*)\}/.exec(html), before = /\n  \.pg-seg button::before \{([^}]*)\}/.exec(html);
+  assert.ok(track && /height: 28px;/.test(track[1]) && /padding: 2px;/.test(track[1]), "the track as it was: 28 tall, 2 of padding, so a part is 24");
+  assert.ok(before && /content: "";/.test(before[1]) && /position: absolute;/.test(before[1]), "an empty layer over each part");
+  const inset = /inset: -(\d+)px 0;/.exec(before[1]); assert.ok(inset, "reaching above and under only, never sideways into the part beside it");
+  assert.ok(28 - 2 * 2 + 2 * Number(inset[1]) >= 44, "24 + " + (2 * Number(inset[1])) + " is at least 44");
+  assert.ok(/\n  \.pg-seg button \{ position: relative; \}/.test(html), "placed from its own part");
+  assert.ok(!/background|border|box-shadow/.test(before[1]), "it draws nothing");
+});

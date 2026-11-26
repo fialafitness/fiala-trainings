@@ -1159,6 +1159,8 @@
   .pg-seg button { flex: 1 1 0; min-width: 0; appearance: none; border: 0; border-radius: 12px; background: transparent; font: inherit; font-size: 0.8125rem; font-weight: 500; letter-spacing: 0; line-height: 1; color: var(--text-primary); cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .pg-seg button.on { background: var(--range-on); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
   .pg-seg button:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+  .pg-seg button { position: relative; }
+  .pg-seg button::before { content: ""; position: absolute; inset: -10px 0; }   /* v326 (the outside audit of 20 Nov 2026, its #11): a part of the control is 24 points tall as drawn (Health's, measured) and took a finger only there; its tap area is now 44, Apple's minimum, with nothing drawn differently */
   .pg-cap { margin: 0; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: var(--stat-grey); }
   .pg-big { margin: 2px 0 0; font-size: 2.125rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1.12; }
   .pg-big b { font-weight: 600; }
@@ -2374,7 +2376,7 @@
 
 <script type="module">
   import { oneWindow, winLost } from "./app/win.js";
-  oneWindow(() => import("./app/main.js?v=325").then((m) => { if (!winLost()) return m.boot(); }));   // one window at a time (v316): Fiala starts once this window holds it; another window in use shows #oneWin (v321, R26-WIN-4: and only if it still holds it once main.js has loaded: a window that lost Fiala meanwhile started it behind the page, its sign-in and the kept words with it)
+  oneWindow(() => import("./app/main.js?v=326").then((m) => { if (!winLost()) return m.boot(); }));   // one window at a time (v316): Fiala starts once this window holds it; another window in use shows #oneWin (v321, R26-WIN-4: and only if it still holds it once main.js has loaded: a window that lost Fiala meanwhile started it behind the page, its sign-in and the kept words with it)
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>

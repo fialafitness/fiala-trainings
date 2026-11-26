@@ -1,6 +1,7 @@
 import { test, assert, tick } from "./assert.js";
 import { makeSupabase } from "./fake-supabase.js";
 import { load } from "./load.js";
+import { photoWork } from "../app/photos.js";
 const app = await load();
 const { fns, maps } = app;
 const jpeg = (n) => new Blob([new Uint8Array([0xff, 0xd8, n || 1, 2, 3, 0xff, 0xd9])], { type: "image/jpeg" });
@@ -14,18 +15,47 @@ test("initials are Apple Contacts' monogram: the first letters of the first and 
   assert.strictEqual(fns.initials("Michal Fiala"), "MF"); assert.strictEqual(fns.initials("Jane"), "J");
   assert.strictEqual(fns.initials("  anna maria   smith "), "AS"); assert.strictEqual(fns.initials(""), ""); assert.strictEqual(fns.initials("élodie durand"), "ÉD");
 });
-test("the coach's photo: the file goes up first, then the record points at it; the file it replaces is removed", async () => {
+test("(v326, the outside audit's #7) the coach's photo: the file goes up first, then the record that names it is saved, and only then is the file it replaces removed (it was removed while the server's record still named it)", async () => {
   const sb = makeSupabase(); await coachOn(sb); maps.clients.get("c1").photo = "old1"; sb.storage.files.set("photos/c1/old1.jpg", jpeg(9));
   await fns.setPhoto("c1", jpeg(1)); await settle();
   const v = maps.clients.get("c1").photo; assert.ok(v && v !== "old1", "the record has the new version");
   assert.deepStrictEqual(files(sb), ["photos/c1/" + v + ".jpg"], "the new file is there, the old one is gone");
-  assert.ok(maps.dirty.has("clients/c1"), "the record is saved like any other edit"); assert.strictEqual(fns.photoQueue().size, 0, "nothing left waiting");
-  const ops = sb.log.filter((l) => l.storage).map((l) => l.storage); assert.deepStrictEqual(ops, ["upload", "remove"]);
+  assert.strictEqual(sb.tables.ft_clients.get("c1").data.photo, v, "the server's record names the new photo"); assert.ok(!maps.dirty.has("clients/c1"), "its save has landed");
+  assert.strictEqual(fns.photoQueue().size, 0, "nothing left waiting"); assert.strictEqual(photoWork(), false, "and no file left to remove");
+  const ops = sb.log.map((l) => l.storage || (l.table === "ft_clients" && l.op !== "select" ? "record" : null)).filter(Boolean); assert.deepStrictEqual(ops, ["upload", "record", "remove"], "the new file, the record, then the old file");
+  stopSave("c1");
+});
+test("(v326, the outside audit's #7) with no signal for the record's save the old file stays, since the server's record still names it; once that save has landed, the next pass removes it", async () => {
+  const sb = makeSupabase(); await coachOn(sb); sb.seed("ft_clients", "c1", { id: "c1", name: "Jane Doe", unit: "lb", photo: "old1" }); maps.clients.get("c1").photo = "old1"; sb.storage.files.set("photos/c1/old1.jpg", jpeg(9));
+  sb.setFail({ table: "ft_clients", times: 99, message: "Failed to fetch" });      // the file goes up, the record's save meets no signal
+  await fns.setPhoto("c1", jpeg(2)); await settle(); stopSave("c1");
+  const v = maps.clients.get("c1").photo;
+  assert.deepStrictEqual(files(sb), ["photos/c1/" + v + ".jpg", "photos/c1/old1.jpg"].sort(), "both files are there");
+  assert.deepStrictEqual([sb.tables.ft_clients.get("c1").data.photo, maps.dirty.has("clients/c1"), photoWork()], ["old1", true, true], "the server still names the old photo, the record waits, and so does the old file's removal");
+  assert.ok(!sb.log.some((l) => l.storage === "remove"), "nothing was removed");
+  fns.loadPhotoQueue(); await fns.flushPhotos(); stopSave("c1");                    // a relaunch, and a pass while the record still waits
+  assert.ok(files(sb).includes("photos/c1/old1.jpg"), "still there after a relaunch and another pass");
+  sb.setFail(null); await fns.flushOne("clients", "c1"); await tick(5);             // the signal is back: the record's save lands
+  assert.deepStrictEqual([sb.tables.ft_clients.get("c1").data.photo, maps.dirty.has("clients/c1")], [v, false], "the server's record names the new photo");
+  await fns.flushPhotos();
+  assert.deepStrictEqual([files(sb), photoWork()], [["photos/c1/" + v + ".jpg"], false], "the old file is removed by the pass after it");
+  stopSave("c1");
+});
+test("(v326) a file a record names is never removed: the coach's new photo did not stand (the record names the one before again), so the old file leaves the list of files to remove and stays", async () => {
+  const sb = makeSupabase(); await coachOn(sb); maps.clients.get("c1").photo = "old1"; sb.storage.files.set("photos/c1/old1.jpg", jpeg(9));
+  sb.setFail({ table: "ft_clients", times: 99, message: "Failed to fetch" });
+  await fns.setPhoto("c1", jpeg(3)); await settle(); stopSave("c1");
+  assert.strictEqual(photoWork(), true, "the old file waits to be removed");
+  maps.clients.get("c1").photo = "old1"; maps.dirty.delete("clients/c1"); sb.setFail(null);   // as a merge leaves it: the record names the photo before, and nothing waits
+  await fns.flushPhotos();
+  assert.deepStrictEqual([files(sb).includes("photos/c1/old1.jpg"), photoWork()], [true, false], "the named file stays, and nothing is left to remove");
+  assert.ok(!sb.log.some((l) => l.storage === "remove"), "no removal was sent");
   stopSave("c1");
 });
 test("the coach's photo change is his own until it is saved: a restore's write waiting meanwhile keeps it (the sixteenth check round)", async () => {
   const sb = makeSupabase(); await coachOn(sb); maps.clients.get("c1").photo = "old1"; sb.storage.files.set("photos/c1/old1.jpg", jpeg(9));
-  await fns.setPhoto("c1", jpeg(5)); await settle();
+  sb.setFail({ table: "ft_clients", times: 99, message: "Failed to fetch" });      // (v326: the photo's pass now sends the record's save itself; here it meets no signal, so the change is still his own)
+  await fns.setPhoto("c1", jpeg(5)); await settle(); sb.setFail(null);
   const v = maps.clients.get("c1").photo; assert.ok(v && v !== "old1" && maps.profileTouched.get("c1").has("photo"), "the coach's mark, as for a field he typed");
   const { ui } = await import("../app/state.js"), r = { id: "c1", name: "Jane Doe", photo: v };
   ui.keepGone("clients", r, { id: "c1", name: "Jane Doe", photo: "old1" }); assert.strictEqual(r.photo, v, "the server's older photo is not taken over his change");

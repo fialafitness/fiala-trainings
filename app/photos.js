@@ -6,8 +6,8 @@
 // returns: the file first, the marker after, so nobody is ever pointed at a file that is not there yet.
 import { lsGet, lsSet } from "./util.js";
 import { winLost } from "./win.js";   // v316 (one window at a time): no photo pass once Fiala is in another window
-import { S, ui, clients, confirmedAt, profileTouched } from "./state.js";
-import { scheduleSave, localBackend, withTimeout, isOffline } from "./sync.js";
+import { S, ui, clients, dirty, confirmedAt, profileTouched } from "./state.js";
+import { scheduleSave, flushOne, localBackend, withTimeout, isOffline } from "./sync.js";
 
 const BUCKET = "photos", QKEY = "fiala.photos.pending", CACHE = "fiala-photos";
 const queue = new Map();                  // clientId -> { v, data: data URL | null (removed), old, up, gone: [versions uploaded and replaced] }
@@ -300,10 +300,15 @@ async function sendAll() {
     purge = purge.filter((x) => x !== cid); saveQueue();
   }
   if (trash.length) {                                                   // files no record points at any more
-    const batch = trash.slice(); let r; try { r = await withTimeout(store.remove(batch), 15000); } catch (err) { r = { error: err }; }
-    if (lost()) return false;
-    if (r.error && isOffline(r.error)) return false;
-    trash = trash.filter((p) => !batch.includes(p)); saveQueue();       // done, or refused for good (a client may not remove what is not hers)
+    const whose = (p) => p.slice(0, p.indexOf("/")), named = (p) => { const c = clients.get(whose(p)); return !!(c && c.photo && pathOf(c.id, c.photo) === p); };
+    if (trash.some(named)) { trash = trash.filter((p) => !named(p)); saveQueue(); }   // v326: never a file a record names (the coach's new photo did not stand: a merge kept the one before)
+    const batch = trash.filter((p) => S.clientMode || !dirty.has("clients/" + whose(p)));   // v326 (the outside audit of 20 Nov 2026, its #7): the coach's save of that client is still on its way: the server's record may still name this file, so it waits for a later pass (one follows every sync)
+    if (batch.length) {
+      let r; try { r = await withTimeout(store.remove(batch), 15000); } catch (err) { r = { error: err }; }
+      if (lost()) return false;
+      if (r.error && isOffline(r.error)) return false;
+      trash = trash.filter((p) => !batch.includes(p)); saveQueue();     // done, or refused for good (a client may not remove what is not hers)
+    }
   }
   for (const cid of [...queue.keys()]) {
     if (!S.sb || !S.sb.storage || !S.signedIn || S.photoMissing) return false;
@@ -326,10 +331,14 @@ async function sendAll() {
     if (ok === "gone") { if (queue.get(cid) === e) queue.delete(cid); toTrash(cid, [e.v, ...(e.gone || [])]); saveQueue(); continue; }   // refused for good: the server's photo comes back with the next sync; what was sent goes
     if (!ok) return false;
     if (queue.get(cid) === e) { queue.delete(cid); saveQueue(); }
-    const tidy = [e.old, ...(e.gone || [])].filter((x) => typeof x === "string" && x && x !== e.v);
+    if (!S.clientMode) { try { await flushOne("clients", cid); } catch (_) {} if (lost()) return false; }   // v326 (the outside audit of 20 Nov 2026, its #7): the coach's marker is a save of the client's record, only queued by mark(): it goes now, and the file it replaces goes after it. The old file was removed while the server's record still named it: until that save landed, every other device was pointed at a file that was gone
+    const named = (clients.get(cid) || {}).photo, tidy = [e.old, ...(e.gone || [])].filter((x) => typeof x === "string" && x && x !== e.v && x !== named);   // never the file the record names now (a merge kept the one before)
     if (tidy.length) {                                                   // the files no record points at any more; tried again later when there is no signal
-      let r; try { r = await withTimeout(store.remove(tidy.map((v) => pathOf(cid, v))), 15000); } catch (err) { r = { error: err }; }
-      if (lost() || (r.error && isOffline(r.error))) { toTrash(cid, tidy); saveQueue(); }
+      if (!S.clientMode && dirty.has("clients/" + cid)) { toTrash(cid, tidy); saveQueue(); }   // v326: the record's save has not landed (no signal): they wait for a pass after it has (the trash, above)
+      else {
+        let r; try { r = await withTimeout(store.remove(tidy.map((v) => pathOf(cid, v))), 15000); } catch (err) { r = { error: err }; }
+        if (lost() || (r.error && isOffline(r.error))) { toTrash(cid, tidy); saveQueue(); }
+      }
     }
     if (ui.render) ui.render();
   }
