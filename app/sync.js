@@ -332,7 +332,16 @@ function settleOrder(target, serverData, incoming) {
 }
 const touchState = (id, ...fields) => { if (S.clientMode) return; if (!trainerState.has(id)) trainerState.set(id, new Set()); for (const f of fields) trainerState.get(id).add(f); };
 const TABLE = { clients: "ft_clients", trainings: "ft_trainings" };
-const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r({ data: null, error: { message: "network timeout" } }), ms))]);
+// A request with no answer in time is given up, and since v325 (the outside audit of 20 Nov 2026, its #2) cancelled too, where the library can (a query or a rule call takes an
+// abortSignal; a plain promise, as a sign-in check, a file or the move below, is only given up, as before). Given up but still on its way, a save could reach the server after a
+// newer save of the same thing and put the older value back: the client's "kg" timed out, "lb" was picked and saved, then the late "kg" landed. Cancelled, a request that had
+// not left the device never does. One that already left can still land: only an order number on the server closes that (logged sets carry one, logSeq; a move waits for the one before).
+const withTimeout = (p, ms) => {
+  let ac = null, over = false;
+  try { if (p && typeof p.abortSignal === "function" && typeof AbortController === "function") { ac = new AbortController(); p = p.abortSignal(ac.signal) || p; } } catch (_) { ac = null; }
+  const answer = Promise.resolve(p); answer.then(() => { over = true; }, () => { over = true; });   // one request, as before (Promise.race resolved the query the same way); over: it answered, so there is nothing left to cancel
+  return Promise.race([answer, new Promise((r) => setTimeout(() => { if (ac && !over) { try { ac.abort(); } catch (_) {} } r({ data: null, error: { message: "network timeout" } }); }, ms))]);
+};
 const saveDeadline = () => S.saveWait || 15000;                       // a save that never answers must not block every later save of the record: it times out like a read, and is retried
 const rpc = (name, args) => (winLost() ? Promise.resolve({ data: null, error: { message: "Failed to fetch: Fiala is in another window" } }) : withTimeout(S.sb.rpc(name, args), saveDeadline()));   // v316 (the twenty-sixth check round, R26-WAP-1): a window that lost Fiala sends no client rule (a retry put her older set back over the one corrected in the window now in use)
 const coachSetPaper = async (cid, on, parent) => { if (!S.sb || S.clientMode) return { error: { message: "not signed in" } }; try { return (await rpc("coach_set_paper", { p_client: cid, p_on: !!on, p_parent: !!parent })) || {}; } catch (e) { return { error: e }; } };   // v316: the coach's "signed a paper form" (client-consent.sql): a rule, not a whole-record save, because only the server writes a client's choices

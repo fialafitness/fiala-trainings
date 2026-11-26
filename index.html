@@ -2374,7 +2374,7 @@
 
 <script type="module">
   import { oneWindow, winLost } from "./app/win.js";
-  oneWindow(() => import("./app/main.js?v=324").then((m) => { if (!winLost()) return m.boot(); }));   // one window at a time (v316): Fiala starts once this window holds it; another window in use shows #oneWin (v321, R26-WIN-4: and only if it still holds it once main.js has loaded: a window that lost Fiala meanwhile started it behind the page, its sign-in and the kept words with it)
+  oneWindow(() => import("./app/main.js?v=325").then((m) => { if (!winLost()) return m.boot(); }));   // one window at a time (v316): Fiala starts once this window holds it; another window in use shows #oneWin (v321, R26-WIN-4: and only if it still holds it once main.js has loaded: a window that lost Fiala meanwhile started it behind the page, its sign-in and the kept words with it)
   // offline shell: the service worker keeps the app page, scripts, fonts, icons, templates and the Supabase library on the device
   if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
