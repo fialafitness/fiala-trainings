@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import { test, assert, tick } from "./assert.js";
 import { makeSupabase } from "./fake-supabase.js";
-import { byId, el } from "./env.js";
+import { byId, el, slowTimers } from "./env.js";
 import { load } from "./load.js";
 import { heightAs, weightAs, heightUnitOf, bodyUnitOf, fmtHeight, fmtBodyWeight, ageOn, profileGet, profilePut, validateBackup, TEMPLATES_ID } from "../app/model.js";
 const app = await load();
@@ -283,6 +283,11 @@ test("the client's workouts are read in each answer's own unit: a copy that did 
   hold.on = true; const late = fns.syncDownNow(); { const until = Date.now() + 5000; while (!hold.release && Date.now() < until) await tick(1); } unitNow = "kg"; hold.on = false; hold.release(); await late; await settle();   // read before the client's rule ran (lb), answered after (waits for the read itself, not a fixed 5 ms: a busy run once took the read after the switch, the sixteenth check round)
   assert.strictEqual(maps.trainings.get("p1").rows[0].unit, "lb", "the older read still reads 135 as lb");
   app.set({ view: { name: "client", id: "c1" }, renderedTraining: null }); quiet();
+});
+
+test("the app's once-a-minute sync is kept by the test run, never armed, so it cannot fire into a test (v319: it landed in the read above, after the client's switch, and lb was stamped as kg)", () => {
+  assert.strictEqual(slowTimers.filter((t) => t.ms === 60000).length, 1, "sync.js's repeating timer, kept by env.js");
+  assert.ok(fs.readFileSync(new URL("../app/sync.js", import.meta.url), "utf8").includes('setInterval(() => { if (document.visibilityState === "visible") scheduleSync(); }, 60000);'), "the app itself still syncs once a minute while it is on screen");
 });
 
 test("Back from a page opened from a list lands the list where it was, as the swipe's picture shows it (v300: it jumped to the top as the finger let go)", async () => {

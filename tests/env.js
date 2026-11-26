@@ -46,5 +46,6 @@ define({
   scrollTo() {}, scrollBy() {}, innerHeight: 800, innerWidth: 390, alert() {}, confirm: () => true,
 });
 const realSetInterval = globalThis.setInterval;
-globalThis.setInterval = (fn, ms) => { const t = realSetInterval(fn, ms); if (t && t.unref) t.unref(); return t; };
-export { el, byId, storage, document };
+const slowTimers = [];   // repeating timers of a minute or more are kept here, never armed: the app's once-a-minute sync (sync.js) fired a real sync into whichever test was running at that second of the suite. v319: it landed in health.test.js's held read, after the client's switch to kg, the new read stamped lb as kg and the suite failed there (alone, the file passed). A test that wants one runs it by hand: slowTimers[0].fn()
+globalThis.setInterval = (fn, ms) => { if (ms >= 60000) { slowTimers.push({ fn, ms }); return 0; } const t = realSetInterval(fn, ms); if (t && t.unref) t.unref(); return t; };
+export { el, byId, storage, document, slowTimers };
