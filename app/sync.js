@@ -124,18 +124,35 @@ function adoptQueue(p) {                                           // another pa
   return true;
 }
 // what still has to reach the server is written to the device too, so closing the app with no signal loses nothing
+let slimDue = false, slimMore = false, copySafe = false, slimOn = false;   // v324: the queue did not fit and waits for the device copy's write; something changed while that write was out; that write has just landed; the queue on the device is the short one (persistPending, below)
+const queueKept = (ok) => { const was = S.queueFull; S.queueFull = !ok; if (was !== S.queueFull && ui.setStatus) ui.setStatus(); };   // the bar says when the device keeps no queue at all
+const queueFresh = () => { slimDue = false; slimMore = false; copySafe = false; slimOn = false; };   // the tests' reset: a launch starts so
+const slimAfter = (ok) => { if (!slimDue) return; slimDue = false; const more = slimMore; slimMore = false; if (winLost()) return; if (!ok) { queueKept(false); return; } copySafe = true; try { persistPending(); } finally { copySafe = false; } if (more && idbDb && slimOn) { slimDue = true; localBackend.flushDb(); } };   // the device copy's write has answered: the queue as it is now, without what the copy holds; a copy that could not be written leaves the queue as it was (a waiting key beside an older record could send that record over a newer one)
 function persistPending() {
   if (winLost()) return;
   try { if (localStorage.getItem(TAB_KEY) !== TAB) adoptQueue(lsGet("fiala.pending.v1")); } catch (_) {}
   try { const sx = lsGet(SIDE); if (sx && typeof sx === "object" && sx.tab !== TAB) adoptQueue({ wd: sx.wd, choices: sx.choices, settled: sx.settled, held: sx.held, owner: sx.owner, tab: sx.tab }); } catch (_) {}   // the last write was another page's (or an earlier launch's): what it holds is taken on before this one writes over it
   for (const [cid, m] of pendingChoices) { const a = m.get("health"); if (a && isWithdrawal(a)) noteWithdrawn(cid, a.at); if (a && a.before && isWithdrawal(a.before)) noteWithdrawn(cid, a.before.at); }
-  lsSet("fiala.pending.v1", { deliv: [...deliv].slice(-100), wd: [...withdrawnAt], dirty: [...dirty.keys()].filter((k) => !(recMap(k) && !recOf(k) && !deleting.has(k))), weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]), rownotes: [...pendingNoteRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]), profile: [...pendingProfile].filter(([, f]) => f.size).map(([id, f]) => [id, [...f]]), under: [...profileUnder].filter(([id, m]) => m.size && pendingProfile.has(id)).map(([id, m]) => [id, [...m]]), held: [...heldAgree], settled: [...settledAnswers].slice(-100), choices: [...pendingChoices].filter(([, m]) => m.size).map(([id, m]) => [id, [...m]]),
+  const q = { deliv: [...deliv].slice(-100), wd: [...withdrawnAt], dirty: [...dirty.keys()].filter((k) => !(recMap(k) && !recOf(k) && !deleting.has(k))), weights: [...pendingWeightRows].map(([id, r]) => [id, [...r]]), done: [...pendingDoneRows].map(([id, r]) => [id, [...r]]), early: [...pendingEarlyRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]), rownotes: [...pendingNoteRows].filter(([, r]) => r.size).map(([id, r]) => [id, [...r]]), profile: [...pendingProfile].filter(([, f]) => f.size).map(([id, f]) => [id, [...f]]), under: [...profileUnder].filter(([id, m]) => m.size && pendingProfile.has(id)).map(([id, m]) => [id, [...m]]), held: [...heldAgree], settled: [...settledAnswers].slice(-100), choices: [...pendingChoices].filter(([, m]) => m.size).map(([id, m]) => [id, [...m]]),
     finish: [...pendingFinish], skip: [...pendingSkip], move: [...pendingMove], miss: [...pendingMiss], swap: [...pendingSwap].map(([id, m]) => [id, [...m]]), order: [...pendingOrder],
     touched: [...trainerTouched].map(([id, r]) => [id, [...r]]), named: [...trainerNamed].map(([id, r]) => [id, [...r]]), noted: [...trainerNoted].map(([id, r]) => [id, [...r]]), state: [...trainerState].map(([id, f]) => [id, [...f]]),
     plans: [...planTouched], profTouched: [...profileTouched].filter(([, f]) => f.size).map(([id, f]) => [id, [...f]]), notesGone: [...deletedNotes], packagesGone: [...deletedPackages], foldersGone: [...deletedFolders], foldersTouched: [...folderTouched], fromFile: [...fromFile],   // the coach's intent about a client record: a plan changed, a note or package removed, a backup restored
     stamps: [...dirty.keys()].map((k) => [k, seenAt.get(k) || null]), docs: [...dirty.keys()].filter((k) => seenDoc.has(k)).map((k) => [k, seenDoc.get(k)]),   // the stamp and the copy it describes: a save sent after a relaunch still merges against what this device last read
     recs: [...new Set([...dirty.keys(), ...(S.clientMode ? [...pendingProfile].filter(([, f]) => f.size).map(([id]) => key("clients", id)) : [])])].map((k) => [k, recOf(k)]).filter(([, d]) => d), gone: [...dirty.keys()].filter((k) => recMap(k) && !recOf(k) && deleting.has(k)),   // (15 Nov 2026, the audit's #1) each record still to send as it is now, and each one deleted here: a device copy that stopped saving (a full device) can never send an older copy over the server's, nor make a record it lost look deleted
-    owner: S.pendingOwner || S.sessionEmail || "", tab: TAB });
+    owner: S.pendingOwner || S.sessionEmail || "", tab: TAB };
+  // v324 (the outside audit of 20 Nov 2026, its #5): the queue may not fit the browser's small store (about 2.6 million characters: hundreds of records waiting at once, after a
+  // big restore, an exercise renamed everywhere or a long stretch with no signal). Its write failed with no word, the device copy (the database) held the edits, and after a
+  // relaunch none of them was waiting: the next sync put the server's older copies back. Now the heavy parts give way: the queue is kept short (slim: which records wait,
+  // and every mark), and each record as it is now, the stamp it was read under and the copy last read are the device copy's own (copyOf: `seen`, `bases`), written first and
+  // in one write, so a waiting record, its stamp and its copy read are always of one moment (a stamp newer than its record would write that record over a newer one, and a
+  // copy read newer than its record would undo the other device's changes in a merge). With no database, or when even the short queue does not fit, the bar says the device
+  // is not saving (S.queueFull), as for the device copy.
+  let kept = lsSet("fiala.pending.v1", q);
+  if (kept) { slimDue = false; slimMore = false; slimOn = false; }
+  else if (copySafe) { kept = lsSet("fiala.pending.v1", { ...q, recs: [], docs: [], stamps: [], slim: true }); slimOn = kept; }   // called from the device copy's own write (slimAfter): every record is on the device as it is now
+  else if (idbDb && slimDue) slimMore = true;                       // a change made while the device copy's write is out: that write does not hold it, so another follows (slimAfter)
+  else if (idbDb) { slimDue = true; localBackend.flushDb(); }       // the device copy first, at once; its answer writes the short queue
+  if (kept || copySafe || !idbDb) queueKept(kept);
   lsSet(SIDE, { wd: [...withdrawnAt], held: [...heldAgree], settled: [...settledAnswers].slice(-100), choices: [...pendingChoices].filter(([, m]) => m.size).map(([id, m]) => [id, [...m]]), owner: S.pendingOwner || S.sessionEmail || "", tab: TAB });
   try { localStorage.setItem(TAB_KEY, TAB); } catch (_) {}
   if (S.sessionEmail && !S.pendingOwner) S.pendingOwner = S.sessionEmail;
@@ -170,6 +187,7 @@ function restorePending() {
   for (const [id, rows] of p.noted || []) trainerNoted.set(id, new Set([...(trainerNoted.get(id) || []), ...rows]));
   for (const [k, stamp] of p.stamps || []) if (stamp && !seenAt.has(k)) seenAt.set(k, stamp);
   for (const [k, doc] of p.docs || []) if (doc && !seenDoc.has(k)) seenDoc.set(k, doc);
+  if (p.slim === true) for (const k of p.dirty || []) { if (!dirty.has(k)) continue; const st = copySeen.get(k), b = copyBases.get(k); if (st && !seenAt.has(k)) seenAt.set(k, st); if (b && !seenDoc.has(k)) seenDoc.set(k, b); }   // v324: the short queue (persistPending) holds no stamps and no copies read: each waiting record takes the device copy's own, written with the record in one write
   for (const id of p.plans || []) planTouched.add(id);
   for (const [id, ks] of p.profTouched || []) profileTouched.set(id, new Set([...(profileTouched.get(id) || []), ...ks]));   // v299: the coach's own changes to the client's profile fields, so a save after a relaunch keeps the client's for the rest
   for (const [n, cid] of p.notesGone || []) deletedNotes.set(n, cid);
@@ -199,7 +217,7 @@ function seedBases() {                                            // v316 (the t
     const k = key(kind, id); if (!r || typeof r !== "object" || dirty.has(k) || deleting.has(k) || seenDoc.has(k) || (kind === "trainings" && S.templateDraft && S.templateDraft.id === id)) continue;
     seenDoc.set(k, JSON.stringify(r)); const st = copySeen.get(k); if (st && !seenAt.has(k)) seenAt.set(k, st);
   }
-  copySeen.clear();
+  copySeen.clear(); copyBases.clear();
 }
 function flushAll() { for (const k of [...timers.keys()]) { const [kind, id] = k.split("/"); clearTimeout(timers.get(k)); flushOne(kind, id); } }
 function flushOne(kind, id) {
@@ -246,7 +264,7 @@ function flushOne(kind, id) {
   return run;
 }
 // ---------- the device copy in the browser's database (v306, the audit's #1: localStorage holds about 2.6 million characters once a copy holds a "–" or a curly quote, and a coach's copy outgrew it in months) ----------
-const COPY = "fiala.trainings.v1", IDB_NAME = "fiala", IDB_STORE = "kv", copySeen = new Map();   // copySeen: the server's stamps the device copy last kept (seedBases)
+const COPY = "fiala.trainings.v1", IDB_NAME = "fiala", IDB_STORE = "kv", copySeen = new Map(), copyBases = new Map();   // copySeen: the server's stamps the device copy last kept (seedBases); copyBases (v324): the copies last read of the records waiting, which the device copy keeps while the queue is the short one (persistPending)
 let idbDb = null, idbTried = false, idbTimer = 0;
 function idbOpen() {                                               // the database, or null where there is none (an older or a locked-down browser): the copy then stays in localStorage, as before
   if (idbTried) return Promise.resolve(idbDb); idbTried = true;
@@ -263,8 +281,8 @@ function idbOpen() {                                               // the databa
   });
 }
 const idbTx = (mode, fn) => new Promise((ok) => { try { const tx = idbDb.transaction(IDB_STORE, mode), r = fn(tx.objectStore(IDB_STORE)); if (mode === "readonly") { r.onsuccess = () => ok(r.result); r.onerror = () => ok(undefined); } else { tx.oncomplete = () => ok(true); tx.onerror = () => ok(false); tx.onabort = () => ok(false); } } catch (_) { ok(mode === "readonly" ? undefined : false); } });
-const copyOf = () => { const ts = Object.fromEntries(trainings), d = S.templateDraft; if (d && d.dirty && d.snapshot && ts[d.id]) ts[d.id] = JSON.parse(d.snapshot); return { clients: Object.fromEntries(clients), trainings: ts, seen: { ...Object.fromEntries(copySeen), ...Object.fromEntries(seenAt) }, savedAt: Date.now() }; };   // the device copy holds the template as saved, never the draft; v316 (the twenty-second check round): and the server's stamp of each record as last read (seen), for its first save after a relaunch
-const takeCopy = (d) => { if (!d || typeof d !== "object" || !d.clients || !d.trainings || typeof d.clients !== "object" || typeof d.trainings !== "object") return false; for (const c of Object.values(d.clients)) if (c && c.id) clients.set(c.id, c); for (const t of Object.values(d.trainings)) if (t && t.id) { repairTimed(t); trainings.set(t.id, t); } copySeen.clear(); if (d.seen && typeof d.seen === "object" && !Array.isArray(d.seen)) for (const [k, v] of Object.entries(d.seen)) if (typeof v === "string" && v && recMap(k)) copySeen.set(k, v); return true; };   // a copy of the wrong shape (damaged) is passed over: the app starts empty and the queue and the server fill it, never a blank app at every launch (the audit's #20)
+const copyOf = () => { const ts = Object.fromEntries(trainings), d = S.templateDraft; if (d && d.dirty && d.snapshot && ts[d.id]) ts[d.id] = JSON.parse(d.snapshot); return { clients: Object.fromEntries(clients), trainings: ts, seen: { ...Object.fromEntries(copySeen), ...Object.fromEntries(seenAt) }, ...(slimDue || slimOn ? { bases: Object.fromEntries([...dirty.keys()].filter((k) => seenDoc.has(k)).map((k) => [k, seenDoc.get(k)])) } : {}), savedAt: Date.now() }; };   // the device copy holds the template as saved, never the draft; v316 (the twenty-second check round): and the server's stamp of each record as last read (seen), for its first save after a relaunch
+const takeCopy = (d) => { if (!d || typeof d !== "object" || !d.clients || !d.trainings || typeof d.clients !== "object" || typeof d.trainings !== "object") return false; for (const c of Object.values(d.clients)) if (c && c.id) clients.set(c.id, c); for (const t of Object.values(d.trainings)) if (t && t.id) { repairTimed(t); trainings.set(t.id, t); } copySeen.clear(); if (d.seen && typeof d.seen === "object" && !Array.isArray(d.seen)) for (const [k, v] of Object.entries(d.seen)) if (typeof v === "string" && v && recMap(k)) copySeen.set(k, v); copyBases.clear(); if (d.bases && typeof d.bases === "object" && !Array.isArray(d.bases)) for (const [k, v] of Object.entries(d.bases)) if (typeof v === "string" && v && recMap(k)) copyBases.set(k, v); return true; };   // a copy of the wrong shape (damaged) is passed over: the app starts empty and the queue and the server fill it, never a blank app at every launch (the audit's #20)
 const localBackend = {
   load() { takeCopy(lsGet(COPY)); },                                // at once, from localStorage (the copy of a release before v306, or of a browser with no database)
   async loadDb() {                                                  // (v306) then the copy in the browser's database: newer than any in localStorage, it replaces what load() put in; one found only in localStorage moves over, and leaves localStorage its room
@@ -279,7 +297,7 @@ const localBackend = {
     if (idbDb) { clearTimeout(idbTimer); idbTimer = setTimeout(() => localBackend.flushDb(), 120); return; }   // the database: one write for a burst of saves (a sync, a restore)
     const ok = lsSet(COPY, copyOf()); S.deviceFull = !ok;
   },
-  flushDb() { clearTimeout(idbTimer); idbTimer = 0; if (!idbDb || winLost()) return Promise.resolve(false); return idbTx("readwrite", (st) => st.put(copyOf(), COPY)).then((ok) => { const was = S.deviceFull; S.deviceFull = !ok; if (was !== S.deviceFull && ui.setStatus) ui.setStatus(); return ok; }); },
+  flushDb() { clearTimeout(idbTimer); idbTimer = 0; if (!idbDb || winLost()) return Promise.resolve(false); return idbTx("readwrite", (st) => st.put(copyOf(), COPY)).then((ok) => { const was = S.deviceFull; S.deviceFull = !ok; if (was !== S.deviceFull && ui.setStatus) ui.setStatus(); slimAfter(ok); return ok; }); },
   async wipe() { clearTimeout(idbTimer); idbTimer = 0; if (winLost()) return; if (idbDb) { try { localStorage.removeItem(COPY); } catch (_) {} await idbTx("readwrite", (st) => st.delete(COPY)); } else lsSet(COPY, { clients: {}, trainings: {} }); },   // a sign-out: nothing of the account stays on the device
   async set() { this.save(); },
   async del() { this.save(); },
@@ -784,4 +802,4 @@ async function fetchAll(table) {                                 // every row, p
   }
 }
 
-export { sameRec, onStorage, forgetDraft, seedBases, gaveUpAt, deleteRec, shownAgain, ownTyped, adoptQueue, dropMarks, coachSetPaper, coachWithdraw, seenDoc, moveOut, takenFrom, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll };
+export { sameRec, onStorage, forgetDraft, seedBases, gaveUpAt, deleteRec, shownAgain, ownTyped, adoptQueue, dropMarks, coachSetPaper, coachWithdraw, seenDoc, moveOut, takenFrom, isNetwork, isOffline, reasonOf, key, markDirty, persistPending, restorePending, queueFresh, scheduleSave, flushAll, flushOne, localBackend, touchState, TABLE, cloudBackend, clientBackend, syncDown, mergeDown, syncDownNow, scheduleSync, withTimeout, fetchAll };

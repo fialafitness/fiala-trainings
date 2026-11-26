@@ -8,6 +8,7 @@ export const initial = () => ({
   pendingGo: null,                       // where he wanted to go while a draft was unsaved
   pendingOwner: "",                      // whose unsent edits the device holds
   deviceFull: false,                     // the last write of the device copy failed (storage full or blocked)
+  queueFull: false,                      // v324: the last write of the unsent queue failed, short form and all (sync.js persistPending)
   sb: null, signedIn: false, syncTimer: null, clientMode: false, myClientId: null, recovering: false, recoveryAs: "",
   syncedOnce: false,                     // this session has had one full answer from the server
   syncedOn: "",                          // the day of its latest one: the week's filing of missed workouts waits for one from today
