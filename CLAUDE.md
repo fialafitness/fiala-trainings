@@ -30,7 +30,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 - `app/sync.js`: the device copy (`fiala.trainings.v1`: since v306 in IndexedDB, database `fiala`, store `kv`; in localStorage only where there is no database, as in the tests), the unsent queue (`fiala.pending.v1`), `scheduleSave`, the coach's `cloudBackend`, the client's `clientBackend`, `syncDownNow`/`mergeDown` and the paged `fetchAll`.
 - `app/photos.js`: profile photos in the private Storage bucket `photos`, with their own cache and offline queue. Since v316 (the check rounds: the policies promise deletion from the coach's devices), after each photos pass once this session has the server's whole copy, `prunePhotos` removes from the cache every photo of a client no longer here and every version a record no longer points at (removed or replaced).
 - Smaller modules:
-  - `app/model.js`: the workout model (no app state), and the Progress tab's counts (v310: `mondayOf`, `weekDays`, `weekAverage`, `rangeCounts`; v311: `workoutStatus`, `attendance`, `liftsOf`, `bestOf`, `strongerLifts`, `monthBests`, `discomforts`, `inPersonCount`); v315's time zones: `hereZone`, `zoneOf`, `zoneOpt`, `dayIn`, `doneDay`, `pickZone`, `planOver`, `daysLeft`, and the line under a client's name: `clientLine`, `zoneCity`, `sameClock`, `agoWords`;
+  - `app/model.js`: the workout model (no app state), and the Progress tab's counts (v310: `mondayOf`, `weekDays`, `weekAverage`, `rangeCounts`; v311: `workoutStatus`, `attendance`, `liftsOf`, `bestOf`, `strongerLifts`, `monthBests`, `discomforts`, `inPersonCount`); v315's time zones: `hereZone`, `zoneOf`, `zoneOpt`, `dayIn`, `doneDay`, `pickZone`, `planOver`, `daysLeft`, and the line under a client's name: `clientLine`, `zoneCity`, `sameClock`, `agoWords`. A plan's text (the reps box) is read in one place: `timedRead` and `distRead` (private), behind `timedPlan`, `distPlan` and `measurePlan` (the kind: reps, a hold, a carry, and its first number) and `planNumber` (the grey number in the set's box, which Complete set writes): since v323 (the outside audit of 20 Nov 2026, its #8) that number is always in the box's own unit, a time plan's own time or the top of its range ("1 min 30 sec" → 90, it offered 30), and for reps never a time written beside them ("10 reps, 30 sec rest" → 10);
   - `app/notes.js`: client notes and their merge;
   - `app/util.js`: local dates `today()`/`localIso()`, the server's day `laToday()` (v315), and `lsGet`/`lsSet`;
   - `app/pdf.js` and `app/report.js`: the monthly report PDF, set in `fonts/Inter-*.ttf`. `buildReport` prints the coach's private notes only with `opts.notes === true` (v307). Its Progress table has a line for each kind of result an exercise has that month (reps, a hold, a carry: the Progress tab's three kinds, `liftsOf`), an exercise's lines together (v322, the outside audit of 20 Nov 2026, its #9: one line labelled by the newest plan printed a 40 m carry as "40 sec").
@@ -60,7 +60,7 @@ A single-page PWA: a personal trainer (the coach) plans workouts, and clients lo
 
 ### The release number
 
-- N is the number in `main.js?v=N` in `index.html`'s module script (`oneWindow(() => import("./app/main.js?v=N").then((m) => { if (!winLost()) return m.boot(); }))`, 322 at the time of writing).
+- N is the number in `main.js?v=N` in `index.html`'s module script (`oneWindow(() => import("./app/main.js?v=N").then((m) => { if (!winLost()) return m.boot(); }))`, 323 at the time of writing).
 - Any change to `index.html` or an `app/*.js` file raises N by one. No test checks the bump.
 - Never reuse or lower N:
   - A phone that holds release N never stores it again, so it keeps serving N's old scripts, even online.
@@ -283,7 +283,7 @@ if [ $rc -eq 0 ]; then git add <changed files> && git commit -q -F <message file
 ### Running them
 
 - `node tests/run.js` (or `npm test`) runs every `tests/*.test.js` and exits 1 on any failure. It needs Node 20 or later, and nothing to install.
-- At v322 it ends "1603 passed, 0 failed" after about 6 to 7 minutes (most of it the probes' real timers).
+- At v323 it ends "1605 passed, 0 failed" after about 6 to 7 minutes (most of it the probes' real timers).
 - Run it under other time zones too (`TZ=Asia/Tokyo node tests/run.js`): no test may depend on the computer's own zone (v315: one did, and failed only in Tokyo). Before a release, nine zones, one for each kind of trouble date code meets: America/Los_Angeles (home: the coach's Mac and the server's day), Asia/Tokyo (a day ahead of Los Angeles most evenings, no daylight saving), Europe/Paris (daylight saving on other dates than the US's), Pacific/Honolulu (behind Los Angeles: still yesterday), Pacific/Kiritimati (+14, the earliest clock), Pacific/Pago_Pago (-11, the latest), Asia/Kolkata (+5:30, a half hour), Asia/Kathmandu (+5:45, three quarters) and Australia/Sydney (southern daylight saving, the opposite season). Two at a time, each takes about 6 to 7 minutes.
 - `node tests/x.test.js` on its own runs no test and exits 0 (a file with a probe still runs the probe): only `run.js` runs the registered tests.
 

@@ -92,3 +92,11 @@ test("words keep the unit they were logged or typed in; a band's number is not a
 test("of two sets the same within 0.06 kg, the heavier is the Best: 135 lb, not the 61.2 kg (134.9 lb) lifted after it", () => {
   assert.deepStrictEqual(r.tie, { last: "134.9 lb × 5", best: "135 lb × 5" });
 });
+test("(v323, the outside audit's #8) a first time on a plan: the grey number is in the box's own unit, and Complete set left as it is writes that number: 90 for \"1 min 30 sec\" (it offered and logged 30), 10 for \"10 reps, 30 sec rest\" (it logged 30 reps)", () => {
+  assert.deepStrictEqual(r.planGrey.minSec, { grey: "90", unit: "sec", wrote: "90" }, "1 min 30 sec: a box in seconds, 90 offered and written");
+  assert.deepStrictEqual(r.planGrey.clock, { grey: "90", unit: "sec", wrote: "90" }, "1:30, as before");
+  assert.deepStrictEqual(r.planGrey.onOff, { grey: "20", unit: "sec", wrote: "20" }, "20 sec on, 40 sec off: the work, not the rest");
+  assert.deepStrictEqual(r.planGrey.range, { grey: "45", unit: "sec", wrote: "45" }, "30-45 sec: the top of the range, as before");
+  assert.deepStrictEqual([r.planGrey.restNote.grey, r.planGrey.restNote.wrote, r.planGrey.restNote.unit === "sec"], ["10", "10", false], "10 reps, 30 sec rest: a reps box, 10 offered and written");
+  assert.deepStrictEqual([r.planGrey.plain.grey, r.planGrey.plain.wrote], ["10", "10"], "8-10: the top of the range, as before");
+});

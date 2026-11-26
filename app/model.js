@@ -43,31 +43,40 @@ export const isEmptyWorkout = (t) => !!t && !t.completedAt && !t.skippedAt && !(
 // A plan written in time ("30 sec", "45 s", "1 min", "60 sec / side") is logged as time held, not reps: { n: "30", unit: "sec" }.
 // A timed plan: the reps box says time, so the set log asks for time, not reps. Every spelling he uses: "30 sec", "30s", "30 seconds / side",
 // "1 min", "30-45 sec", "1:00", 30", and the words "hold" / "max hold" / "as long as possible". The exercise name never decides (a plank jack is reps).
-export const timedPlan = (reps) => {
+// timedRead is the one reader of a timed plan (v323, the outside audit of 20 Nov 2026, its #8): timedPlan's answer and, as `hi`, the plan's own number as the box
+// offers it: the top of a range written with its unit ("30-45 sec" → 45), minutes with seconds or a clock time in seconds. A plan in words ("hold 30") has none.
+const topOf = (a, b) => (b != null && parseFloat(String(b).replace(",", ".")) > parseFloat(String(a).replace(",", ".")) ? b : a);
+const timedRead = (reps) => {
   const s = String(reps || "");
   const lead = /^\s*\d+\s*[x\u00d7]\s*/i.exec(s), base = lead ? lead[0].length : 0, first = s.slice(base).search(/\d/);   // the plan's own number is the first one ("3 x 30 sec" aside): "10 reps, 2 sec hold at top" is reps
   const at = (i) => first < 0 || i === base + first;
-  const ms = /(\d+)\s*min(?:s|utes?)?\s*(\d+)\s*s(?:ec|ecs|econds?)?\b/i.exec(s); if (ms && at(ms.index)) return { n: String(parseInt(ms[1], 10) * 60 + parseInt(ms[2], 10)), unit: "sec" };   // "1 min 30 sec" = 90 seconds, like "1:30"
-  const m = /(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*\d+(?:[.,]\d+)?)?\s*(s|sec|secs|second|seconds|min|mins|minute|minutes)\b/i.exec(s);
-  if (m && at(m.index)) return { n: m[1], unit: /^m/i.test(m[2]) ? "min" : "sec" };
-  const mm = /(?:^|[^\d:])(\d{1,2}):(\d{2})(?![\d:])/.exec(s); if (mm && at(s.indexOf(mm[1] + ":" + mm[2], mm.index))) return { n: String(parseInt(mm[1], 10) * 60 + parseInt(mm[2], 10)), unit: "sec" };   // "1:30" = 90 seconds
-  const q = /(\d+)\s*(?:"|\u2033|'')/.exec(s); if (q && at(q.index)) return { n: q[1], unit: "sec" };                                   // 30" = 30 seconds
+  const ms = /(\d+)\s*min(?:s|utes?)?\s*(\d+)\s*s(?:ec|ecs|econds?)?\b/i.exec(s); if (ms && at(ms.index)) { const n = String(parseInt(ms[1], 10) * 60 + parseInt(ms[2], 10)); return { n, unit: "sec", hi: n }; }   // "1 min 30 sec" = 90 seconds, like "1:30"
+  const m = /(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*(\d+(?:[.,]\d+)?))?\s*(s|sec|secs|second|seconds|min|mins|minute|minutes)\b/i.exec(s);
+  if (m && at(m.index)) return { n: m[1], unit: /^m/i.test(m[3]) ? "min" : "sec", hi: topOf(m[1], m[2]) };
+  const mm = /(?:^|[^\d:])(\d{1,2}):(\d{2})(?![\d:])/.exec(s); if (mm && at(s.indexOf(mm[1] + ":" + mm[2], mm.index))) { const n = String(parseInt(mm[1], 10) * 60 + parseInt(mm[2], 10)); return { n, unit: "sec", hi: n }; }   // "1:30" = 90 seconds
+  const q = /(\d+)\s*(?:"|\u2033|'')/.exec(s); if (q && at(q.index)) return { n: q[1], unit: "sec", hi: q[1] };                                   // 30" = 30 seconds
   const kw = /\b(hold|max\s*time|as long as possible|alap|for time)\b/i.exec(s);
   if (kw && !/\brep/i.test(s)) { const n = /\d+/.exec(s); if (!n || n.index > kw.index) return { n: n ? n[0] : "", unit: "sec" }; }   // "max hold", "hold 30": the box asks for the seconds; "12 (hold 2s at bottom)" is reps
   return null;
 };
+export const timedPlan = (reps) => { const t = timedRead(reps); return t ? { n: t.n, unit: t.unit } : null; };
 // A distance plan ("40 m", "40m", "20-40 meters"): the box logs meters, like a hold logs seconds. measurePlan covers both.
-export const distPlan = (reps) => { const m = /(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*\d+(?:[.,]\d+)?)?\s*(m|meter|meters|metre|metres)\b/i.exec(String(reps || "")); return m ? { n: m[1], unit: "m" } : null; };
+const distRead = (reps) => { const m = /(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*(\d+(?:[.,]\d+)?))?\s*(m|meter|meters|metre|metres)\b/i.exec(String(reps || "")); return m ? { n: m[1], unit: "m", hi: topOf(m[1], m[2]) } : null; };
+export const distPlan = (reps) => { const d = distRead(reps); return d ? { n: d.n, unit: d.unit } : null; };
 export const measurePlan = (reps) => timedPlan(reps) || distPlan(reps);
 // Before the Time box existed, a plank's seconds were typed into the weight box ("45 sec"). On a timed exercise a weight that reads as a
 // time is the time: it moves to the time column (in the plan's unit) and the weight is bodyweight again. Idempotent: runs on every load and pull.
 export const timeAsWeight = (v) => { const s = String(v || ""); if (!/\d\s*(sec|secs|second|seconds|min|mins|minute|minutes)\b|\d:\d{2}|\d\s*(?:"|\u2033|'')/i.test(s)) return null; const tm = timedPlan(s); return tm && tm.n !== "" ? tm : null; };   // only a spelled-out time: "25s" in a weight box is a pair of 25s, not 25 seconds
 // The number the plan puts in the box before anything is typed: "10" → 10, "8–10" or "6, 6, 4" → the highest, "10 / side" → 10,
 // "45 sec" → 45, "30-45 sec" → 45, "1:00" → 60; "max", "AMRAP" or a bare "hold" → nothing (the box asks). Whole numbers only.
+// The number is in the box's own unit (v323, the outside audit of 20 Nov 2026, its #8: the box of "1 min 30 sec" is in seconds and offered 30, which Complete set wrote
+// for a 90-second plan): a time or a distance gives the plan's own number (timedRead's `hi`: "1 min 30 sec" → 90, "20 sec on, 40 sec off" → 20, "10 x 5 sec" → 5,
+// "40 m, rest 90 sec" → 40), never a rest or a count written beside it; and for reps a time written beside them is no rep count ("10 reps, 30 sec rest" → 10, it offered 30).
+const TIME_NOTE = /\d+(?:[.,]\d+)?(?:\s*[\u2013-]\s*\d+(?:[.,]\d+)?)?\s*(?:s|sec|secs|second|seconds|min|mins|minute|minutes)\b|\d{1,2}:\d{2}(?![\d:])|\d+\s*(?:"|\u2033|'')/gi;   // a time, in every spelling timedRead knows
 export const planNumber = (reps) => {
-  const s = String(reps || ""), tm = timedPlan(s);
-  if (tm && /\d+:\d{2}/.test(s)) return tm.n;
-  const nums = (s.replace(/\s*(\/|each|per)\s*(side|leg|arm)\b/gi, "").replace(/@\s*\d+(?:[.,]\d+)?\s*%?|\d+(?:[.,]\d+)?\s*%|\brpe\s*\d+(?:[.,]\d+)?/gi, "").match(/\d+(?:[.,]\d+)?/g) || []).map((x) => parseFloat(x.replace(",", ".")));   // "8-10 @ 70%", "RPE 8": the load note is not a rep count
+  const s = String(reps || ""), own = timedRead(s) || distRead(s);
+  if (own && own.hi != null) { const n = parseFloat(String(own.hi).replace(",", ".")); return Number.isInteger(n) ? String(n) : ""; }
+  const nums = ((own ? s : s.replace(TIME_NOTE, " ")).replace(/\s*(\/|each|per)\s*(side|leg|arm)\b/gi, "").replace(/@\s*\d+(?:[.,]\d+)?\s*%?|\d+(?:[.,]\d+)?\s*%|\brpe\s*\d+(?:[.,]\d+)?/gi, "").match(/\d+(?:[.,]\d+)?/g) || []).map((x) => parseFloat(x.replace(",", ".")));   // "8-10 @ 70%", "RPE 8": the load note is not a rep count
   if (!nums.length) return "";
   const top = Math.max(...nums); return Number.isInteger(top) ? String(top) : "";
 };

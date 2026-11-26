@@ -182,4 +182,13 @@ const out = {};
 { seed({ now: [R("a", "1", "Barbell bench press", { weights: ["61.2", "", ""], repsDone: ["5", "", ""], setsDone: 1, unit: "kg" })] }); out.sameWeight = { best: lifts("a").best, gold: rowOf("a").qs[".lift.best"].classList.contains("new") };   // 61.2 kg for 5 is last time's 135 lb for 5: no new best
   const r = rowIn("t1", "a"); r.repsDone[0] = "8"; redraw(); out.moreReps = { best: lifts("a").best, gold: rowOf("a").qs[".lift.best"].classList.contains("new") };   // more reps at it: a new best
 }
+{ // v323 (the outside audit of 20 Nov 2026, its #8): a first time on a plan (no set before, no last time): the box's grey number, the unit word after it, and what Complete set writes when the box is left as it is
+  const rpBox = (id) => rowOf(id).qs[".setlog .rp"]; out.planGrey = {};
+  for (const [key, reps] of [["minSec", "1 min 30 sec"], ["restNote", "10 reps, 30 sec rest"], ["onOff", "20 sec on, 40 sec off"], ["range", "30-45 sec"], ["clock", "1:30"], ["plain", "8-10"]]) {
+    seed({ now: [R("a", "1", "Plank", { reps })], past: [] });
+    const grey = rpBox("a").placeholder, unit = chipOf(rpBox("a")).unit;
+    await advance(400); fire(completeBtn(), "click"); await advance(400);
+    out.planGrey[key] = { grey, unit, wrote: String(rowIn("t1", "a").repsDone[0]) };
+  }
+}
 console.log(JSON.stringify(out));

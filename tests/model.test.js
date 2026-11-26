@@ -179,6 +179,20 @@ test("the plan's number for an untouched set: one number as is, the highest of a
   for (const [reps, want] of [["10", "10"], ["8\u201310", "10"], ["8-12 reps", "12"], ["10 / side", "10"], ["12 each leg", "12"], ["6, 6, 4", "6"], ["12, 10, 8", "12"], ["1", "1"],
     ["45 sec", "45"], ["30-45 sec", "45"], ["1:00", "60"], ["1:30 / side", "90"], ["2 min", "2"], ["max", ""], ["AMRAP", ""], ["Max hold", ""], ["hold", ""], ["", ""], ["12.5", ""]]) assert.strictEqual(planNumber(reps), want, reps);
 });
+// v323 (the outside audit of 20 Nov 2026, its #8): the grey number is in the box's own unit. The box of "1 min 30 sec" is in seconds (timedPlan reads 90) and offered 30, the
+// largest number written, which Complete set then logged; "10 reps, 30 sec rest" is a reps box and offered 30 reps.
+test("(v323, the outside audit's #8) the plan's number is in the box's own unit: minutes with seconds give the whole time, a time plan gives its own time (never a rest, a count or the other half beside it), and reps never take a time written beside them", () => {
+  for (const [reps, want] of [["1 min 30 sec", "90"], ["2 min 30 s", "150"], ["1 min 30 sec / side", "90"], ["1 minute 15 seconds", "75"], ["1:30", "90"], ["90 sec", "90"],
+    ["20 sec on, 40 sec off", "20"], ["45 sec, rest 15 sec", "45"], ["30 sec, rest 1:00", "30"], ["30-45 sec, rest 1:00", "45"], ["45-30 sec", "45"], ["3 x 30 sec", "30"], ["10 x 5 sec", "5"], ["1,5-2 min", "2"], ["1.5 min", ""],
+    ["40 m, rest 90 sec", "40"], ["20-40 m", "40"], ["4 x 20 m", "20"],
+    ["10 reps, 30 sec rest", "10"], ["5 reps, 10 sec hold", "5"], ["10 reps, 2 sec hold at top", "10"], ["12 (hold 2s at bottom)", "12"], ["10 reps, rest 1:30", "10"], ["10 reps, 30\" rest", "10"], ["8 reps, rest 60-90 sec", "8"],
+    ["10 squats", "10"], ["5 sets", "5"], ["8 singles", "8"], ["10 reps, tempo 3:1:1", "10"], ["hold 30", "30"], ["2 x 30\"", "30"]]) assert.strictEqual(planNumber(reps), want, reps);
+  for (const reps of ["1 min 30 sec", "2 min 30 s", "1:30", "30-45 sec", "20 sec on, 40 sec off", "10 x 5 sec", "45 sec", "2 min", "40 m", "20-40 m"]) {   // the number offered is the reader's own, or the top of the range it read
+    const mp = measurePlan(reps), n = Number(planNumber(reps)); assert.ok(mp && n >= Number(String(mp.n).replace(",", ".")), reps + ": never below the plan's own number");
+  }
+  for (const reps of ["10 reps, 30 sec rest", "5 reps, 10 sec hold", "10 reps, rest 1:30", "8 reps, rest 60-90 sec"]) assert.strictEqual(measurePlan(reps), null, reps + " stays a reps plan");
+  assert.deepStrictEqual([timedPlan("30-45 sec"), timedPlan("1 min 30 sec"), timedPlan("2 x 30\""), distPlan("20-40 m"), distPlan("40 m")], [{ n: "30", unit: "sec" }, { n: "90", unit: "sec" }, { n: "30", unit: "sec" }, { n: "20", unit: "m" }, { n: "40", unit: "m" }], "the readers answer as before: the kind and its first number, nothing more");
+});
 
 test("a long name splits into a title and a subtitle at a bracket, comma or dash; his own ending wins; nothing else splits", () => {
   assert.deepStrictEqual(splitName("TRX row (underhand, to chest)"), { title: "TRX row", sub: "underhand, to chest" });
