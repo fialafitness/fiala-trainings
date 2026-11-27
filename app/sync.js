@@ -124,10 +124,11 @@ function adoptQueue(p) {                                           // another pa
   return true;
 }
 // what still has to reach the server is written to the device too, so closing the app with no signal loses nothing
-let slimDue = false, slimMore = false, copySafe = false, slimOn = false;   // v324: the queue did not fit and waits for the device copy's write; something changed while that write was out; that write has just landed; the queue on the device is the short one (persistPending, below)
+let slimDue = false, slimMore = false, copySafe = false, slimOn = false, slimHold = false, slimTimer = 0;   // v324: the queue did not fit and waits for the device copy's write; something changed while that write was out; that write has just landed; the queue on the device is the short one (persistPending, below)
 const queueKept = (ok) => { const was = S.queueFull; S.queueFull = !ok; if (was !== S.queueFull && ui.setStatus) ui.setStatus(); };   // the bar says when the device keeps no queue at all
-const queueFresh = () => { slimDue = false; slimMore = false; copySafe = false; slimOn = false; };   // the tests' reset: a launch starts so
-const slimAfter = (ok) => { if (!slimDue) return; slimDue = false; const more = slimMore; slimMore = false; if (winLost()) return; if (!ok) { queueKept(false); return; } copySafe = true; try { persistPending(); } finally { copySafe = false; } if (more && idbDb && slimOn) { slimDue = true; localBackend.flushDb(); } };   // the device copy's write has answered: the queue as it is now, without what the copy holds; a copy that could not be written leaves the queue as it was (a waiting key beside an older record could send that record over a newer one)
+const queueFresh = () => { slimDue = false; slimMore = false; copySafe = false; slimOn = false; slimHold = false; clearTimeout(slimTimer); slimTimer = 0; syncFp = null; fullAsked = 1; fullDone = 0; fullPerf = 0; fullAt = 0; };   // the tests' reset: a launch starts so
+const slimAsk = () => { slimDue = true; clearTimeout(slimTimer); slimTimer = setTimeout(() => { if (slimDue) queueKept(false); }, S.slimWait || 5000); if (slimTimer && slimTimer.unref) slimTimer.unref(); localBackend.flushDb(); };   // v327 (the review of 26 Nov 2026): the device copy's write is asked for, and a database that gives it no answer in 5 seconds makes the bar say the device is not saving (it said Saved while nothing more was kept); the short queue stays due, so a late answer still writes it and takes the words away
+const slimAfter = (ok) => { if (!slimDue) return; slimDue = false; clearTimeout(slimTimer); const more = slimMore; slimMore = false; if (winLost()) return; if (!ok) { queueKept(false); return; } copySafe = true; try { persistPending(); } finally { copySafe = false; } if (more && idbDb && slimOn) slimAsk(); };   // the device copy's write has answered: the queue as it is now, without what the copy holds; a copy that could not be written leaves the queue as it was (a waiting key beside an older record could send that record over a newer one)
 function persistPending() {
   if (winLost()) return;
   try { if (localStorage.getItem(TAB_KEY) !== TAB) adoptQueue(lsGet("fiala.pending.v1")); } catch (_) {}
@@ -147,11 +148,12 @@ function persistPending() {
   // in one write, so a waiting record, its stamp and its copy read are always of one moment (a stamp newer than its record would write that record over a newer one, and a
   // copy read newer than its record would undo the other device's changes in a merge). With no database, or when even the short queue does not fit, the bar says the device
   // is not saving (S.queueFull), as for the device copy.
+  if (slimHold) return;                                             // v327 (the review of 26 Nov 2026): this launch could not read the records of the short queue on the device (restorePending): that queue stays as it is
   let kept = lsSet("fiala.pending.v1", q);
   if (kept) { slimDue = false; slimMore = false; slimOn = false; }
   else if (copySafe) { kept = lsSet("fiala.pending.v1", { ...q, recs: [], docs: [], stamps: [], slim: true }); slimOn = kept; }   // called from the device copy's own write (slimAfter): every record is on the device as it is now
   else if (idbDb && slimDue) slimMore = true;                       // a change made while the device copy's write is out: that write does not hold it, so another follows (slimAfter)
-  else if (idbDb) { slimDue = true; localBackend.flushDb(); }       // the device copy first, at once; its answer writes the short queue
+  else if (idbDb) slimAsk();                                        // the device copy first, at once; its answer writes the short queue
   if (kept || copySafe || !idbDb) queueKept(kept);
   lsSet(SIDE, { wd: [...withdrawnAt], held: [...heldAgree], settled: [...settledAnswers].slice(-100), choices: [...pendingChoices].filter(([, m]) => m.size).map(([id, m]) => [id, [...m]]), owner: S.pendingOwner || S.sessionEmail || "", tab: TAB });
   try { localStorage.setItem(TAB_KEY, TAB); } catch (_) {}
@@ -159,6 +161,7 @@ function persistPending() {
 }
 function restorePending() {
   const p = lsGet("fiala.pending.v1"); if (!p || typeof p !== "object") { try { localStorage.removeItem(SIDE); } catch (_) {} return; }
+  if (p.slim === true && !idbDb) { slimHold = true; S.pendingOwner = p.owner || ""; queueKept(false); return; }   // v327 (the review of 26 Nov 2026, found twice): a short queue holds no records, they are in the database's device copy, and this launch has no database (its open failed or gave no answer). Every waiting key was dropped for want of its record, the next write stored an empty queue over the short one, and the copy this launch wrote to localStorage outranked the database's at the next launch: hundreds of changes gone with the bar saying Saved. Now nothing is restored and nothing is written over either (persistPending, localBackend.save): the bar says the device is not saving, and the next launch that opens the database finds every change waiting
   { const sx = lsGet(SIDE); if (sx && typeof sx === "object" && (!sx.owner || !p.owner || sx.owner === p.owner)) { p.settled = [...(p.settled || []), ...(sx.settled || [])]; p.choices = [...(sx.choices || []), ...(p.choices || [])]; p.held = [...(p.held || []), ...(sx.held || [])]; p.wd = [...(p.wd || []), ...(sx.wd || [])]; } }   // v316 (the check rounds): the answers also kept under a key no v315 page writes, folded with the queue's own (a v315 page still open on release day rewrites the queue without them)
   for (const k of p.dirty || []) if (!dirty.has(k)) dirty.set(k, 1);
   for (const [id, rows] of p.weights || []) pendingWeightRows.set(id, new Set([...(pendingWeightRows.get(id) || []), ...rows]));
@@ -271,7 +274,8 @@ function idbOpen() {                                               // the databa
   if (typeof indexedDB === "undefined" || !indexedDB) return Promise.resolve(null);
   return new Promise((done) => {
     let over = false; const end = (db) => { if (over) return; over = true; idbDb = db; done(db); };
-    const late = setTimeout(() => end(null), 2000);                // a browser that never answers the open: this launch goes on with localStorage
+    let slim = false; try { const q = lsGet("fiala.pending.v1"); slim = !!(q && q.slim === true); } catch (_) {}
+    const late = setTimeout(() => end(null), slim ? 15000 : 2000);   // a browser that never answers the open: this launch goes on with localStorage; v327: with a short queue on the device (its records are in the database, which this browser therefore has) the open is given 15 seconds
     try {
       const r = indexedDB.open(IDB_NAME, 1);
       r.onupgradeneeded = () => { try { r.result.createObjectStore(IDB_STORE); } catch (_) {} };
@@ -288,17 +292,18 @@ const localBackend = {
   async loadDb() {                                                  // (v306) then the copy in the browser's database: newer than any in localStorage, it replaces what load() put in; one found only in localStorage moves over, and leaves localStorage its room
     if (!(await idbOpen())) return false;
     const got = await idbTx("readonly", (st) => st.get(COPY)), ls = lsGet(COPY);
-    if (got && typeof got === "object" && (!ls || (Number(got.savedAt) || 0) >= (Number(ls && ls.savedAt) || 0))) { clients.clear(); trainings.clear(); takeCopy(got); }
+    if (got && typeof got === "object" && !(ls && ls.wiped === true) && (!ls || (Number(got.savedAt) || 0) >= (Number(ls && ls.savedAt) || 0))) { clients.clear(); trainings.clear(); takeCopy(got); }   // v327: never the database's copy over a sign-out's mark (wipe, below)
     if (ls && (await idbTx("readwrite", (st) => st.put(copyOf(), COPY)))) { try { localStorage.removeItem(COPY); } catch (_) {} }
     return true;
   },
   save() {
     if (winLost()) return;
     if (idbDb) { clearTimeout(idbTimer); idbTimer = setTimeout(() => localBackend.flushDb(), 120); return; }   // the database: one write for a burst of saves (a sync, a restore)
+    if (slimHold) return;                                           // v327: a copy written to localStorage now would outrank the database's at the next launch, and that one holds the short queue's records
     const ok = lsSet(COPY, copyOf()); S.deviceFull = !ok;
   },
-  flushDb() { clearTimeout(idbTimer); idbTimer = 0; if (!idbDb || winLost()) return Promise.resolve(false); return idbTx("readwrite", (st) => st.put(copyOf(), COPY)).then((ok) => { const was = S.deviceFull; S.deviceFull = !ok; if (was !== S.deviceFull && ui.setStatus) ui.setStatus(); slimAfter(ok); return ok; }); },
-  async wipe() { clearTimeout(idbTimer); idbTimer = 0; if (winLost()) return; if (idbDb) { try { localStorage.removeItem(COPY); } catch (_) {} await idbTx("readwrite", (st) => st.delete(COPY)); } else lsSet(COPY, { clients: {}, trainings: {} }); },   // a sign-out: nothing of the account stays on the device
+  flushDb() { clearTimeout(idbTimer); idbTimer = 0; if (!idbDb || winLost()) return Promise.resolve(false); const due = slimDue; return idbTx("readwrite", (st) => st.put(copyOf(), COPY)).then((ok) => { const was = S.deviceFull; S.deviceFull = !ok; if (was !== S.deviceFull && ui.setStatus) ui.setStatus(); if (due) slimAfter(ok); return ok; }); },   // v327 (the review of 26 Nov 2026): the short queue is written on the answer of a write begun while it was due (`due`: that write's copy carries the copies last read, copyOf), never on the answer of an earlier one still out (the short queue then sat beside a device copy with no copies read and without the newest change)
+  async wipe() { clearTimeout(idbTimer); idbTimer = 0; syncFp = null; fullAsked++; if (winLost()) return; if (idbDb) { try { localStorage.removeItem(COPY); } catch (_) {} await idbTx("readwrite", (st) => st.delete(COPY)); } else lsSet(COPY, { clients: {}, trainings: {}, savedAt: Date.now(), wiped: true }); },   /* v327 (the review of 26 Nov 2026, an older gap): signed out in a launch whose database did not open, the account's copy stayed in the database and the next launch read it back behind the sign-in page; the mark makes that launch pass the database's copy over and write the empty one over it (loadDb) */   // a sign-out: nothing of the account stays on the device
   async set() { this.save(); },
   async del() { this.save(); },
 };
@@ -687,7 +692,28 @@ const clientBackend = {
   },
   async del() {},
 };
-function syncDown() { if (S.syncing) return S.syncing; S.syncing = syncDownNow().finally(() => { S.syncing = null; }); return S.syncing; }
+// v327 (the outside audit of 20 Nov 2026, "everything downloads again every minute"; the owner's Supabase usage of 26 Nov 2026: about 450 MB on a day the coach's app stayed on
+// screen, and the free plan's 5 GB a month exceeded). A routine tick (the minute's timer, the window's focus, the page back on screen) on the coach's device first asks each of the
+// two tables one small question: how many rows, and the newest updated_at (one row, Prefer: count=exact). Every write stamps its row with the server's clock (ft_touch, and now() at
+// an insert), so a change, a new record or a deletion on any device moves one of the two. It downloads everything only when an answer differs from the last full read (syncFp), when
+// that read left a record untaken (passed over while it was being edited, or waiting to send: its stamp here is not the server's), when any code asked for a sync since
+// (fullAsked: every sync but a routine tick is a full read, as before), or 15 minutes after the last full read (FULL_EVERY: a write whose transaction began before the newest
+// stamp's and ended after the read carries an older stamp, and only a full read finds it). A client's phone is unchanged: it reads its own workouts through client_my_data.
+let syncFp = null, fullAsked = 1, fullDone = 0, fullPerf = 0, fullAt = 0;
+const FULL_EVERY = 15 * 60 * 1000;
+const stampKey = (v) => { const m = /^(\d{4}-\d\d-\d\d)[T ](\d\d:\d\d:\d\d)(?:\.(\d+))?/.exec(String(v || "")); return m ? m[1] + "T" + m[2] + "." + ((m[3] || "") + "000000").slice(0, 6) : ""; };   // a stamp as text that sorts by time (the server drops a fraction's last zeros)
+const fpOf = (rows) => { let max = "", top = ""; for (const r of rows) { const k = stampKey(r.updated_at); if (k > top) { top = k; max = String(r.updated_at); } } return { n: rows.length, max }; };
+const stampOf = async (table) => { const res = await withTimeout(S.sb.from(table).select("updated_at", { count: "exact" }).order("updated_at", { ascending: false }).limit(1), 8000); if (!res || res.error || typeof res.count !== "number" || !Array.isArray(res.data)) return null; return { n: res.count, max: res.data.length ? String(res.data[0].updated_at || "") : "" }; };
+const unchanged = async (fp) => { try { const [a, b] = await Promise.all([stampOf("ft_clients"), stampOf("ft_trainings")]); return !!(a && b && a.n === fp.c.n && a.max === fp.c.max && b.n === fp.t.n && b.max === fp.t.max); } catch (_) { return false; } };   // no answer, or a server that cannot count: a full read, as before
+const dropStaleMarks = () => {                                      // the coach's marks on a record that no longer waits to send
+  for (const id of [...trainerTouched.keys()]) if (!dirty.has(key("trainings", id))) trainerTouched.delete(id);
+  for (const id of [...trainerNamed.keys()]) if (!dirty.has(key("trainings", id))) trainerNamed.delete(id);
+  for (const id of [...trainerNoted.keys()]) if (!dirty.has(key("trainings", id))) trainerNoted.delete(id);
+  for (const id of [...planTouched]) if (!dirty.has(key("clients", id))) planTouched.delete(id);
+  for (const id of [...profileTouched.keys()]) if (!dirty.has(key("clients", id))) profileTouched.delete(id);
+  for (const [n, cid] of [...folderTouched]) if (!dirty.has(key("clients", cid))) folderTouched.delete(n);
+};
+function syncDown(routine) { if (routine !== true) fullAsked++; if (S.syncing) return S.syncing; S.syncing = syncDownNow(routine === true, true).finally(() => { S.syncing = null; }); return S.syncing; }
 const carryOrder = (cur, rec) => { const mine = new Map((cur.rows || []).map((x) => [x.id, String(x.label || "").trim()])); for (const x of rec.rows || []) { const l = mine.get(x.id); if (l != null && /^\d+[a-z]?$/i.test(l) && l !== x.label) x.label = l; } };   // the phone's exercise numbers onto the server's rows, by row id
 function mergeDown(map, kind, rows, complete, startedAt) {        // the server's answer into the local map, keeping what this device still has to send
   const seen = new Set(), viewedId = S.renderedTraining, viewed = trainings.get(viewedId), viewedClient = viewed ? viewed.clientId : null;   // (15 Nov 2026, the audit's #11) the workout on screen as this answer began: a sibling changed earlier in the answer must not lift the guard below
@@ -708,12 +734,16 @@ function mergeDown(map, kind, rows, complete, startedAt) {        // the server'
   }
   if (complete) for (const id of [...map.keys()]) if (!seen.has(id) && !dirty.has(key(kind, id)) && !((confirmedAt.get(key(kind, id)) || 0) > startedAt) && !((gaveUpAt.get(key(kind, id)) || 0) > startedAt)) { map.delete(id); seenAt.delete(key(kind, id)); seenDoc.delete(key(kind, id)); if (kind === "trainings") { heldBack.delete(id); dropDraft(id); } }   // only a full answer can say something is gone, and not about a record written after this read began
 }
-async function syncDownNow() {
+async function syncDownNow(routine, counted) {
+  if (routine !== true && counted !== true) fullAsked++;            // v327: called by name (a rule's answer, a restore, a test): a full read, as before (syncDown counted its own)
   if (winLost() || !S.sb || !S.signedIn || !S.backend || S.seeding) return false;
   const startedAt = Date.now(), startedPerf = performance.now(), as = S.sessionEmail, left = () => !S.signedIn || S.sessionEmail !== as;   // v316 (the check rounds): a sign-out (or another account) while this read was out: its answer lands nowhere
   const sess = await withTimeout(S.sb.auth.getSession(), 8000).catch(() => null); if (left()) return false;   // no usable token (refresh failed, cooldown, or a refresh that never answers): don't sync as a stranger
   if (!(sess && sess.data && sess.data.session)) { S.offline = true; ui.setStatus(); return false; }
-  await Promise.all([ui.loadCustomVideos(), ui.loadHidden(), ui.loadCustomNames(), ui.loadCustomSubs()].map((p) => withTimeout(p.catch(() => {}), S.catalogWait || 8000))); if (left()) return false;   // each catalog gets a deadline: one that never answers cannot hold the workouts back (its data still lands when it does)   // the exercise list and page paint from loaded names, videos and subtitles
+  let mark = fullAsked, same = false;                               // v327: a routine tick on the coach's device, nothing asked for since the last full read, which left nothing untaken and is under 15 minutes old: the two small questions
+  if (routine === true && !S.clientMode && syncFp && syncFp.owner === as && fullDone === fullAsked && performance.now() - fullPerf < FULL_EVERY && Date.now() - fullAt >= 0 && Date.now() - fullAt < FULL_EVERY) { same = await unchanged(syncFp); if (left()) return false; if (fullAsked !== mark) { same = false; mark = fullAsked; } }   // a sync asked for by name while the questions were out (a restore, a sign-in, a rule's answer: it is handed this tick): the tick reads everything, as that sync would have, and the read begins after the request, so it settles it
+  if (!same) {                                                      // everything, as every sync did (the lines below keep their indent, so this function's history still reads line by line)
+  const listsIn = (await Promise.all([ui.loadCustomVideos(), ui.loadHidden(), ui.loadCustomNames(), ui.loadCustomSubs()].map((p) => withTimeout(p.catch(() => {}), S.catalogWait || 8000)))).every((x) => x === true); if (left()) return false;   // each catalog gets a deadline: one that never answers cannot hold the workouts back (its data still lands when it does)   // the exercise list and page paint from loaded names, videos and subtitles
   let c, t;
   if (S.clientMode) {
     const res = await withTimeout(S.sb.rpc("client_my_data"), 8000); if (left()) return false;
@@ -746,12 +776,7 @@ async function syncDownNow() {
       if (isOffline(err)) { S.offline = true; ui.setStatus(); } else { ui.$("status").textContent = "Couldn\u2019t sync \u00b7 " + (err.message || "server error"); }
       return false;                                           // the device copy stays on screen
     }
-    for (const id of [...trainerTouched.keys()]) if (!dirty.has(key("trainings", id))) trainerTouched.delete(id);
-    for (const id of [...trainerNamed.keys()]) if (!dirty.has(key("trainings", id))) trainerNamed.delete(id);
-    for (const id of [...trainerNoted.keys()]) if (!dirty.has(key("trainings", id))) trainerNoted.delete(id);
-    for (const id of [...planTouched]) if (!dirty.has(key("clients", id))) planTouched.delete(id);
-    for (const id of [...profileTouched.keys()]) if (!dirty.has(key("clients", id))) profileTouched.delete(id);
-    for (const [n, cid] of [...folderTouched]) if (!dirty.has(key("clients", cid))) folderTouched.delete(n);
+    dropStaleMarks();
   }
   const migrated = lsGet("fiala.trainings.migrated");
   if (!S.clientMode && !migrated && c.data.length === 0 && t.data.length === 0 && (clients.size || trainings.size)) {
@@ -773,8 +798,12 @@ async function syncDownNow() {
       }
     }
   }
+  { const untaken = (kind, rows) => rows.some((r) => r.updated_at && seenAt.get(key(kind, r.id)) !== r.updated_at);   // v327: a record whose stamp here is not the one just read was passed over (being edited, waiting to send, written here meanwhile): the next tick reads everything again
+    syncFp = !S.clientMode && listsIn && c.complete !== false && t.complete !== false && !untaken("clients", c.data) && !untaken("trainings", t.data) ? { owner: as, c: fpOf(c.data), t: fpOf(t.data) } : null;   /* listsIn: an exercise list that failed or ran out of time is read again at the next tick, as it always was (its loader answers true only once its rows are in) */
+    if (syncFp) { fullDone = mark; fullPerf = startedPerf; fullAt = startedAt; } }   // v327 (the review of 26 Nov 2026): both clocks, as syncedNow in main.js: the steady one stands still while the device sleeps (a page woken hours later believed minutes had passed and asked the small questions for hours more), the wall clock can be set by hand
+  } else dropStaleMarks();
   lsSet("fiala.trainings.migrated", true); S.syncedOnce = true; S.syncedOn = today(); S.syncedAt = startedAt; S.syncedPerf = startedPerf;   // v316 (the seventeenth check round): as old as its read (an answer read before the Mac slept, landing as it woke three hours later, made a three-hour-old copy fresh)
-  localBackend.save();
+  if (!same) localBackend.save();                                   // v327: nothing was taken in: nothing to write
   if (S.clientMode) {
     S.myClientId = clients.size ? [...clients.keys()][0] : null;
     if (!S.myClientId) { ui.showWaiting(); return; }
@@ -787,15 +816,15 @@ async function syncDownNow() {
   if (!S.clientMode && ui.seedTemplates) ui.seedTemplates().catch(() => {});   // the built-in templates, once the server's copy is in (a first sync that failed gets its turn later)
   return true;
 }
-function scheduleSync() { clearTimeout(S.syncTimer); if (winLost()) return; S.syncTimer = setTimeout(() => { (S.offline ? ui.resumeOnline() : syncDown()).catch(() => {}); }, 300); }
+function scheduleSync(routine) { clearTimeout(S.syncTimer); if (winLost()) return; if (routine !== true) fullAsked++; S.syncTimer = setTimeout(() => { (S.offline ? ui.resumeOnline() : syncDown(true)).catch(() => {}); }, 300); }   // v327: routine: the minute's timer, the window's focus, the page back on screen (they may ask the small questions); anything else is a full read
 const shownAgain = () => { if (winLost()) return; try { if (localStorage.getItem(TAB_KEY) !== TAB && adoptQueue(lsGet("fiala.pending.v1"))) persistPending(); } catch (_) {} };   // v316 (the check rounds): a page back from the back/forward cache (Back from a policy page) or a frozen tab heard none of the other page's writes meanwhile: taken on before any edit
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { shownAgain(); scheduleSync(); } });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { shownAgain(); scheduleSync(true); } });
 window.addEventListener("pageshow", (e) => { if (e && e.persisted) shownAgain(); });
-window.addEventListener("focus", scheduleSync);
+window.addEventListener("focus", () => scheduleSync(true));
 const onStorage = (e) => { if (winLost()) return; if (e && e.key === "fiala.trainings.draft") { const d = S.templateDraft; if (!d || !d.taken || !d.dirty) return; const nv = lsGet("fiala.trainings.draft"); if (nv && nv.id === d.id && nv.doc && typeof nv.doc === "object") adoptDoc(d.id, nv.doc); else { if (trainings.has(d.id)) adoptDoc(d.id, JSON.parse(d.snapshot)); d.dirty = false; d.taken = false; S.pendingGo = null; if (ui.paintDraftBar) ui.paintDraftBar(); scheduleSync(); } S.renderedTraining = null; if (ui.render) ui.render(); return; }   /* v316 (the twenty-second check round): a template's draft this page only took at its launch from another page (never typed in here) follows that page, read as it is now: typed on there, and gone with its Save or Discard there (a second window kept it, and its Save wrote the older typing over the template saved there) */ if (e && e.key === SIDE && e.newValue) { try { const sx = lsGet(SIDE); if (sx && sx.tab !== TAB && adoptQueue({ wd: sx.wd, choices: sx.choices, settled: sx.settled, held: sx.held, owner: sx.owner, tab: sx.tab })) persistPending(); } catch (_) {} return; } if (!e || e.key !== "fiala.pending.v1" || !e.newValue) return; try { if (adoptQueue(lsGet("fiala.pending.v1"))) persistPending(); } catch (_) {} };
 window.addEventListener("storage", onStorage);   // another page of the app saved its queue: taken on here at once (the audit's #19); v316 (the seventeenth check round): read as it is now, never the event's own copy (a tab Chrome froze gets every event it missed as it wakes, each with the queue as it was then: it took an old empty copy of a workout filled since, and wrote it back)
 window.addEventListener("online", () => { S.failed = false; if (S.offline && S.signedIn) { ui.resumeOnline().catch(() => {}); return; } for (const k of dirty.keys()) { const [kind, id] = k.split("/"); flushOne(kind, id); } scheduleSync(); });
-setInterval(() => { if (document.visibilityState === "visible") scheduleSync(); }, 60000);
+setInterval(() => { if (document.visibilityState === "visible") scheduleSync(true); }, 60000);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && idbTimer) localBackend.flushDb(); });   // leaving the app: the copy waiting to be written goes now
 window.addEventListener("pagehide", () => { if (idbTimer) localBackend.flushDb(); });
 // a request that gets no answer within `ms` counts as a network failure (a phone with one bar can hang for a long time)

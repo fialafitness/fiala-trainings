@@ -5,7 +5,7 @@
 //   node queue-full-probe.mjs        a browser with the database
 //   node queue-full-probe.mjs nodb   a browser with none
 const NODB = process.argv[2] === "nodb";
-const store = new Map(); let failPut = false, hangPut = false;
+const store = new Map(); let failPut = false, hangPut = false, slowPut = 0;
 const request = () => ({ onsuccess: null, onerror: null, result: undefined, error: null });
 const db = {
   createObjectStore() {}, close() {},
@@ -13,7 +13,7 @@ const db = {
     const tx = { oncomplete: null, onerror: null, onabort: null }, end = (ok) => setTimeout(() => (ok ? tx.oncomplete && tx.oncomplete() : tx.onerror && tx.onerror()), 0);
     tx.objectStore = () => ({
       get(k) { const r = request(); setTimeout(() => { r.result = store.has(k) ? structuredClone(store.get(k)) : undefined; if (r.onsuccess) r.onsuccess(); }, 0); return r; },
-      put(v, k) { const val = structuredClone(v), r = request(); setTimeout(() => { if (hangPut) return; if (failPut) return end(false); store.set(k, val); if (r.onsuccess) r.onsuccess(); end(true); }, 0); return r; },   // cloned at the call, as a database does; hangPut: the app is closed before the write ends
+      put(v, k) { const val = structuredClone(v), r = request(); setTimeout(() => { if (hangPut) return; if (failPut) return end(false); store.set(k, val); if (r.onsuccess) r.onsuccess(); end(true); }, slowPut); return r; },   // cloned at the call, as a database does; hangPut: the app is closed before the write ends
       delete(k) { const r = request(); setTimeout(() => { store.delete(k); if (r.onsuccess) r.onsuccess(); end(true); }, 0); return r; },
     });
     return tx;
@@ -36,7 +36,7 @@ const big = (id) => ({ id, clientId: "c1", title: "Workout", date: "2026-11-20",
   rows: Array.from({ length: 10 }, (_, j) => ({ id: "r" + j, label: String(j + 1), name: "Squat", sets: 3, reps: "8", note: "x".repeat(500), weights: [], repsDone: [], setsDone: 0, done: false, alts: [] })) });
 const signIn = (sb) => app.set({ sb, signedIn: true, clientMode: false, backend: fns.cloudBackend, sessionEmail: "coach@x.com", view: { name: "clients" }, offline: false, offlineEntry: null });
 const start = async () => {                                            // the coach's device, signed in, everything read from the server
-  quiet(); app.reset(); store.clear(); failPut = false; hangPut = false; refused = 0; fns.leaveSettings();
+  quiet(); app.reset(); store.clear(); failPut = false; hangPut = false; slowPut = 0; refused = 0; app.set({ slimWait: 0 }); fns.leaveSettings();
   const sb = makeSupabase(); signIn(sb);
   localStorage.setItem("fiala.trainings.role", JSON.stringify({ email: "coach@x.com", role: "trainer" }));
   sb.seed("ft_clients", "c1", { id: "c1", name: "Jane Testperson", unit: "lb", email: "jane@x.com" });
@@ -51,7 +51,7 @@ const relaunch = async (sb) => {                                       // the ap
   quiet(); app.reset(); for (const [k, v] of keep) if (v != null) localStorage.setItem(k, v);
   await fns.boot(); signIn(sb);
 };
-const out = {};
+const out = {}; let fit = 0;                                            // how many waiting changes still fit the store (found by the write-order case below)
 
 if (NODB) {                                                             // no database: the queue cannot give its heavy parts to the device copy, so the bar says so
   const sb = await start();
@@ -95,6 +95,23 @@ if (NODB) {                                                             // no da
   out.fullDevice = { queueFull: app.get().queueFull, deviceFull: app.get().deviceFull, status: status(), shortWritten: q.slim === true, lastOneThatFit: (q.dirty || []).length > 0 && (q.dirty || []).length < N && (q.recs || []).length === (q.dirty || []).length };   // what stays on the device: the last queue that fitted, whole, each waiting record with it
   failPut = false; for (const id of ids.slice(3)) maps.dirty.delete(K(id)); fns.persistPending(); await wait(120);   // room again, and the queue fits
   out.fullDeviceOver = { queueFull: app.get().queueFull, stored: (queue() || { dirty: [] }).dirty.length };
+}
+{ // v327 (the review of 26 Nov 2026): the short queue waits for a write of the device copy begun while it was due; the answer of an earlier write, still out when the queue stopped fitting, wrote it beside a copy with no copies read and without the newest change
+  await start(); for (const id of ids) { maps.trainings.get(id).title = "First"; fns.scheduleSave("trainings", id); if (refused) break; fit++; } quiet();   // how many waiting changes still fit
+  await start(); editAll("First", ids.slice(0, fit)); slowPut = 200;  // the queue fits; the routine write of the device copy begins 120 ms after the last change, and takes 200 ms
+  await wait(150); slowPut = 600;                                     // it is out; any write begun from here takes 600 ms
+  maps.trainings.get(ids[fit]).title = "The one too many"; fns.scheduleSave("trainings", ids[fit]); quiet();   // the queue stops fitting: the short one is due, and a write that carries the copies read is asked for
+  await wait(300); const mid = queue() || {};                         // the earlier write has answered, the one asked for has not
+  await wait(900); const end = queue() || {}, copy = store.get(COPY) || { trainings: {} };
+  out.window = { someFit: fit > 100 && fit < N, refused: refused > 0, shortOnTheEarlierAnswer: mid.slim === true, wholeMeanwhile: (mid.dirty || []).length === fit && (mid.recs || []).length === fit, shortOnItsOwn: end.slim === true, waiting: (end.dirty || []).length === fit + 1, copiesReadInCopy: Object.keys(copy.bases || {}).length === fit + 1, newestInCopy: (copy.trainings[ids[fit]] || {}).title };
+  slowPut = 0;
+}
+{ // v327 (the review of 26 Nov 2026): a write of the device copy that gets no answer: the bar stops saying Saved (the short queue stayed due for ever, nothing more was kept, and nothing was said)
+  await start(); app.set({ slimWait: 200 }); hangPut = true;
+  editAll("Changed while the database is silent", ids.slice(0, fit + 1)); const early = app.get().queueFull;   // the last of them is the one too many: the device copy's write is asked for, and gets no answer
+  await wait(400);
+  out.silent = { saidNothingAtFirst: early === false, queueFull: app.get().queueFull, status: status(), shortWritten: (queue() || {}).slim === true };
+  hangPut = false; app.set({ slimWait: 0 });
 }
 console.log(JSON.stringify(out));
 process.exit(0);

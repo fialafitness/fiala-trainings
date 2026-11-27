@@ -330,7 +330,8 @@ async function sendAll() {
     if (ok === "missing") { S.photoMissing = true; return false; }
     if (ok === "gone") { if (queue.get(cid) === e) queue.delete(cid); toTrash(cid, [e.v, ...(e.gone || [])]); saveQueue(); continue; }   // refused for good: the server's photo comes back with the next sync; what was sent goes
     if (!ok) return false;
-    if (queue.get(cid) === e) { queue.delete(cid); saveQueue(); }
+    const olds = [e.old, ...(e.gone || [])].filter((x) => typeof x === "string" && x && x !== e.v);
+    if (queue.get(cid) === e) queue.delete(cid); if (!S.clientMode) toTrash(cid, olds); saveQueue();   // v327 (the review of 26 Nov 2026): the coach's replaced files wait on the trash from here, in the same stored write that takes the photo off its queue: when the session ended while the record's save below was out, they were on no list and stayed on the server for good (the trash pass never removes a file a record names, and waits while the record's save does)
     if (!S.clientMode) { try { await flushOne("clients", cid); } catch (_) {} if (lost()) return false; }   // v326 (the outside audit of 20 Nov 2026, its #7): the coach's marker is a save of the client's record, only queued by mark(): it goes now, and the file it replaces goes after it. The old file was removed while the server's record still named it: until that save landed, every other device was pointed at a file that was gone
     const named = (clients.get(cid) || {}).photo, tidy = [e.old, ...(e.gone || [])].filter((x) => typeof x === "string" && x && x !== e.v && x !== named);   // never the file the record names now (a merge kept the one before)
     if (tidy.length) {                                                   // the files no record points at any more; tried again later when there is no signal
@@ -338,6 +339,7 @@ async function sendAll() {
       else {
         let r; try { r = await withTimeout(store.remove(tidy.map((v) => pathOf(cid, v))), 15000); } catch (err) { r = { error: err }; }
         if (lost() || (r.error && isOffline(r.error))) { toTrash(cid, tidy); saveQueue(); }
+        else { const done = tidy.map((v) => pathOf(cid, v)); trash = trash.filter((x) => !done.includes(x)); saveQueue(); }   // removed (or refused for good): off the trash they were put on before the wait
       }
     }
     if (ui.render) ui.render();

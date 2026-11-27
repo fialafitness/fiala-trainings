@@ -41,6 +41,21 @@ test("(v326, the outside audit's #7) with no signal for the record's save the ol
   assert.deepStrictEqual([files(sb), photoWork()], [["photos/c1/" + v + ".jpg"], false], "the old file is removed by the pass after it");
   stopSave("c1");
 });
+test("(v327, the review of 26 Nov 2026) the session ends while the record's save is out: the file the photo replaced is on the trash from before the wait, so the passes after the coach is back remove it (it was on no list, and stayed on the server for good)", async () => {
+  const sb = makeSupabase(); await coachOn(sb); sb.seed("ft_clients", "c1", { id: "c1", name: "Jane Doe", unit: "lb", photo: "old1" }); maps.clients.get("c1").photo = "old1"; sb.storage.files.set("photos/c1/old1.jpg", jpeg(9));
+  sb.delayMs = 80;                                                    // the record's save takes a moment
+  await fns.setPhoto("c1", jpeg(3)); const pass = fns.flushPhotos(); await tick(30);   // the new file is up, the record's save is out
+  app.set({ signedIn: false });                                       // the session ends (a token refresh refused)
+  await pass; await tick(150); sb.delayMs = 0;
+  const v = maps.clients.get("c1").photo;
+  assert.ok(sb.storage.files.has("photos/c1/old1.jpg"), "a pass whose session ended removes nothing");
+  assert.strictEqual(photoWork(), true, "the replaced file waits on the trash");
+  app.set({ signedIn: true }); await settle(); await settle();        // the same coach is back: the passes that follow every sync
+  assert.strictEqual(sb.tables.ft_clients.get("c1").data.photo, v, "the record's save had landed");
+  assert.deepStrictEqual(files(sb), ["photos/c1/" + v + ".jpg"], "the replaced file is gone, the new one stays");
+  assert.strictEqual(photoWork(), false, "and nothing waits");
+  stopSave("c1");
+});
 test("(v326) a file a record names is never removed: the coach's new photo did not stand (the record names the one before again), so the old file leaves the list of files to remove and stays", async () => {
   const sb = makeSupabase(); await coachOn(sb); maps.clients.get("c1").photo = "old1"; sb.storage.files.set("photos/c1/old1.jpg", jpeg(9));
   sb.setFail({ table: "ft_clients", times: 99, message: "Failed to fetch" });

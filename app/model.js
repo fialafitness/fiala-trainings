@@ -46,22 +46,60 @@ export const isEmptyWorkout = (t) => !!t && !t.completedAt && !t.skippedAt && !(
 // timedRead is the one reader of a timed plan (v323, the outside audit of 20 Nov 2026, its #8): timedPlan's answer and, as `hi`, the plan's own number as the box
 // offers it: the top of a range written with its unit ("30-45 sec" → 45), minutes with seconds or a clock time in seconds. A plan in words ("hold 30") has none.
 const topOf = (a, b) => (b != null && parseFloat(String(b).replace(",", ".")) > parseFloat(String(a).replace(",", ".")) ? b : a);
+// What a time or a distance plan goes on to say about its own number (v327). v323 took the first time alone, so a range or a list written with the unit on each number offered
+// its low end ("30 sec - 45 sec" → 30, where "30-45 sec" → 45 and every release before offered 45). moreOf reads on from the first time: the other end of a range
+// ("30 sec - 45 sec", "1 min to 2 min", "30 sec - 1 min", 30" - 45", "30 sec - 45"), and a list of three or more holds, one for each set, when the plan goes on with nothing
+// but that list ("30 sec, 45 sec, 60 sec", "30s/45s/60s / side", "30 sec, 45 sec, 60 sec each"). The highest of them, in the box's unit, as "8-10" and "6, 6, 4" give their
+// highest. Anything else stays what v323 made it, the first time: a rest or a note ("45 sec, rest 15 sec", "45 sec, 15 sec rest", "20 sec on, 40 sec off", "10 sec - 30 sec
+// rest", "30 sec - 1 min between sets"), and two times side by side ("15 sec, 45 sec", "30 sec / 45 sec": as often work and rest as two holds).
+const planVal = (v) => parseFloat(String(v).replace(",", "."));
+// One more value of the plan at the start of `t`: [its top in the box's unit, the characters it took, whether it is written in the box's unit], or null.
+// A time may be minutes with seconds ("1 min 30 sec"), a range ("45-60 sec") or seconds as a mark (45").
+const timeVal = (box) => (t) => {
+  const ms = /^(\d+)\s*min(?:s|utes?)?\s*(\d+)\s*s(?:ec|ecs|econds?)?\b/i.exec(t); if (ms) { const sec = parseInt(ms[1], 10) * 60 + parseInt(ms[2], 10); return [box === "min" ? sec / 60 : sec, ms[0].length, false]; }
+  const m = /^(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*(\d+(?:[.,]\d+)?))?\s*(s|sec|secs|second|seconds|min|mins|minute|minutes)\b/i.exec(t);
+  if (!m) { const q = /^(\d+)\s*(?:"|\u2033|'')/.exec(t); return q ? [box === "min" ? parseInt(q[1], 10) / 60 : parseInt(q[1], 10), q[0].length, box === "sec"] : null; }
+  const mins = /^m/i.test(m[3]), to = (n) => { const x = planVal(n); return box === "min" ? (mins ? x : x / 60) : mins ? x * 60 : x; };   // in the box's unit: "1 min" in a seconds box is 60
+  return [Math.max(to(m[1]), m[2] != null ? to(m[2]) : -Infinity), m[0].length, mins === (box === "min")];
+};
+const distVal = (t) => { const m = /^(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*(\d+(?:[.,]\d+)?))?\s*(m|meter|meters|metre|metres)\b/i.exec(t); return m ? [Math.max(planVal(m[1]), m[2] != null ? planVal(m[2]) : -Infinity), m[0].length, true] : null; };
+const RESTS = /^[^\d,;()]*\b(?:rest|off|pause|break|rec|recover\w*|walk|jog|easy|between|ri)\b/i, RESTS_ANY = /\b(?:rest|off|pause|break|rec|recover\w*|walk|jog|easy|between|ri)\b/i;   // the words that make a time a rest
+const PLAN_END = /^(?:\s*(?:\/|each|per)\s*(?:side|leg|arm)\b)?\s*(?:$|[,;(])/i;   // the plan's own number ends here: nothing more, or a note after a comma or a bracket
+const moreOf = (rest, hi, val, pair) => {
+  let top = planVal(hi), t = rest;
+  for (;;) {                                                          // the other end of a range, and a step after it ("30 sec - 45 sec - 60 sec")
+    const j = /^(?:\s*(?:\/|each|per)\s*(?:side|leg|arm)\b)?\s*(?:[\u2013-]|to)\s*/i.exec(t); if (!j) break;   // "/ side" may stand on each end
+    let end = val(t.slice(j[0].length));
+    if (!end) { const bare = /^(\d+(?:[.,]\d+)?)(?![\d.,:])/.exec(t.slice(j[0].length)); if (bare && PLAN_END.test(t.slice(j[0].length + bare[0].length))) end = [planVal(bare[1]), bare[0].length, true]; }   // the unit written once, on the first number ("30 sec - 45", "30 sec to 45"): the range's end where the plan ends with it
+    if (!end) break;
+    const after = t.slice(j[0].length + end[1]);
+    if (RESTS.test(after) || (!end[2] && !PLAN_END.test(after))) break;   // a rest written after a dash ("10 sec - 30 sec rest", "30 sec - 2 min recover"); and a time in another unit is the range's end only where the plan ends with it ("30 sec - 1 min", never "30 sec - 1 min between sets")
+    top = Math.max(top, end[0]); t = after;
+  }
+  let list = top, k = 0, u = t, sided = false;
+  for (;;) { const c = /^(\s*(?:\/|each|per)\s*(?:side|leg|arm)\b)?\s*[,\/]\s*/i.exec(u), it = c && val(u.slice(c[0].length)); if (!it) break; if (c[1]) sided = true; list = Math.max(list, it[0]); u = u.slice(c[0].length + it[1]); k++; }
+  if (/^\s*(?:\/|each|per)\s*(?:side|leg|arm)\b/i.test(u)) sided = true;
+  u = u.replace(/[,;(]\s*(?:rest|off|pause|break|rec|recover\w*|between|ri)\b[\s\S]*$/i, "");   // a rest noted after the list ("30 sec, 45 sec, rest 1:00")
+  if ((k > 1 || (k === 1 && (pair || sided))) && !/\d/.test(u) && !RESTS_ANY.test(u)) top = list;           // a list of holds, one for each set: three or more, or two that cannot be work and rest (distances, or holds written "/ side"; two bare times are as often work and rest: "15 sec, 45 sec"), and nothing after them but words that are no rest ("/ side", "each", "hold")
+  top = Math.round(top * 1e6) / 1e6;
+  return top === planVal(hi) ? hi : top;
+};
 const timedRead = (reps) => {
   const s = String(reps || "");
   const lead = /^\s*\d+\s*[x\u00d7]\s*/i.exec(s), base = lead ? lead[0].length : 0, first = s.slice(base).search(/\d/);   // the plan's own number is the first one ("3 x 30 sec" aside): "10 reps, 2 sec hold at top" is reps
   const at = (i) => first < 0 || i === base + first;
-  const ms = /(\d+)\s*min(?:s|utes?)?\s*(\d+)\s*s(?:ec|ecs|econds?)?\b/i.exec(s); if (ms && at(ms.index)) { const n = String(parseInt(ms[1], 10) * 60 + parseInt(ms[2], 10)); return { n, unit: "sec", hi: n }; }   // "1 min 30 sec" = 90 seconds, like "1:30"
+  const ms = /(\d+)\s*min(?:s|utes?)?\s*(\d+)\s*s(?:ec|ecs|econds?)?\b/i.exec(s); if (ms && at(ms.index)) { const n = String(parseInt(ms[1], 10) * 60 + parseInt(ms[2], 10)); return { n, unit: "sec", hi: moreOf(s.slice(ms.index + ms[0].length), n, timeVal("sec")) }; }   // "1 min 30 sec" = 90 seconds, like "1:30"
   const m = /(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*(\d+(?:[.,]\d+)?))?\s*(s|sec|secs|second|seconds|min|mins|minute|minutes)\b/i.exec(s);
-  if (m && at(m.index)) return { n: m[1], unit: /^m/i.test(m[3]) ? "min" : "sec", hi: topOf(m[1], m[2]) };
+  if (m && at(m.index)) { const unit = /^m/i.test(m[3]) ? "min" : "sec"; return { n: m[1], unit, hi: moreOf(s.slice(m.index + m[0].length), topOf(m[1], m[2]), timeVal(unit)) }; }
   const mm = /(?:^|[^\d:])(\d{1,2}):(\d{2})(?![\d:])/.exec(s); if (mm && at(s.indexOf(mm[1] + ":" + mm[2], mm.index))) { const n = String(parseInt(mm[1], 10) * 60 + parseInt(mm[2], 10)); return { n, unit: "sec", hi: n }; }   // "1:30" = 90 seconds
-  const q = /(\d+)\s*(?:"|\u2033|'')/.exec(s); if (q && at(q.index)) return { n: q[1], unit: "sec", hi: q[1] };                                   // 30" = 30 seconds
+  const q = /(\d+)\s*(?:"|\u2033|'')/.exec(s); if (q && at(q.index)) return { n: q[1], unit: "sec", hi: moreOf(s.slice(q.index + q[0].length), q[1], timeVal("sec")) };                                   // 30" = 30 seconds
   const kw = /\b(hold|max\s*time|as long as possible|alap|for time)\b/i.exec(s);
   if (kw && !/\brep/i.test(s)) { const n = /\d+/.exec(s); if (!n || n.index > kw.index) return { n: n ? n[0] : "", unit: "sec" }; }   // "max hold", "hold 30": the box asks for the seconds; "12 (hold 2s at bottom)" is reps
   return null;
 };
 export const timedPlan = (reps) => { const t = timedRead(reps); return t ? { n: t.n, unit: t.unit } : null; };
 // A distance plan ("40 m", "40m", "20-40 meters"): the box logs meters, like a hold logs seconds. measurePlan covers both.
-const distRead = (reps) => { const m = /(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*(\d+(?:[.,]\d+)?))?\s*(m|meter|meters|metre|metres)\b/i.exec(String(reps || "")); return m ? { n: m[1], unit: "m", hi: topOf(m[1], m[2]) } : null; };
+const distRead = (reps) => { const s = String(reps || ""), m = /(\d+(?:[.,]\d+)?)(?:\s*[\u2013-]\s*(\d+(?:[.,]\d+)?))?\s*(m|meter|meters|metre|metres)\b/i.exec(s); return m ? { n: m[1], unit: "m", hi: moreOf(s.slice(m.index + m[0].length), topOf(m[1], m[2]), distVal, true) } : null; };
 export const distPlan = (reps) => { const d = distRead(reps); return d ? { n: d.n, unit: d.unit } : null; };
 export const measurePlan = (reps) => timedPlan(reps) || distPlan(reps);
 // Before the Time box existed, a plank's seconds were typed into the weight box ("45 sec"). On a timed exercise a weight that reads as a
@@ -73,9 +111,20 @@ export const timeAsWeight = (v) => { const s = String(v || ""); if (!/\d\s*(sec|
 // for a 90-second plan): a time or a distance gives the plan's own number (timedRead's `hi`: "1 min 30 sec" → 90, "20 sec on, 40 sec off" → 20, "10 x 5 sec" → 5,
 // "40 m, rest 90 sec" → 40), never a rest or a count written beside it; and for reps a time written beside them is no rep count ("10 reps, 30 sec rest" → 10, it offered 30).
 const TIME_NOTE = /\d+(?:[.,]\d+)?(?:\s*[\u2013-]\s*\d+(?:[.,]\d+)?)?\s*(?:s|sec|secs|second|seconds|min|mins|minute|minutes)\b|\d{1,2}:\d{2}(?![\d:])|\d+\s*(?:"|\u2033|'')/gi;   // a time, in every spelling timedRead knows
+// Spellings the box takes for reps though the plan is a time (the reader knows a time only on the plan's first number, and a lead of one number). There the time is the
+// plan itself, not a note beside reps, so v327 gives back the number every release before v323 offered: a range ("30 to 45 sec", 30-45") or a list of three or more with
+// one unit at its end ("30, 45, 60 sec"), after a lead of sets or not ("3 x 30 to 45 sec") and whatever is written after it ("30 to 45 sec hold"), unless that is a rest
+// ("10, 10, 30 sec rest": two sets of ten and a rest); and sets written as a range ("3-5 x 30 sec" → 30), where the count of sets is the smaller number: "8-10 x 3" is
+// eight to ten reps, three times.
+const SETS_RANGE = /^\s*\d+\s*[\u2013-]\s*\d+\s*[x\u00d7]\s*(?=\d)/i;
+const TIME_HEAD = /^\s*(?:\d+\s*[x\u00d7]\s*)?(\d+(?:[.,]\d+)?\s*(?:to|[\u2013-])\s*\d+(?:[.,]\d+)?|\d+(?:\.\d+)?(?:\s*[,\/]\s*\d+(?:\.\d+)?){2,})\s*(?:(?:s|sec|secs|second|seconds|min|mins|minute|minutes)\b|"|\u2033|'')(?!\s*\(?\s*(?:rest|off|pause|break|rec|recover\w*|between|ri)\b)/i;
 export const planNumber = (reps) => {
   const s = String(reps || ""), own = timedRead(s) || distRead(s);
   if (own && own.hi != null) { const n = parseFloat(String(own.hi).replace(",", ".")); return Number.isInteger(n) ? String(n) : ""; }
+  if (!own) {
+    const h = TIME_HEAD.exec(s); if (h) { const top = Math.max(...(/to|[\u2013-]/i.test(h[1]) ? h[1].match(/\d+(?:[.,]\d+)?/g) : h[1].match(/\d+(?:\.\d+)?/g)).map(planVal)); return Number.isInteger(top) ? String(top) : ""; }
+    const lead = SETS_RANGE.exec(s); if (lead) { const n = planNumber(s.slice(lead[0].length)); if (n !== "" && Number(n) >= Math.max(...lead[0].match(/\d+/g).map(Number))) return n; }
+  }
   const nums = ((own ? s : s.replace(TIME_NOTE, " ")).replace(/\s*(\/|each|per)\s*(side|leg|arm)\b/gi, "").replace(/@\s*\d+(?:[.,]\d+)?\s*%?|\d+(?:[.,]\d+)?\s*%|\brpe\s*\d+(?:[.,]\d+)?/gi, "").match(/\d+(?:[.,]\d+)?/g) || []).map((x) => parseFloat(x.replace(",", ".")));   // "8-10 @ 70%", "RPE 8": the load note is not a rep count
   if (!nums.length) return "";
   const top = Math.max(...nums); return Number.isInteger(top) ? String(top) : "";

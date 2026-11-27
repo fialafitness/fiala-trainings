@@ -287,7 +287,7 @@ test("the client's workouts are read in each answer's own unit: a copy that did 
 
 test("the app's once-a-minute sync is kept by the test run, never armed, so it cannot fire into a test (v319: it landed in the read above, after the client's switch, and lb was stamped as kg)", () => {
   assert.strictEqual(slowTimers.filter((t) => t.ms === 60000).length, 1, "sync.js's repeating timer, kept by env.js");
-  assert.ok(fs.readFileSync(new URL("../app/sync.js", import.meta.url), "utf8").includes('setInterval(() => { if (document.visibilityState === "visible") scheduleSync(); }, 60000);'), "the app itself still syncs once a minute while it is on screen");
+  assert.ok(fs.readFileSync(new URL("../app/sync.js", import.meta.url), "utf8").includes('setInterval(() => { if (document.visibilityState === "visible") scheduleSync(true); }, 60000);'), "the app itself still syncs once a minute while it is on screen (v327: as a routine tick, which may ask the server before it downloads)");
 });
 
 test("Back from a page opened from a list lands the list where it was, as the swipe's picture shows it (v300: it jumped to the top as the finger let go)", async () => {

@@ -39,7 +39,7 @@ import { winLost, winHooks, winTab } from "./win.js";   // v316: one window at a
     const seq = (catalogSeq.loadHidden = (catalogSeq.loadHidden || 0) + 1);
     const { data, error } = await S.sb.from("ft_exercise_hidden").select("name_key");
     if (error || !data || seq !== catalogSeq.loadHidden) return;   // a fresher load answered meanwhile: this older answer must not roll it back
-    hiddenKeys.clear(); for (const r of data) hiddenKeys.add(r.name_key); refreshNames(); catalogBump("hidden", hiddenKeys);
+    hiddenKeys.clear(); for (const r of data) hiddenKeys.add(r.name_key); refreshNames(); catalogBump("hidden", hiddenKeys); return true;
   }
   async function hideBuiltin(k) { const { error } = await S.sb.from("ft_exercise_hidden").upsert({ name_key: k }); if (error) { lastDbError = error.message || ""; return false; } hiddenKeys.add(k); refreshNames(); return true; }
   async function unhideBuiltin(k) { if (!hiddenKeys.has(k)) return true; const { error } = await S.sb.from("ft_exercise_hidden").delete().eq("name_key", k); if (error) { lastDbError = error.message || ""; return false; } hiddenKeys.delete(k); refreshNames(); return true; }
@@ -50,7 +50,7 @@ import { winLost, winHooks, winTab } from "./win.js";   // v316: one window at a
     const seq = (catalogSeq.loadCustomNames = (catalogSeq.loadCustomNames || 0) + 1);
     const { data, error } = await S.sb.from("ft_exercises").select("name_key,name");
     if (error || !data || seq !== catalogSeq.loadCustomNames) return;   // a fresher load answered meanwhile: this older answer must not roll it back
-    customNames.clear(); for (const r of data) customNames.set(r.name_key, r.name); refreshNames(); catalogBump("names", customNames);
+    customNames.clear(); for (const r of data) customNames.set(r.name_key, r.name); refreshNames(); catalogBump("names", customNames); return true;
   }
   async function addCustomName(name) {
     name = tidyName(properName(name)); const k = squash(name); if (!k || knownName(name)) return true;   // "Triceps pushdown" is "Tricep pushdown": nothing to add
@@ -153,7 +153,7 @@ import { winLost, winHooks, winTab } from "./win.js";   // v316: one window at a
     const seq = (catalogSeq.loadCustomSubs = (catalogSeq.loadCustomSubs || 0) + 1);
     const { data, error } = await S.sb.from("ft_exercise_subtitles").select("name_key,subtitle");
     if (error || !data || seq !== catalogSeq.loadCustomSubs) return;   // a fresher load answered meanwhile: this older answer must not roll it back
-    customSubs.clear(); for (const r of data) customSubs.set(r.name_key, String(r.subtitle || "")); catalogBump("subs", customSubs);
+    customSubs.clear(); for (const r of data) customSubs.set(r.name_key, String(r.subtitle || "")); catalogBump("subs", customSubs); return true;
   }
   async function saveSub(k, sub, oldKey) { const { error } = await S.sb.from("ft_exercise_subtitles").upsert({ name_key: k, subtitle: sub }); if (error) { lastDbError = error.message || ""; return error; } customSubs.set(k, sub); if (oldKey && oldKey !== k) await deleteSub([oldKey]); return null; }
   async function deleteSub(keys) { const { error } = await S.sb.from("ft_exercise_subtitles").delete().in("name_key", keys); if (error) { lastDbError = error.message || ""; return error; } for (const k of keys) customSubs.delete(k); return null; }
@@ -170,7 +170,7 @@ import { winLost, winHooks, winTab } from "./win.js";   // v316: one window at a
     if (error || !data || seq !== catalogSeq.loadCustomVideos) return;   // a fresher load answered meanwhile: this older answer must not roll it back
     customVideos.clear(); videoRawKeys.clear();
     for (const r of data) { const k = ALIAS_LOOSE[r.name_key] || r.name_key; customVideos.set(k, r.video_id); if (!videoRawKeys.has(k)) videoRawKeys.set(k, new Set()); videoRawKeys.get(k).add(r.name_key); } // links saved under an old spelling follow the rename
-    catalogBump("videos", customVideos);
+    catalogBump("videos", customVideos); return true;
   }
 
   // ---- no signal: the device copy (saved after every successful sync) stands in until the server answers again
